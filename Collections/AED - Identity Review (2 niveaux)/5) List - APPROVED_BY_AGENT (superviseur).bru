@@ -1,0 +1,29 @@
+meta {
+  name: 5) List - APPROVED_BY_AGENT (superviseur)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/management/identity-reviews?status=APPROVED_BY_AGENT&assigned=true&per_page=10
+  body: none
+  auth: bearer
+}
+
+params:query {
+  status: APPROVED_BY_AGENT
+  assigned: true
+  per_page: 10
+}
+
+auth:bearer {
+  token: {{supervisor_token}}
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+}
+
+settings {
+  encodeUrl: true
+}

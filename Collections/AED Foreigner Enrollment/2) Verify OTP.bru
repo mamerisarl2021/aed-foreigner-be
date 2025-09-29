@@ -1,0 +1,31 @@
+meta {
+  name: 2) Verify OTP
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/foreigner/verify-otp
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "otp": "{{otp}}"
+  }
+}
+
+script:post-response {
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
+  test('Email confirmé', () => res.getBody().data.email);
+}
+
+settings {
+  encodeUrl: true
+}

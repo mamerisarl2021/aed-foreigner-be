@@ -1,0 +1,28 @@
+meta {
+  name: 3) Init Registration
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/foreigner/register/init
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  email: {{email}}
+  ~profile: @file(C:\\path\\to\\profile.jpg)
+}
+
+script:post-response {
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
+  const json = res.getBody();
+  test('Token présent', () => expect(json.data).to.have.property('registration_token'));
+  bru.setVar('registration_token', json.data.registration_token);
+  if (json.data.link) bru.setVar('init_link', json.data.link);
+}
+
+settings {
+  encodeUrl: true
+}

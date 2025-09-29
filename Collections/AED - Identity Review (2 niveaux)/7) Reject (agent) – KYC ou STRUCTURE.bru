@@ -1,0 +1,35 @@
+meta {
+  name: 7) Reject (agent) – KYC ou STRUCTURE
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/management/identity-reviews/{{identity_id}}/reject
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{agent_token}}
+}
+
+body:json {
+  {
+    "stage": "KYC",
+    "reasons": ["Selfie non conforme", "Similarité insuffisante"],
+    "comments": "Veuillez reprendre le selfie avec bonne luminosité."
+  }
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+}
+
+settings {
+  encodeUrl: true
+}

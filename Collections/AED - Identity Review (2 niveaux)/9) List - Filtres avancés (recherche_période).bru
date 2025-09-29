@@ -1,0 +1,35 @@
+meta {
+  name: 9) List - Filtres avancés (recherche/période)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/management/identity-reviews?status=PENDING,REJECTED&type=ONLINE&level=ADVANCED&q=gmail.com&from=2025-09-01&to=2025-09-30&order_by=created_at&order_dir=asc&per_page=5
+  body: none
+  auth: bearer
+}
+
+params:query {
+  status: PENDING,REJECTED
+  type: ONLINE
+  level: ADVANCED
+  q: gmail.com
+  from: 2025-09-01
+  to: 2025-09-30
+  order_by: created_at
+  order_dir: asc
+  per_page: 5
+}
+
+auth:bearer {
+  token: {{agent_token}}
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+}
+
+settings {
+  encodeUrl: true
+}

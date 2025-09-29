@@ -1,0 +1,27 @@
+meta {
+  name: 4) Approve (agent) → statut APPROVED_BY_AGENT
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/management/identity-reviews/{{identity_id}}/approve
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{agent_token}}
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+  const json = res.getBody();
+  if (json && json.data && json.data.identity_id) {
+    bru.setVar('identity_id_supervised', json.data.identity_id);
+  }
+}
+
+settings {
+  encodeUrl: true
+}

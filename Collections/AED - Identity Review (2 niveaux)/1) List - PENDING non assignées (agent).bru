@@ -1,0 +1,37 @@
+meta {
+  name: 1) List - PENDING non assignées (agent)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/management/identity-reviews?status=PENDING&assigned=false&per_page=10&order_by=id&order_dir=desc
+  body: none
+  auth: bearer
+}
+
+params:query {
+  status: PENDING
+  assigned: false
+  per_page: 10
+  order_by: id
+  order_dir: desc
+}
+
+auth:bearer {
+  token: {{agent_token}}
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+  const json = res.getBody();
+  const items = (json.data && json.data.data) ? json.data.data : [];
+  if (items.length) {
+    bru.setVar('identity_id', items[0].id);
+  }
+  test('Liste OK', () => Array.isArray(items));
+}
+
+settings {
+  encodeUrl: true
+}

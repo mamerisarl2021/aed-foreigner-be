@@ -1,0 +1,23 @@
+meta {
+  name: 6) Supervisor Approve → statut APPROVED + Welcome
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/management/identity-reviews/{{identity_id_supervised}}/supervisor/approve
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{supervisor_token}}
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+}
+
+settings {
+  encodeUrl: true
+}
