@@ -1,0 +1,504 @@
+{
+	"info": {
+		"_postman_id": "b53f6c8d-1234-4567-890a-bcdef1234567",
+		"name": "Foreigner Enrollment Workflow (Updated)",
+		"description": "Collection for the complete Foreigner Enrollment process, including Regula analysis, Company Validation, and Certificate Issuance.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Foreigner Registration",
+			"item": [
+				{
+					"name": "1. Send OTP",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foreigner/send-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"foreigner",
+								"send-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Verify OTP",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"otp\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foreigner/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"foreigner",
+								"verify-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Init Registration",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foreigner/register/init",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"foreigner",
+								"register",
+								"init"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Finalize Registration",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "test@example.com",
+									"type": "text"
+								},
+								{
+									"key": "token",
+									"value": "otp_token_here",
+									"type": "text"
+								},
+								{
+									"key": "type",
+									"value": "ONLINE",
+									"type": "text"
+								},
+								{
+									"key": "files[passport]",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "files[selfie]",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foreigner/register/finalize",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"foreigner",
+								"register",
+								"finalize"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Identity Review (Agent)",
+			"item": [
+				{
+					"name": "List Reviews",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/management/identity-reviews",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"identity-reviews"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Show Review (See Risk Score)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/management/identity-reviews/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"identity-reviews",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Identity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/management/identity-reviews/:id/approve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"identity-reviews",
+								":id",
+								"approve"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Supervisor Approve (Create User)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{supervisor_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/management/identity-reviews/:id/supervisor/approve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"identity-reviews",
+								":id",
+								"supervisor",
+								"approve"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Company Creation",
+			"item": [
+				{
+					"name": "Create Company (One Shot)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "My Global Company",
+									"type": "text"
+								},
+								{
+									"key": "ifu",
+									"value": "1234567890123",
+									"type": "text"
+								},
+								{
+									"key": "attachements[0][name]",
+									"value": "RCCM",
+									"type": "text"
+								},
+								{
+									"key": "attachements[0][status]",
+									"value": "SENT",
+									"type": "text"
+								},
+								{
+									"key": "attachements[0][files][]",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clients/one-shot-link",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"one-shot-link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Agent Approve Company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{agent_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"structures\": [\n        {\n            \"id\": 1,\n            \"status\": \"APPROVED\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/management/structures/update-status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"structures",
+								"update-status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Manager Verify OTP (Enable Company)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"manager@example.com\",\n    \"otp\": \"123456\",\n    \"entity_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/clients/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"verify-otp"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. User Management & Certificates",
+			"item": [
+				{
+					"name": "Validate Employee (Activate User)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_subscription_id\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/management/structure-subscriptions/validate-employee-request",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"management",
+								"structure-subscriptions",
+								"validate-employee-request"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Provision Certificate",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"auth_code_from_tx\",\n    \"type\": \"employee\",\n    \"subscription_id\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/signing-identities/provision",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"signing-identities",
+								"provision"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "user_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "agent_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "supervisor_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

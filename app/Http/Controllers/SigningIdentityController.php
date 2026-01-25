@@ -19,6 +19,18 @@ class SigningIdentityController extends BaseController
     use AuthTrait;
     private $baseUri = 'https://test-tx-pki.gouv.bj/trustedx-resources/esigp/v1/';
 
+    /**
+     * @OA\Get(
+     *      path="/api/signing-identities",
+     *      operationId="getSigningIdentities",
+     *      tags={"Certificates"},
+     *      summary="List Signing Identities",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="token", in="query", required=true, @OA\Schema(type="string")),
+     *      @OA\Response(response=200, description="Successful operation"),
+     *      @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getSigningIdentities(Request $request)
     {
         $client = new Client();
@@ -76,6 +88,18 @@ class SigningIdentityController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/signing-identities/{identityId}",
+     *      operationId="getSigningIdentity",
+     *      tags={"Certificates"},
+     *      summary="Get Signing Identity Details",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
+     *      @OA\Parameter(name="token", in="query", required=true, @OA\Schema(type="string")),
+     *      @OA\Response(response=200, description="Successful operation")
+     * )
+     */
     public function getSigningIdentity(Request $request, $identityId)
     {
         $client = new Client();
@@ -110,6 +134,26 @@ class SigningIdentityController extends BaseController
         return $decodedCert['tbsCertificate']['validity'];
     }
 
+    /**
+     * @OA\Put(
+     *      path="/api/signing-identities/{identityId}/status",
+     *      operationId="updateSigningIdentityStatus",
+     *      tags={"Certificates"},
+     *      summary="Update Signing Identity Status",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"value", "reason"},
+     *              @OA\Property(property="value", type="string"),
+     *              @OA\Property(property="reason", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=204, description="Success"),
+     *      @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function updateSigningIdentityStatus(Request $request, $identityId)
     {
         $token_response = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
@@ -143,6 +187,17 @@ class SigningIdentityController extends BaseController
         }
     }
 
+    /**
+     * @OA\Delete(
+     *      path="/api/signing-identities/{identityId}",
+     *      operationId="deleteSigningIdentity",
+     *      tags={"Certificates"},
+     *      summary="Delete Signing Identity",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
+     *      @OA\Response(response=200, description="Deleted successfully")
+     * )
+     */
     public function deleteSigningIdentity($identityId)
     {
         $token_response = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
@@ -224,6 +279,27 @@ class SigningIdentityController extends BaseController
     //     }
     // }
 
+    /**
+     * @OA\Post(
+     *      path="/api/signing-identities/provision",
+     *      operationId="provisionSignature",
+     *      tags={"Certificates"},
+     *      summary="Provision Certificate (Signature)",
+     *      description="Starts the certificate issuance process on TrustedX RAP.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"code", "type", "subscription_id"},
+     *              @OA\Property(property="code", type="string"),
+     *              @OA\Property(property="type", type="string", enum={"citizen", "employee"}),
+     *              @OA\Property(property="subscription_id", type="integer")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Process finished or in progress"),
+     *      @OA\Response(response=400, description="Validation or Access error"),
+     *      @OA\Response(response=403, description="Forbidden (Manager approval or account inactive)")
+     * )
+     */
     public function provisionSignature(Request $request)
     {
         try {
@@ -254,6 +330,19 @@ class SigningIdentityController extends BaseController
                 $subscription = UserSubscription::find($validatedData['subscription_id']);
                 if ($subscription) {
                     $subscription->update(['status' => 'TRAITEDBYSYSTEM']);
+                }
+            }
+
+            // ✅ Étape 3bis : Vérification que l'utilisateur est bien ACTIF (pour tous types)
+            $sub = UserSubscription::find($validatedData['subscription_id']);
+            if ($sub) {
+                $user = User::find($sub->user_id);
+                if ($user && $user->status !== 'ACTIVE') {
+                     return $this->sendError(
+                        "Votre compte utilisateur n'est pas encore actif. Veuillez patienter ou contacter le support.",
+                        null,
+                        403
+                    );
                 }
             }
 

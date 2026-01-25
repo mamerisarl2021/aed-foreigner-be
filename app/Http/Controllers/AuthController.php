@@ -27,6 +27,24 @@ class AuthController extends BaseController
     /**
      * Handle an incoming authentication request.
      */
+    /**
+     * @OA\Post(
+     *      path="/api/admin/login",
+     *      operationId="adminLogin",
+     *      tags={"Admin Auth"},
+     *      summary="Admin/Agent Login (Step 1: Request OTP)",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "password"},
+     *              @OA\Property(property="email", type="string", format="email"),
+     *              @OA\Property(property="password", type="string", format="password")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="OTP sent to email"),
+     *      @OA\Response(response=403, description="Forbidden (Not an agent)")
+     * )
+     */
     public function loginAdmin(LoginRequest $request): JsonResponse
     {
         // Authenticate the user
@@ -72,6 +90,25 @@ class AuthController extends BaseController
         return $this->sendResponse('OTP envoyé avec succès.', []);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/agents/{id}",
+     *      operationId="updateAgent",
+     *      tags={"Admin Auth"},
+     *      summary="Update Agent Details",
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(property="role", type="string", enum={"LEVEL1","LEVEL2","LEVEL3","SUPERVISEUR","AUDITEUR"}),
+     *              @OA\Property(property="phonenumber", type="string"),
+     *              @OA\Property(property="email", type="string", format="email")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Agent updated")
+     * )
+     */
     public function updateAgent(Request $request, $id): JsonResponse
     {
         // Find the user by ID
@@ -163,6 +200,16 @@ class AuthController extends BaseController
     /**
      * Destroy an authenticated session.
      */
+    /**
+     * @OA\Post(
+     *      path="/api/admins/logout",
+     *      operationId="adminLogout",
+     *      tags={"Admin Auth"},
+     *      summary="Admin Logout",
+     *      security={{"sanctum":{}}},
+     *      @OA\Response(response=200, description="Logged out")
+     * )
+     */
     public function logoutAdmin(Request $request): JsonResponse
     {
         // Revoke the token that was used to authenticate the current request
@@ -177,6 +224,26 @@ class AuthController extends BaseController
         return $this->sendResponse('Déconnexion réussie.', []);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/agents/register",
+     *      operationId="registerAgent",
+     *      tags={"Admin Auth"},
+     *      summary="Register New Agent",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"name", "phonenumber", "npi", "email"},
+     *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(property="role", type="string"),
+     *              @OA\Property(property="phonenumber", type="string"),
+     *              @OA\Property(property="npi", type="string"),
+     *              @OA\Property(property="email", type="string", format="email")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Agent registered")
+     * )
+     */
     public function registerAgent(Request $request): JsonResponse
     {
         // Validate the request
@@ -356,6 +423,24 @@ class AuthController extends BaseController
     }
 
 
+    /**
+     * @OA\Post(
+     *      path="/api/admins/verify-otp",
+     *      operationId="adminVerifyOtp",
+     *      tags={"Admin Auth"},
+     *      summary="Admin/Agent Verify OTP (Step 2: Get Token)",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "otp"},
+     *              @OA\Property(property="email", type="string", format="email"),
+     *              @OA\Property(property="otp", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Token obtained"),
+     *      @OA\Response(response=403, description="Forbidden or Invalid OTP")
+     * )
+     */
     public function verifyOtp(Request $request)
     {
         // Validate the input for email and OTP

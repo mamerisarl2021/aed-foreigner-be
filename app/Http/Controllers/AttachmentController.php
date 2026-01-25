@@ -15,6 +15,17 @@ class AttachmentController extends BaseController
     use AttachmentTrait;
     use AuditTrait;
     
+    /**
+     * @OA\Get(
+     *      path="/api/attachments/{id}",
+     *      operationId="getAttachment",
+     *      tags={"Attachments"},
+     *      summary="Get Attachment Details",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *      @OA\Response(response=200, description="Success")
+     * )
+     */
     public function show($id)
     {
         try {
@@ -31,6 +42,30 @@ class AttachmentController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/entities/attachments",
+     *      operationId="createAttachment",
+     *      tags={"Attachments"},
+     *      summary="Upload Attachment",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"name", "structure_id", "status", "message"},
+     *                  @OA\Property(property="name", type="string"),
+     *                  @OA\Property(property="structure_id", type="integer"),
+     *                  @OA\Property(property="status", type="string"),
+     *                  @OA\Property(property="message", type="string"),
+     *                  @OA\Property(property="files[]", type="array", @OA\Items(type="string", format="binary"))
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Upload success")
+     * )
+     */
     public function store(Request $request)
     {
         try {
@@ -83,6 +118,27 @@ class AttachmentController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/attachments/update-status",
+     *      operationId="updateAttachmentStatus",
+     *      tags={"Management"},
+     *      summary="Update Attachment Status (Bulk)",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"attachments"},
+     *              @OA\Property(property="attachments", type="array", @OA\Items(
+     *                  @OA\Property(property="id", type="integer"),
+     *                  @OA\Property(property="status", type="string", enum={"SENT", "VALIDATED", "REJECTED"}),
+     *                  @OA\Property(property="message", type="string", nullable=true)
+     *              ))
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Success")
+     * )
+     */
     public function updateAttachmentStatus(Request $request)
     {
         $validator = Validator::make($request->all(), [

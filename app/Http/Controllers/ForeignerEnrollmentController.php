@@ -32,6 +32,37 @@ class ForeignerEnrollmentController extends BaseController
 {
     use AttachmentTrait;
 
+    /**
+     * @OA\Post(
+     *      path="/api/foreigner/send-otp",
+     *      operationId="sendOtp",
+     *      tags={"Enrollment"},
+     *      summary="Send OTP to email",
+     *      description="Sends an OTP to the provided email address for verification.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email"},
+     *              @OA\Property(property="email", type="string", format="email", example="user@example.com")
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="OTP sent successfully",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="message", type="string", example="OTP envoyé à votre adresse email."),
+     *              @OA\Property(property="data", type="object",
+     *                  @OA\Property(property="email", type="string", example="user@example.com")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=422,
+     *          description="Validation error"
+     *      )
+     * )
+     */
     public function sendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -51,6 +82,35 @@ class ForeignerEnrollmentController extends BaseController
         return $this->sendResponse('OTP envoyé à votre adresse email.', ['email' => $email]);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/foreigner/verify-otp",
+     *      operationId="verifyOtp",
+     *      tags={"Enrollment"},
+     *      summary="Verify OTP",
+     *      description="Verifies the OTP sent to the email.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "otp"},
+     *              @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *              @OA\Property(property="otp", type="string", example="123456")
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="OTP verified successfully",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="message", type="string", example="OTP vérifié.")
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=400,
+     *          description="Invalid OTP"
+     *      )
+     * )
+     */
     public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -72,6 +132,42 @@ class ForeignerEnrollmentController extends BaseController
         return $this->sendResponse('OTP vérifié.', ['email' => $email]);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/foreigner/register/init",
+     *      operationId="initRegistration",
+     *      tags={"Enrollment"},
+     *      summary="Initialize Registration",
+     *      description="Initializes the registration process, returning a registration token.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"email"},
+     *                  @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *                  @OA\Property(property="profile", type="string", format="binary")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Registration initialized",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="object",
+     *                  @OA\Property(property="registration_token", type="string"),
+     *                  @OA\Property(property="expires_at", type="string", format="date-time"),
+     *                  @OA\Property(property="link", type="string")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=400,
+     *          description="OTP not verified"
+     *      )
+     * )
+     */
     public function initRegistration(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -127,8 +223,66 @@ class ForeignerEnrollmentController extends BaseController
         ]);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/foreigner/register/finalize",
+     *      operationId="finalizeRegistration",
+     *      tags={"Enrollment"},
+     *      summary="Finalize Registration",
+     *      description="Finalizes the registration with full details and documents.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"registration_token", "transaction_id"},
+     *                  @OA\Property(property="registration_token", type="string"),
+     *                  @OA\Property(property="transaction_id", type="string"),
+     *                  @OA\Property(property="selfie", type="string", format="binary", description="Required"),
+     *                  @OA\Property(property="recto", type="string", format="binary", description="Required"),
+     *                  @OA\Property(property="verso", type="string", format="binary", description="Required"),
+     *                  @OA\Property(property="similarity", type="string", description="Required"),
+     *                  @OA\Property(property="liveness", type="string", description="Required"),
+     *                  @OA\Property(property="exp_date", type="string", format="date", description="Expiration date of document"),
+     *                  @OA\Property(property="birth_date", type="string", format="date", description="Birth date"),
+     *                  @OA\Property(property="kyc[name]", type="string"),
+     *                  @OA\Property(property="kyc[first_name]", type="string"),
+     *                  @OA\Property(property="kyc[phonenumber]", type="string"),
+     *                  @OA\Property(property="kyc[nationality]", type="string"),
+     *                  @OA\Property(property="kyc[document_type]", type="string", enum={"PASSPORT", "RESIDENCE_PERMIT", "OTHER"}),
+     *                  @OA\Property(property="kyc[document_number]", type="string")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Registration finalized",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="object",
+     *                  @OA\Property(property="user_id", type="integer"),
+     *                  @OA\Property(property="phonenumber", type="string")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=422,
+     *          description="Validation error"
+     *      ),
+     *      @OA\Response(
+     *          response=500,
+     *          description="Internal server error"
+     *      )
+     * )
+     */
     public function finalizeRegistration(Request $request)
     {
+        // Force type and level for Foreigner flow
+        $request->merge([
+            'type' => 'ONLINE',
+            'level' => 'ADVANCED'
+        ]);
+
         // Validation préliminaire AVANT transaction
         $basic = Validator::make($request->all(), [
             'registration_token' => 'required|string|exists:pending_registrations,registration_token',
@@ -150,13 +304,12 @@ class ForeignerEnrollmentController extends BaseController
         // Validation complète AVANT transaction
         $rules = [
             'transaction_id' => 'required|string',
-            'type' => ['required', 'string', 'in:IN_PERSON,ONLINE'],
-            'level' => ['required', 'string', 'in:SIMPLE,ADVANCED'],
-            'selfie' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:6508',
-            'recto' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-            'verso' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-            'similarity' => 'required_if:type,ONLINE|string',
-            'liveness' => 'required_if:type,ONLINE|string',
+            // 'type' and 'level' are auto-set
+            'selfie' => 'nullable|required|mimes:png,jpeg,jpg|max:6508',
+            'recto' => 'nullable|required|mimes:png,jpeg,jpg|max:2048',
+            'verso' => 'nullable|required|mimes:png,jpeg,jpg|max:2048',
+            'similarity' => 'required|string',
+            'liveness' => 'required|string',
             'exp_date' => 'nullable|string',
             'birth_date' => 'nullable|string',
             'kyc.name' => 'sometimes|string',
@@ -165,15 +318,6 @@ class ForeignerEnrollmentController extends BaseController
             'kyc.nationality' => 'sometimes|string',
             'kyc.document_type' => 'sometimes|string|in:PASSPORT,RESIDENCE_PERMIT,OTHER',
             'kyc.document_number' => 'sometimes|string',
-            // Structure rules incluses
-            'structure.name' => 'sometimes|required|string|max:255',
-            'structure.ifu' => 'sometimes|required|string',
-            'structure.attachements' => 'sometimes|array',
-            'structure.attachements.*.name' => 'required_with:structure.attachements|string|max:255',
-            'structure.attachements.*.status' => 'sometimes|in:SENT,VALIDATED,WAITING_MANAGER,REJECTED',
-            'structure.attachements.*.message' => 'sometimes|string|nullable',
-            'structure.attachements.*.files' => 'sometimes|array',
-            'structure.attachements.*.files.*' => 'sometimes|file|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:10000',
         ];
         
         $validator = Validator::make($request->all(), $rules);
@@ -210,7 +354,7 @@ class ForeignerEnrollmentController extends BaseController
             ]);
 
             Identity::create([
-                'type' => $request->input('type'),
+                'type' => 'ONLINE', // Hardcoded
                 'proof' => json_encode([
                     'selfiePath' => $uploadedFiles['selfie'] ?? null,
                     'rectoPath' => $uploadedFiles['recto'] ?? null,
@@ -223,7 +367,7 @@ class ForeignerEnrollmentController extends BaseController
                     'document_number' => $kyc['document_number'] ?? null,
                     'nationality' => $kyc['nationality'] ?? null,
                 ]),
-                'level' => $request->input('level'),
+                'level' => 'ADVANCED', // Hardcoded
                 'user_id' => $user->id,
                 'status' => 'PENDING',
             ]);
@@ -233,31 +377,7 @@ class ForeignerEnrollmentController extends BaseController
 
             $user->assignRole('client');
 
-            // Structure (création rapide sans upload)
-            $structureId = null;
-            $structurePayload = $request->input('structure');
-            if (is_array($structurePayload) && !empty($structurePayload['name']) && !empty($structurePayload['ifu'])) {
-                $structure = Structure::create([
-                    'name' => $structurePayload['name'],
-                    'ifu' => $structurePayload['ifu'],
-                    'manager_id' => $user->id,
-                    'status' => 'PENDING',
-                    'searchbase' => "ou=Employees-Virtual ID,ou={$structurePayload['name']},o=GOUV,c=BJ",
-                ]);
-                $structureId = $structure->id;
-
-                // Créer les attachments sans fichiers (à traiter en async)
-                if (!empty($structurePayload['attachements']) && is_array($structurePayload['attachements'])) {
-                    foreach ($structurePayload['attachements'] as $idx => $attachmentData) {
-                        Attachment::create([
-                            'name' => $attachmentData['name'] ?? ('Pièce ' . ($idx + 1)),
-                            'status' => 'PROCESSING', // Statut temporaire
-                            'message' => $attachmentData['message'] ?? null,
-                            'structure_id' => $structure->id,
-                        ]);
-                    }
-                }
-            }
+            // NOTE: Structure creation logic REMOVED to separate P1 (User) from P2 (Company)
 
             Cache::forget('foreigner_otp_' . $email);
             Cache::forget('foreigner_otp_valid_' . $email);
@@ -266,7 +386,7 @@ class ForeignerEnrollmentController extends BaseController
             DB::commit();
 
             // ÉTAPE 4: Jobs asynchrones APRÈS transaction réussie
-            $this->dispatchPostRegistrationJobs($user, $request, $structureId, $uploadedFiles);
+            $this->dispatchPostRegistrationJobs($user, $request, null, $uploadedFiles);
 
             return $this->sendResponse('Inscription finalisée.', [
                 'user_id' => $user->id,
@@ -367,6 +487,19 @@ class ForeignerEnrollmentController extends BaseController
             AdvancedIdRequestJob::dispatch($user->email);
         }
         ForeignerFinalizedJob::dispatch($user->email, $type);
+        
+        // Trigger Regula Analysis for ONLINE enrollments
+        if ($type === 'ONLINE') {
+            Log::info("Dispatching Regula analysis for user {$user->id}");
+            // Retrieve identity created in this transaction. 
+            // Since we don't pass identity ID to this method, we might need to find it 
+            // or better, pass identity ID to this method. 
+            // However, looking at the code, we can find it via user_id.
+            $identity = Identity::where('user_id', $user->id)->latest()->first();
+            if ($identity) {
+                \App\Jobs\RegulaAnalysisJob::dispatch($identity->id);
+            }
+        }
 
         // Job pour traiter les fichiers de structure en async si nécessaire
         if ($structureId && $request->has('structure.attachements')) {

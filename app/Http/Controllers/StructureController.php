@@ -21,6 +21,33 @@ use Illuminate\Validation\Rule;
 class StructureController extends BaseController
 {
     use AttachmentTrait;
+    /**
+     * @OA\Get(
+     *      path="/api/structures",
+     *      operationId="getStructures",
+     *      tags={"Structures"},
+     *      summary="List Structures",
+     *      description="Returns a paginated list of structures.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="perPage",
+     *          in="query",
+     *          description="Items per page",
+     *          required=false,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="array", @OA\Items(type="object")),
+     *              @OA\Property(property="pagination", type="object")
+     *          )
+     *      ),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function index(Request $request)
     {
         try {
@@ -42,6 +69,25 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/entities/mine",
+     *      operationId="getMyStructures",
+     *      tags={"Structures"},
+     *      summary="Get My Structures",
+     *      description="Returns a list of structures managed by the authenticated user.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *          )
+     *      ),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function mine()
     {
         try {
@@ -73,6 +119,34 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/structures/{id}",
+     *      operationId="getStructure",
+     *      tags={"Structures"},
+     *      summary="Get Structure Details",
+     *      description="Returns the details of a specific structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="id",
+     *          in="path",
+     *          description="ID of the structure",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="object")
+     *          )
+     *      ),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=404, description="Not Found"),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function show($id)
     {
         try {
@@ -95,6 +169,50 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/clients/one-shot-link",
+     *      operationId="createStructureOneShot",
+     *      tags={"Structures"},
+     *      summary="Create Structure (One Shot)",
+     *      description="Creates a structure and uploads its attachments in a single request.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"name", "ifu"},
+     *                  @OA\Property(property="name", type="string", description="Name of the structure"),
+     *                  @OA\Property(property="ifu", type="string", description="IFU of the structure"),
+     *                  @OA\Property(
+     *                      property="attachements",
+     *                      type="array",
+     *                      @OA\Items(
+     *                          type="object",
+     *                          required={"name", "status", "files"},
+     *                          @OA\Property(property="name", type="string"),
+     *                          @OA\Property(property="status", type="string", enum={"SENT","VALIDATED","WAITING_MANAGER","REJECTED"}),
+     *                          @OA\Property(property="message", type="string", nullable=true),
+     *                          @OA\Property(property="files[]", type="array", @OA\Items(type="string", format="binary"))
+     *                      )
+     *                  )
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Structure created successfully",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="message", type="string"),
+     *              @OA\Property(property="data", type="object")
+     *          )
+     *      ),
+     *      @OA\Response(response=400, description="Validation Error or Attachment Failed"),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function oneShotStore(Request $request)
     {
         DB::beginTransaction();
@@ -207,6 +325,33 @@ class StructureController extends BaseController
     }
 
 
+    /**
+     * @OA\Post(
+     *      path="/api/clients/link-entity",
+     *      operationId="createStructure",
+     *      tags={"Structures"},
+     *      summary="Create Structure (Basic)",
+     *      description="Creates a structure without attachments.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"name", "ifu"},
+     *              @OA\Property(property="name", type="string", example="Company LLC"),
+     *              @OA\Property(property="ifu", type="string", example="1234567890")
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Structure created successfully",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="object")
+     *          )
+     *      ),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function store(Request $request)
     {
         try {
@@ -228,6 +373,31 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Put(
+     *      path="/api/structures/{id}",
+     *      operationId="updateStructure",
+     *      tags={"Structures"},
+     *      summary="Update Structure",
+     *      description="Updates a specific structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(property="status", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Updated successfully"),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function update(Request $request, $id)
     {
         try {
@@ -250,6 +420,24 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Delete(
+     *      path="/api/structures/{id}",
+     *      operationId="deleteStructure",
+     *      tags={"Structures"},
+     *      summary="Delete Structure",
+     *      description="Deletes a specific structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(response=200, description="Deleted successfully"),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function destroy($id)
     {
         try {
@@ -262,6 +450,35 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/structures/update-status",
+     *      operationId="updateStructureStatus",
+     *      tags={"Structures"},
+     *      summary="Update Structure Status (Bulk)",
+     *      description="Updates status for multiple structures.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"structures"},
+     *              @OA\Property(
+     *                  property="structures",
+     *                  type="array",
+     *                  @OA\Items(
+     *                      type="object",
+     *                      required={"id", "status"},
+     *                      @OA\Property(property="id", type="integer"),
+     *                      @OA\Property(property="status", type="string", enum={"APPROVED","REJECTED","PENDING"})
+     *                  )
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Updated successfully"),
+     *      @OA\Response(response=400, description="Validation Error"),
+     *      @OA\Response(response=500, description="Internal Server Error")
+     * )
+     */
     public function updateStructureStatus(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -303,6 +520,25 @@ class StructureController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/structures/notify-admin",
+     *      operationId="sendStructureOtp",
+     *      tags={"Structures"},
+     *      summary="Send OTP for Structure Admin",
+     *      description="Sends an OTP to the structure admin email.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "entity_id"},
+     *              @OA\Property(property="email", type="string", format="email"),
+     *              @OA\Property(property="entity_id", type="integer")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="OTP sent successfully")
+     * )
+     */
     public function sendOtp(Request $request)
     {
         // Validate that the email exists
@@ -342,6 +578,27 @@ class StructureController extends BaseController
         return $this->sendResponse('OTP envoyé avec succès.', []);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/structures/verify-admin",
+     *      operationId="verifyStructureOtp",
+     *      tags={"Structures"},
+     *      summary="Verify OTP for Structure Admin",
+     *      description="Verifies the OTP and approves the structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "otp", "entity_id"},
+     *              @OA\Property(property="email", type="string", format="email"),
+     *              @OA\Property(property="otp", type="string"),
+     *              @OA\Property(property="entity_id", type="integer")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Verified successfully"),
+     *      @OA\Response(response=403, description="Invalid OTP")
+     * )
+     */
     public function verifyOtp(Request $request)
     {
         // Validate the input for email and OTP
@@ -369,6 +626,12 @@ class StructureController extends BaseController
             $structure->update([
                 'status' => 'APPROVED',
             ]);
+
+            // Activate the manager user
+            $manager = User::find($structure->manager_id);
+            if ($manager) {
+                $manager->update(['status' => 'ACTIVE']);
+            }
 
             return $this->sendResponse("Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!", $structure);
         }

@@ -32,6 +32,25 @@ class UserController extends BaseController
 {
     use AuthTrait;
 
+    /**
+     * @OA\Post(
+     *      path="/api/clients/send-otp",
+     *      operationId="userSendOtp",
+     *      tags={"User Auth"},
+     *      summary="Send OTP to User (ANIP flow)",
+     *      description="Generates and sends an OTP to a citizen based on their NPI.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"npi"},
+     *              @OA\Property(property="npi", type="string", example="1234567890")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="OTP sent successfully"),
+     *      @OA\Response(response=404, description="NPI not found"),
+     *      @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function sendOtp(Request $request)
     {
         $request->validate([
@@ -79,6 +98,25 @@ class UserController extends BaseController
         );
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/clients/verify-otp",
+     *      operationId="userVerifyOtp",
+     *      tags={"User Auth"},
+     *      summary="Verify User OTP",
+     *      description="Verifies the OTP sent to the citizen.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"npi", "otp"},
+     *              @OA\Property(property="npi", type="string"),
+     *              @OA\Property(property="otp", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="OTP verified"),
+     *      @OA\Response(response=400, description="Invalid or expired OTP")
+     * )
+     */
     public function verifyOtp(Request $request)
     {
         try {
@@ -117,6 +155,24 @@ class UserController extends BaseController
         }
     }
     
+    /**
+     * @OA\Post(
+     *      path="/api/clients/login",
+     *      operationId="userLogin",
+     *      tags={"User Auth"},
+     *      summary="User Login",
+     *      description="Login via TrustedX authorization code.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"code"},
+     *              @OA\Property(property="code", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Logged in successfully"),
+     *      @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function login(Request $request)
     {
         $this->validate($request, ['code' => 'required']);
@@ -128,6 +184,24 @@ class UserController extends BaseController
             $this->sendError($response['message'], null, 401);
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/mobile/login",
+     *      operationId="userMobileLogin",
+     *      tags={"User Auth"},
+     *      summary="User Mobile Login",
+     *      description="Mobile login via TrustedX authorization code.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"code"},
+     *              @OA\Property(property="code", type="string")
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Logged in successfully"),
+     *      @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function loginMobile(Request $request)
     {
         $this->validate($request, ['code' => 'required']);
@@ -138,6 +212,18 @@ class UserController extends BaseController
             $this->sendError($response['message'], null, 401);
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/users/{id}",
+     *      operationId="getUser",
+     *      tags={"Users"},
+     *      summary="Get User Details",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *      @OA\Response(response=200, description="Successful operation"),
+     *      @OA\Response(response=404, description="User not found")
+     * )
+     */
     public function show($id)
     {
         try {
@@ -149,6 +235,18 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/users/search",
+     *      operationId="searchUsers",
+     *      tags={"Users"},
+     *      summary="Search Users",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="query", in="query", required=true, @OA\Schema(type="string")),
+     *      @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer")),
+     *      @OA\Response(response=200, description="Successful operation")
+     * )
+     */
     public function search(Request $request)
     {
         try {
@@ -187,6 +285,28 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/users/{id}",
+     *      operationId="updateUser",
+     *      tags={"Users"},
+     *      summary="Update User Profile",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  @OA\Property(property="email", type="string"),
+     *                  @OA\Property(property="profile", type="string", format="binary")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Profile updated successfully"),
+     *      @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function update(Request $request, $id)
     {
         try {
@@ -241,6 +361,17 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Delete(
+     *      path="/api/users/{id}",
+     *      operationId="deleteUser",
+     *      tags={"Users"},
+     *      summary="Delete User",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *      @OA\Response(response=200, description="Deleted successfully")
+     * )
+     */
     public function destroy($id)
     {
         try {
@@ -253,6 +384,26 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/users/update-status",
+     *      operationId="updateUserStatus",
+     *      tags={"Management"},
+     *      summary="Update User Status (Bulk)",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"users"},
+     *              @OA\Property(property="users", type="array", @OA\Items(
+     *                  @OA\Property(property="id", type="integer"),
+     *                  @OA\Property(property="status", type="string", enum={"ACTIVE", "INACTIVE"})
+     *              ))
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Statut mis à jour")
+     * )
+     */
     public function updateUserStatus(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -286,6 +437,24 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/management/users/identity-status",
+     *      operationId="updateIdentityStatus",
+     *      tags={"Management"},
+     *      summary="Update Identity Status",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"id", "status"},
+     *              @OA\Property(property="id", type="integer"),
+     *              @OA\Property(property="status", type="string", enum={"APPROVED", "WAITING_MANAGER", "REJECTED", "PENDING"})
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Statut de l'identité mis à jour")
+     * )
+     */
     public function updateIdentityStatus(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -325,6 +494,33 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/identity/approve",
+     *      operationId="updateInPersonIdentityStatus",
+     *      tags={"Management"},
+     *      summary="Approve In-Person Identity",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"id", "status"},
+     *                  @OA\Property(property="id", type="integer"),
+     *                  @OA\Property(property="status", type="string", enum={"APPROVED", "WAITING_MANAGER", "REJECTED", "PENDING"}),
+     *                  @OA\Property(property="user_id", type="integer"),
+     *                  @OA\Property(property="selfie", type="string", format="binary"),
+     *                  @OA\Property(property="recto", type="string", format="binary"),
+     *                  @OA\Property(property="verso", type="string", format="binary"),
+     *                  @OA\Property(property="exp_date", type="string"),
+     *                  @OA\Property(property="birth_date", type="string")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Identité mise à jour")
+     * )
+     */
     public function updateInPersonIdentityStatus(Request $request)
     {
         DB::beginTransaction();
@@ -435,6 +631,24 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/clients/set-password",
+     *      operationId="setUserPassword",
+     *      tags={"User Auth"},
+     *      summary="Set User Password/Pin",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"password", "npi", "type"},
+     *              @OA\Property(property="password", type="string"),
+     *              @OA\Property(property="npi", type="string"),
+     *              @OA\Property(property="type", type="string", enum={"password", "pin"})
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Mot de passe mis à jour")
+     * )
+     */
     public function setPassword(Request $request)
     {
         $request->validate([
@@ -494,6 +708,37 @@ class UserController extends BaseController
         return $final;
     }
 
+    /**
+     * @OA\Post(
+     *      path="/api/finalize-registration",
+     *      operationId="finalizeCitizenRegistration",
+     *      tags={"Registration"},
+     *      summary="Finalize Citizen Registration (ANIP flow)",
+     *      description="Finalizes registration for citizens using NPI.",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="multipart/form-data",
+     *              @OA\Schema(
+     *                  required={"registration_token", "transaction_id", "type", "level"},
+     *                  @OA\Property(property="registration_token", type="string"),
+     *                  @OA\Property(property="transaction_id", type="string"),
+     *                  @OA\Property(property="type", type="string", enum={"IN_PERSON", "ONLINE"}),
+     *                  @OA\Property(property="level", type="string", enum={"SIMPLE", "ADVANCED"}),
+     *                  @OA\Property(property="password", type="string", description="Required for non-foreigners"),
+     *                  @OA\Property(property="pin", type="string", description="Required for non-foreigners"),
+     *                  @OA\Property(property="selfie", type="string", format="binary"),
+     *                  @OA\Property(property="recto", type="string", format="binary"),
+     *                  @OA\Property(property="verso", type="string", format="binary"),
+     *                  @OA\Property(property="similarity", type="string"),
+     *                  @OA\Property(property="liveness", type="string")
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Registration success"),
+     *      @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function finalizeRegistration(Request $request)
     {
         DB::beginTransaction();

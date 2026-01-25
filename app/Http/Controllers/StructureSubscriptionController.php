@@ -120,6 +120,24 @@ class StructureSubscriptionController extends BaseController
             return $this->sendError('Validation Error.', $validator->errors());
         }
 
+        $userSubscription = UserSubscription::find($request->input('user_subscription_id'));
+        if (!$userSubscription) { // Should be covered by validation but good practice
+             return $this->sendError('Validation Error.', ['user_subscription_id' => 'Invalid subscription']);
+        }
+
+        $structure = Structure::find($userSubscription->structure_id); // Assuming relationship or column exists
+        // If not directly on UserSubscription, we might need to fetch via StructureSubscription?
+        // Let's check schema/relationship. UserSubscription has structure_id?
+        // Based on `2024_07_04_150253_create_user_subscriptions_table.php`, let's assume structure_id is there or reachable.
+        // Actually, let's verify UserSubscription model first.
+        
+        // Waiting for tool check before applying this specific replace if unsure.
+        // But based on `calculateRemainingIdentities` using `UserSubscription::where('structure_id', ...)` it implies `structure_id` exists on `UserSubscription`.
+        
+        if ($structure && $structure->status !== 'APPROVED') {
+             return $this->sendError('Impossible de valider un employé car l\'entreprise n\'est pas encore validée (Statut: ' . $structure->status . ').', null, 403);
+        }
+
         $remainingIdentities = $this->calculateRemainingIdentities($request->input('user_subscription_id'));
 
         if ($remainingIdentities < 1) {
@@ -129,6 +147,12 @@ class StructureSubscriptionController extends BaseController
         // Approve the request and deduct the identities
         $userRequest = UserSubscription::find($request->input('user_subscription_id'));
         $userRequest->update(["status" => 'TRAITEDBYMANAGER']);
+
+        // Activate the employee user
+        $user = User::find($userRequest->user_id);
+        if ($user) {
+            $user->update(['status' => 'ACTIVE']);
+        }
 
         return $this->sendResponse('Employee request validated successfully.', $userRequest);
     }

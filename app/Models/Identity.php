@@ -21,7 +21,9 @@ class Identity extends Model implements Auditable
         'proof',
         'user_id',
         'status',
-        'date'
+        'date',
+        'risk_score',
+        'analysis_details'
     ];
 
     protected $appends = ['selfieUrl', 'rectoUrl', 'versoUrl'];
