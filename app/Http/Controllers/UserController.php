@@ -27,6 +27,9 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use App\Jobs\SendInitLinkJob;
+use App\Jobs\SendStructureInvitationEmail;
+use App\Models\Structure;
+use App\Models\StructureInvitation;
 
 class UserController extends BaseController
 {
@@ -622,7 +625,7 @@ class UserController extends BaseController
                 return $this->sendResponse("Le statut de l'identité à bien été mis à jour", $identityPayload);
             } catch (\Exception $e) {
                 Log::error('Failed to update identity status: ' . $e->getMessage());
-                return $this->sendError('Failed to update identity status.', null, 500);
+                return $this->sendError('Echec de la mise à jour.', null, 500);
             }
         } catch (Exception $e) {
             DB::rollBack();
@@ -962,6 +965,434 @@ class UserController extends BaseController
             DB::rollBack();
             Log::error($e->getMessage());
             return $this->sendError('Erreur lors de la finalisation.', null, 500);
+        }
+    }
+
+     /**
+     * @OA\Get(
+     *      path="/api/invitations",
+     *      operationId="listInvitations",
+     *      tags={"Users"},
+     *      summary="List user invitations",
+     *      description="Returns a list of invitations for the authenticated user.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *          )
+     *      )
+     * )
+     */
+    public function listInvitations()
+    {
+        try {
+            $user = auth()->user();
+            
+            // Récupérer les invitations de l'utilisateur
+            $invitations = \App\Models\StructureInvitation::with(['structure', 'inviter'])
+                ->where('user_id', $user->id)
+                ->where('status', 'PENDING')
+                ->where('expires_at', '>', Carbon::now())
+                ->get()
+                ->map(function ($invitation) {
+                    return [
+                        'id' => $invitation->id,
+                        'structure' => [
+                            'id' => $invitation->structure->id,
+                            'name' => $invitation->structure->name,
+                            'manager' => $invitation->structure->manager->name ?? 'N/A'
+                        ],
+                        'inviter' => $invitation->inviter->name ?? 'N/A',
+                        'role' => $invitation->role,
+                        'expires_at' => $invitation->expires_at,
+                        'message' => $invitation->message,
+                        'invitation_url' => url("/api/invitations/{$invitation->token}/details")
+                    ];
+                });
+            
+            return $this->sendResponse('Vos invitations récupérées avec succès.', $invitations);
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la récupération des invitations : ' . $e->getMessage());
+            return $this->sendError('Impossible de récupérer vos invitations.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/invitations/{invitation}/accept",
+     *      operationId="acceptInvitation",
+     *      tags={"Users"},
+     *      summary="Accept an invitation",
+     *      description="Accepts a structure invitation.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="invitation",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Invitation accepted"
+     *      ),
+     *      @OA\Response(response=404, description="Invitation not found"),
+     *      @OA\Response(response=400, description="Invitation expired or already processed")
+     * )
+     */
+    public function acceptInvitation($invitationId)
+    {
+        DB::beginTransaction();
+        try {
+            $user = auth()->user();
+            
+            $invitation = \App\Models\StructureInvitation::where('id', $invitationId)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            // Vérifier que l'invitation est encore valide
+            if ($invitation->status !== 'PENDING' || $invitation->expires_at <= Carbon::now()) {
+                return $this->sendError('Cette invitation n\'est plus valide.', null, 400);
+            }
+            
+            // Marquer l'invitation comme acceptée
+            $invitation->accept();
+            
+            // Ajouter l'utilisateur à la structure
+            $invitation->structure->employees()->attach($user->id, [
+                'role' => $invitation->role,
+                'status' => 'ACTIVE',
+                'joined_at' => Carbon::now(),
+                'invitation_message' => $invitation->message
+            ]);
+            
+            // Activer l'utilisateur si ce n'est pas déjà fait
+            if ($user->status !== 'ACTIVE') {
+                $user->update(['status' => 'ACTIVE']);
+            }
+            
+            DB::commit();
+            
+            return $this->sendResponse('Invitation acceptée avec succès.', [
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'acceptation de l\'invitation : ' . $e->getMessage());
+            return $this->sendError('Impossible d\'accepter l\'invitation.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/invitations/{invitation}/reject",
+     *      operationId="rejectInvitation",
+     *      tags={"Users"},
+     *      summary="Reject an invitation",
+     *      description="Rejects a structure invitation.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="invitation",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Invitation rejected"
+     *      ),
+     *      @OA\Response(response=404, description="Invitation not found"),
+     *      @OA\Response(response=400, description="Invitation expired or already processed")
+     * )
+     */
+    public function rejectInvitation($invitationId)
+    {
+        try {
+            $user = auth()->user();
+            
+            $invitation = \App\Models\StructureInvitation::where('id', $invitationId)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            // Vérifier que l'invitation est encore valide
+            if ($invitation->status !== 'PENDING') {
+                return $this->sendError('Cette invitation a déjà été traitée.', null, 400);
+            }
+            
+            // Marquer l'invitation comme rejetée
+            $invitation->reject();
+            
+            return $this->sendResponse('Invitation refusée avec succès.', [
+                'structure' => $invitation->structure->only(['id', 'name'])
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            Log::error('Erreur lors du rejet de l\'invitation : ' . $e->getMessage());
+            return $this->sendError('Impossible de refuser l\'invitation.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *      path="/api/invitations/{token}/details",
+     *      operationId="getInvitationDetails",
+     *      tags={"Users"},
+     *      summary="Get invitation details by token",
+     *      description="Returns invitation details using the invitation token (public route).",
+     *      @OA\Parameter(
+     *          name="token",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="string")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Invitation details retrieved"
+     *      ),
+     *      @OA\Response(response=404, description="Invitation not found or expired")
+     * )
+     */
+    public function getInvitationDetails($token)
+    {
+        try {
+            $invitation = \App\Models\StructureInvitation::with(['structure', 'inviter'])
+                ->where('token', $token)
+                ->firstOrFail();
+            
+            // Vérifier que l'invitation est encore valide
+            if (!$invitation->isPending()) {
+                return $this->sendError('Cette invitation n\'est plus valide.', [
+                    'status' => $invitation->status,
+                    'expired' => $invitation->isExpired()
+                ], 400);
+            }
+            
+            $data = [
+                'id' => $invitation->id,
+                'structure' => [
+                    'id' => $invitation->structure->id,
+                    'name' => $invitation->structure->name,
+                    'manager' => $invitation->structure->manager->name ?? 'N/A'
+                ],
+                'inviter' => $invitation->inviter->name ?? 'N/A',
+                'role' => $invitation->role,
+                'email' => $invitation->email,
+                'expires_at' => $invitation->expires_at,
+                'message' => $invitation->message
+            ];
+            
+            return $this->sendResponse('Détails de l\'invitation récupérés.', $data);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la récupération des détails de l\'invitation : ' . $e->getMessage());
+            return $this->sendError('Impossible de récupérer les détails de l\'invitation.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/invitations/{token}/respond",
+     *      operationId="respondToInvitation",
+     *      tags={"Users"},
+     *      summary="Respond to invitation by token",
+     *      description="Accepts or rejects an invitation using the token (public route).",
+     *      @OA\Parameter(
+     *          name="token",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="string")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"action"},
+     *              @OA\Property(
+     *                  property="action",
+     *                  type="string",
+     *                  enum={"accept", "reject"},
+     *                  example="accept"
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Response processed"
+     *      ),
+     *      @OA\Response(response=404, description="Invitation not found"),
+     *      @OA\Response(response=400, description="Invalid action or invitation expired")
+     * )
+     */
+    public function respondToInvitation(Request $request, $token)
+    {
+        DB::beginTransaction();
+        try {
+            $validatedData = $request->validate([
+                'action' => 'required|string|in:accept,reject'
+            ]);
+            
+            $invitation = \App\Models\StructureInvitation::with(['structure', 'user'])
+                ->where('token', $token)
+                ->firstOrFail();
+            
+            // Vérifier que l'invitation est encore valide
+            if (!$invitation->isPending()) {
+                return $this->sendError('Cette invitation n\'est plus valide.', null, 400);
+            }
+            
+            if ($validatedData['action'] === 'accept') {
+                // Marquer comme acceptée
+                $invitation->accept();
+                
+                // Ajouter l'utilisateur à la structure
+                $invitation->structure->employees()->attach($invitation->user_id, [
+                    'role' => $invitation->role,
+                    'status' => 'ACTIVE',
+                    'joined_at' => Carbon::now(),
+                    'invitation_message' => $invitation->message
+                ]);
+                
+                // Activer l'utilisateur si ce n'est pas déjà fait
+                $user = User::find($invitation->user_id);
+                if ($user && $user->status !== 'ACTIVE') {
+                    $user->update(['status' => 'ACTIVE']);
+                }
+                
+                $message = 'Invitation acceptée avec succès.';
+            } else {
+                // Marquer comme rejetée
+                $invitation->reject();
+                $message = 'Invitation refusée avec succès.';
+            }
+            
+            DB::commit();
+            
+            return $this->sendResponse($message, [
+                'action' => $validatedData['action'],
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->sendError('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du traitement de la réponse : ' . $e->getMessage());
+            return $this->sendError('Impossible de traiter votre réponse.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/employees/create",
+     *      operationId="createEmployee",
+     *      tags={"Users"},
+     *      summary="Create a new employee user",
+     *      description="Creates a new employee user and sends invitation to join structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"email", "structure_id"},
+     *              @OA\Property(property="email", type="string", format="email"),
+     *              @OA\Property(property="structure_id", type="integer"),
+     *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(property="phone", type="string"),
+     *              @OA\Property(property="role", type="string", enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}),
+     *              @OA\Property(property="message", type="string", max=500)
+     *          )
+     *      ),
+     *      @OA\Response(response=200, description="Employee created and invitation sent"),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function createEmployee(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $validatedData = $request->validate([
+                'email' => 'required|email|unique:users,email',
+                'structure_id' => 'required|integer|exists:structures,id',
+                'name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
+                'message' => 'sometimes|string|max:500'
+            ]);
+            
+            $manager = auth()->user();
+            $structure = Structure::findOrFail($validatedData['structure_id']);
+            
+            // Vérifier que le manager est bien le propriétaire de la structure
+            if ($structure->manager_id !== $manager->id) {
+                return $this->sendError('Vous n\'êtes pas autorisé à créer des employés pour cette structure.', null, 403);
+            }
+            
+            // Vérifier que la structure est validée
+            if ($structure->status !== 'APPROVED') {
+                return $this->sendError('La structure doit être validée avant de créer des employés.', null, 400);
+            }
+            
+            // 1. Créer le nouvel utilisateur avec statut CREATED
+            $user = User::create([
+                'email' => $validatedData['email'],
+                'name' => $validatedData['name'],
+                'phonenumber' => $validatedData['phone'] ?? null,
+                'status' => 'CREATED',
+                // 'npi' => 'EMP_' . time() . '_' . rand(1000, 9999),
+                // 'password' => bcrypt(Str::random(32)),
+            ]);
+            
+            $user->assignRole('client');
+            
+            // 2. CRÉER L'ENTRÉE DANS structure_users AVEC STATUT ACTIVE (DIRECTEMENT)
+            $structure->employees()->attach($user->id, [
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACTIVE', // DIRECTEMENT ACTIF
+                'joined_at' => Carbon::now(),
+                'invitation_message' => $validatedData['message'] ?? 'Créé par le manager'
+            ]);
+            
+            // 3. CRÉER UNE INVITATION "AUTO-ACCEPTED" (pour historique seulement)
+            $invitation = StructureInvitation::create([
+                'structure_id' => $structure->id,
+                'user_id' => $user->id,
+                'invited_by' => $manager->id,
+                'email' => $user->email,
+                'token' => bin2hex(random_bytes(32)),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
+                'expires_at' => Carbon::now()->addDays(7),
+                'accepted_at' => Carbon::now(), // Date d'acceptation maintenant
+                'message' => $validatedData['message'] ?? null
+            ]);
+            
+            // 4. ENVOYER UN EMAIL D'ACTIVATION (pas d'invitation)
+            
+            DB::commit();
+
+            SendStructureInvitationEmail::dispatch($invitation);
+            
+            return $this->sendResponse('Employé créé et directement affilié à la structure.', [
+                'user' => $user->only(['id', 'email', 'name', 'status']),
+                'structure' => $structure->only(['id', 'name']),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'joined_at' => Carbon::now()->toDateTimeString()
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la création de l\'employé : ' . $e->getMessage());
+            return $this->sendError($e->getMessage() ?? 'Impossible de créer l\'employé.', null, 500);
         }
     }
 }

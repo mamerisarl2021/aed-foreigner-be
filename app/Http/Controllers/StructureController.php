@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Jobs\NotifyAdminJob;
 use App\Jobs\SendOTPJob;
+use App\Jobs\SendStructureInvitationEmail;
 use App\Models\Attachment;
 use App\Models\OTP;
 use Illuminate\Http\Request;
 use App\Models\Structure;
+use App\Models\StructureInvitation;
 use App\Models\User;
 use App\Traits\AttachmentTrait;
 use Carbon\Carbon;
@@ -572,6 +574,7 @@ class StructureController extends BaseController
         }
 
         // Dispatch job to send OTP via email
+        Log::info("Dispatching NotifyAdminJob for email: $email with OTP: $otp");
         NotifyAdminJob::dispatch($email, $otp);
 
         // Return success response
@@ -638,4 +641,539 @@ class StructureController extends BaseController
 
         return $this->sendError('OTP invalide ou expiré.', null, 403);
     }
+
+    /**
+     * @OA\Get(
+     *      path="/api/structures/{structure}/employees",
+     *      operationId="listEmployees",
+     *      tags={"Structures"},
+     *      summary="List employees of a structure",
+     *      description="Returns a list of employees associated with a structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *          )
+     *      ),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=404, description="Structure not found")
+     * )
+     */
+    public function listEmployees($structureId)
+    {
+        try {
+            $structure = Structure::findOrFail($structureId);
+            $user = Auth::user();
+            
+            // Check if user is the manager or has agent role
+            if ($user->hasRole('client') && $structure->manager_id !== $user->id) {
+                return $this->sendError('Vous n\'êtes pas autorisé à voir les employés de cette structure.', null, 403);
+            }
+            
+            // Récupérer les employés associés à la structure
+            $employees = $structure->employees()
+                ->withPivot('role', 'status', 'joined_at')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'npi' => $user->npi,
+                        'role' => $user->pivot->role,
+                        'status' => $user->pivot->status,
+                        'joined_at' => $user->pivot->joined_at,
+                        'invitation_message' => $user->pivot->invitation_message
+                    ];
+                });
+            
+            return $this->sendResponse('Liste des employés récupérée avec succès.', $employees);
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la récupération des employés : ' . $e->getMessage());
+            return $this->sendError('Impossible de récupérer la liste des employés.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/structures/{structure}/invite-employee",
+     *      operationId="inviteEmployee",
+     *      tags={"Structures"},
+     *      summary="Invite an employee to join a structure",
+     *      description="Sends an invitation to a user to join the structure as an employee.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"user_identifier"},
+     *              @OA\Property(
+     *                  property="user_identifier",
+     *                  type="string",
+     *                  description="Email, NPI, or user ID"
+     *              ),
+     *              @OA\Property(
+     *                  property="role",
+     *                  type="string",
+     *                  description="Role in the structure",
+     *                  enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"},
+     *                  default="EMPLOYEE"
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Invitation sent successfully"
+     *      ),
+     *      @OA\Response(response=400, description="Invalid request"),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=404, description="User or structure not found")
+     * )
+     */
+    public function inviteEmployee(Request $request, $structureId)
+    {
+        DB::beginTransaction();
+        try {
+            $validatedData = $request->validate([
+                'user_identifier' => 'required|string',
+                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
+                'message' => 'sometimes|string|max:500'
+            ]);
+            
+            $structure = Structure::findOrFail($structureId);
+            $manager = auth()->user();
+            
+            // Vérifier que l'utilisateur est le manager
+            if ($structure->manager_id !== $manager->id) {
+                return $this->sendError('Vous n\'êtes pas autorisé à inviter des employés dans cette structure.', null, 403);
+            }
+            
+            // Vérifier que la structure est validée
+            if ($structure->status !== 'APPROVED') {
+                return $this->sendError('La structure doit être validée avant d\'inviter des employés.', null, 400);
+            }
+            
+            // Chercher l'utilisateur
+            $user = User::where('email', $validatedData['user_identifier'])
+                ->orWhere('npi', $validatedData['user_identifier'])
+                ->first();
+            
+            if (!$user && is_numeric($validatedData['user_identifier'])) {
+                $user = User::find($validatedData['user_identifier']);
+            }
+            
+            if (!$user) {
+                return $this->sendError('Utilisateur non trouvé.', null, 404);
+            }
+            
+            // Vérifier que l'utilisateur n'est pas déjà dans la structure
+            if ($structure->employees()->where('user_id', $user->id)->exists()) {
+                return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
+            }
+            
+            // AJOUT DIRECT À LA STRUCTURE (pas d'invitation PENDING)
+            $structure->employees()->attach($user->id, [
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACTIVE', // DIRECTEMENT ACTIF
+                'joined_at' => Carbon::now(),
+                'invitation_message' => $validatedData['message'] ?? 'Ajouté par le manager'
+            ]);
+            
+            // Activer l'utilisateur si ce n'est pas déjà fait
+            if ($user->status !== 'ACTIVE') {
+                $user->update(['status' => 'ACTIVE']);
+            }
+            
+            // Créer une invitation "auto-acceptée" pour historique
+            $invitation = StructureInvitation::create([
+                'structure_id' => $structure->id,
+                'user_id' => $user->id,
+                'invited_by' => $manager->id,
+                'email' => $user->email,
+                'token' => bin2hex(random_bytes(32)),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
+                'expires_at' => Carbon::now()->addDays(7),
+                'accepted_at' => Carbon::now(),
+                'message' => $validatedData['message'] ?? null
+            ]);
+            
+            DB::commit();
+
+            // Envoyer notification (pas d'invitation à accepter)
+            Log::info("Dispatching SendStructureInvitationEmail job for auto-accepted invitation. {$invitation->user}");
+            SendStructureInvitationEmail::dispatch($invitation);
+            
+            return $this->sendResponse('Employé ajouté directement à la structure.', [
+                'user' => $user->only(['id', 'email', 'name', 'status']),
+                'structure' => $structure->only(['id', 'name']),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE'
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'ajout de l\'employé : ' . $e->getMessage());
+            return $this->sendError('Impossible d\'ajouter l\'employé.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/structures/{structure}/add-employee",
+     *      operationId="addEmployee",
+     *      tags={"Structures"},
+     *      summary="Add an employee directly to a structure",
+     *      description="Adds a user directly as an employee to the structure (bypass invitation).",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"user_id"},
+     *              @OA\Property(property="user_id", type="integer"),
+     *              @OA\Property(
+     *                  property="role",
+     *                  type="string",
+     *                  enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"},
+     *                  default="EMPLOYEE"
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Employee added successfully"
+     *      ),
+     *      @OA\Response(response=400, description="Invalid request"),
+     *      @OA\Response(response=403, description="Forbidden")
+     * )
+     */
+    public function addEmployee(Request $request, $structureId)
+    {
+        DB::beginTransaction();
+        try {
+            $validatedData = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER'
+            ]);
+            
+            $structure = Structure::findOrFail($structureId);
+            $manager = Auth::user();
+            
+            // Vérifier les permissions
+            if ($structure->manager_id !== $manager->id && !$manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
+                return $this->sendError('Vous n\'êtes pas autorisé à ajouter des employés.', null, 403);
+            }
+            
+            $user = User::findOrFail($validatedData['user_id']);
+            
+            // Vérifier que l'utilisateur n'est pas déjà dans la structure
+            if ($structure->employees()->where('user_id', $user->id)->exists()) {
+                return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
+            }
+            
+            // Associer l'utilisateur à la structure
+            $structure->employees()->attach($user->id, [
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACTIVE',
+                'joined_at' => Carbon::now(),
+                'invitation_message' => 'Ajouté directement'
+            ]);
+
+            
+            // Si l'utilisateur n'est pas actif, l'activer
+            if ($user->status !== 'ACTIVE' && $structure->status === 'APPROVED') {
+                $user->update(['status' => 'ACTIVE']);
+            }
+
+            // Créer une invitation "auto-acceptée" pour historique
+            $invitation = StructureInvitation::create([
+                'structure_id' => $structure->id,
+                'user_id' => $user->id,
+                'invited_by' => $manager->id,
+                'email' => $user->email,
+                'token' => bin2hex(random_bytes(32)),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE',
+                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
+                'expires_at' => Carbon::now()->addDays(7),
+                'accepted_at' => Carbon::now(),
+                'message' => $validatedData['message'] ?? null
+            ]);
+            
+            DB::commit();
+
+            // Envoyer notification (pas d'invitation à accepter)
+            SendStructureInvitationEmail::dispatch($invitation);
+            
+            return $this->sendResponse('Employé ajouté avec succès à la structure.', [
+                'user' => $user->only(['id', 'email', 'name', 'npi']),
+                'structure' => $structure->only(['id', 'name']),
+                'role' => $validatedData['role'] ?? 'EMPLOYEE'
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'ajout de l\'employé : ' . $e->getMessage());
+            return $this->sendError('Impossible d\'ajouter l\'employé.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *      path="/api/structures/{structure}/employees/{user}",
+     *      operationId="updateEmployeeRole",
+     *      tags={"Structures"},
+     *      summary="Update employee role in a structure",
+     *      description="Updates the role of an employee in the structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Parameter(
+     *          name="user",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"role"},
+     *              @OA\Property(
+     *                  property="role",
+     *                  type="string",
+     *                  enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Role updated successfully"
+     *      ),
+     *      @OA\Response(response=400, description="Invalid request"),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=404, description="Employee not found")
+     * )
+     */
+    public function updateEmployeeRole(Request $request, $structureId, $userId)
+    {
+        try {
+            $validatedData = $request->validate([
+                'role' => 'required|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER'
+            ]);
+            
+            $structure = Structure::findOrFail($structureId);
+            $manager = Auth::user();
+            
+            // Vérifier les permissions
+            if ($structure->manager_id !== $manager->id) {
+                return $this->sendError('Vous n\'êtes pas autorisé à modifier les rôles.', null, 403);
+            }
+            
+            // Vérifier que l'utilisateur est bien un employé de la structure
+            // NOTE: À adapter selon votre modèle de relation
+            $employee = $structure->employees()->where('user_id', $userId)->first();
+            
+            if (!$employee) {
+                return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
+            }
+            
+            // Mettre à jour le rôle
+            $structure->employees()->updateExistingPivot($userId, [
+                'role' => $validatedData['role'],
+                'updated_at' => Carbon::now()
+            ]);
+            
+            return $this->sendResponse('Rôle de l\'employé mis à jour avec succès.', [
+                'user_id' => $userId,
+                'new_role' => $validatedData['role']
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la mise à jour du rôle : ' . $e->getMessage());
+            return $this->sendError('Impossible de mettre à jour le rôle.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Delete(
+     *      path="/api/structures/{structure}/employees/{user}",
+     *      operationId="removeEmployee",
+     *      tags={"Structures"},
+     *      summary="Remove an employee from a structure",
+     *      description="Removes an employee from the structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Parameter(
+     *          name="user",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Employee removed successfully"
+     *      ),
+     *      @OA\Response(response=403, description="Forbidden"),
+     *      @OA\Response(response=404, description="Employee not found")
+     * )
+     */
+    public function removeEmployee($structureId, $userId)
+    {
+        DB::beginTransaction();
+        try {
+            $structure = Structure::findOrFail($structureId);
+            $manager = Auth::user();
+            
+            // Vérifier les permissions
+            if ($structure->manager_id !== $manager->id && !$manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
+                return $this->sendError('Vous n\'êtes pas autorisé à retirer des employés.', null, 403);
+            }
+            
+            // Empêcher de retirer le manager lui-même
+            if ($structure->manager_id == $userId) {
+                return $this->sendError('Vous ne pouvez pas retirer le manager de sa propre structure.', null, 400);
+            }
+            
+            // Vérifier que l'utilisateur est bien un employé
+            $employeeExists = $structure->employees()->where('user_id', $userId)->exists();
+            
+            if (!$employeeExists) {
+                return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
+            }
+            
+            // Retirer l'employé
+            $structure->employees()->detach($userId);
+            
+            DB::commit();
+            
+            return $this->sendResponse('Employé retiré de la structure avec succès.', [
+                'user_id' => $userId,
+                'structure_id' => $structureId
+            ]);
+            
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du retrait de l\'employé : ' . $e->getMessage());
+            return $this->sendError('Impossible de retirer l\'employé.', null, 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/management/structures/{structure}/force-add-employee",
+     *      operationId="forceAddEmployee",
+     *      tags={"Management"},
+     *      summary="Force add employee to structure (Agent only)",
+     *      description="Agents can forcefully add an employee to a structure.",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"user_id"},
+     *              @OA\Property(property="user_id", type="integer"),
+     *              @OA\Property(
+     *                  property="role",
+     *                  type="string",
+     *                  enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"},
+     *                  default="EMPLOYEE"
+     *              ),
+     *              @OA\Property(
+     *                  property="reason",
+     *                  type="string",
+     *                  description="Reason for force adding"
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Employee force added successfully"
+     *      ),
+     *      @OA\Response(response=403, description="Forbidden")
+     * )
+     */
+    public function forceAddEmployee(Request $request, $structureId)
+    {
+        // Cette méthode est similaire à addEmployee mais sans les vérifications de manager
+        // Elle est réservée aux agents
+        return $this->addEmployee($request, $structureId);
+    }
+
+    /**
+     * @OA\Get(
+     *      path="/api/management/structures/{structure}/pending-invitations",
+     *      operationId="listPendingInvitations",
+     *      tags={"Management"},
+     *      summary="List pending invitations for a structure",
+     *      description="Returns a list of pending invitations for a structure (Agent only).",
+     *      security={{"sanctum":{}}},
+     *      @OA\Parameter(
+     *          name="structure",
+     *          in="path",
+     *          required=true,
+     *          @OA\Schema(type="integer")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *          @OA\JsonContent(
+     *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *          )
+     *      ),
+     *      @OA\Response(response=403, description="Forbidden")
+     * )
+     */
+    public function listPendingInvitations($structureId)
+    {
+        try {
+            $structure = Structure::findOrFail($structureId);
+            
+            // Récupérer les invitations en attente
+            $invitations = StructureInvitation::with(['user', 'inviter'])
+                ->where('structure_id', $structureId)
+                ->where('status', 'PENDING')
+                ->where('expires_at', '>', Carbon::now())
+                ->get();
+
+            return $this->sendResponse('Invitations en attente récupérées avec succès.', $invitations);
+            
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la récupération des invitations : ' . $e->getMessage());
+            return $this->sendError('Impossible de récupérer les invitations.', null, 500);
+        }
+    }
+
 }

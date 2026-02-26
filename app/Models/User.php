@@ -79,4 +79,32 @@ class User extends Authenticatable implements Auditable
     {
         return $this->profile ? Storage::cloud()->temporaryUrl($this->profile, Carbon::now()->addDays(3)): "";
     }
+
+    // Dans app/Models/User.php
+    public function structuresUsers()
+    {
+        return $this->belongsToMany(Structure::class, 'structure_users')
+                    ->withPivot('role', 'status', 'joined_at')
+                    ->withTimestamps();
+    }
+
+    public function activeStructures()
+    {
+        return $this->belongsToMany(Structure::class, 'structure_users')
+                    ->wherePivot('status', 'ACTIVE')
+                    ->withPivot('role', 'joined_at')
+                    ->withTimestamps();
+    }
+
+    public function invitations()
+    {
+        return $this->hasMany(StructureInvitation::class, 'user_id');
+    }
+
+    public function pendingInvitations()
+    {
+        return $this->hasMany(StructureInvitation::class, 'user_id')
+                    ->where('status', 'PENDING')
+                    ->where('expires_at', '>', Carbon::now());
+    }
 }

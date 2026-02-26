@@ -194,6 +194,19 @@ Route::middleware(['json.response'])->group(function () {
 
             Route::post('/identity/initiate-in-person', [UserController::class, 'initiateInPersonIdentity']);
 
+            // STRUCTURE EMPLOYEE MANAGEMENT ROUTES
+            Route::get('/structures/{structure}/employees', [StructureController::class, 'listEmployees']);
+            Route::post('/structures/{structure}/invite-employee', [StructureController::class, 'inviteEmployee']);
+            Route::post('/structures/{structure}/add-employee', [StructureController::class, 'addEmployee']);
+            Route::put('/structures/{structure}/employees/{user}', [StructureController::class, 'updateEmployeeRole']);
+            Route::delete('/structures/{structure}/employees/{user}', [StructureController::class, 'removeEmployee']);
+
+            // EMPLOYEE INVITATION ACCEPTANCE ROUTES
+            Route::get('/invitations', [UserController::class, 'listInvitations']);
+            Route::post('/invitations/{invitation}/accept', [UserController::class, 'acceptInvitation']);
+            Route::post('/invitations/{invitation}/reject', [UserController::class, 'rejectInvitation']);
+            Route::post('/employees/create', [UserController::class, 'createEmployee']);
+
             // STAMPS ROUTES
             Route::post('/stamps', [StampController::class, 'store']);
             Route::get('/stamps', [StampController::class, 'index']);
@@ -249,4 +262,8 @@ Route::middleware(['json.response'])->group(function () {
     Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::post('users-email/search', [UserController::class, 'searchPost']);
+    
+    // AJOUTEZ ICI LES ROUTES PUBLIQUES D'INVITATION:
+    Route::get('/invitations/{token}/details', [UserController::class, 'getInvitationDetails']);
+    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);        
 });
