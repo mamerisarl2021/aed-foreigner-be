@@ -39,6 +39,15 @@ use App\Http\Controllers\IdentityReviewController;
 
 
 Route::middleware(['json.response'])->group(function () {
+    Route::get('/health', function (){
+        try {
+            \DB::connection()->getPdo();
+        }catch (\Throwable $e){
+            return response()->json(['status'=>'DOWN'], 503);
+        }
+        return response()->json(['status'=>'UP'], 200);
+    });
+
     Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
         return $request->user();
     });
@@ -262,8 +271,8 @@ Route::middleware(['json.response'])->group(function () {
     Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::post('users-email/search', [UserController::class, 'searchPost']);
-    
+
     // AJOUTEZ ICI LES ROUTES PUBLIQUES D'INVITATION:
     Route::get('/invitations/{token}/details', [UserController::class, 'getInvitationDetails']);
-    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);        
+    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);
 });
