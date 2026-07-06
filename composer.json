@@ -63,7 +63,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently \"php artisan serve\" \"php artisan queue:work\""
+            "npx concurrently \"php artisan migrate\" \"php artisan serve\" \"php artisan queue:work\""
         ]
     },
     "extra": {
