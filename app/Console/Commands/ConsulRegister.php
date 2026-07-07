@@ -43,7 +43,7 @@ class ConsulRegister extends Command
                 'Tags' => ['asin', 'v1', 'laravel'],
                 'Check' => [
                     'HTTP' => "http://$ip:$port/api/health",
-                    'interval' => '10s', 'Timeout' => '2s',
+                    'Interval' => '10s', 'Timeout' => '2s',
                     'DeregisterCriticalServiceAfter'=>'1m'],
             ]);
         $this->info("Enregistré: $id");
