@@ -11,7 +11,7 @@ class ConsulRegister extends Command
      *
      * @var string
      */
-    protected $signature = 'consul-register';
+    protected $signature = 'consul:register';
 
     /**
      * The console command description.
