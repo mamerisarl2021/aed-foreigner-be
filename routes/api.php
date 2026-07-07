@@ -26,26 +26,18 @@ use App\Http\Controllers\StatsController;
 use App\Http\Controllers\IdentityReviewController;
 
 /*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|'auth:sanctum'
+| API routes — loaded by bootstrap/app.php with the "api" middleware group.
 */
 
 
-
-Route::middleware(['json.response'])->group(function () {
-    Route::get('/health', function (){
+Route::group([], function () {
+    Route::get('/health', function () {
         try {
             \DB::connection()->getPdo();
-        }catch (\Throwable $e){
-            return response()->json(['status'=>'DOWN'], 503);
+        } catch (\Throwable $e) {
+            return response()->json(['status' => 'DOWN'], 503);
         }
-        return response()->json(['status'=>'UP'], 200);
+        return response()->json(['status' => 'UP'], 200);
     });
 
     Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
@@ -257,7 +249,6 @@ Route::middleware(['json.response'])->group(function () {
     Route::post('/foreigner/verify-otp', [ForeignerEnrollmentController::class, 'verifyOtp'])->middleware(['guest']);
     Route::post('/foreigner/register/init', [ForeignerEnrollmentController::class, 'initRegistration'])->middleware(['guest', 'transaction']);
     Route::post('/foreigner/register/finalize', [ForeignerEnrollmentController::class, 'finalizeRegistration'])->middleware(['guest']);
-
 
 
     //ADMINS AUTHENTICATIONS PUBLICS ROUTES

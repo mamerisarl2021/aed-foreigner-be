@@ -18,7 +18,7 @@ class WelcomeUser extends Mailable implements ShouldQueue
 
     public function __construct(
         $user,
-        //  $otp, 
+        //  $otp,
         $activationUrl,
         $hasAccount = false
     ) {

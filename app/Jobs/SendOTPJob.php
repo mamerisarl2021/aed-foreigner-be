@@ -1,41 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Mail\SendOTP;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class SendOTPJob implements ShouldQueue
+final class SendOTPJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $user;
-    public $code;
-
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct($user, $code)
+    public function __construct(
+        public readonly mixed  $user,
+        public readonly string $code,
+    )
     {
-        $this->code = $code;
-        $this->user = $user;
     }
 
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle()
+    public function handle(): void
     {
-        $code= $this->code;
-        Mail::to($this->user)->queue(new SendOTP($code, $this->user));
+        $email = NotificationRecipient::resolveEmail($this->user);
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Demande du code OTP',
+            template: NotificationTemplate::SendOtp,
+            recipients: [
+                NotificationRecipient::email($this->user, [
+                    'code' => $this->code,
+                    'email' => $email,
+                ]),
+            ],
+            variables: [
+                'code' => $this->code,
+                'email' => $email,
+            ],
+            type: 'SEND_OTP',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

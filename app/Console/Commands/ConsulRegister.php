@@ -1,51 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
+use App\Contracts\ConsulClientInterface;
+use App\Exceptions\ConsulException;
+use App\Services\Consul\ConsulRegistrationStore;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
-class ConsulRegister extends Command
+final class ConsulRegister extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'consul:register';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
+    protected $description = 'Register the microservice in Consul.';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(
+        ConsulClientInterface   $consulClient,
+        ConsulRegistrationStore $store,
+    ): int
     {
-        $name = env('CONSUL_SERVICE_NAME', 'portal-id-example');
-        $ip = env('CONSUL_SERVICE_IP', gethostbyname(gethostname()));
-        $port = (int)env('CONSUL_SERVICE_PORT', 8000);
-        $id = $name.'-'.\Str::random(8);
+        $name = (string)config('consul.service_name');
+        $ip = (string)(config('consul.service_ip') ?: gethostbyname(gethostname()));
+        $port = (int)config('consul.service_port');
+        $id = $name . '-' . Str::random(8);
 
-        // token ACL Consul (déjà obtenu via keycloack)
-        $token = env('CONSUL_HTTP_TOKEN', "");
-        $base = env("CONSUL_URL", "http://localhost:8500");
+        $response = $consulClient->register([
+            'ID' => $id,
+            'Name' => $name,
+            'Address' => $ip,
+            'Port' => $port,
+            'Tags' => config('consul.tags'),
+            'Check' => [
+                'HTTP' => "http://{$ip}:{$port}" . config('consul.health_path'),
+                'Interval' => config('consul.check_interval'),
+                'Timeout' => config('consul.check_timeout'),
+                'DeregisterCriticalServiceAfter' => config('consul.deregister_after'),
+            ],
+        ]);
 
-        \Http::withHeaders(['X-Consul-Token' => $token])
-            -> put("$base/v1/agent/service/register",[
-                'ID' => $id,
-                'Name' => $name,
-                'Address' => $ip,
-                'Port' => $port,
-                'Tags' => ['asin', 'v1', 'laravel'],
-                'Check' => [
-                    'HTTP' => "http://$ip:$port/api/health",
-                    'Interval' => '10s', 'Timeout' => '2s',
-                    'DeregisterCriticalServiceAfter'=>'1m'],
-            ]);
-        $this->info("Enregistré: $id");
+        if (!$response->successful()) {
+            throw new ConsulException('Consul registration failed: ' . $response->body());
+        }
+
+        $store->save($id, $name);
+
+        $this->info("Registered in Consul: {$id}");
+
+        return self::SUCCESS;
     }
 }

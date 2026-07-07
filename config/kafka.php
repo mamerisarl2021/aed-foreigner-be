@@ -83,4 +83,11 @@ return [
      | Kafka message id key name
      */
     'message_id_key' => env('MESSAGE_ID_KEY', 'laravel-kafka::message-id'),
+
+    'ssl' => [
+        'ca_location' => env('KAFKA_SSL_CA_LOCATION'),
+        'cert_location' => env('KAFKA_SSL_CERT_LOCATION'),
+        'key_location' => env('KAFKA_SSL_KEY_LOCATION'),
+        'endpoint_identification_algorithm' => env('KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM', 'none'),
+    ],
 ];

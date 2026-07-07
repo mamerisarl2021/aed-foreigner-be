@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Jobs\WelcomeUserJob;
 use App\Jobs\NotifyAdminJob;
 use App\Jobs\PlanifiedEmailJob;
-use App\Mail\IdentityRejected;
-use App\Mail\IdentityStepApproved;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use App\Models\Identity;
 use App\Models\Structure;
 use App\Models\User;
@@ -19,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
+
 
 class IdentityReviewController extends BaseController
 {
@@ -49,14 +52,13 @@ class IdentityReviewController extends BaseController
         } else {
             $statuses = is_array($statusesParam)
                 ? $statusesParam
-                : array_map('trim', explode(',', (string) $statusesParam));
+                : array_map('trim', explode(',', (string)$statusesParam));
             // Ne garder que les valeurs autorisées
             $statuses = array_values(array_intersect($allowedStatuses, $statuses));
             if (empty($statuses)) {
                 $statuses = ['PENDING'];
             }
         }
-
 
 
         $query = Identity::with(['user:id,name,email,phonenumber,npi'])
@@ -66,12 +68,12 @@ class IdentityReviewController extends BaseController
         if ($request->filled('assigned')) {
             $assigned = filter_var($request->input('assigned'), FILTER_VALIDATE_BOOLEAN);
             $query->when($assigned, fn($q) => $q->whereNotNull('assigned_agent_id'))
-                  ->when(!$assigned, fn($q) => $q->whereNull('assigned_agent_id'));
+                ->when(!$assigned, fn($q) => $q->whereNull('assigned_agent_id'));
         }
 
         // Filtre par agent
         if ($request->filled('agent_id')) {
-            $query->where('assigned_agent_id', (int) $request->input('agent_id'));
+            $query->where('assigned_agent_id', (int)$request->input('agent_id'));
         }
 
         // Filtre type/level
@@ -93,9 +95,8 @@ class IdentityReviewController extends BaseController
             $q = $request->input('q');
             $query->whereHas('user', function ($uq) use ($q) {
                 $uq->where('email', 'like', "%$q%")
-                   ->orWhere('name', 'like', "%$q%")
-                   ->orWhere('first_name', 'like', "%$q%")
-                   ->orWhere('phonenumber', 'like', "%$q%");
+                    ->orWhere('name', 'like', "%$q%")
+                    ->orWhere('phonenumber', 'like', "%$q%");
             });
         }
 
@@ -116,7 +117,7 @@ class IdentityReviewController extends BaseController
         }
         $query->orderBy($orderBy, $orderDir);
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = (int)$request->input('per_page', 15);
         $items = $query->paginate($perPage);
 
         // Enrichir avec la structure récente + docs
@@ -135,7 +136,7 @@ class IdentityReviewController extends BaseController
     // Détail complet d'une identité (preuves + structure + documents)
     public function show(int $id)
     {
-    $identity = Identity::with(['user:id,name,email,phonenumber,npi'])->findOrFail($id);
+        $identity = Identity::with(['user:id,name,email,phonenumber,npi'])->findOrFail($id);
         $structure = Structure::with(['attachments.documents'])
             ->where('manager_id', $identity->user_id)
             ->latest('id')
@@ -188,11 +189,26 @@ class IdentityReviewController extends BaseController
             // Générer un identifiant technique (NPI) si manquant
             $user = $identity->user;
             if (!$user->npi) {
-                $user->npi = 'F-' . str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
+                $user->npi = 'F-' . str_pad((string)$user->id, 8, '0', STR_PAD_LEFT);
                 $user->save();
             }
             // Notification étape agent
-            Mail::to($user->email)->queue(new IdentityStepApproved($user->name ?? $user->email));
+            $recipientName = $user->name ?? $user->email;
+
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: "Votre demande a passé l'étape agent",
+                template: NotificationTemplate::IdentityStepApproved,
+                recipients: [
+                    NotificationRecipient::email($user->email, [
+                        'name' => $recipientName,
+                    ]),
+                ],
+                variables: [
+                    'name' => $recipientName,
+                ],
+                type: 'IDENTITY_STEP_APPROVED',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
 
             $identity->status = 'APPROVED_BY_AGENT';
             $identity->save();
@@ -233,7 +249,7 @@ class IdentityReviewController extends BaseController
         try {
             $user = $identity->user;
             if (!$user->npi) {
-                $user->npi = 'F-' . str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
+                $user->npi = 'F-' . str_pad((string)$user->id, 8, '0', STR_PAD_LEFT);
                 $user->save();
             }
 
@@ -306,20 +322,7 @@ class IdentityReviewController extends BaseController
 
         DB::beginTransaction();
         try {
-            $identity->reject_stage = $request->input('stage');
-            $identity->reject_reasons = json_encode($request->input('reasons'));
-            $identity->review_comments = $request->input('comments');
-            $identity->status = 'REJECTED';
-            $identity->save();
-
-            Mail::to($identity->user->email)->send(new IdentityRejected(
-                $identity->user->name ?? $identity->user->email,
-                $identity->reject_stage,
-                $request->input('reasons'),
-                $identity->review_comments
-            ));
-
-            DB::commit();
+            $this->extracted($request, $identity);
             return $this->sendResponse('Demande rejetée par le superviseur et notifiée.', ['identity_id' => $identity->id]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -347,26 +350,52 @@ class IdentityReviewController extends BaseController
 
         DB::beginTransaction();
         try {
-            $identity->reject_stage = $request->input('stage');
-            $identity->reject_reasons = json_encode($request->input('reasons'));
-            $identity->review_comments = $request->input('comments');
-            $identity->status = 'REJECTED';
-            $identity->save();
-
-            // Envoyer un email explicite au demandeur
-            Mail::to($identity->user->email)->send(new IdentityRejected(
-                $identity->user->name ?? $identity->user->email,
-                $identity->reject_stage,
-                $request->input('reasons'),
-                $identity->review_comments
-            ));
-
-            DB::commit();
+            $this->extracted($request, $identity);
             return $this->sendResponse('Demande rejetée et notifiée.', ['identity_id' => $identity->id]);
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Reject identity failed: ' . $e->getMessage());
             return $this->sendError('Erreur lors du rejet.', null, 500);
         }
+    }
+
+    /**
+     * @param Request $request
+     * @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Collection|Identity|null $identity
+     * @return void
+     */
+    private function extracted(Request $request, \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Collection|Identity|null $identity): void
+    {
+        $identity->reject_stage = $request->input('stage');
+        $identity->reject_reasons = json_encode($request->input('reasons'));
+        $identity->review_comments = $request->input('comments');
+        $identity->status = 'REJECTED';
+        $identity->save();
+
+        $recipientName = $identity->user->name ?? $identity->user->email;
+        $reasons = $request->input('reasons');
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Votre demande d\'identité a été rejetée',
+            template: NotificationTemplate::IdentityRejected,
+            recipients: [
+                NotificationRecipient::email($identity->user->email, [
+                    'name' => $recipientName,
+                    'stage' => $identity->reject_stage,
+                    'reasons' => $reasons,
+                    'comments' => $identity->review_comments,
+                ]),
+            ],
+            variables: [
+                'name' => $recipientName,
+                'stage' => $identity->reject_stage,
+                'reasons' => $reasons,
+                'comments' => $identity->review_comments,
+            ],
+            type: 'IDENTITY_REJECTED',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+
+        DB::commit();
     }
 }

@@ -5,6 +5,7 @@ namespace App\Rules;
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 
+// TODO: change deprecated Rule class
 class UniqueTypePerUser implements Rule
 {
     protected $userId;

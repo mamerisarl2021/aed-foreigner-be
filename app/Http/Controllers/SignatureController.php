@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\DocumentSignedMail;
-use App\Mail\SignatureInvitationMail;
-use App\Mail\SignatureRejectedMail;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use App\Models\Signature;
 use App\Models\SignatureDocument;
 use App\Models\Stamp;
@@ -22,7 +24,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Mail;
 use phpseclib3\File\ASN1;
 use setasign\Fpdi\Fpdi;
 
@@ -47,7 +48,7 @@ class SignatureController extends BaseController
                     'user_id' => $userId,
                     'status' => 'pending',
                 ]);
-                Mail::to($user->email)->queue(new SignatureInvitationMail($created));
+                $this->dispatchSignatureInvitationNotification($created, $user->email);
             } else {
                 return $this->sendError('Vous avez déjà invité ce utilisateur sur ce document', [], 400);
             }
@@ -97,10 +98,10 @@ class SignatureController extends BaseController
                         'toTimestamp' => $us['toTimestamp'],
                     ]);
                     array_push($signatures, $created);
-                    Mail::to($user->email)->queue(new SignatureInvitationMail($created));
+                    $this->dispatchSignatureInvitationNotification($created, $user->email);
                 } else {
                     array_push($signatures, $existingSignature);
-                    Mail::to($user->email)->queue(new SignatureInvitationMail($existingSignature));
+                    $this->dispatchSignatureInvitationNotification($existingSignature, $user->email);
                 }
             }
 
@@ -118,7 +119,7 @@ class SignatureController extends BaseController
     }
 
 
-    public function init(SignatureDocument $signature_document, String $token)
+    public function init(SignatureDocument $signature_document, string $token)
     {
         try {
             $pdfPath = $signature_document->file_path;
@@ -134,7 +135,7 @@ class SignatureController extends BaseController
         }
     }
 
-    public function initWithPosition(SignatureDocument $signature_document, Signature $signature, String $token, Stamp $stamp, Request $request)
+    public function initWithPosition(SignatureDocument $signature_document, Signature $signature, string $token, Stamp $stamp, Request $request)
     {
         try {
             $pdfPath = $signature_document->file_path;
@@ -193,7 +194,7 @@ class SignatureController extends BaseController
         }
     }
 
-    public function sign(SignatureDocument $signature_document, String $processId, String $token)
+    public function sign(SignatureDocument $signature_document, string $processId, string $token)
     {
         try {
             $pdfPath = $signature_document->file_path;
@@ -207,7 +208,7 @@ class SignatureController extends BaseController
             $signature = Signature::where('user_id', Auth::id())->where('signature_document_id', $signature_document->id)->first();
             $documentUrl = $process['documents'][0]['content'];
 
-            $documentResponse = $signature->toTimestamp ? $this->getSignedDocumentWithTimestamp($documentUrl, $token, $pdfPath) :  $this->getSignedDocument($documentUrl, $token, $pdfPath);
+            $documentResponse = $signature->toTimestamp ? $this->getSignedDocumentWithTimestamp($documentUrl, $token, $pdfPath) : $this->getSignedDocument($documentUrl, $token, $pdfPath);
 
             if (!$documentResponse['status']) {
                 return $this->sendError($documentResponse['data'], '', $documentResponse['code']);
@@ -224,7 +225,23 @@ class SignatureController extends BaseController
             }
 
             $documentOwner = $signature_document->user;
-            Mail::to($documentOwner->email)->queue(new DocumentSignedMail($signature));
+            $signature->loadMissing('document', 'user');
+            $documentTitle = $signature->document->title;
+            $variables = [
+                'documentTitle' => $documentTitle,
+                'signerName' => $signature->user->name,
+            ];
+
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: 'Document signé: ' . $documentTitle,
+                template: NotificationTemplate::DocumentSigned,
+                recipients: [
+                    NotificationRecipient::email($documentOwner->email, $variables),
+                ],
+                variables: $variables,
+                type: 'DOCUMENT_SIGNED',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
 
             return $this->sendResponse('Document signé avec succès.', $signature_document);
         } catch (\Exception $e) {
@@ -307,7 +324,23 @@ class SignatureController extends BaseController
             $signature->save();
 
             $documentOwner = $signature_document->user;
-            Mail::to($documentOwner->email)->queue(new SignatureRejectedMail($signature));
+            $signature->loadMissing('document', 'user');
+            $documentTitle = $signature->document->title;
+            $variables = [
+                'documentTitle' => $documentTitle,
+                'rejecterName' => $signature->user->name,
+            ];
+
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: 'Document refusé: ' . $documentTitle,
+                template: NotificationTemplate::SignatureRejected,
+                recipients: [
+                    NotificationRecipient::email($documentOwner->email, $variables),
+                ],
+                variables: $variables,
+                type: 'SIGNATURE_REJECTED',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
 
             return $this->sendResponse('Signature refusée.');
         } catch (\Exception $e) {
@@ -622,15 +655,15 @@ class SignatureController extends BaseController
                 // Prepare multipart request
                 $multipartRequest = new MultipartStream([
                     [
-                        'name'     => 'file',
+                        'name' => 'file',
                         'contents' => $fileContent,
                         'filename' => 'document.pdf',
-                        'headers'  => [
+                        'headers' => [
                             'Content-Type' => 'application/pdf',
                         ]
                     ],
                     [
-                        'name'     => 'field_name',
+                        'name' => 'field_name',
                         'contents' => Auth::user()->name . '_Timestamp'
                     ]
                 ]);
@@ -639,7 +672,7 @@ class SignatureController extends BaseController
                 $timestampResponse = $client->post("$this->TIMESATAMP_API_BASE_URL/api/timestamps/timestamp_pdf/", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type'  => 'multipart/form-data; boundary=' . $multipartRequest->getBoundary()
+                        'Content-Type' => 'multipart/form-data; boundary=' . $multipartRequest->getBoundary()
                     ],
                     'body' => $multipartRequest
                 ]);
@@ -691,7 +724,7 @@ class SignatureController extends BaseController
         abort(500, 'Failed to delete signature process');
     }
 
-    public function obtainedDocumentInformation(String $signerProcessId, $accessToken)
+    public function obtainedDocumentInformation(string $signerProcessId, $accessToken)
     {
         try {
             $response = Http::withToken($accessToken)->get("https://$this->TX_BASE_URL/trustedx-resources/esignsp/v2/signer_processes/$signerProcessId/documents");
@@ -714,5 +747,28 @@ class SignatureController extends BaseController
             ];
         }
         return $output;
+    }
+
+    private function dispatchSignatureInvitationNotification(Signature $signature, string $recipientEmail): void
+    {
+        $signature->loadMissing('document.user');
+
+        $documentTitle = $signature->document->title;
+        $variables = [
+            'documentTitle' => $documentTitle,
+            'inviterName' => $signature->document->user->name,
+            'signatureLink' => config('app.frontend_url') . '/backoffice/client/received-documents',
+        ];
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Invitation de signature pour ' . $documentTitle,
+            template: NotificationTemplate::SignatureInvitation,
+            recipients: [
+                NotificationRecipient::email($recipientEmail, $variables),
+            ],
+            variables: $variables,
+            type: 'SIGNATURE_INVITATION',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }
