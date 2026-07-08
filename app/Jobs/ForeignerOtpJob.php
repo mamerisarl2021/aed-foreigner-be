@@ -1,28 +1,46 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Mail\ForeignerOtp;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class ForeignerOtpJob implements ShouldQueue
+final class ForeignerOtpJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
     public function __construct(
-        public string $email,
-        public string $otp,
-        public int $ttlMinutes = 5
-    ) {
+        public readonly string $email,
+        public readonly string $otp,
+        public readonly int    $ttlMinutes = 5,
+    )
+    {
     }
 
     public function handle(): void
     {
-        Mail::to($this->email)->send(new ForeignerOtp($this->otp, $this->ttlMinutes));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Votre code OTP',
+            template: NotificationTemplate::ForeignerOtp,
+            recipients: [
+                NotificationRecipient::email($this->email, [
+                    'otp' => $this->otp,
+                    'ttl' => $this->ttlMinutes,
+                ]),
+            ],
+            variables: [
+                'otp' => $this->otp,
+                'ttl' => $this->ttlMinutes,
+            ],
+            type: 'FOREIGNER_OTP',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

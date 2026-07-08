@@ -21,3 +21,5 @@ yarn-error.log
 .cursorignore
 .cursorrules
 .envforgeignore
+txdocs
+.commands

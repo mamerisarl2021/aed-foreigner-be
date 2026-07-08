@@ -1,38 +1,42 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Mail\PlanifiedEmail;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class PlanifiedEmailJob implements ShouldQueue
+final class PlanifiedEmailJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $user;
-
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct($user)
+    public function __construct(
+        public readonly mixed $user,
+    )
     {
-        $this->user = $user;
     }
 
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle()
+    public function handle(): void
     {
-        Mail::to($this->user)->queue(new PlanifiedEmail($this->user));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Planification d\'une rencontre en face à face.',
+            template: NotificationTemplate::Planned,
+            recipients: [
+                NotificationRecipient::email($this->user, [
+                    'user' => $this->user,
+                ]),
+            ],
+            variables: [
+                'user' => $this->user,
+            ],
+            type: 'PLANIFIED_EMAIL',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

@@ -319,7 +319,7 @@ class ForeignerEnrollmentController extends BaseController
             'kyc.document_type' => 'sometimes|string|in:PASSPORT,RESIDENCE_PERMIT,OTHER',
             'kyc.document_number' => 'sometimes|string',
         ];
-        
+
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return $this->sendError('Données invalides.', $validator->errors(), 422);
@@ -332,7 +332,7 @@ class ForeignerEnrollmentController extends BaseController
 
         // ÉTAPE 1: Upload des fichiers AVANT transaction (opération la plus coûteuse)
         $uploadedFiles = $this->uploadFilesAsync($request);
-        
+
         // ÉTAPE 2: Validation de l'abonnement AVANT transaction
         $subscriptionValidation = $this->validateSubscription($request->input('transaction_id'));
         if (!$subscriptionValidation['status']) {
@@ -347,7 +347,6 @@ class ForeignerEnrollmentController extends BaseController
                 'npi' => null,
                 'email' => $email,
                 'name' => $kyc['name'] ?? null,
-                'first_name' => $kyc['first_name'] ?? null,
                 'phonenumber' => $kyc['phonenumber'] ?? null,
                 'nationality' => $kyc['nationality'] ?? null,
                 'profile' => $pending->profile_path,
@@ -399,10 +398,10 @@ class ForeignerEnrollmentController extends BaseController
                 'trace' => $e->getTraceAsString(),
                 'email' => $email,
             ]);
-            
+
             // Nettoyer les fichiers uploadés en cas d'erreur
             $this->cleanupUploadedFiles($uploadedFiles);
-            
+
             return $this->sendError('Erreur lors de la finalisation.', null, 500);
         }
     }
@@ -410,7 +409,7 @@ class ForeignerEnrollmentController extends BaseController
     private function uploadFilesAsync(Request $request): array
     {
         $uploadedFiles = [];
-        
+
         if ($request->input('type') === 'ONLINE') {
             // Upload en parallèle si possible, sinon séquentiel optimisé
             if ($request->hasFile('selfie')) {
@@ -423,7 +422,7 @@ class ForeignerEnrollmentController extends BaseController
                 $uploadedFiles['verso'] = Storage::cloud()->put('images', $request->file('verso'));
             }
         }
-        
+
         return $uploadedFiles;
     }
 
@@ -479,7 +478,7 @@ class ForeignerEnrollmentController extends BaseController
     private function dispatchPostRegistrationJobs(User $user, Request $request, ?int $structureId, array $uploadedFiles): void
     {
         $type = $request->input('type');
-        
+
         // Jobs d'email
         if ($type === 'IN_PERSON') {
             PlanifiedEmailJob::dispatch($user->email);
@@ -487,13 +486,13 @@ class ForeignerEnrollmentController extends BaseController
             AdvancedIdRequestJob::dispatch($user->email);
         }
         ForeignerFinalizedJob::dispatch($user->email, $type);
-        
+
         // Trigger Regula Analysis for ONLINE enrollments
         if ($type === 'ONLINE') {
             Log::info("Dispatching Regula analysis for user {$user->id}");
-            // Retrieve identity created in this transaction. 
-            // Since we don't pass identity ID to this method, we might need to find it 
-            // or better, pass identity ID to this method. 
+            // Retrieve identity created in this transaction.
+            // Since we don't pass identity ID to this method, we might need to find it
+            // or better, pass identity ID to this method.
             // However, looking at the code, we can find it via user_id.
             $identity = Identity::where('user_id', $user->id)->latest()->first();
             if ($identity) {

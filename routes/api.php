@@ -26,19 +26,20 @@ use App\Http\Controllers\StatsController;
 use App\Http\Controllers\IdentityReviewController;
 
 /*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|'auth:sanctum'
+| API routes — loaded by bootstrap/app.php with the "api" middleware group.
 */
 
 
+Route::group([], function () {
+    Route::get('/health', function () {
+        try {
+            \DB::connection()->getPdo();
+        } catch (\Throwable $e) {
+            return response()->json(['status' => 'DOWN'], 503);
+        }
+        return response()->json(['status' => 'UP'], 200);
+    });
 
-Route::middleware(['json.response'])->group(function () {
     Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
         return $request->user();
     });
@@ -250,7 +251,6 @@ Route::middleware(['json.response'])->group(function () {
     Route::post('/foreigner/register/finalize', [ForeignerEnrollmentController::class, 'finalizeRegistration'])->middleware(['guest']);
 
 
-
     //ADMINS AUTHENTICATIONS PUBLICS ROUTES
     Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');
     Route::post('/admins/verify-otp', [AuthController::class, 'verifyOtp']);
@@ -262,8 +262,8 @@ Route::middleware(['json.response'])->group(function () {
     Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::post('users-email/search', [UserController::class, 'searchPost']);
-    
+
     // AJOUTEZ ICI LES ROUTES PUBLIQUES D'INVITATION:
     Route::get('/invitations/{token}/details', [UserController::class, 'getInvitationDetails']);
-    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);        
+    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);
 });

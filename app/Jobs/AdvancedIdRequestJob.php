@@ -1,38 +1,42 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Mail\AdvancedIdRequest;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class AdvancedIdRequestJob implements ShouldQueue
+final class AdvancedIdRequestJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $user;
-
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct($user)
+    public function __construct(
+        public readonly mixed $user,
+    )
     {
-        $this->user = $user;
     }
 
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle()
+    public function handle(): void
     {
-        Mail::to($this->user)->queue(new AdvancedIdRequest($this->user));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Demande d\'une identité de type avancée.',
+            template: NotificationTemplate::AdvancedIdRequest,
+            recipients: [
+                NotificationRecipient::email($this->user, [
+                    'user' => $this->user,
+                ]),
+            ],
+            variables: [
+                'user' => $this->user,
+            ],
+            type: 'ADVANCED_ID_REQUEST',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

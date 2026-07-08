@@ -23,6 +23,7 @@ use Illuminate\Validation\Rule;
 class StructureController extends BaseController
 {
     use AttachmentTrait;
+
     /**
      * @OA\Get(
      *      path="/api/structures",
@@ -408,7 +409,7 @@ class StructureController extends BaseController
                 'status' => 'string|max:255',
             ]);
 
-            if($validatedData['status'] == 'APPROVED'){
+            if ($validatedData['status'] == 'APPROVED') {
                 $validatedData['status'] = 'WAITING_MANAGER';
             }
 
@@ -673,12 +674,12 @@ class StructureController extends BaseController
         try {
             $structure = Structure::findOrFail($structureId);
             $user = Auth::user();
-            
+
             // Check if user is the manager or has agent role
             if ($user->hasRole('client') && $structure->manager_id !== $user->id) {
                 return $this->sendError('Vous n\'êtes pas autorisé à voir les employés de cette structure.', null, 403);
             }
-            
+
             // Récupérer les employés associés à la structure
             $employees = $structure->employees()
                 ->withPivot('role', 'status', 'joined_at')
@@ -695,7 +696,7 @@ class StructureController extends BaseController
                         'invitation_message' => $user->pivot->invitation_message
                     ];
                 });
-            
+
             return $this->sendResponse('Liste des employés récupérée avec succès.', $employees);
         } catch (Exception $e) {
             Log::error('Erreur lors de la récupération des employés : ' . $e->getMessage());
@@ -753,38 +754,38 @@ class StructureController extends BaseController
                 'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
                 'message' => 'sometimes|string|max:500'
             ]);
-            
+
             $structure = Structure::findOrFail($structureId);
             $manager = auth()->user();
-            
+
             // Vérifier que l'utilisateur est le manager
             if ($structure->manager_id !== $manager->id) {
                 return $this->sendError('Vous n\'êtes pas autorisé à inviter des employés dans cette structure.', null, 403);
             }
-            
+
             // Vérifier que la structure est validée
             if ($structure->status !== 'APPROVED') {
                 return $this->sendError('La structure doit être validée avant d\'inviter des employés.', null, 400);
             }
-            
+
             // Chercher l'utilisateur
             $user = User::where('email', $validatedData['user_identifier'])
                 ->orWhere('npi', $validatedData['user_identifier'])
                 ->first();
-            
+
             if (!$user && is_numeric($validatedData['user_identifier'])) {
                 $user = User::find($validatedData['user_identifier']);
             }
-            
+
             if (!$user) {
                 return $this->sendError('Utilisateur non trouvé.', null, 404);
             }
-            
+
             // Vérifier que l'utilisateur n'est pas déjà dans la structure
             if ($structure->employees()->where('user_id', $user->id)->exists()) {
                 return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
             }
-            
+
             // AJOUT DIRECT À LA STRUCTURE (pas d'invitation PENDING)
             $structure->employees()->attach($user->id, [
                 'role' => $validatedData['role'] ?? 'EMPLOYEE',
@@ -792,12 +793,12 @@ class StructureController extends BaseController
                 'joined_at' => Carbon::now(),
                 'invitation_message' => $validatedData['message'] ?? 'Ajouté par le manager'
             ]);
-            
+
             // Activer l'utilisateur si ce n'est pas déjà fait
             if ($user->status !== 'ACTIVE') {
                 $user->update(['status' => 'ACTIVE']);
             }
-            
+
             // Créer une invitation "auto-acceptée" pour historique
             $invitation = StructureInvitation::create([
                 'structure_id' => $structure->id,
@@ -811,19 +812,19 @@ class StructureController extends BaseController
                 'accepted_at' => Carbon::now(),
                 'message' => $validatedData['message'] ?? null
             ]);
-            
+
             DB::commit();
 
             // Envoyer notification (pas d'invitation à accepter)
             Log::info("Dispatching SendStructureInvitationEmail job for auto-accepted invitation. {$invitation->user}");
             SendStructureInvitationEmail::dispatch($invitation);
-            
+
             return $this->sendResponse('Employé ajouté directement à la structure.', [
                 'user' => $user->only(['id', 'email', 'name', 'status']),
                 'structure' => $structure->only(['id', 'name']),
                 'role' => $validatedData['role'] ?? 'EMPLOYEE'
             ]);
-            
+
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de l\'ajout de l\'employé : ' . $e->getMessage());
@@ -874,22 +875,22 @@ class StructureController extends BaseController
                 'user_id' => 'required|integer|exists:users,id',
                 'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER'
             ]);
-            
+
             $structure = Structure::findOrFail($structureId);
             $manager = Auth::user();
-            
+
             // Vérifier les permissions
             if ($structure->manager_id !== $manager->id && !$manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
                 return $this->sendError('Vous n\'êtes pas autorisé à ajouter des employés.', null, 403);
             }
-            
+
             $user = User::findOrFail($validatedData['user_id']);
-            
+
             // Vérifier que l'utilisateur n'est pas déjà dans la structure
             if ($structure->employees()->where('user_id', $user->id)->exists()) {
                 return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
             }
-            
+
             // Associer l'utilisateur à la structure
             $structure->employees()->attach($user->id, [
                 'role' => $validatedData['role'] ?? 'EMPLOYEE',
@@ -898,7 +899,7 @@ class StructureController extends BaseController
                 'invitation_message' => 'Ajouté directement'
             ]);
 
-            
+
             // Si l'utilisateur n'est pas actif, l'activer
             if ($user->status !== 'ACTIVE' && $structure->status === 'APPROVED') {
                 $user->update(['status' => 'ACTIVE']);
@@ -917,18 +918,18 @@ class StructureController extends BaseController
                 'accepted_at' => Carbon::now(),
                 'message' => $validatedData['message'] ?? null
             ]);
-            
+
             DB::commit();
 
             // Envoyer notification (pas d'invitation à accepter)
             SendStructureInvitationEmail::dispatch($invitation);
-            
+
             return $this->sendResponse('Employé ajouté avec succès à la structure.', [
                 'user' => $user->only(['id', 'email', 'name', 'npi']),
                 'structure' => $structure->only(['id', 'name']),
                 'role' => $validatedData['role'] ?? 'EMPLOYEE'
             ]);
-            
+
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de l\'ajout de l\'employé : ' . $e->getMessage());
@@ -982,34 +983,34 @@ class StructureController extends BaseController
             $validatedData = $request->validate([
                 'role' => 'required|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER'
             ]);
-            
+
             $structure = Structure::findOrFail($structureId);
             $manager = Auth::user();
-            
+
             // Vérifier les permissions
             if ($structure->manager_id !== $manager->id) {
                 return $this->sendError('Vous n\'êtes pas autorisé à modifier les rôles.', null, 403);
             }
-            
+
             // Vérifier que l'utilisateur est bien un employé de la structure
             // NOTE: À adapter selon votre modèle de relation
             $employee = $structure->employees()->where('user_id', $userId)->first();
-            
+
             if (!$employee) {
                 return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
             }
-            
+
             // Mettre à jour le rôle
             $structure->employees()->updateExistingPivot($userId, [
                 'role' => $validatedData['role'],
                 'updated_at' => Carbon::now()
             ]);
-            
+
             return $this->sendResponse('Rôle de l\'employé mis à jour avec succès.', [
                 'user_id' => $userId,
                 'new_role' => $validatedData['role']
             ]);
-            
+
         } catch (Exception $e) {
             Log::error('Erreur lors de la mise à jour du rôle : ' . $e->getMessage());
             return $this->sendError('Impossible de mettre à jour le rôle.', null, 500);
@@ -1050,34 +1051,34 @@ class StructureController extends BaseController
         try {
             $structure = Structure::findOrFail($structureId);
             $manager = Auth::user();
-            
+
             // Vérifier les permissions
             if ($structure->manager_id !== $manager->id && !$manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
                 return $this->sendError('Vous n\'êtes pas autorisé à retirer des employés.', null, 403);
             }
-            
+
             // Empêcher de retirer le manager lui-même
             if ($structure->manager_id == $userId) {
                 return $this->sendError('Vous ne pouvez pas retirer le manager de sa propre structure.', null, 400);
             }
-            
+
             // Vérifier que l'utilisateur est bien un employé
             $employeeExists = $structure->employees()->where('user_id', $userId)->exists();
-            
+
             if (!$employeeExists) {
                 return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
             }
-            
+
             // Retirer l'employé
             $structure->employees()->detach($userId);
-            
+
             DB::commit();
-            
+
             return $this->sendResponse('Employé retiré de la structure avec succès.', [
                 'user_id' => $userId,
                 'structure_id' => $structureId
             ]);
-            
+
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors du retrait de l\'employé : ' . $e->getMessage());
@@ -1160,7 +1161,7 @@ class StructureController extends BaseController
     {
         try {
             $structure = Structure::findOrFail($structureId);
-            
+
             // Récupérer les invitations en attente
             $invitations = StructureInvitation::with(['user', 'inviter'])
                 ->where('structure_id', $structureId)
@@ -1169,7 +1170,7 @@ class StructureController extends BaseController
                 ->get();
 
             return $this->sendResponse('Invitations en attente récupérées avec succès.', $invitations);
-            
+
         } catch (Exception $e) {
             Log::error('Erreur lors de la récupération des invitations : ' . $e->getMessage());
             return $this->sendError('Impossible de récupérer les invitations.', null, 500);
