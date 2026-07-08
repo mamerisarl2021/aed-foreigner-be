@@ -17,11 +17,9 @@ final class NotifyAdminJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly mixed  $user,
+        public readonly mixed $user,
         public readonly string $code,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

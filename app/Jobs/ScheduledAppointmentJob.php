@@ -18,10 +18,8 @@ final class ScheduledAppointmentJob implements ShouldQueue
 
     public function __construct(
         public readonly string $email,
-        public readonly mixed  $data,
-    )
-    {
-    }
+        public readonly mixed $data,
+    ) {}
 
     public function handle(): void
     {

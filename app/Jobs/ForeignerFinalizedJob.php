@@ -19,9 +19,7 @@ final class ForeignerFinalizedJob implements ShouldQueue
     public function __construct(
         public readonly string $email,
         public readonly string $type,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

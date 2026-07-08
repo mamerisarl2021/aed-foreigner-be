@@ -8,9 +8,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class IdRequest extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
-    
     use HasFactory;
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = ['type', 'status', 'structure_id'];
 

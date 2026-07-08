@@ -12,9 +12,10 @@ class BaseController extends Controller
     {
         $response = [
             'success' => true,
-            'data'    => $data,
+            'data' => $data,
             'message' => $message,
         ];
+
         return response()->json($response, 200);
     }
 
@@ -22,10 +23,11 @@ class BaseController extends Controller
     {
         $response = [
             'success' => true,
-            'data'    => $data['data'],
-            'pagination'    => $data['pagination'],
+            'data' => $data['data'],
+            'pagination' => $data['pagination'],
             'message' => $message,
         ];
+
         return response()->json($response, 200);
     }
 
@@ -34,13 +36,14 @@ class BaseController extends Controller
         $response = [
             'success' => false,
             'message' => $error,
-            'status'  => $code,
+            'status' => $code,
         ];
 
-        if (!empty($errorMessages)) {
+        if (! empty($errorMessages)) {
             $response['data'] = $errorMessages;
         }
         Log::error('Error occurred:', ['error' => $error, 'errorMessages' => $errorMessages, 'code' => $code]);
+
         return response()->json($response, $code);
     }
 }

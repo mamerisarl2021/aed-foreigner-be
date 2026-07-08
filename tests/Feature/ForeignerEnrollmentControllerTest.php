@@ -2,25 +2,24 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Support\Facades\DB;
-use App\Models\UserPackage;
 use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\ForeignerInitRegistrationJob;
 use App\Jobs\ForeignerOtpJob;
 use App\Jobs\PlanifiedEmailJob;
 use App\Models\PendingRegistration;
+use App\Models\UserPackage;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
-use App\Models\StructurePackage;
 
 class ForeignerEnrollmentControllerTest extends TestCase
 {
@@ -40,7 +39,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
         Mockery::close();
         Mockery::mock('overload:Kkiapay\\Kkiapay')
             ->shouldReceive('verifyTransaction')
-            ->andReturn((object)['state' => [json_encode(['package' => $packageId, 'amount' => $amount])]]);
+            ->andReturn((object) ['state' => [json_encode(['package' => $packageId, 'amount' => $amount])]]);
     }
 
     public function test_send_otp_success(): void
@@ -52,25 +51,25 @@ class ForeignerEnrollmentControllerTest extends TestCase
             ->assertJsonStructure(['success', 'message', 'data' => ['email']]);
 
         Bus::assertDispatched(ForeignerOtpJob::class);
-        $this->assertNotNull(Cache::get('foreigner_otp_' . strtolower($email)));
+        $this->assertNotNull(Cache::get('foreigner_otp_'.strtolower($email)));
     }
 
     public function test_verify_otp_success_and_sets_validation_flag(): void
     {
         $email = 'verify@example.com';
-        Cache::put('foreigner_otp_' . strtolower($email), '123456', now()->addMinutes(5));
+        Cache::put('foreigner_otp_'.strtolower($email), '123456', now()->addMinutes(5));
 
         $resp = $this->postJson($this->api('/foreigner/verify-otp'), ['email' => $email, 'otp' => '123456']);
         $resp->assertStatus(200)
             ->assertJsonStructure(['success', 'message', 'data' => ['email']]);
 
-        $this->assertTrue((bool)Cache::get('foreigner_otp_valid_' . strtolower($email)));
+        $this->assertTrue((bool) Cache::get('foreigner_otp_valid_'.strtolower($email)));
     }
 
     public function test_verify_otp_invalid(): void
     {
         $email = 'bad@example.com';
-        Cache::put('foreigner_otp_' . strtolower($email), '654321', now()->addMinutes(1));
+        Cache::put('foreigner_otp_'.strtolower($email), '654321', now()->addMinutes(1));
 
         $resp = $this->postJson($this->api('/foreigner/verify-otp'), ['email' => $email, 'otp' => '999999']);
         $resp->assertStatus(400);
@@ -83,7 +82,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
         $resp = $this->postJson($this->api('/foreigner/register/init'), ['email' => $email]);
         $resp->assertStatus(400);
 
-        Cache::put('foreigner_otp_valid_' . strtolower($email), true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_'.strtolower($email), true, now()->addMinutes(10));
         $resp2 = $this->postJson($this->api('/foreigner/register/init'), ['email' => $email]);
         $resp2->assertStatus(200)
             ->assertJsonStructure(['success', 'message', 'data' => ['registration_token', 'expires_at', 'link']]);
@@ -94,7 +93,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
     public function test_finalize_registration_online_creates_user_identity_subscription_and_structure(): void
     {
         $email = 'finalize@example.com';
-        Cache::put('foreigner_otp_valid_' . strtolower($email), true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_'.strtolower($email), true, now()->addMinutes(10));
         $token = str_repeat('a', 64);
         PendingRegistration::create([
             'npi' => '',
@@ -120,7 +119,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-// createSubscriptionRecord() FK requires user_packages id=7
+        // createSubscriptionRecord() FK requires user_packages id=7
         DB::table('user_packages')->insert([
             'id' => 7,
             'prix' => 5000,
@@ -177,7 +176,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
     public function test_finalize_registration_in_person_sends_planified_notification(): void
     {
         $email = 'inperson@example.com';
-        Cache::put('foreigner_otp_valid_' . strtolower($email), true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_'.strtolower($email), true, now()->addMinutes(10));
         $token = str_repeat('b', 64);
         PendingRegistration::create([
             'npi' => '',

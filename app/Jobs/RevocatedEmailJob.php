@@ -18,9 +18,7 @@ final class RevocatedEmailJob implements ShouldQueue
 
     public function __construct(
         public readonly mixed $user,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

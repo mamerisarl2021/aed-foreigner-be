@@ -20,9 +20,7 @@ final class AdvancedIdMidJob implements ShouldQueue
         public readonly string $email,
         public readonly string $name,
         public readonly string $link,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

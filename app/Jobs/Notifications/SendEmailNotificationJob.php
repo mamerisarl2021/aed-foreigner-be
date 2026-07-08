@@ -17,9 +17,7 @@ final class SendEmailNotificationJob implements ShouldQueue
 
     public function __construct(
         public readonly EmailNotificationData $notification,
-    )
-    {
-    }
+    ) {}
 
     public function backoff(): array
     {

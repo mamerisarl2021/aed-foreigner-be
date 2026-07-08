@@ -12,8 +12,8 @@ use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -33,14 +33,18 @@ class AuthController extends BaseController
      *      operationId="adminLogin",
      *      tags={"Admin Auth"},
      *      summary="Admin/Agent Login (Step 1: Request OTP)",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"email", "password"},
+     *
      *              @OA\Property(property="email", type="string", format="email"),
      *              @OA\Property(property="password", type="string", format="password")
      *          )
      *      ),
+     *
      *      @OA\Response(response=200, description="OTP sent to email"),
      *      @OA\Response(response=403, description="Forbidden (Not an agent)")
      * )
@@ -58,7 +62,7 @@ class AuthController extends BaseController
         $agentRoles = ['superviseur', 'auditeur', 'admin', 'tech_one', 'tech_two', 'tech_three'];
 
         // Check if the user has the 'agent' role
-        if (!$user->hasAnyRole($agentRoles)) {
+        if (! $user->hasAnyRole($agentRoles)) {
             return $this->sendError("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
         }
 
@@ -96,16 +100,21 @@ class AuthController extends BaseController
      *      operationId="updateAgent",
      *      tags={"Admin Auth"},
      *      summary="Update Agent Details",
+     *
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Property(property="name", type="string"),
      *              @OA\Property(property="role", type="string", enum={"LEVEL1","LEVEL2","LEVEL3","SUPERVISEUR","AUDITEUR"}),
      *              @OA\Property(property="phonenumber", type="string"),
      *              @OA\Property(property="email", type="string", format="email")
      *          )
      *      ),
+     *
      *      @OA\Response(response=200, description="Agent updated")
      * )
      */
@@ -113,7 +122,7 @@ class AuthController extends BaseController
     {
         // Find the user by ID
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
@@ -122,8 +131,8 @@ class AuthController extends BaseController
             'name' => ['sometimes', 'string', 'max:255'],
             'role' => ['sometimes', 'string', 'in:LEVEL1,LEVEL2,LEVEL3,SUPERVISEUR,AUDITEUR'],
             'phonenumber' => ['sometimes', 'string', 'max:15'],
-            'npi' => ['sometimes', 'string', 'max:10', 'unique:users,npi,' . $user->id],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'npi' => ['sometimes', 'string', 'max:10', 'unique:users,npi,'.$user->id],
+            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
         ]);
 
         // Return validation errors
@@ -167,9 +176,10 @@ class AuthController extends BaseController
             }
 
             return $this->sendResponse('Agent mis à jour avec succès.', $user);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log error
-            Log::error('Failed to update agent: ' . $e->getMessage());
+            Log::error('Failed to update agent: '.$e->getMessage());
+
             return $this->sendError('Impossible de mettre à jour l\'agent, veuillez réessayer.', null, 500);
         }
     }
@@ -178,7 +188,7 @@ class AuthController extends BaseController
     {
         // Find the user by ID
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
@@ -190,9 +200,10 @@ class AuthController extends BaseController
             $user->delete();
 
             return $this->sendResponse('Agent supprimé avec succès.', null);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log error
-            Log::error('Failed to delete agent: ' . $e->getMessage());
+            Log::error('Failed to delete agent: '.$e->getMessage());
+
             return $this->sendError('Impossible de supprimer l\'agent, veuillez réessayer.', null, 500);
         }
     }
@@ -207,6 +218,7 @@ class AuthController extends BaseController
      *      tags={"Admin Auth"},
      *      summary="Admin Logout",
      *      security={{"sanctum":{}}},
+     *
      *      @OA\Response(response=200, description="Logged out")
      * )
      */
@@ -230,10 +242,13 @@ class AuthController extends BaseController
      *      operationId="registerAgent",
      *      tags={"Admin Auth"},
      *      summary="Register New Agent",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"name", "phonenumber", "npi", "email"},
+     *
      *              @OA\Property(property="name", type="string"),
      *              @OA\Property(property="role", type="string"),
      *              @OA\Property(property="phonenumber", type="string"),
@@ -241,6 +256,7 @@ class AuthController extends BaseController
      *              @OA\Property(property="email", type="string", format="email")
      *          )
      *      ),
+     *
      *      @OA\Response(response=200, description="Agent registered")
      * )
      */
@@ -266,8 +282,8 @@ class AuthController extends BaseController
                 'email' => $request->input('email'),
                 'phonenumber' => $request->input('phonenumber'),
                 'npi' => $request->input('npi'),
-                'password' => Hash::make(""),
-                'status' => 'INACTIVE'
+                'password' => Hash::make(''),
+                'status' => 'INACTIVE',
             ]);
 
             // Assign the role
@@ -304,15 +320,16 @@ class AuthController extends BaseController
             ]);
 
             // Envoyer un e-mail à l'utilisateur avec le lien de réinitialisation
-            $resetLink = env('FRONT_URL') . '/backoffice/agent/init-password?token=' . $token . '&email=' . urlencode($user->email);
-
+            $resetLink = env('FRONT_URL').'/backoffice/agent/init-password?token='.$token.'&email='.urlencode($user->email);
 
             // Dispatch welcome email job
             WelcomeAgentJob::dispatch($user, $resetLink);
+
             return $this->sendResponse('Agent enregistré avec succès', $user);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log error
-            Log::error('Failed to register agent: ' . $e->getMessage());
+            Log::error('Failed to register agent: '.$e->getMessage());
+
             return $this->sendError('Impossible de créer le compte agent reessayer.', null, 500);
         }
     }
@@ -347,13 +364,13 @@ class AuthController extends BaseController
 
             // Send the paginated response
             return $this->sendPaginatedResponse('Liste des agents.', $response);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log error
-            Log::error('Impossible de récupérer les agents: ' . $e->getMessage());
+            Log::error('Impossible de récupérer les agents: '.$e->getMessage());
+
             return $this->sendError('Impossible de récupérer la liste des agents.', null, 500);
         }
     }
-
 
     public function showAgent($id): JsonResponse
     {
@@ -363,15 +380,16 @@ class AuthController extends BaseController
                 $query->whereIn('name', ['superviseur', 'auditeur', 'tech_one', 'tech_two', 'tech_three']);
             })->with('roles')->findOrFail($id);
 
-
             return $this->sendResponse('Agent récupéré avec succès', $agent);
         } catch (ModelNotFoundException $e) {
             // Log error
-            Log::error('Agent not found: ' . $e->getMessage());
+            Log::error('Agent not found: '.$e->getMessage());
+
             return $this->sendError('Agent non trouvé.', null, 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Log error
-            Log::error('Failed to retrieve agent: ' . $e->getMessage());
+            Log::error('Failed to retrieve agent: '.$e->getMessage());
+
             return $this->sendError('Impossible de récupérer l\'agent, veuillez réessayer.', null, 500);
         }
     }
@@ -390,7 +408,7 @@ class AuthController extends BaseController
         $agentRoles = ['superviseur', 'auditeur', 'admin', 'tech_one', 'tech_two', 'tech_three'];
 
         // Check if the user has the 'agent' role
-        if (!$user->hasAnyRole($agentRoles)) {
+        if (! $user->hasAnyRole($agentRoles)) {
             return $this->sendError("L'email fourni n'appartient pas à un agent.", null, 403);
         }
 
@@ -422,21 +440,24 @@ class AuthController extends BaseController
         return $this->sendResponse('OTP envoyé avec succès.', []);
     }
 
-
     /**
      * @OA\Post(
      *      path="/api/admins/verify-otp",
      *      operationId="adminVerifyOtp",
      *      tags={"Admin Auth"},
      *      summary="Admin/Agent Verify OTP (Step 2: Get Token)",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"email", "otp"},
+     *
      *              @OA\Property(property="email", type="string", format="email"),
      *              @OA\Property(property="otp", type="string")
      *          )
      *      ),
+     *
      *      @OA\Response(response=200, description="Token obtained"),
      *      @OA\Response(response=403, description="Forbidden or Invalid OTP")
      * )
@@ -458,7 +479,7 @@ class AuthController extends BaseController
         $agentRoles = ['superviseur', 'auditeur', 'admin', 'tech_one', 'tech_two', 'tech_three'];
 
         // Check if the user has the 'agent' role
-        if (!$user->hasAnyRole($agentRoles)) {
+        if (! $user->hasAnyRole($agentRoles)) {
             return $this->sendError("L'email fourni n'appartient pas à un agent.", null, 403);
         }
 
@@ -473,14 +494,14 @@ class AuthController extends BaseController
             $existingOTP->delete();
 
             // Generate a token for the user
-            $token = $user->createToken($user->email . '-' . now())->plainTextToken;
+            $token = $user->createToken($user->email.'-'.now())->plainTextToken;
             $roles = $user->getRoleNames(); // Get user roles
 
             // Prepare the response data
             $data = [
                 'user' => $user,
                 'roles' => $roles,
-                'access_token' => $token
+                'access_token' => $token,
             ];
 
             return $this->sendResponse("Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!", $data);
@@ -503,7 +524,7 @@ class AuthController extends BaseController
                 ->where('email', $validatedData['email'])
                 ->first();
 
-            if (!$record || !Hash::check($validatedData['token'], $record->token)) {
+            if (! $record || ! Hash::check($validatedData['token'], $record->token)) {
                 return $this->sendError('Token invalide ou expiré.', null, 400);
             }
 
@@ -515,6 +536,7 @@ class AuthController extends BaseController
 
             // Supprimer le token après utilisation
             DB::table('password_reset_tokens')->where('email', $validatedData['email'])->delete();
+
             return $this->sendResponse('Mot de passe réinitialisé avec succès.', []);
         } catch (Exception $e) {
             return $this->sendError('Impossible de mettre à jour le mot de passe', null, 401);
@@ -551,7 +573,7 @@ class AuthController extends BaseController
                 );
 
                 // Générer le lien de réinitialisation
-                $resetLink = env('FRONT_URL') . '/reset-password/' . $token . '/' . urlencode($user->email);
+                $resetLink = env('FRONT_URL').'/reset-password/'.$token.'/'.urlencode($user->email);
 
                 // Envoyer l'e-mail
                 ResetPasswordJob::dispatch($user, $resetLink);
@@ -560,8 +582,9 @@ class AuthController extends BaseController
             } else {
                 return $this->sendError('Vous ne disposez d\'aucun des privilièges requis pour la mise à jour du mot de passe sur cette interface', null, 403);
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to send password reset link: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('Failed to send password reset link: '.$e->getMessage());
+
             return $this->sendError('Impossible d\'envoyer le lien de réinitialisation, réessayer.', null, 400);
         }
     }

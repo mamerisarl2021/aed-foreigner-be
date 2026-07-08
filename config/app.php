@@ -41,7 +41,7 @@ return [
     |
     */
 
-    'debug' => (bool)env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -131,7 +131,6 @@ return [
 
     'home' => env('APP_HOME', '/dashboard'),
 
-
     /*
     |--------------------------------------------------------------------------
     | Class Aliases
@@ -144,7 +143,7 @@ return [
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-    // 'Example' => App\Facades\Example::class,
-])->toArray(),
+        // 'Example' => App\Facades\Example::class,
+    ])->toArray(),
 
 ];

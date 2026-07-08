@@ -5,18 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\UserSubscription;
 use App\Traits\AuthTrait;
 use Exception;
-use Illuminate\Http\Request;
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Client\HttpClientException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use phpseclib3\File\X509 as X509;
+use phpseclib3\File\X509;
 
 class SigningIdentityController extends BaseController
 {
     use AuthTrait;
+
     private $baseUri = 'https://test-tx-pki.gouv.bj/trustedx-resources/esigp/v1/';
 
     /**
@@ -26,30 +27,32 @@ class SigningIdentityController extends BaseController
      *      tags={"Certificates"},
      *      summary="List Signing Identities",
      *      security={{"sanctum":{}}},
+     *
      *      @OA\Parameter(name="token", in="query", required=true, @OA\Schema(type="string")),
+     *
      *      @OA\Response(response=200, description="Successful operation"),
      *      @OA\Response(response=401, description="Unauthorized")
      * )
      */
     public function getSigningIdentities(Request $request)
     {
-        $client = new Client();
+        $client = new Client;
         $token = $request->input('token');
         $headers = [
-            'Authorization' => 'Bearer ' . $token
+            'Authorization' => 'Bearer '.$token,
         ];
 
         $queryParams = [
             'labels' => $request->input('labels'),
             'user_id' => $request->input('user_id'),
-            'domain' => $request->input('domain')
+            'domain' => $request->input('domain'),
         ];
 
         try {
             // Initial request to get the signing identities
-            $response = $client->get($this->baseUri . 'sign_identities', [
+            $response = $client->get($this->baseUri.'sign_identities', [
                 'headers' => $headers,
-                'query' => $queryParams
+                'query' => $queryParams,
             ]);
 
             $statusCode = $response->getStatusCode();
@@ -70,8 +73,9 @@ class SigningIdentityController extends BaseController
             foreach ($signIdentities as $certificate) {
                 $certResponse = Http::withHeaders($headers)->get($certificate['self']);
                 $certBody = json_decode($certResponse->body(), true);
-                if (array_key_exists('certificate', $certBody['identity']['details']))
+                if (array_key_exists('certificate', $certBody['identity']['details'])) {
                     $certificate['certData'] = $this->getCertData($certBody['identity']['details']['certificate']) ?? null;
+                }
                 $finalList[] = $certificate;
             }
 
@@ -95,21 +99,23 @@ class SigningIdentityController extends BaseController
      *      tags={"Certificates"},
      *      summary="Get Signing Identity Details",
      *      security={{"sanctum":{}}},
+     *
      *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
      *      @OA\Parameter(name="token", in="query", required=true, @OA\Schema(type="string")),
+     *
      *      @OA\Response(response=200, description="Successful operation")
      * )
      */
     public function getSigningIdentity(Request $request, $identityId)
     {
-        $client = new Client();
+        $client = new Client;
         $headers = [
-            'Authorization' => 'Bearer ' . $request->input('token')
+            'Authorization' => 'Bearer '.$request->input('token'),
         ];
 
         try {
-            $response = $client->get($this->baseUri . 'sign_identities/' . $identityId, [
-                'headers' => $headers
+            $response = $client->get($this->baseUri.'sign_identities/'.$identityId, [
+                'headers' => $headers,
             ]);
 
             if ($response->getStatusCode() == 200) {
@@ -123,13 +129,14 @@ class SigningIdentityController extends BaseController
     }
 
     /**
-     * @param $champs
+     * @param  $champs
      * @return array
      */
-    function getCertData($cert)
+    public function getCertData($cert)
     {
-        $x509 = new X509();
+        $x509 = new X509;
         $decodedCert = $x509->loadX509($cert);
+
         // dd($decodedCert['tbsCertificate']['validity']);
         return $decodedCert['tbsCertificate']['validity'];
     }
@@ -141,15 +148,20 @@ class SigningIdentityController extends BaseController
      *      tags={"Certificates"},
      *      summary="Update Signing Identity Status",
      *      security={{"sanctum":{}}},
+     *
      *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"value", "reason"},
+     *
      *              @OA\Property(property="value", type="string"),
      *              @OA\Property(property="reason", type="string")
      *          )
      *      ),
+     *
      *      @OA\Response(response=204, description="Success"),
      *      @OA\Response(response=401, description="Unauthorized")
      * )
@@ -157,24 +169,24 @@ class SigningIdentityController extends BaseController
     public function updateSigningIdentityStatus(Request $request, $identityId)
     {
         $token_response = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
-        if (!$token_response['status']) {
+        if (! $token_response['status']) {
             return $this->sendError($token_response['message'], null, 401);
         }
         $token = $token_response['token'];
-        $client = new Client();
+        $client = new Client;
         $headers = [
-            'Authorization' => 'Bearer ' . $token,
-            'Content-Type' => 'application/json'
+            'Authorization' => 'Bearer '.$token,
+            'Content-Type' => 'application/json',
         ];
         $body = json_encode([
             'value' => $request->input('value'),
-            'reason' => $request->input('reason')
+            'reason' => $request->input('reason'),
         ]);
 
         try {
-            $response = $client->put($this->baseUri . 'sign_identities/' . $identityId . '/status', [
+            $response = $client->put($this->baseUri.'sign_identities/'.$identityId.'/status', [
                 'headers' => $headers,
-                'body' => $body
+                'body' => $body,
             ]);
 
             if ($response->getStatusCode() == 204) {
@@ -194,28 +206,31 @@ class SigningIdentityController extends BaseController
      *      tags={"Certificates"},
      *      summary="Delete Signing Identity",
      *      security={{"sanctum":{}}},
+     *
      *      @OA\Parameter(name="identityId", in="path", required=true, @OA\Schema(type="string")),
+     *
      *      @OA\Response(response=200, description="Deleted successfully")
      * )
      */
     public function deleteSigningIdentity($identityId)
     {
         $token_response = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
-        if (!$token_response['status']) {
+        if (! $token_response['status']) {
             return $this->sendError($token_response['message'], null, 401);
         }
         $token = $token_response['token'];
-        $client = new Client();
+        $client = new Client;
         $headers = [
             'Content-Type' => 'application/json;charset=UTF-8',
-            'Authorization' => 'Bearer ' . $token
+            'Authorization' => 'Bearer '.$token,
         ];
         $body = '';
-        $url = $this->baseUri . 'sign_identities/' . $identityId;
+        $url = $this->baseUri.'sign_identities/'.$identityId;
         $request = new GuzzleRequest('DELETE', $url, $headers, $body);
 
         try {
             $response = $client->sendAsync($request)->wait();
+
             return $this->sendResponse('Identité de signature supprimée avec succès.', json_decode($response->getBody(), true));
         } catch (RequestException $e) {
             return $this->sendError('Erreur lors de la suppression de l\'identité de signature.', ['error' => $e->getMessage()], $e->getCode());
@@ -251,7 +266,6 @@ class SigningIdentityController extends BaseController
     //             }
     //         }
 
-
     //         if ($accessTokenResponse['status']) {
     //             $access_token = $accessTokenResponse['data']['access_token'];
     //         } else {
@@ -261,7 +275,6 @@ class SigningIdentityController extends BaseController
     //                 'message' => $accessTokenResponse['message']
     //             ];
     //         }
-
 
     //         // Étape 3 : Obtenir les données d'identité de l'utilisateur
     //         $userData = $this->getUserData($access_token);
@@ -286,15 +299,19 @@ class SigningIdentityController extends BaseController
      *      tags={"Certificates"},
      *      summary="Provision Certificate (Signature)",
      *      description="Starts the certificate issuance process on TrustedX RAP.",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"code", "type", "subscription_id"},
+     *
      *              @OA\Property(property="code", type="string"),
      *              @OA\Property(property="type", type="string", enum={"citizen", "employee"}),
      *              @OA\Property(property="subscription_id", type="integer")
      *          )
      *      ),
+     *
      *      @OA\Response(response=200, description="Process finished or in progress"),
      *      @OA\Response(response=400, description="Validation or Access error"),
      *      @OA\Response(response=403, description="Forbidden (Manager approval or account inactive)")
@@ -314,9 +331,9 @@ class SigningIdentityController extends BaseController
             if (
                 $validatedData['type'] === 'employee' &&
                 UserSubscription::where('id', $validatedData['subscription_id'])
-                ->where('status', 'TRAITEDBYMANAGER')
-                ->where('type', 'EMPLOYEE')
-                ->count() < 1
+                    ->where('status', 'TRAITEDBYMANAGER')
+                    ->where('type', 'EMPLOYEE')
+                    ->count() < 1
             ) {
                 return $this->sendError(
                     "Votre manager n'a pas encore approuvé votre demande de certificat sur serveur. Patientez encore un instant.",
@@ -338,7 +355,7 @@ class SigningIdentityController extends BaseController
             if ($sub) {
                 $user = User::find($sub->user_id);
                 if ($user && $user->status !== 'ACTIVE') {
-                     return $this->sendError(
+                    return $this->sendError(
                         "Votre compte utilisateur n'est pas encore actif. Veuillez patienter ou contacter le support.",
                         null,
                         403
@@ -351,7 +368,7 @@ class SigningIdentityController extends BaseController
                 ? $this->getAccessToken($validatedData['code'], $validatedData['subscription_id'])
                 : $this->getAdminAccessToken($validatedData['code'], $validatedData['subscription_id']);
 
-            if (!$accessTokenResponse['status']) {
+            if (! $accessTokenResponse['status']) {
                 return $this->sendError(
                     "Impossible d'obtenir le token d'accès.",
                     $accessTokenResponse,
@@ -373,80 +390,83 @@ class SigningIdentityController extends BaseController
             switch ($status) {
                 case 'pending':
                     return $this->sendResponse(
-                        "Votre demande est en attente de traitement. Réessayez plus tard.",
+                        'Votre demande est en attente de traitement. Réessayez plus tard.',
                         $identityData
                     );
 
                 case 'in_progress':
                     return $this->sendResponse(
-                        "Votre demande est en cours de traitement. Veuillez patienter.",
+                        'Votre demande est en cours de traitement. Veuillez patienter.',
                         $identityData
                     );
 
                 case 'finished':
                     return $this->sendResponse(
-                        "Identité et certificat générés avec succès.",
+                        'Identité et certificat générés avec succès.',
                         $identityData
                     );
 
                 default:
                     return $this->sendError(
-                        "Statut inconnu ou erreur lors du processus d’émission.",
+                        'Statut inconnu ou erreur lors du processus d’émission.',
                         $identityData,
                         500
                     );
             }
         } catch (HttpClientException $e) {
-            Log::error("Erreur HttpClient : " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Erreur HttpClient : '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return $this->sendError(
-                "Une erreur est survenue lors de votre tentative de création de certificat sur serveur.",
+                'Une erreur est survenue lors de votre tentative de création de certificat sur serveur.',
                 $e->getMessage(),
                 500
             );
-        } catch (\Exception $e) {
-            Log::error("Erreur inattendue : " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        } catch (Exception $e) {
+            Log::error('Erreur inattendue : '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return $this->sendError(
-                "Erreur interne. Veuillez réessayer plus tard.",
+                'Erreur interne. Veuillez réessayer plus tard.',
                 $e->getMessage(),
                 500
             );
         }
     }
 
-
     private function getAccessToken($authorizationCode, $processId)
     {
         try {
-            $redirect_uri = env('FRONTEND_URL') . '/bridge-page?type=employee_' . $processId;
+            $redirect_uri = env('FRONTEND_URL').'/bridge-page?type=employee_'.$processId;
             $response = Http::withOptions([
                 'verify' => false,
             ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirect_uri");
             if (isset($response->json()['error'])) {
                 $final = [
                     'status' => false,
-                    "data" => $response->json(),
-                    'message' => "Il semblerait que le code fournis soit invalide ou expiré."
+                    'data' => $response->json(),
+                    'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
                 ];
             } else {
-                $final =  [
+                $final = [
                     'status' => true,
-                    "data" => $response->json(),
-                    'message' => "Voici votre code d'authentification."
+                    'data' => $response->json(),
+                    'message' => "Voici votre code d'authentification.",
                 ];
             }
+
             return $final;
         } catch (HttpClientException $e) {
             Log::error($e->getMessage(), ['error' => json_encode($e)]);
+
             return [
                 'status' => false,
-                'message' => "Il semblerait que le code fournis soit invalide ou expiré."
+                'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
             ];
         }
     }
 
     private function getAdminAccessToken($authorizationCode, $processId)
     {
-        $redirect_uri = env('FRONTEND_URL') . '/bridge-page?type=citizen_' . $processId;
+        $redirect_uri = env('FRONTEND_URL').'/bridge-page?type=citizen_'.$processId;
         try {
             $response = Http::withOptions([
                 'verify' => false,
@@ -454,22 +474,24 @@ class SigningIdentityController extends BaseController
             if (isset($response->json()['error'])) {
                 $final = [
                     'status' => false,
-                    "data" => $response->json(),
-                    'message' => "Il semblerait que le code fournis soit invalide ou expiré."
+                    'data' => $response->json(),
+                    'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
                 ];
             } else {
-                $final =  [
+                $final = [
                     'status' => true,
-                    "data" => $response->json(),
-                    'message' => "Voici votre code d'authentification."
+                    'data' => $response->json(),
+                    'message' => "Voici votre code d'authentification.",
                 ];
             }
+
             return $final;
         } catch (HttpClientException $e) {
             Log::error($e->getMessage(), ['error' => json_encode($e)]);
+
             return [
                 'status' => false,
-                'message' => "Il semblerait que le code fournis soit invalide ou expiré."
+                'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
             ];
         }
     }
@@ -480,9 +502,9 @@ class SigningIdentityController extends BaseController
         $response = Http::withOptions([
             'verify' => false,
         ])->withToken($accessToken)->get("https://$this->TX_BASE_URL/trustedx-resources/openid/v1/users/me");
+
         return json_decode($response->getBody(), true);
     }
-
 
     // private function createIssuanceProcess($accessToken, $userData, $type)
     // {
@@ -541,18 +563,18 @@ class SigningIdentityController extends BaseController
         $url = "https://{$this->TX_BASE_URL}/trustedx-resources/rap/v2/issuance_processes";
 
         $payload = [
-            "sign_identities_group_labels" => ["gob", "server", $type],
-            "registration_parameters" => [
-                "notification_email" => "collabone@qualitycorporate.com",
-                "user" => $userData
-            ]
+            'sign_identities_group_labels' => ['gob', 'server', $type],
+            'registration_parameters' => [
+                'notification_email' => 'collabone@qualitycorporate.com',
+                'user' => $userData,
+            ],
         ];
 
         try {
             // === 1. Création du process d’émission
-            Log::info("📤 Envoi création issuance process", [
+            Log::info('📤 Envoi création issuance process', [
                 'url' => $url,
-                'payload' => $payload
+                'payload' => $payload,
             ]);
 
             $response = Http::withToken($accessToken)
@@ -561,19 +583,20 @@ class SigningIdentityController extends BaseController
                 ->post($url, $payload);
 
             if ($response->failed()) {
-                Log::error("❌ Erreur à la création du process", ['body' => $response->body()]);
-                return $this->sendError("Erreur lors de la création du process", $response->body());
+                Log::error('❌ Erreur à la création du process', ['body' => $response->body()]);
+
+                return $this->sendError('Erreur lors de la création du process', $response->body());
             }
 
             $responseData = $response->json();
 
             // === 2. Vérification de l’URL du groupe
             if (empty($responseData['sign_identities_group']['url'])) {
-                throw new \Exception("URL du groupe d'identité manquante");
+                throw new Exception("URL du groupe d'identité manquante");
             }
 
             Log::info("📥 Récupération du groupe d'identité", [
-                'url' => $responseData['sign_identities_group']['url']
+                'url' => $responseData['sign_identities_group']['url'],
             ]);
 
             $groupResponse = Http::withToken($accessToken)
@@ -581,19 +604,20 @@ class SigningIdentityController extends BaseController
                 ->get($responseData['sign_identities_group']['url']);
 
             if ($groupResponse->failed()) {
-                Log::error("❌ Erreur lors de la récupération du groupe", ['body' => $groupResponse->body()]);
-                return $this->sendError("Erreur groupe identité", $groupResponse->body());
+                Log::error('❌ Erreur lors de la récupération du groupe', ['body' => $groupResponse->body()]);
+
+                return $this->sendError('Erreur groupe identité', $groupResponse->body());
             }
 
             $groupBody = $groupResponse->json();
 
             // === 3. Vérification de l’identité
             if (empty($groupBody['sign_identities'][0]['url'])) {
-                throw new \Exception("Pas d'URL d'identité trouvée dans le groupe");
+                throw new Exception("Pas d'URL d'identité trouvée dans le groupe");
             }
 
-            Log::info("📥 Récupération de l’identité", [
-                'url' => $groupBody['sign_identities'][0]['url']
+            Log::info('📥 Récupération de l’identité', [
+                'url' => $groupBody['sign_identities'][0]['url'],
             ]);
 
             $certResponse = Http::withToken($accessToken)
@@ -601,8 +625,9 @@ class SigningIdentityController extends BaseController
                 ->get($groupBody['sign_identities'][0]['url']);
 
             if ($certResponse->failed()) {
-                Log::error("❌ Erreur lors de la récupération du certificat", ['body' => $certResponse->body()]);
-                return $this->sendError("Erreur certificat", $certResponse->body());
+                Log::error('❌ Erreur lors de la récupération du certificat', ['body' => $certResponse->body()]);
+
+                return $this->sendError('Erreur certificat', $certResponse->body());
             }
 
             $certBody = $certResponse->json();
@@ -617,32 +642,32 @@ class SigningIdentityController extends BaseController
 
             // === 5. Suppression du process si terminé
             if (($responseData['status']['value'] ?? null) === 'finished') {
-                Log::info("🗑 Suppression du process terminé", ['id' => $responseData['id']]);
+                Log::info('🗑 Suppression du process terminé', ['id' => $responseData['id']]);
                 $this->deleteIssuanceProcess($responseData['id'], $accessToken);
             }
 
             return ['response' => $responseData, 'cert' => $certificate];
-        } catch (\Exception $e) {
-            Log::error("⚠️ Exception dans createIssuanceProcess", [
+        } catch (Exception $e) {
+            Log::error('⚠️ Exception dans createIssuanceProcess', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return $this->sendError("Erreur interne", $e->getMessage());
+
+            return $this->sendError('Erreur interne', $e->getMessage());
         }
     }
 
-
     private function deleteIssuanceProcess($processId, $accessToken)
     {
-        $client = new Client();
+        $client = new Client;
         $url = "https://$this->TX_BASE_URL/trustedx-resources/rap/v2/issuance_processes/{$processId}";
 
         try {
             $response = $client->delete($url, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type' => 'application/json'
-                ]
+                    'Authorization' => 'Bearer '.$accessToken,
+                    'Content-Type' => 'application/json',
+                ],
             ]);
 
             return json_decode($response->getBody(), true);
@@ -653,7 +678,7 @@ class SigningIdentityController extends BaseController
                 Log::error($e->getMessage(), ['trace' => $errorBody]);
             }
             Log::error($e->getMessage(), ['trace' => $errorBody]);
-            throw new \Exception("Erreur lors de la suppression du processus de certification: " . $e->getMessage());
+            throw new Exception('Erreur lors de la suppression du processus de certification: '.$e->getMessage());
         }
     }
 }

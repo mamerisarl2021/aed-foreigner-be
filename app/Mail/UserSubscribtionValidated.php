@@ -12,9 +12,10 @@ class UserSubscribtionValidated extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $user;
+
     public $processId;
 
-    public function __construct($user,$processId)
+    public function __construct($user, $processId)
     {
         $this->user = $user;
         $this->processId = $processId;
@@ -22,10 +23,10 @@ class UserSubscribtionValidated extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return  $this->from('collabone@qualitycorporate.com')
+        return $this->from('collabone@qualitycorporate.com')
             ->subject('Souscription validée')->view('emails.user_subscription_validated')->with([
                 'user' => $this->user,
-                'processId' => $this->processId
+                'processId' => $this->processId,
             ]);
     }
 }

@@ -24,12 +24,12 @@ use Throwable;
 
 class UserSubscriptionController extends BaseController
 {
-    use AuthTrait;
     use ADTrait;
+    use AuthTrait;
+
     /**
      * Display a listing of the user subscriptions.
      */
-
     public function index(Request $request)
     {
         try {
@@ -45,13 +45,14 @@ class UserSubscriptionController extends BaseController
             $response = array_merge(['data' => $data], ['pagination' => $flattenedData]);
 
             return $this->sendPaginatedResponse('Liste des abonnements.', $response);
-        } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les abonnements des utilisateurs: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('Impossible de récupérer les abonnements des utilisateurs: '.$e->getMessage());
+
             return $this->sendError('Impossible de récupérer les abonnements des utilisateurs.', null, 500);
         }
     }
 
-    public function kkiaPayement(String $transId)
+    public function kkiaPayement(string $transId)
     {
 
         // $public_key = "9d0fc7a0649011ef9e4c8f724a020285";
@@ -69,6 +70,7 @@ class UserSubscriptionController extends BaseController
         );
 
         $payement = $kkiapay->verifyTransaction($transId);
+
         return collect($payement->state);
     }
 
@@ -84,18 +86,19 @@ class UserSubscriptionController extends BaseController
                     'sometimes',
                     function ($attribute, $value, $fail) use ($request) {
                         if ($request->type === 'EMPLOYEE' && is_null($value)) {
-                            $fail('Le champ ' . $attribute . ' est requis quand la demande est de type employé.');
+                            $fail('Le champ '.$attribute.' est requis quand la demande est de type employé.');
                         }
                     },
                     'exists:structures,id',
                 ],
                 'type' => ['required', Rule::in(['EMPLOYEE', 'CITIZEN'])],
-                'transaction_id' => 'required|string'
+                'transaction_id' => 'required|string',
             ]);
             if ($request->input('type') != 'EMPLOYEE') {
                 $state = $this->kkiaPayement($request->input('transaction_id'));
-                if (UserPackage::where('id', json_decode($state[0], true)['package'])->where('prix', (int)json_decode($state[0], true)['amount'])->count() != 1) {
+                if (UserPackage::where('id', json_decode($state[0], true)['package'])->where('prix', (int) json_decode($state[0], true)['amount'])->count() != 1) {
                     Log::alert('Failed to create user subscription');
+
                     return $this->sendError('Ooops tentative de fraude détectée!', [], 500);
                 }
             }
@@ -112,20 +115,22 @@ class UserSubscriptionController extends BaseController
                 $subscription = UserSubscription::create($subscriptionData);
                 $user = $subscription->user;
 
-                if ($request->type === 'CITIZEN'){
+                if ($request->type === 'CITIZEN') {
                     $updateStatus = $this->updateCertValidityByNPI($user->npi, $subscription->package->validity);
-                    if (!$updateStatus['status']) {
-                        Log::error('Failed to update user subscriptions: ' . $updateStatus['message'], $updateStatus);
+                    if (! $updateStatus['status']) {
+                        Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
                         throw new Exception('Failed to update user subscriptions.');
                     }
                     UserSubscribtionCreatedJob::dispatch(Auth::user()->email, $subscription->id);
-                }else{
+                } else {
                     UserSubscribtionInitiatedJob::dispatch(Auth::user()->email, $subscription->id);
                 }
             });
+
             return $this->sendResponse('Votre demande de création de certificat à bien été enregistrée, vous recevrez un mail sous peu pour les prochaines étapes.', $request);
         } catch (Throwable $e) {
-            Log::error('Failed to create user subscription: ' . $e->getMessage());
+            Log::error('Failed to create user subscription: '.$e->getMessage());
+
             return $this->sendError($e->getMessage(), [$e], 400);
         }
     }
@@ -136,6 +141,7 @@ class UserSubscriptionController extends BaseController
     public function show($id)
     {
         $subscription = UserSubscription::find($id);
+
         return $this->sendResponse('User subscription retrieved successfully.', $subscription);
     }
 
@@ -150,7 +156,8 @@ class UserSubscriptionController extends BaseController
 
             return $this->sendResponse('User subscription deleted successfully.');
         } catch (Throwable $e) {
-            Log::error('Failed to delete user subscription: ' . $e->getMessage());
+            Log::error('Failed to delete user subscription: '.$e->getMessage());
+
             return $this->sendError('Failed to delete user subscription.', [$e->getMessage()], 500);
         }
     }
@@ -171,14 +178,14 @@ class UserSubscriptionController extends BaseController
                 $subscription = UserSubscription::findOrFail($subscriptionData['id']);
                 $struct = Structure::find($subscription->structure_id);
 
-                if ($subscription->type == "EMPLOYEE" && $struct->manager_id != Auth::user()->id) {
-                    Log::alert('Unauthorized access attempt by user ID: ' . Auth::user()->id . ' on structure ID: ' . $struct->id);
-                    throw new Exception('Vous n\'êtes pas le manager de l\'entité ' . $struct->name . '. Cette tentative d\'escalade de privilège sera enregistrée.');
+                if ($subscription->type == 'EMPLOYEE' && $struct->manager_id != Auth::user()->id) {
+                    Log::alert('Unauthorized access attempt by user ID: '.Auth::user()->id.' on structure ID: '.$struct->id);
+                    throw new Exception('Vous n\'êtes pas le manager de l\'entité '.$struct->name.'. Cette tentative d\'escalade de privilège sera enregistrée.');
                 }
 
                 $remainingIdentities = $this->calculateRemainingIdentities($subscription->structure_id, $subscription->package->type);
 
-                if ($subscription->type == "EMPLOYEE" && $remainingIdentities < 1) {
+                if ($subscription->type == 'EMPLOYEE' && $remainingIdentities < 1) {
                     throw new Exception('Vous ne disposez plus d\'identité dans votre compte entité veuillez vous réabonner.');
                 }
 
@@ -197,16 +204,16 @@ class UserSubscriptionController extends BaseController
                 $structure = $subscription->structure;
                 $user = $subscription->user;
 
-                if ($subscription->type == "EMPLOYEE" && $subscriptionData['status'] === 'TRAITEDBYMANAGER') {
+                if ($subscription->type == 'EMPLOYEE' && $subscriptionData['status'] === 'TRAITEDBYMANAGER') {
                     $updateStatus = $this->updateUserAttributesByNPI($user->npi, "$structure->ifu|$structure->name|$structure->searchbase|E", $subscription->package->validity);
                     UserSubscribtionValidatedJob::dispatch($user->email, $subscription->id);
-                    if (!$updateStatus['status']) {
-                        Log::error('Failed to update user subscriptions: ' . $updateStatus['message'], $updateStatus);
+                    if (! $updateStatus['status']) {
+                        Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
                         throw new Exception('Failed to update user subscriptions.');
                     }
                 }
 
-                if ($subscription->type == "CITIZEN" && $subscriptionData['status'] === 'TRAITEDBYSYSTEM') {
+                if ($subscription->type == 'CITIZEN' && $subscriptionData['status'] === 'TRAITEDBYSYSTEM') {
                     // $updateStatus = $this->updateCertValidityByNPI($user->npi, $subscription->package->validity);
                     // if (!$updateStatus['status']) {
                     //     Log::error('Failed to update user subscriptions: ' . $updateStatus['message'], $updateStatus);
@@ -218,15 +225,17 @@ class UserSubscriptionController extends BaseController
                 $updateStatusList[] = [
                     'subscription_id' => $subscription->id,
                     'status' => $subscriptionData['status'],
-                    'current' => $subscriptionData['current']
+                    'current' => $subscriptionData['current'],
                 ];
             }
             DB::commit();
+
             return $this->sendResponse('User subscriptions updated successfully.', $updateStatusList);
         } catch (Exception $e) {
             DB::rollBack();
 
-            Log::error('Failed to update user subscriptions: ' . $e->getMessage(), $e->getTrace());
+            Log::error('Failed to update user subscriptions: '.$e->getMessage(), $e->getTrace());
+
             return $this->sendError('Failed to update user subscriptions.', [$e->getMessage()], 500);
         }
     }
@@ -270,13 +279,14 @@ class UserSubscriptionController extends BaseController
 
                 return [
                     'userPackages' => $userPackages,
-                    'structurePackages' => $structurePackages
+                    'structurePackages' => $structurePackages,
                 ];
             });
 
             return $this->sendResponse('Liste des packages.', $data);
-        } catch (\Exception $e) {
-            Log::error('Fetching packages failed: ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('Fetching packages failed: '.$e->getMessage());
+
             return $this->sendError('Échec de la récupération des packages.', [$e->getMessage()]);
         }
     }

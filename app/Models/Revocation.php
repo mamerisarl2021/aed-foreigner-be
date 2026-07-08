@@ -9,9 +9,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class Revocation extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
     use HasFactory;
-
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = ['group_id', 'status', 'structure_id', 'user_id', 'identity_id'];
 

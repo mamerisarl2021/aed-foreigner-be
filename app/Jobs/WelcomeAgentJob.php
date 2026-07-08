@@ -17,11 +17,9 @@ final class WelcomeAgentJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly mixed  $user,
+        public readonly mixed $user,
         public readonly string $link,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

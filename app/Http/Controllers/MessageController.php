@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Message;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
@@ -24,7 +24,8 @@ class MessageController extends Controller
 
             return $this->sendPaginatedResponse('Liste des messages.', $response);
         } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les messages: ' . $e->getMessage());
+            Log::error('Impossible de récupérer les messages: '.$e->getMessage());
+
             return $this->sendError('Impossible de récupérer les messages.', null, 500);
         }
     }
@@ -33,9 +34,11 @@ class MessageController extends Controller
     {
         try {
             $message = Message::findOrFail($id);
+
             return response()->json($message);
         } catch (\Exception $e) {
-            Log::error('Fetching message failed: ' . $e->getMessage());
+            Log::error('Fetching message failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Fetching message failed.'], 500);
         }
     }
@@ -52,9 +55,11 @@ class MessageController extends Controller
             ]);
 
             $message = Message::create($validatedData);
+
             return response()->json(['message' => 'Message created successfully.'], 201);
         } catch (\Exception $e) {
-            Log::error('Creating message failed: ' . $e->getMessage());
+            Log::error('Creating message failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Creating message failed.'], 500);
         }
     }
@@ -75,7 +80,8 @@ class MessageController extends Controller
 
             return response()->json(['message' => 'Message updated successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Updating message failed: ' . $e->getMessage());
+            Log::error('Updating message failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Updating message failed.'], 500);
         }
     }
@@ -85,9 +91,11 @@ class MessageController extends Controller
         try {
             $message = Message::findOrFail($id);
             $message->delete();
+
             return response()->json(['message' => 'Message deleted successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Deleting message failed: ' . $e->getMessage());
+            Log::error('Deleting message failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Deleting message failed.'], 500);
         }
     }

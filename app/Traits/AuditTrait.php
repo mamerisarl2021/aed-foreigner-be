@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Traits;
 
 use App\Models\ActivityLog;
@@ -9,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 trait AuditTrait
 {
-    public function logAction(string $action,string $details)
+    public function logAction(string $action, string $details)
     {
         try {
             // Log de l'activité
@@ -21,10 +20,11 @@ trait AuditTrait
                 'action_date' => now(),
             ]);
         } catch (Exception $e) {
-            Log::error('Creating audit log failed: ' . $e->getMessage());
+            Log::error('Creating audit log failed: '.$e->getMessage());
+
             return [
                 'status' => false,
-                'message' => 'Erreur pendant la création de la pièce jointe.'
+                'message' => 'Erreur pendant la création de la pièce jointe.',
             ];
         }
     }

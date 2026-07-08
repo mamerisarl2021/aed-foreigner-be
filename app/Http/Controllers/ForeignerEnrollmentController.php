@@ -2,31 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\ForeignerInitRegistrationJob;
 use App\Jobs\ForeignerOtpJob;
-use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\PlanifiedEmailJob;
 use App\Jobs\ProcessStructureFilesJob;
+use App\Jobs\RegulaAnalysisJob;
 use App\Models\Identity;
 use App\Models\PendingRegistration;
+use App\Models\Structure;
+use App\Models\StructurePackage;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Traits\AttachmentTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Validator;
-use Throwable;
 // Ajouts pour la création d'entreprise
-use App\Models\Structure;
-use App\Models\Attachment;
-use App\Models\StructurePackage;
-use App\Traits\AttachmentTrait;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Throwable;
 
 class ForeignerEnrollmentController extends BaseController
 {
@@ -39,17 +39,23 @@ class ForeignerEnrollmentController extends BaseController
      *      tags={"Enrollment"},
      *      summary="Send OTP to email",
      *      description="Sends an OTP to the provided email address for verification.",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"email"},
+     *
      *              @OA\Property(property="email", type="string", format="email", example="user@example.com")
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="OTP sent successfully",
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Property(property="success", type="boolean", example=true),
      *              @OA\Property(property="message", type="string", example="OTP envoyé à votre adresse email."),
      *              @OA\Property(property="data", type="object",
@@ -57,6 +63,7 @@ class ForeignerEnrollmentController extends BaseController
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=422,
      *          description="Validation error"
@@ -76,7 +83,7 @@ class ForeignerEnrollmentController extends BaseController
         $otp = (string) random_int(100000, 999999);
         $ttl = 5; // minutes
 
-        Cache::put('foreigner_otp_' . $email, $otp, now()->addMinutes($ttl));
+        Cache::put('foreigner_otp_'.$email, $otp, now()->addMinutes($ttl));
         ForeignerOtpJob::dispatch($email, $otp, $ttl);
 
         return $this->sendResponse('OTP envoyé à votre adresse email.', ['email' => $email]);
@@ -89,22 +96,29 @@ class ForeignerEnrollmentController extends BaseController
      *      tags={"Enrollment"},
      *      summary="Verify OTP",
      *      description="Verifies the OTP sent to the email.",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\JsonContent(
      *              required={"email", "otp"},
+     *
      *              @OA\Property(property="email", type="string", format="email", example="user@example.com"),
      *              @OA\Property(property="otp", type="string", example="123456")
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="OTP verified successfully",
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Property(property="success", type="boolean", example=true),
      *              @OA\Property(property="message", type="string", example="OTP vérifié.")
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=400,
      *          description="Invalid OTP"
@@ -123,12 +137,13 @@ class ForeignerEnrollmentController extends BaseController
 
         $email = strtolower(trim($request->input('email')));
         $otp = $request->input('otp');
-        $expected = Cache::get('foreigner_otp_' . $email);
-        if (!$expected || $expected !== $otp) {
+        $expected = Cache::get('foreigner_otp_'.$email);
+        if (! $expected || $expected !== $otp) {
             return $this->sendError('OTP invalide ou expiré.', null, 400);
         }
 
-        Cache::put('foreigner_otp_valid_' . $email, true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_'.$email, true, now()->addMinutes(10));
+
         return $this->sendResponse('OTP vérifié.', ['email' => $email]);
     }
 
@@ -139,21 +154,28 @@ class ForeignerEnrollmentController extends BaseController
      *      tags={"Enrollment"},
      *      summary="Initialize Registration",
      *      description="Initializes the registration process, returning a registration token.",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\MediaType(
      *              mediaType="multipart/form-data",
+     *
      *              @OA\Schema(
      *                  required={"email"},
+     *
      *                  @OA\Property(property="email", type="string", format="email", example="user@example.com"),
      *                  @OA\Property(property="profile", type="string", format="binary")
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="Registration initialized",
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Property(property="success", type="boolean", example=true),
      *              @OA\Property(property="data", type="object",
      *                  @OA\Property(property="registration_token", type="string"),
@@ -162,6 +184,7 @@ class ForeignerEnrollmentController extends BaseController
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=400,
      *          description="OTP not verified"
@@ -180,7 +203,7 @@ class ForeignerEnrollmentController extends BaseController
         }
 
         $email = strtolower(trim($request->input('email')));
-        if (!Cache::get('foreigner_otp_valid_' . $email)) {
+        if (! Cache::get('foreigner_otp_valid_'.$email)) {
             return $this->sendError("Veuillez d'abord vérifier votre OTP.", null, 400);
         }
 
@@ -213,7 +236,7 @@ class ForeignerEnrollmentController extends BaseController
         ]);
 
         $front = env('FRONT_URL', config('app.url'));
-        $link = rtrim($front, '/') . '/register/foreigner/' . $token;
+        $link = rtrim($front, '/').'/register/foreigner/'.$token;
         ForeignerInitRegistrationJob::dispatch($email, $link);
 
         return $this->sendResponse('Inscription initialisée.', [
@@ -230,12 +253,16 @@ class ForeignerEnrollmentController extends BaseController
      *      tags={"Enrollment"},
      *      summary="Finalize Registration",
      *      description="Finalizes the registration with full details and documents.",
+     *
      *      @OA\RequestBody(
      *          required=true,
+     *
      *          @OA\MediaType(
      *              mediaType="multipart/form-data",
+     *
      *              @OA\Schema(
      *                  required={"registration_token", "transaction_id"},
+     *
      *                  @OA\Property(property="registration_token", type="string"),
      *                  @OA\Property(property="transaction_id", type="string"),
      *                  @OA\Property(property="selfie", type="string", format="binary", description="Required"),
@@ -254,10 +281,13 @@ class ForeignerEnrollmentController extends BaseController
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=200,
      *          description="Registration finalized",
+     *
      *          @OA\JsonContent(
+     *
      *              @OA\Property(property="success", type="boolean", example=true),
      *              @OA\Property(property="data", type="object",
      *                  @OA\Property(property="user_id", type="integer"),
@@ -265,6 +295,7 @@ class ForeignerEnrollmentController extends BaseController
      *              )
      *          )
      *      ),
+     *
      *      @OA\Response(
      *          response=422,
      *          description="Validation error"
@@ -280,7 +311,7 @@ class ForeignerEnrollmentController extends BaseController
         // Force type and level for Foreigner flow
         $request->merge([
             'type' => 'ONLINE',
-            'level' => 'ADVANCED'
+            'level' => 'ADVANCED',
         ]);
 
         // Validation préliminaire AVANT transaction
@@ -297,7 +328,7 @@ class ForeignerEnrollmentController extends BaseController
             ->firstOrFail();
 
         $isForeigner = $pending->user_data['is_foreigner'] ?? false;
-        if (!$isForeigner) {
+        if (! $isForeigner) {
             return $this->sendError('Flux non étranger non pris en charge ici.', null, 400);
         }
 
@@ -326,7 +357,7 @@ class ForeignerEnrollmentController extends BaseController
         }
 
         $email = $pending->email;
-        if (!Cache::get('foreigner_otp_valid_' . $email)) {
+        if (! Cache::get('foreigner_otp_valid_'.$email)) {
             return $this->sendError("Veuillez d'abord vérifier votre OTP.", null, 400);
         }
 
@@ -335,7 +366,7 @@ class ForeignerEnrollmentController extends BaseController
 
         // ÉTAPE 2: Validation de l'abonnement AVANT transaction
         $subscriptionValidation = $this->validateSubscription($request->input('transaction_id'));
-        if (!$subscriptionValidation['status']) {
+        if (! $subscriptionValidation['status']) {
             return $this->sendError($subscriptionValidation['message'], $subscriptionValidation['data'], 500);
         }
 
@@ -378,8 +409,8 @@ class ForeignerEnrollmentController extends BaseController
 
             // NOTE: Structure creation logic REMOVED to separate P1 (User) from P2 (Company)
 
-            Cache::forget('foreigner_otp_' . $email);
-            Cache::forget('foreigner_otp_valid_' . $email);
+            Cache::forget('foreigner_otp_'.$email);
+            Cache::forget('foreigner_otp_valid_'.$email);
             $pending->update(['status' => 'COMPLETED']);
 
             DB::commit();
@@ -394,7 +425,7 @@ class ForeignerEnrollmentController extends BaseController
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Registration failed: ' . $e->getMessage(), [
+            Log::error('Registration failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'email' => $email,
             ]);
@@ -451,7 +482,8 @@ class ForeignerEnrollmentController extends BaseController
                 'data' => $payload,
             ];
         } catch (Throwable $e) {
-            Log::error('Subscription validation failed: ' . $e->getMessage());
+            Log::error('Subscription validation failed: '.$e->getMessage());
+
             return [
                 'status' => false,
                 'message' => "Échec de la validation de l'abonnement.",
@@ -496,7 +528,7 @@ class ForeignerEnrollmentController extends BaseController
             // However, looking at the code, we can find it via user_id.
             $identity = Identity::where('user_id', $user->id)->latest()->first();
             if ($identity) {
-                \App\Jobs\RegulaAnalysisJob::dispatch($identity->id);
+                RegulaAnalysisJob::dispatch($identity->id);
             }
         }
 

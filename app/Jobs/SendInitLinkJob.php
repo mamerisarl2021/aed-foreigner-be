@@ -17,12 +17,10 @@ final class SendInitLinkJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly mixed  $user,
+        public readonly mixed $user,
         public readonly string $code,
         public readonly string $type,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

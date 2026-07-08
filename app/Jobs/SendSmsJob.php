@@ -18,9 +18,7 @@ final class SendSmsJob implements ShouldQueue
     public function __construct(
         public readonly string $phoneNumber,
         public readonly string $msg,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

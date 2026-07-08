@@ -19,9 +19,7 @@ final class UserSubscribtionInitiatedJob implements ShouldQueue
     public function __construct(
         public readonly mixed $user,
         public readonly mixed $processId,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

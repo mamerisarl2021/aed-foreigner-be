@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\MockRegulaService;
+use App\Services\RegulaService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,8 +16,8 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(
-            \App\Services\RegulaService::class,
-            \App\Services\MockRegulaService::class
+            RegulaService::class,
+            MockRegulaService::class
         );
     }
 

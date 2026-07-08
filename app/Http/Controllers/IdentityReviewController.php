@@ -2,27 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\WelcomeUserJob;
-use App\Jobs\NotifyAdminJob;
-use App\Jobs\PlanifiedEmailJob;
 use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
+use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
-use App\Models\User;
+use App\Support\NotificationRecipient;
 use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-
 
 class IdentityReviewController extends BaseController
 {
@@ -52,7 +50,7 @@ class IdentityReviewController extends BaseController
         } else {
             $statuses = is_array($statusesParam)
                 ? $statusesParam
-                : array_map('trim', explode(',', (string)$statusesParam));
+                : array_map('trim', explode(',', (string) $statusesParam));
             // Ne garder que les valeurs autorisées
             $statuses = array_values(array_intersect($allowedStatuses, $statuses));
             if (empty($statuses)) {
@@ -60,20 +58,19 @@ class IdentityReviewController extends BaseController
             }
         }
 
-
         $query = Identity::with(['user:id,name,email,phonenumber,npi'])
             ->whereIn('status', $statuses);
 
         // Filtre assignation (assigned=true/false)
         if ($request->filled('assigned')) {
             $assigned = filter_var($request->input('assigned'), FILTER_VALIDATE_BOOLEAN);
-            $query->when($assigned, fn($q) => $q->whereNotNull('assigned_agent_id'))
-                ->when(!$assigned, fn($q) => $q->whereNull('assigned_agent_id'));
+            $query->when($assigned, fn ($q) => $q->whereNotNull('assigned_agent_id'))
+                ->when(! $assigned, fn ($q) => $q->whereNull('assigned_agent_id'));
         }
 
         // Filtre par agent
         if ($request->filled('agent_id')) {
-            $query->where('assigned_agent_id', (int)$request->input('agent_id'));
+            $query->where('assigned_agent_id', (int) $request->input('agent_id'));
         }
 
         // Filtre type/level
@@ -112,12 +109,12 @@ class IdentityReviewController extends BaseController
         $orderBy = $request->input('order_by', 'id');
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $allowedOrderBy = ['id', 'created_at'];
-        if (!in_array($orderBy, $allowedOrderBy, true)) {
+        if (! in_array($orderBy, $allowedOrderBy, true)) {
             $orderBy = 'id';
         }
         $query->orderBy($orderBy, $orderDir);
 
-        $perPage = (int)$request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $items = $query->paginate($perPage);
 
         // Enrichir avec la structure récente + docs
@@ -127,6 +124,7 @@ class IdentityReviewController extends BaseController
                 ->latest('id')
                 ->first();
             $identity->setAttribute('structure', $structure);
+
             return $identity;
         });
 
@@ -159,7 +157,7 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Impossible de réserver cette demande (statut non PENDING).', null, 422);
         }
         $agentId = Auth::id();
-        if (!$agentId) {
+        if (! $agentId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
         if ($identity->assigned_agent_id && $identity->assigned_agent_id !== $agentId) {
@@ -167,6 +165,7 @@ class IdentityReviewController extends BaseController
         }
         $identity->assigned_agent_id = $agentId;
         $identity->save();
+
         return $this->sendResponse('Demande assignée.', $identity);
     }
 
@@ -178,7 +177,7 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Statut non PENDING.', null, 422);
         }
         $agentId = Auth::id();
-        if (!$agentId) {
+        if (! $agentId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
@@ -188,8 +187,8 @@ class IdentityReviewController extends BaseController
 
             // Générer un identifiant technique (NPI) si manquant
             $user = $identity->user;
-            if (!$user->npi) {
-                $user->npi = 'F-' . str_pad((string)$user->id, 8, '0', STR_PAD_LEFT);
+            if (! $user->npi) {
+                $user->npi = 'F-'.str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
                 $user->save();
             }
             // Notification étape agent
@@ -213,6 +212,7 @@ class IdentityReviewController extends BaseController
             $identity->status = 'APPROVED_BY_AGENT';
             $identity->save();
             DB::commit();
+
             return $this->sendResponse('Demande validée par l’agent et transmise au superviseur.', [
                 'identity_id' => $identity->id,
                 'user_id' => $user->id,
@@ -220,7 +220,7 @@ class IdentityReviewController extends BaseController
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Approve identity failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Approve identity failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             if (app()->environment('testing')) {
                 return response()->json([
                     'success' => false,
@@ -229,6 +229,7 @@ class IdentityReviewController extends BaseController
                     'exception' => $e->getMessage(),
                 ], 500);
             }
+
             return $this->sendError("Erreur lors de l'approbation agent.", null, 500);
         }
     }
@@ -241,15 +242,15 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Statut non APPROVED_BY_AGENT.', null, 422);
         }
         $supervisorId = Auth::id();
-        if (!$supervisorId) {
+        if (! $supervisorId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
         DB::beginTransaction();
         try {
             $user = $identity->user;
-            if (!$user->npi) {
-                $user->npi = 'F-' . str_pad((string)$user->id, 8, '0', STR_PAD_LEFT);
+            if (! $user->npi) {
+                $user->npi = 'F-'.str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
                 $user->save();
             }
 
@@ -264,7 +265,7 @@ class IdentityReviewController extends BaseController
                     ['npi' => $npi, 'type' => 'all'],
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );
-                $link = env('FRONT_URL') . "/init-account/all/$allToken/$npi";
+                $link = env('FRONT_URL')."/init-account/all/$allToken/$npi";
                 WelcomeUserJob::dispatch($email, $user, $link, true);
             } else {
                 $allToken = Str::random(60);
@@ -284,13 +285,14 @@ class IdentityReviewController extends BaseController
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );
 
-                $link = env('FRONT_URL') . "/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
+                $link = env('FRONT_URL')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
                 WelcomeUserJob::dispatch($email, $user, $link, true);
             }
 
             $identity->status = 'APPROVED';
             $identity->save();
             DB::commit();
+
             return $this->sendResponse('Demande approuvée par le superviseur et compte initialisé.', [
                 'identity_id' => $identity->id,
                 'user_id' => $user->id,
@@ -298,7 +300,8 @@ class IdentityReviewController extends BaseController
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Supervisor approve failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Supervisor approve failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return $this->sendError("Erreur lors de l'approbation superviseur.", null, 500);
         }
     }
@@ -323,10 +326,12 @@ class IdentityReviewController extends BaseController
         DB::beginTransaction();
         try {
             $this->extracted($request, $identity);
+
             return $this->sendResponse('Demande rejetée par le superviseur et notifiée.', ['identity_id' => $identity->id]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Supervisor reject failed: ' . $e->getMessage());
+            Log::error('Supervisor reject failed: '.$e->getMessage());
+
             return $this->sendError('Erreur lors du rejet superviseur.', null, 500);
         }
     }
@@ -351,20 +356,17 @@ class IdentityReviewController extends BaseController
         DB::beginTransaction();
         try {
             $this->extracted($request, $identity);
+
             return $this->sendResponse('Demande rejetée et notifiée.', ['identity_id' => $identity->id]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Reject identity failed: ' . $e->getMessage());
+            Log::error('Reject identity failed: '.$e->getMessage());
+
             return $this->sendError('Erreur lors du rejet.', null, 500);
         }
     }
 
-    /**
-     * @param Request $request
-     * @param \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Collection|Identity|null $identity
-     * @return void
-     */
-    private function extracted(Request $request, \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Eloquent\Collection|Identity|null $identity): void
+    private function extracted(Request $request, Model|Collection|Identity|null $identity): void
     {
         $identity->reject_stage = $request->input('stage');
         $identity->reject_reasons = json_encode($request->input('reasons'));

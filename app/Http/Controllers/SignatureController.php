@@ -6,11 +6,11 @@ use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
 use App\Models\Signature;
 use App\Models\SignatureDocument;
 use App\Models\Stamp;
 use App\Models\User;
+use App\Support\NotificationRecipient;
 use App\Traits\AuthTrait;
 use Exception;
 use GuzzleHttp\Client;
@@ -20,10 +20,10 @@ use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\File;
 use phpseclib3\File\ASN1;
 use setasign\Fpdi\Fpdi;
 
@@ -42,7 +42,7 @@ class SignatureController extends BaseController
                 ->first();
 
             $user = User::where('id', $userId)->first();
-            if (!$existingSignature) {
+            if (! $existingSignature) {
                 $created = Signature::create([
                     'signature_document_id' => $documentId,
                     'user_id' => $userId,
@@ -54,19 +54,19 @@ class SignatureController extends BaseController
             }
 
             return $this->sendResponse('Invitation envoyée avec succès.', []);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Échec de la création du document:', ['exception' => $e->getMessage()]);
+
             return $this->sendError('Échec de la création du document.', [$e->getMessage()]);
         }
     }
-
 
     public function storeMultiple(string $documentId, Request $request)
     {
         $request->validate([
             'users' => 'required|array',
             'users.*.email' => 'required|exists:users,email',
-            'users.*.location' => 'required|string'
+            'users.*.location' => 'required|string',
         ]);
         $users = $request->input('users');
 
@@ -88,7 +88,7 @@ class SignatureController extends BaseController
                     ->where('user_id', $user->id)
                     ->first();
 
-                if (!$existingSignature) {
+                if (! $existingSignature) {
                     // Créer une nouvelle signature
                     $created = Signature::create([
                         'signature_document_id' => $documentId,
@@ -109,15 +109,15 @@ class SignatureController extends BaseController
             DB::commit();
 
             return $this->sendResponse('Invitations envoyées avec succès.', $signatures);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Annuler la transaction en cas d'erreur
             DB::rollBack();
 
             Log::error('Échec de la création du document:', ['exception' => $e->getMessage()]);
+
             return $this->sendError('Échec de la création du document.', [$e->getMessage()]);
         }
     }
-
 
     public function init(SignatureDocument $signature_document, string $token)
     {
@@ -125,12 +125,14 @@ class SignatureController extends BaseController
             $pdfPath = $signature_document->file_path;
             $signatureProcess = $this->createSignatureProcess($pdfPath, $token);
 
-            if (!$signatureProcess['status']) {
+            if (! $signatureProcess['status']) {
                 return $this->sendError($signatureProcess['message'], null, $signatureProcess['code']);
             }
+
             return $this->sendResponse('La signature a bien été initié sur le document vous serez redirigé pour la finalisation du processus.', $signatureProcess);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Échec de la signature du document:', ['exception' => $e->getMessage()]);
+
             return $this->sendError('Échec de la signature du document.', [$e->getMessage()]);
         }
     }
@@ -157,14 +159,14 @@ class SignatureController extends BaseController
             if ($showName) {
                 $signatureDetails['signature_details']['details'][] = [
                     'type' => 'subject',
-                    'title' => 'Identité du signataire: '
+                    'title' => 'Identité du signataire: ',
                 ];
             }
 
             if ($showLocation) {
                 $signatureDetails['signature_details']['details'][] = [
                     'type' => 'location',
-                    'title' => 'Lieu: '
+                    'title' => 'Lieu: ',
                 ];
             }
 
@@ -173,14 +175,14 @@ class SignatureController extends BaseController
             if ($showDate) {
                 $signatureDetails['signature_details']['details'][] = [
                     'type' => 'date',
-                    'title' => 'Date: '
+                    'title' => 'Date: ',
                 ];
             }
 
             // Ajout des informations de signature
             $signatureProcess = $this->createSignatureProcessWithLocation($pdfPath, $token, $location, $path, $signatureDetails);
 
-            if (!$signatureProcess['status']) {
+            if (! $signatureProcess['status']) {
                 return $this->sendError($signatureProcess['message'], null, $signatureProcess['code']);
             }
 
@@ -188,8 +190,9 @@ class SignatureController extends BaseController
                 'La signature a bien été initiée sur le document. Vous serez redirigé pour la finalisation du processus.',
                 $signatureProcess
             );
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Échec de la signature du document:', ['exception' => $e]);
+
             return $this->sendError('Échec de la signature du document.', [$e->getMessage()]);
         }
     }
@@ -200,7 +203,7 @@ class SignatureController extends BaseController
             $pdfPath = $signature_document->file_path;
             $signatureProcess = $this->obtainedDocumentInformation($processId, $token);
 
-            if (!$signatureProcess['status']) {
+            if (! $signatureProcess['status']) {
                 return $this->sendError($signatureProcess['data'], null, $signatureProcess['code']);
             }
 
@@ -210,7 +213,7 @@ class SignatureController extends BaseController
 
             $documentResponse = $signature->toTimestamp ? $this->getSignedDocumentWithTimestamp($documentUrl, $token, $pdfPath) : $this->getSignedDocument($documentUrl, $token, $pdfPath);
 
-            if (!$documentResponse['status']) {
+            if (! $documentResponse['status']) {
                 return $this->sendError($documentResponse['data'], '', $documentResponse['code']);
             }
             $this->deleteSignatureProcess($processId, $token);
@@ -219,7 +222,7 @@ class SignatureController extends BaseController
             $signature->save();
 
             // Check if all signatures are completed
-            if ($signature_document->signatures->every(fn($sig) => $sig->status === 'signed')) {
+            if ($signature_document->signatures->every(fn ($sig) => $sig->status === 'signed')) {
                 $signature_document->status = 'completed';
                 $signature_document->save();
             }
@@ -233,7 +236,7 @@ class SignatureController extends BaseController
             ];
 
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Document signé: ' . $documentTitle,
+                subject: 'Document signé: '.$documentTitle,
                 template: NotificationTemplate::DocumentSigned,
                 recipients: [
                     NotificationRecipient::email($documentOwner->email, $variables),
@@ -244,8 +247,9 @@ class SignatureController extends BaseController
             ));
 
             return $this->sendResponse('Document signé avec succès.', $signature_document);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Échec de la signature du document:', ['exception' => $e]);
+
             return $this->sendError('Échec de la signature du document.', [$e->getMessage()]);
         }
     }
@@ -259,7 +263,7 @@ class SignatureController extends BaseController
         $documentHash = hash('sha256', $documentContent);
 
         // Initialiser l'encodeur ASN1
-        $asn1 = new ASN1();
+        $asn1 = new ASN1;
 
         // Schéma pour encoder une requête TSQ
         $tsqSchema = [
@@ -272,15 +276,15 @@ class SignatureController extends BaseController
                         'hashAlgorithm' => [
                             'type' => ASN1::TYPE_SEQUENCE,
                             'children' => [
-                                'algorithm' => ['type' => ASN1::TYPE_OBJECT_IDENTIFIER]
-                            ]
+                                'algorithm' => ['type' => ASN1::TYPE_OBJECT_IDENTIFIER],
+                            ],
                         ],
-                        'hashedMessage' => ['type' => ASN1::TYPE_OCTET_STRING]
-                    ]
+                        'hashedMessage' => ['type' => ASN1::TYPE_OCTET_STRING],
+                    ],
                 ],
                 'nonce' => ['type' => ASN1::TYPE_INTEGER],
-                'certReq' => ['type' => ASN1::TYPE_BOOLEAN]
-            ]
+                'certReq' => ['type' => ASN1::TYPE_BOOLEAN],
+            ],
         ];
 
         // Données pour la requête TSQ
@@ -288,10 +292,10 @@ class SignatureController extends BaseController
             'version' => 1,
             'messageImprint' => [
                 'hashAlgorithm' => ['algorithm' => '2.16.840.1.101.3.4.2.1'], // OID pour SHA-256
-                'hashedMessage' => hex2bin($documentHash)
+                'hashedMessage' => hex2bin($documentHash),
             ],
             'nonce' => random_int(PHP_INT_MIN, PHP_INT_MAX),
-            'certReq' => true
+            'certReq' => true,
         ];
 
         // Encoder les données en DER
@@ -299,7 +303,7 @@ class SignatureController extends BaseController
 
         // Envoyer la requête au serveur TSA
         $response = Http::withHeaders([
-            'Content-Type' => 'application/timestamp-query'
+            'Content-Type' => 'application/timestamp-query',
         ])->post('http://test-tsa-pki.gouv.bj', $tsq);
 
         if ($response->successful()) {
@@ -309,7 +313,7 @@ class SignatureController extends BaseController
 
             return $tspResponse;
         } else {
-            throw new Exception("Erreur lors de la requête de timestamping.");
+            throw new Exception('Erreur lors de la requête de timestamping.');
         }
     }
 
@@ -332,7 +336,7 @@ class SignatureController extends BaseController
             ];
 
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Document refusé: ' . $documentTitle,
+                subject: 'Document refusé: '.$documentTitle,
                 template: NotificationTemplate::SignatureRejected,
                 recipients: [
                     NotificationRecipient::email($documentOwner->email, $variables),
@@ -343,8 +347,9 @@ class SignatureController extends BaseController
             ));
 
             return $this->sendResponse('Signature refusée.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Échec du refus de la signature:', ['exception' => $e->getMessage()]);
+
             return $this->sendError('Échec du refus de la signature.', [$e->getMessage()]);
         }
     }
@@ -364,7 +369,7 @@ class SignatureController extends BaseController
         )->post("https://{$this->TX_BASE_URL}/trustedx-resources/esignsp/v2/signer_processes", [
             'process' => json_encode([
                 'process_type' => 'urn:safelayer:eidas:processes:document:sign:esigp',
-                'labels' => [["server", "citizen"], ["server", "employee"]],
+                'labels' => [['server', 'citizen'], ['server', 'employee']],
                 'signer' => [
                     'signature_policy_id' => 'urn:safelayer:eidas:policies:sign:document:pdf',
                     'parameters' => [
@@ -395,21 +400,22 @@ class SignatureController extends BaseController
                 'ui_locales' => ['en_US'],
                 // "timestamp" => ["provider_id" => "urn:gob:signature:generation:policy"],
                 // 'finish_callback_url' => "com.aed.mobile://signature/response",
-                'finish_callback_url' => "https://local-aed.qcdigitalhub.com/waiting-page",
-            ])
+                'finish_callback_url' => 'https://local-aed.qcdigitalhub.com/waiting-page',
+            ]),
         ]);
 
         if ($response->successful()) {
             return [
-                "status" => true,
+                'status' => true,
                 'data' => $response->json(),
-                'code' => 201
+                'code' => 201,
             ];
         }
+
         return [
-            "status" => false,
+            'status' => false,
             'message' => $response->reason(),
-            'code' => 401
+            'code' => 401,
         ];
     }
 
@@ -428,7 +434,7 @@ class SignatureController extends BaseController
 
         try {
             // Use FPDI to get PDF dimensions
-            $pdf = new Fpdi();
+            $pdf = new Fpdi;
             $pageCount = $pdf->setSourceFile($tempFile);
 
             // Get the page specified in location
@@ -460,7 +466,7 @@ class SignatureController extends BaseController
             )->post("https://{$this->TX_BASE_URL}/trustedx-resources/esignsp/v2/signer_processes", [
                 'process' => json_encode([
                     'process_type' => 'urn:safelayer:eidas:processes:document:sign:esigp',
-                    'labels' => [["server", "citizen"], ["server", "employee"]],
+                    'labels' => [['server', 'citizen'], ['server', 'employee']],
                     'signer' => [
                         'signature_policy_id' => 'urn:safelayer:eidas:policies:sign:document:pdf',
                         'parameters' => [
@@ -468,7 +474,7 @@ class SignatureController extends BaseController
                             'default_digest_algorithm' => 'sha256',
                             'location' => 'Bénin, Cotonou',
                             'signature_field' => [
-                                'name' => Auth::user()->name . '_Signature',
+                                'name' => Auth::user()->name.'_Signature',
                                 'location' => [
                                     'page' => ['number' => $pageNo],
                                     'rectangle' => [
@@ -479,8 +485,8 @@ class SignatureController extends BaseController
                                     ],
                                 ],
                                 'appearance' => [
-                                    "foreground_image" => ["binary" => $base64Img],
-                                    ...$signatureDetails
+                                    'foreground_image' => ['binary' => $base64Img],
+                                    ...$signatureDetails,
                                 ],
                             ],
                         ],
@@ -488,8 +494,8 @@ class SignatureController extends BaseController
                     'ui_locales' => ['en_US'],
                     // "timestamp" => ["provider_id" => "urn:gob:signature:generation:policy"],
                     // 'finish_callback_url' => "https://local-aed.qcdigitalhub.com/waiting-page-web",
-                    'finish_callback_url' => "https://local-aed.qcdigitalhub.com/waiting-page-web",
-                ])
+                    'finish_callback_url' => 'https://local-aed.qcdigitalhub.com/waiting-page-web',
+                ]),
             ]);
         } finally {
             // Clean up temporary file
@@ -501,15 +507,16 @@ class SignatureController extends BaseController
 
         if ($response->successful()) {
             return [
-                "status" => true,
+                'status' => true,
                 'data' => $response->json(),
-                'code' => 201
+                'code' => 201,
             ];
         }
+
         return [
-            "status" => false,
+            'status' => false,
             'message' => $response->reason(),
-            'code' => 401
+            'code' => 401,
         ];
     }
 
@@ -520,17 +527,18 @@ class SignatureController extends BaseController
 
         if ($response->successful()) {
             Storage::cloud()->put($finalPath, $response->body());
+
             return [
                 'status' => true,
                 'code' => 200,
-                'data' => "Document signé avec suucès."
+                'data' => 'Document signé avec suucès.',
             ];
         }
 
         return [
             'status' => false,
             'code' => 500,
-            'data' => "Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer."
+            'data' => 'Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer.',
         ];
     }
 
@@ -625,7 +633,7 @@ class SignatureController extends BaseController
 
     public function getSignedDocumentWithTimestamp($documentUrl, $pkiToken, $finalPath)
     {
-        $client = new Client();
+        $client = new Client;
         $headers = [
             'Content-Type' => 'application/json',
         ];
@@ -646,8 +654,8 @@ class SignatureController extends BaseController
                 // Fetch the document
                 $response = $client->get($documentUrl, [
                     'headers' => [
-                        'Authorization' => 'Bearer ' . $pkiToken
-                    ]
+                        'Authorization' => 'Bearer '.$pkiToken,
+                    ],
                 ]);
 
                 $fileContent = $response->getBody()->getContents();
@@ -660,21 +668,21 @@ class SignatureController extends BaseController
                         'filename' => 'document.pdf',
                         'headers' => [
                             'Content-Type' => 'application/pdf',
-                        ]
+                        ],
                     ],
                     [
                         'name' => 'field_name',
-                        'contents' => Auth::user()->name . '_Timestamp'
-                    ]
+                        'contents' => Auth::user()->name.'_Timestamp',
+                    ],
                 ]);
 
                 // Send timestamping request
                 $timestampResponse = $client->post("$this->TIMESATAMP_API_BASE_URL/api/timestamps/timestamp_pdf/", [
                     'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type' => 'multipart/form-data; boundary=' . $multipartRequest->getBoundary()
+                        'Authorization' => 'Bearer '.$accessToken,
+                        'Content-Type' => 'multipart/form-data; boundary='.$multipartRequest->getBoundary(),
                     ],
-                    'body' => $multipartRequest
+                    'body' => $multipartRequest,
                 ]);
 
                 if ($timestampResponse->getStatusCode() == 201) {
@@ -684,7 +692,7 @@ class SignatureController extends BaseController
                     return [
                         'status' => true,
                         'code' => 200,
-                        'data' => "Document signé avec succès.",
+                        'data' => 'Document signé avec succès.',
                     ];
                 } else {
                     return [
@@ -699,7 +707,7 @@ class SignatureController extends BaseController
                 return [
                     'status' => false,
                     'code' => 401,
-                    'data' => "Échec de l'authentification. Vérifiez vos informations de connexion."
+                    'data' => "Échec de l'authentification. Vérifiez vos informations de connexion.",
                 ];
             }
         } catch (RequestException $e) {
@@ -707,7 +715,7 @@ class SignatureController extends BaseController
             return [
                 'status' => false,
                 'code' => 500,
-                'data' => "Une erreur est survenue: " . $e->getMessage()
+                'data' => 'Une erreur est survenue: '.$e->getMessage(),
             ];
         }
     }
@@ -735,17 +743,18 @@ class SignatureController extends BaseController
                 $output = [
                     'status' => false,
                     'code' => 401,
-                    'data' => "Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer."
+                    'data' => 'Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer.',
                 ];
             }
         } catch (Exception $e) {
-            Log::error('Une erreur est survenue lors de la récupération des informations:', ["error" => $e->getMessage()]);
+            Log::error('Une erreur est survenue lors de la récupération des informations:', ['error' => $e->getMessage()]);
             $output = [
                 'status' => false,
                 'code' => 500,
-                'data' => "Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer."
+                'data' => 'Une erreur est survenue lors de la récupération des informations au niveau de la PKI. Nous vous prions de patienter un instant et réessayer.',
             ];
         }
+
         return $output;
     }
 
@@ -757,11 +766,11 @@ class SignatureController extends BaseController
         $variables = [
             'documentTitle' => $documentTitle,
             'inviterName' => $signature->document->user->name,
-            'signatureLink' => config('app.frontend_url') . '/backoffice/client/received-documents',
+            'signatureLink' => config('app.frontend_url').'/backoffice/client/received-documents',
         ];
 
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Invitation de signature pour ' . $documentTitle,
+            subject: 'Invitation de signature pour '.$documentTitle,
             template: NotificationTemplate::SignatureInvitation,
             recipients: [
                 NotificationRecipient::email($recipientEmail, $variables),

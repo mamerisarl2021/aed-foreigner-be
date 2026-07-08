@@ -2,8 +2,18 @@
 
 namespace App\Policies;
 
+use App\Models\Attachment;
+use App\Models\Cases;
+use App\Models\Identity;
+use App\Models\IdRequest;
+use App\Models\Message;
+use App\Models\OTP;
+use App\Models\Structure;
+use App\Models\StructurePackage;
+use App\Models\StructureSubscription;
 use App\Models\User;
-use App\Models\{Attachment, Cases, Identity, IdRequest, Message, OTP, Structure, StructurePackage, StructureSubscription, UserPackage, UserSubscription};
+use App\Models\UserPackage;
+use App\Models\UserSubscription;
 
 class AuthorizationPolicy
 {

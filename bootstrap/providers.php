@@ -1,12 +1,18 @@
 <?php
 
 declare(strict_types=1);
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthServiceProvider;
+use App\Providers\ConsulServiceProvider;
+use App\Providers\EventServiceProvider;
+use App\Providers\NotificationServiceProvider;
+use OwenIt\Auditing\AuditingServiceProvider;
 
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\AuthServiceProvider::class,
-    App\Providers\EventServiceProvider::class,
-    App\Providers\ConsulServiceProvider::class,
-    App\Providers\NotificationServiceProvider::class,
-    OwenIt\Auditing\AuditingServiceProvider::class,
+    AppServiceProvider::class,
+    AuthServiceProvider::class,
+    EventServiceProvider::class,
+    ConsulServiceProvider::class,
+    NotificationServiceProvider::class,
+    AuditingServiceProvider::class,
 ];

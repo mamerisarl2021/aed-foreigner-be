@@ -20,9 +20,7 @@ final class SendStructureInvitationEmail implements ShouldQueue
 
     public function __construct(
         public readonly StructureInvitation $invitation,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {
@@ -54,7 +52,7 @@ final class SendStructureInvitationEmail implements ShouldQueue
         ];
 
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Invitation à rejoindre ' . $invitation->structure->name,
+            subject: 'Invitation à rejoindre '.$invitation->structure->name,
             template: NotificationTemplate::StructureInvitation,
             recipients: [
                 NotificationRecipient::email($invitation->email, $variables),

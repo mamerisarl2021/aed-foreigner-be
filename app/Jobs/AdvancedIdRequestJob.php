@@ -18,9 +18,7 @@ final class AdvancedIdRequestJob implements ShouldQueue
 
     public function __construct(
         public readonly mixed $user,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

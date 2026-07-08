@@ -2,19 +2,19 @@
 
 namespace Tests\Feature;
 
-use PHPUnit\Framework\Attributes\Test;
+use App\Http\Controllers\IdentityReviewController;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -23,6 +23,7 @@ class IdentityReviewControllerTest extends TestCase
     use RefreshDatabase, WithFaker;
 
     private User $agent;
+
     private User $supervisor;
 
     protected function setUp(): void
@@ -139,7 +140,7 @@ class IdentityReviewControllerTest extends TestCase
         $supervisor->assignRole('superviseur');
         Sanctum::actingAs($supervisor);
 
-        $this->partialMock(\App\Http\Controllers\IdentityReviewController::class, function ($mock) {
+        $this->partialMock(IdentityReviewController::class, function ($mock) {
             $mock->shouldAllowMockingProtectedMethods();
             $mock->shouldReceive('register')->andReturn(['status' => true, 'has_user' => false]);
         });
@@ -405,11 +406,11 @@ class IdentityReviewControllerTest extends TestCase
 
         Sanctum::actingAs($this->agent);
 
-        $response = $this->getJson($this->api('/management/identity-reviews?from=' . now()->toDateString()));
+        $response = $this->getJson($this->api('/management/identity-reviews?from='.now()->toDateString()));
         $response->assertStatus(200);
         $this->assertCount(1, $response->json('data.data'));
 
-        $response = $this->getJson($this->api('/management/identity-reviews?to=' . now()->subDay()->toDateString()));
+        $response = $this->getJson($this->api('/management/identity-reviews?to='.now()->subDay()->toDateString()));
         $response->assertStatus(200);
         $this->assertCount(1, $response->json('data.data'));
     }
