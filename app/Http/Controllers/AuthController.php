@@ -320,7 +320,7 @@ class AuthController extends BaseController
             ]);
 
             // Envoyer un e-mail à l'utilisateur avec le lien de réinitialisation
-            $resetLink = env('FRONT_URL').'/backoffice/agent/init-password?token='.$token.'&email='.urlencode($user->email);
+            $resetLink = config('app.frontend_url').'/backoffice/agent/init-password?token='.$token.'&email='.urlencode($user->email);
 
             // Dispatch welcome email job
             WelcomeAgentJob::dispatch($user, $resetLink);
@@ -573,7 +573,7 @@ class AuthController extends BaseController
                 );
 
                 // Générer le lien de réinitialisation
-                $resetLink = env('FRONT_URL').'/reset-password/'.$token.'/'.urlencode($user->email);
+                $resetLink = config('app.frontend_url').'/reset-password/'.$token.'/'.urlencode($user->email);
 
                 // Envoyer l'e-mail
                 ResetPasswordJob::dispatch($user, $resetLink);

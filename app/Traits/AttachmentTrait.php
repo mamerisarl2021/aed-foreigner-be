@@ -30,10 +30,10 @@ trait AttachmentTrait
     public function __construct(User $model)
     {
         $this->model = $model;
-        $this->CLIENT_SECRET = env('TX_CLIENT_SECRET');
-        $this->TX_BASE_URL = env('TX_BASE_URL');
-        $this->ANIP_BASE_URL = env('ANIP_BASE_URL');
-        $this->CLIENT_ID = env('TX_CLIENT_ID');
+        $this->CLIENT_SECRET = config('trustedx.client_secret');
+        $this->TX_BASE_URL = config('trustedx.base_url');
+        $this->ANIP_BASE_URL = config('trustedx.anip_base_url');
+        $this->CLIENT_ID = config('trustedx.client_id');
     }
 
     public function attachFiles(mixed $files, string $attachmentId)
@@ -61,7 +61,7 @@ trait AttachmentTrait
                 'message' => 'Pièce jointe crée avec succès.',
             ];
         } catch (\Exception $e) {
-            Log::error('Creating document failed: '.$e->getMessage());
+            Log::error('Creating document failed: ' . $e->getMessage());
 
             return [
                 'status' => false,

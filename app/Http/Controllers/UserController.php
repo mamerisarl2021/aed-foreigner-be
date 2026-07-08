@@ -528,7 +528,7 @@ class UserController extends BaseController
                         ['npi' => $user->npi, 'type' => 'all'],
                         ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                     );
-                    $link = env('FRONT_URL')."/init-account/all/$allToken/$user->npi";
+                    $link = config('app.frontend_url')."/init-account/all/$allToken/$user->npi";
                     WelcomeUserJob::dispatch($user->email, $user, $link, true);
                 }
             });
@@ -636,7 +636,7 @@ class UserController extends BaseController
                                     ['npi' => $npi, 'type' => 'all'],
                                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                                 );
-                                $link = env('FRONT_URL')."/init-account/all/$allToken/$npi";
+                                $link = config('app.frontend_url')."/init-account/all/$allToken/$npi";
                                 WelcomeUserJob::dispatch($email, User::findOrFail($identityPayload['user_id']), $link, true);
                             } else {
                                 $allToken = Str::random(60);
@@ -656,7 +656,7 @@ class UserController extends BaseController
                                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                                 );
 
-                                $link = env('FRONT_URL')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
+                                $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
                                 WelcomeUserJob::dispatch($email, User::findOrFail($identityPayload['user_id']), $link, true);
                             }
                         } else {
@@ -747,7 +747,7 @@ class UserController extends BaseController
 
         $user = $this->getUserWithNPI($npi);
         if ($user['status']) {
-            $link = env('FRONT_URL')."/reset/{$type}/$token/$npi";
+            $link = config('app.frontend_url')."/reset/{$type}/$token/$npi";
 
             $phoneNumber = User::whereNpi($npi)->first()->phonenumber;
             $email = User::whereNpi($npi)->first()->email;

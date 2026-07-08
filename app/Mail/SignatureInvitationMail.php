@@ -37,7 +37,7 @@ class SignatureInvitationMail extends Mailable
             with: [
                 'documentTitle' => $this->documentTitle,
                 'inviterName' => $this->signature->document->user->name,
-                'signatureLink' => env('FRONTEND_URL').'/backoffice/client/received-documents',
+                'signatureLink' => config('app.frontend_url').'/backoffice/client/received-documents',
             ]
         );
     }

@@ -265,7 +265,7 @@ class IdentityReviewController extends BaseController
                     ['npi' => $npi, 'type' => 'all'],
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );
-                $link = env('FRONT_URL')."/init-account/all/$allToken/$npi";
+                $link = config('app.frontend_url')."/init-account/all/$allToken/$npi";
                 WelcomeUserJob::dispatch($email, $user, $link, true);
             } else {
                 $allToken = Str::random(60);
@@ -285,7 +285,7 @@ class IdentityReviewController extends BaseController
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );
 
-                $link = env('FRONT_URL')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
+                $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
                 WelcomeUserJob::dispatch($email, $user, $link, true);
             }
 

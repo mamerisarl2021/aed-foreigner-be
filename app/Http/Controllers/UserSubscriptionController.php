@@ -59,14 +59,14 @@ class UserSubscriptionController extends BaseController
         // $private_key = "tpk_9d0fc7a2649011ef9e4c8f724a020285";
         // $secret = "tsk_9d0fc7a3649011ef9e4c8f724a020285";
 
-        $public_key = env('KKIA_PUBLIC_KEY');
-        $private_key = env('KKIA_PRIVATE_KEY');
-        $secret = env('KKIA_SECRET_KEY');
+        $public_key = config('kkiapay.public_key');
+        $private_key = config('kkiapay.private_key');
+        $secret = config('kkiapay.secret');
         $kkiapay = new Kkiapay(
             $public_key,
             $private_key,
             $secret,
-            $sandbox = true
+            config('kkiapay.sandbox')
         );
 
         $payement = $kkiapay->verifyTransaction($transId);

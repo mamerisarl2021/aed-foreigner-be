@@ -31,7 +31,7 @@ class PasswordResetController extends BaseController
         $user = $this->getUserWithNPI($request->input('npi'));
         if ($user['status']) {
             $type = $request->input('type') == 'password' ? 'mot de passe' : 'pin';
-            $link = env('FRONT_URL')."/reset/{$request->input('type')}/$token/$npi";
+            $link = config('app.frontend_url')."/reset/{$request->input('type')}/$token/$npi";
 
             $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
             $email = User::whereNpi($request->input('npi'))->first()->email;

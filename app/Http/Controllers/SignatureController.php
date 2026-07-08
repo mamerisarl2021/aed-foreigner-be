@@ -170,7 +170,7 @@ class SignatureController extends BaseController
                 ];
             }
 
-            $timezone = env('APP_TIMEZONE');
+            $timezone = config('app.timezone');
 
             if ($showDate) {
                 $signatureDetails['signature_details']['details'][] = [

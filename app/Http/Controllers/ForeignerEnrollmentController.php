@@ -235,7 +235,7 @@ class ForeignerEnrollmentController extends BaseController
             ],
         ]);
 
-        $front = env('FRONT_URL', config('app.url'));
+        $front = config('app.frontend_url');
         $link = rtrim($front, '/').'/register/foreigner/'.$token;
         ForeignerInitRegistrationJob::dispatch($email, $link);
 

@@ -435,7 +435,7 @@ class SigningIdentityController extends BaseController
     private function getAccessToken($authorizationCode, $processId)
     {
         try {
-            $redirect_uri = env('FRONTEND_URL').'/bridge-page?type=employee_'.$processId;
+            $redirect_uri = config('app.frontend_url').'/bridge-page?type=employee_'.$processId;
             $response = Http::withOptions([
                 'verify' => false,
             ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirect_uri");
@@ -466,7 +466,7 @@ class SigningIdentityController extends BaseController
 
     private function getAdminAccessToken($authorizationCode, $processId)
     {
-        $redirect_uri = env('FRONTEND_URL').'/bridge-page?type=citizen_'.$processId;
+        $redirect_uri = config('app.frontend_url').'/bridge-page?type=citizen_'.$processId;
         try {
             $response = Http::withOptions([
                 'verify' => false,

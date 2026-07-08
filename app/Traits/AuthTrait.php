@@ -43,16 +43,16 @@ trait AuthTrait
     public function __construct(User $model)
     {
         $this->model = $model;
-        $this->TX_CLIENT_SECRET = env('TX_CLIENT_SECRET');
-        $this->TX_BASE_URL = env('TX_BASE_URL');
-        $this->TIMESATAMP_API_BASE_URL = env('TIMESTAMP_API_URL');
-        $this->TIMESATAMP_API_USERNAME = env('TIMESTAMP_API_USERNAME');
-        $this->TIMESATAMP_API_PASSWORD = env('TIMESTAMP_API_PASSWORD');
-        $this->TX_CLIENTS_LOGGED_AS = env('TX_CLIENTS_LOGGED_AS');
-        $this->TX_ADMINS_LOGGED_AS = env('TX_ADMINS_LOGGED_AS');
-        $this->TX_ANIP_BASE_URL = env('ANIP_BASE_URL');
-        $this->TX_CLIENT_ID = env('TX_CLIENT_ID');
-        $this->TX_REDIRECT_URL = env('TX_REDIRECT_URL');
+        $this->TX_CLIENT_SECRET = config('trustedx.client_secret');
+        $this->TX_BASE_URL = config('trustedx.base_url');
+        $this->TIMESATAMP_API_BASE_URL = config('trustedx.timestamp.url');
+        $this->TIMESATAMP_API_USERNAME = config('trustedx.timestamp.username');
+        $this->TIMESATAMP_API_PASSWORD = config('trustedx.timestamp.password');
+        $this->TX_CLIENTS_LOGGED_AS = config('trustedx.clients_logged_as');
+        $this->TX_ADMINS_LOGGED_AS = config('trustedx.admins_logged_as');
+        $this->TX_ANIP_BASE_URL = config('trustedx.anip_base_url');
+        $this->TX_CLIENT_ID = config('trustedx.client_id');
+        $this->TX_REDIRECT_URL = config('trustedx.redirect_url');
     }
 
     public function obtainToken(string $code)
