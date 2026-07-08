@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Management\UpdateAttachmentStatusRequest;
 use App\Models\Attachment;
 use App\Models\Document;
 use App\Traits\AttachmentTrait;
 use App\Traits\AuditTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 
 class AttachmentController extends BaseController
 {
@@ -156,19 +156,8 @@ class AttachmentController extends BaseController
      *      @OA\Response(response=200, description="Success")
      * )
      */
-    public function updateAttachmentStatus(Request $request)
+    public function updateAttachmentStatus(UpdateAttachmentStatusRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'attachments' => 'required|array',
-            'attachments.*.id' => 'required|integer|exists:attachments,id',
-            'attachments.*.status' => 'required|in:SENT,VALIDATED,REJECTED',
-            'attachments.*.message' => 'required_if:attachments.*.status,REJECTED|string',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Un ou plusieurs des champs renseignés sont invalides.', $validator->errors(), 400);
-        }
-
         $attachments = $request->input('attachments');
 
         try {

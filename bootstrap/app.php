@@ -28,6 +28,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Spatie\Permission\Exceptions\UnauthorizedException;
@@ -104,6 +105,19 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => "Vous n'avez pas les accès requis pour accéder à cette ressource",
                     'status' => 403,
                 ], 403);
+            }
+
+            return null;
+        });
+
+        $exceptions->render(function (ValidationException $exception, Request $request) {
+            if ($request->expectsJson() || str_starts_with($request->path(), 'api/')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données invalides.',
+                    'status' => 422,
+                    'data' => $exception->errors(),
+                ], 422);
             }
 
             return null;

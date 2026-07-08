@@ -3,6 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterAgentRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\SendAdminOtpRequest;
+use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
+use App\Http\Requests\Auth\UpdateAgentRequest;
+use App\Http\Requests\Auth\VerifyAdminOtpRequest;
 use App\Jobs\ResetPasswordJob;
 use App\Jobs\SendOTPJob;
 use App\Jobs\WelcomeAgentJob;
@@ -17,7 +23,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class AuthController extends BaseController
@@ -118,26 +123,12 @@ class AuthController extends BaseController
      *      @OA\Response(response=200, description="Agent updated")
      * )
      */
-    public function updateAgent(Request $request, $id): JsonResponse
+    public function updateAgent(UpdateAgentRequest $request, $id): JsonResponse
     {
         // Find the user by ID
         $user = User::find($id);
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
-        }
-
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'name' => ['sometimes', 'string', 'max:255'],
-            'role' => ['sometimes', 'string', 'in:LEVEL1,LEVEL2,LEVEL3,SUPERVISEUR,AUDITEUR'],
-            'phonenumber' => ['sometimes', 'string', 'max:15'],
-            'npi' => ['sometimes', 'string', 'max:10', 'unique:users,npi,'.$user->id],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
-        ]);
-
-        // Return validation errors
-        if ($validator->fails()) {
-            return $this->sendError('Format de donnée invalide.', ['errors' => $validator->errors()], 422);
         }
 
         try {
@@ -260,21 +251,8 @@ class AuthController extends BaseController
      *      @OA\Response(response=200, description="Agent registered")
      * )
      */
-    public function registerAgent(Request $request): JsonResponse
+    public function registerAgent(RegisterAgentRequest $request): JsonResponse
     {
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'role' => ['sometimes', 'string', 'in:LEVEL1,LEVEL2,LEVEL3,SUPERVISEUR,AUDITEUR'],
-            'phonenumber' => ['required', 'string', 'max:15'],
-            'npi' => ['required', 'string', 'max:10', 'unique:users,npi'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-        ]);
-
-        // Return validation errors
-        if ($validator->fails()) {
-            return $this->sendError('Format de donnée invalide.', ['errors' => $validator->errors()], 422);
-        }
         try {
             // Create the user
             $user = User::create([
@@ -394,13 +372,8 @@ class AuthController extends BaseController
         }
     }
 
-    public function sendOtp(Request $request)
+    public function sendOtp(SendAdminOtpRequest $request)
     {
-        // Validate that the email exists
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-        ]);
-
         // Retrieve the user by email
         $email = $request->input('email');
         $user = User::where('email', $email)->first();
@@ -462,14 +435,8 @@ class AuthController extends BaseController
      *      @OA\Response(response=403, description="Forbidden or Invalid OTP")
      * )
      */
-    public function verifyOtp(Request $request)
+    public function verifyOtp(VerifyAdminOtpRequest $request)
     {
-        // Validate the input for email and OTP
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-            'otp' => 'required|string',
-        ]);
-
         $email = $request->input('email');
         $otp = $request->input('otp');
 
@@ -510,14 +477,10 @@ class AuthController extends BaseController
         return $this->sendError('OTP invalide ou expiré.', null, 403);
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(ResetPasswordRequest $request)
     {
         try {
-            $validatedData = $request->validate([
-                'token' => 'required',
-                'email' => 'required|email',
-                'password' => 'required|confirmed|min:8',
-            ]);
+            $validatedData = $request->validated();
 
             // Rechercher le token dans la base de données
             $record = DB::table('password_reset_tokens')
@@ -543,17 +506,8 @@ class AuthController extends BaseController
         }
     }
 
-    public function sendPasswordResetLink(Request $request): JsonResponse
+    public function sendPasswordResetLink(SendPasswordResetLinkRequest $request): JsonResponse
     {
-        // Valider l'email
-        $validator = Validator::make($request->all(), [
-            'email' => ['required', 'string', 'email', 'exists:users,email'],
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Email invalide ou inexistant.', ['errors' => $validator->errors()], 422);
-        }
-
         $agentRoles = ['superviseur', 'auditeur', 'admin', 'tech_one', 'tech_two', 'tech_three'];
 
         try {

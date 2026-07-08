@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Management\UpdateStructureStatusRequest;
 use App\Jobs\NotifyAdminJob;
 use App\Jobs\SendStructureInvitationEmail;
 use App\Models\Attachment;
@@ -16,7 +17,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class StructureController extends BaseController
@@ -540,18 +540,8 @@ class StructureController extends BaseController
      *      @OA\Response(response=500, description="Internal Server Error")
      * )
      */
-    public function updateStructureStatus(Request $request)
+    public function updateStructureStatus(UpdateStructureStatusRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'structures' => 'required|array',
-            'structures.*.id' => 'required|integer|exists:structures,id',
-            'structures.*.status' => 'required|in:APPROVED,REJECTED,PENDING',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
         $structures = $request->input('structures');
 
         try {

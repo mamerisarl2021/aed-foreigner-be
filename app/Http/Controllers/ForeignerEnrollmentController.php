@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Foreigner\FinalizeRegistrationRequest;
+use App\Http\Requests\Foreigner\InitRegistrationRequest;
+use App\Http\Requests\Foreigner\SendOtpRequest;
+use App\Http\Requests\Foreigner\VerifyOtpRequest;
 use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\ForeignerInitRegistrationJob;
@@ -22,9 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-// Ajouts pour la création d'entreprise
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -70,15 +72,8 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function sendOtp(Request $request)
+    public function sendOtp(SendOtpRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:users,email',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
-        }
-
         $email = strtolower(trim($request->input('email')));
         $otp = (string) random_int(100000, 999999);
         $ttl = 5; // minutes
@@ -125,16 +120,8 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function verifyOtp(Request $request)
+    public function verifyOtp(VerifyOtpRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'otp' => 'required|string',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
-        }
-
         $email = strtolower(trim($request->input('email')));
         $otp = $request->input('otp');
         $expected = Cache::get('foreigner_otp_'.$email);
@@ -191,17 +178,8 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function initRegistration(Request $request)
+    public function initRegistration(InitRegistrationRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'profile' => 'sometimes|file|mimes:png,jpeg,jpg|max:2048',
-            // 'transaction_id' => 'required|string',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
-        }
-
         $email = strtolower(trim($request->input('email')));
         if (! Cache::get('foreigner_otp_valid_'.$email)) {
             return $this->sendError("Veuillez d'abord vérifier votre OTP.", null, 400);
@@ -306,22 +284,8 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function finalizeRegistration(Request $request)
+    public function finalizeRegistration(FinalizeRegistrationRequest $request)
     {
-        // Force type and level for Foreigner flow
-        $request->merge([
-            'type' => 'ONLINE',
-            'level' => 'ADVANCED',
-        ]);
-
-        // Validation préliminaire AVANT transaction
-        $basic = Validator::make($request->all(), [
-            'registration_token' => 'required|string|exists:pending_registrations,registration_token',
-        ]);
-        if ($basic->fails()) {
-            return $this->sendError('Données invalides.', $basic->errors(), 422);
-        }
-
         $pending = PendingRegistration::where('registration_token', $request->registration_token)
             ->where('status', 'PENDING')
             ->where('expires_at', '>', Carbon::now())
@@ -330,30 +294,6 @@ class ForeignerEnrollmentController extends BaseController
         $isForeigner = $pending->user_data['is_foreigner'] ?? false;
         if (! $isForeigner) {
             return $this->sendError('Flux non étranger non pris en charge ici.', null, 400);
-        }
-
-        // Validation complète AVANT transaction
-        $rules = [
-            'transaction_id' => 'required|string',
-            // 'type' and 'level' are auto-set
-            'selfie' => 'nullable|required|mimes:png,jpeg,jpg|max:6508',
-            'recto' => 'nullable|required|mimes:png,jpeg,jpg|max:2048',
-            'verso' => 'nullable|required|mimes:png,jpeg,jpg|max:2048',
-            'similarity' => 'required|string',
-            'liveness' => 'required|string',
-            'exp_date' => 'nullable|string',
-            'birth_date' => 'nullable|string',
-            'kyc.name' => 'sometimes|string',
-            'kyc.first_name' => 'sometimes|string',
-            'kyc.phonenumber' => 'sometimes|string',
-            'kyc.nationality' => 'sometimes|string',
-            'kyc.document_type' => 'sometimes|string|in:PASSPORT,RESIDENCE_PERMIT,OTHER',
-            'kyc.document_number' => 'sometimes|string',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
         }
 
         $email = $pending->email;

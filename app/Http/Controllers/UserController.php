@@ -2,6 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\ApproveInPersonIdentityRequest;
+use App\Http\Requests\User\CreateEmployeeRequest;
+use App\Http\Requests\User\FinalizeRegistrationRequest;
+use App\Http\Requests\User\LoginWithCodeRequest;
+use App\Http\Requests\User\SendOtpRequest;
+use App\Http\Requests\User\UpdateIdentityStatusRequest;
+use App\Http\Requests\User\UpdateUserStatusRequest;
+use App\Http\Requests\User\VerifyOtpRequest;
 use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\PlanifiedEmailJob;
 use App\Jobs\SendInitLinkJob;
@@ -14,7 +22,6 @@ use App\Models\PendingRegistration;
 use App\Models\Structure;
 use App\Models\StructureInvitation;
 use App\Models\User;
-use App\Rules\UniqueTypePerUser;
 use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
@@ -24,7 +31,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -56,11 +62,8 @@ class UserController extends BaseController
      *      @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function sendOtp(Request $request)
+    public function sendOtp(SendOtpRequest $request)
     {
-        $request->validate([
-            'npi' => 'required|unique:users',
-        ]);
         $npi = $request->input('npi');
 
         $validityMinutes = 5;
@@ -126,14 +129,9 @@ class UserController extends BaseController
      *      @OA\Response(response=400, description="Invalid or expired OTP")
      * )
      */
-    public function verifyOtp(Request $request)
+    public function verifyOtp(VerifyOtpRequest $request)
     {
         try {
-            $request->validate([
-                'npi' => 'required|string',
-                'otp' => 'required|string',
-            ]);
-
             $npi = $request->input('npi');
             $otp = $request->input('otp');
 
@@ -186,9 +184,8 @@ class UserController extends BaseController
      *      @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function login(Request $request)
+    public function login(LoginWithCodeRequest $request)
     {
-        $this->validate($request, ['code' => 'required']);
         $code = $request->input('code');
         $response = $this->userInfo($code);
 
@@ -219,9 +216,8 @@ class UserController extends BaseController
      *      @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function loginMobile(Request $request)
+    public function loginMobile(LoginWithCodeRequest $request)
     {
-        $this->validate($request, ['code' => 'required']);
         $code = $request->input('code');
         $response = $this->mobileUserInfo($code);
 
@@ -445,18 +441,8 @@ class UserController extends BaseController
      *      @OA\Response(response=200, description="Statut mis à jour")
      * )
      */
-    public function updateUserStatus(Request $request)
+    public function updateUserStatus(UpdateUserStatusRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'users' => 'required|array',
-            'users.*.id' => 'required|integer|exists:users,id',
-            'users.*.status' => 'required|in:ACTIVE,INACTIVE',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Erreur de validation des données', $validator->errors(), 400);
-        }
-
         $users = $request->input('users');
 
         try {
@@ -501,17 +487,8 @@ class UserController extends BaseController
      *      @OA\Response(response=200, description="Statut de l'identité mis à jour")
      * )
      */
-    public function updateIdentityStatus(Request $request)
+    public function updateIdentityStatus(UpdateIdentityStatusRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'id' => 'required|integer|exists:identities,id',
-            'status' => 'required|in:APPROVED,WAITING_MANAGER,REJECTED,PENDING',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Erreur de validation des données', $validator->errors(), 400);
-        }
-
         $identityPayload = $request->all();
 
         try {
@@ -573,26 +550,10 @@ class UserController extends BaseController
      *      @OA\Response(response=200, description="Identité mise à jour")
      * )
      */
-    public function updateInPersonIdentityStatus(Request $request)
+    public function updateInPersonIdentityStatus(ApproveInPersonIdentityRequest $request)
     {
         DB::beginTransaction();
         try {
-            $validator = Validator::make($request->all(), [
-                'exp_date' => 'nullable|string',
-                'birth_date' => 'nullable|string',
-                'selfie' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:6508',
-                'recto' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-                'verso' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-                'user_id' => 'sometimes|integer|exists:users,id',
-                'type' => 'nullable|string|in:IN_PERSON,ONLINE',
-                'id' => 'required|integer|exists:identities,id',
-                'status' => 'required|in:APPROVED,WAITING_MANAGER,REJECTED,PENDING',
-            ]);
-
-            if ($validator->fails()) {
-                return $this->sendError('Erreur de validation des données', $validator->errors(), 400);
-            }
-
             $identityPayload = $request->all();
             $userData = [
                 'data' => [
@@ -803,60 +764,16 @@ class UserController extends BaseController
      *      @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function finalizeRegistration(Request $request)
+    public function finalizeRegistration(FinalizeRegistrationRequest $request)
     {
         DB::beginTransaction();
         try {
-            // 1) Valider d'abord uniquement le token pour récupérer le contexte (étranger ou non)
-            $basic = Validator::make($request->all(), [
-                'registration_token' => 'required|string|exists:pending_registrations,registration_token',
-            ]);
-            if ($basic->fails()) {
-                return $this->sendError('Données invalides.', $basic->errors(), 422);
+            $pendingRegistration = $request->pendingRegistration();
+            if ($pendingRegistration === null) {
+                return $this->sendError('Données invalides.', null, 422);
             }
-
-            // Récupérer l'enregistrement en attente et vérifier sa validité
-            $pendingRegistration = PendingRegistration::where('registration_token', $request->registration_token)
-                ->where('status', 'PENDING')
-                ->where('expires_at', '>', Carbon::now())
-                ->firstOrFail();
 
             $isForeigner = $pendingRegistration->user_data['is_foreigner'] ?? false;
-
-            // 2) Construire dynamiquement les règles selon le contexte
-            $rules = [
-                'transaction_id' => 'required|string',
-                'exp_date' => 'nullable|string',
-                'birth_date' => 'nullable|string',
-                'similarity' => 'required_if:type,ONLINE|string',
-                'liveness' => 'required_if:type,ONLINE|string',
-                'level' => ['required', 'string', 'in:SIMPLE,ADVANCED', new UniqueTypePerUser($request->user_id, $request->level)],
-                'type' => ['required', 'string', 'in:IN_PERSON,ONLINE'],
-                'selfie' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:6508',
-                'recto' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-                'verso' => 'nullable|required_if:type,ONLINE|mimes:png,jpeg,jpg|max:2048',
-            ];
-            if (! $isForeigner) {
-                $rules = array_merge($rules, [
-                    'password' => 'required|string',
-                    'pin' => 'required',
-                ]);
-            } else {
-                // Champs KYC issus de l’OCR au finalize (facultatifs mais pris en compte s’ils sont présents)
-                $rules = array_merge($rules, [
-                    'kyc.name' => 'sometimes|string',
-                    'kyc.first_name' => 'sometimes|string',
-                    'kyc.phonenumber' => 'sometimes|string',
-                    'kyc.nationality' => 'sometimes|string',
-                    'kyc.document_type' => 'sometimes|string|in:PASSPORT,RESIDENCE_PERMIT,OTHER',
-                    'kyc.document_number' => 'sometimes|string',
-                ]);
-            }
-
-            $validator = Validator::make($request->all(), $rules);
-            if ($validator->fails()) {
-                return $this->sendError('Données invalides.', $validator->errors(), 422);
-            }
 
             $transactionId = $request->input('transaction_id');
 
@@ -1410,18 +1327,11 @@ class UserController extends BaseController
      *      @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function createEmployee(Request $request)
+    public function createEmployee(CreateEmployeeRequest $request)
     {
         DB::beginTransaction();
         try {
-            $validatedData = $request->validate([
-                'email' => 'required|email|unique:users,email',
-                'structure_id' => 'required|integer|exists:structures,id',
-                'name' => 'required|string|max:255',
-                'phone' => 'nullable|string|max:20',
-                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
-                'message' => 'sometimes|string|max:500',
-            ]);
+            $validatedData = $request->validated();
 
             $manager = auth()->user();
             $structure = Structure::findOrFail($validatedData['structure_id']);

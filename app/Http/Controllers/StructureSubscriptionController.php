@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Management\StoreStructureSubscriptionRequest;
+use App\Http\Requests\Management\ValidateEmployeeSubscriptionRequest;
 use App\Models\StructurePackage;
 use App\Models\StructureSubscription;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Kkiapay\Kkiapay;
 
 class StructureSubscriptionController extends BaseController
@@ -63,18 +64,8 @@ class StructureSubscriptionController extends BaseController
     }
 
     // Store a new structure subscription
-    public function store(Request $request)
+    public function store(StoreStructureSubscriptionRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'structure_id' => 'required|exists:structures,id',
-            'structure_package_id' => 'required|exists:structure_packages,id',
-            'transaction_id' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
-        }
-
         $state = $this->kkiaPayement($request->input('transaction_id'));
         if (StructurePackage::where('id', json_decode($state[0], true)['package'])->where('prix', (int) json_decode($state[0], true)['amount'])->count() != 1) {
             Log::alert('Failed to create user subscription');
@@ -115,16 +106,8 @@ class StructureSubscriptionController extends BaseController
     }
 
     // Validate employee requests
-    public function validateEmployeeRequest(Request $request)
+    public function validateEmployeeRequest(ValidateEmployeeSubscriptionRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'user_subscription_id' => 'required|exists:user_subscriptions,id',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
-        }
-
         $userSubscription = UserSubscription::find($request->input('user_subscription_id'));
         if (! $userSubscription) { // Should be covered by validation but good practice
             return $this->sendError('Validation Error.', ['user_subscription_id' => 'Invalid subscription']);

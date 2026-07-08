@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\Http\Requests\IdentityReview\RejectIdentityRequest;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
@@ -19,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class IdentityReviewController extends BaseController
@@ -307,17 +307,8 @@ class IdentityReviewController extends BaseController
     }
 
     // Rejet par superviseur (mêmes possibilités qu’agent)
-    public function supervisorReject(Request $request, int $id)
+    public function supervisorReject(RejectIdentityRequest $request, int $id)
     {
-        $validator = Validator::make($request->all(), [
-            'stage' => 'required|in:KYC,STRUCTURE',
-            'reasons' => 'required|array|min:1',
-            'comments' => 'sometimes|string|nullable',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
-        }
-
         $identity = Identity::with('user')->findOrFail($id);
         if ($identity->status !== 'APPROVED_BY_AGENT') {
             return $this->sendError('Statut non APPROVED_BY_AGENT.', null, 422);
@@ -337,17 +328,8 @@ class IdentityReviewController extends BaseController
     }
 
     // Rejeter la demande avec indication de l’étape et des raisons
-    public function reject(Request $request, int $id)
+    public function reject(RejectIdentityRequest $request, int $id)
     {
-        $validator = Validator::make($request->all(), [
-            'stage' => 'required|in:KYC,STRUCTURE',
-            'reasons' => 'required|array|min:1',
-            'comments' => 'sometimes|string|nullable',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Données invalides.', $validator->errors(), 422);
-        }
-
         $identity = Identity::with('user')->findOrFail($id);
         if ($identity->status !== 'PENDING') {
             return $this->sendError('Statut non PENDING.', null, 422);

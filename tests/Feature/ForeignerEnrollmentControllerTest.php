@@ -54,6 +54,19 @@ class ForeignerEnrollmentControllerTest extends TestCase
         $this->assertNotNull(Cache::get('foreigner_otp_'.strtolower($email)));
     }
 
+    public function test_send_otp_validation_error_returns_api_envelope(): void
+    {
+        $resp = $this->postJson($this->api('/foreigner/send-otp'), []);
+
+        $resp->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Données invalides.',
+                'status' => 422,
+            ])
+            ->assertJsonStructure(['data' => ['email']]);
+    }
+
     public function test_verify_otp_success_and_sets_validation_flag(): void
     {
         $email = 'verify@example.com';
