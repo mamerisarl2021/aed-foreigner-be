@@ -30,10 +30,10 @@ trait AttachmentTrait
     public function __construct(User $model)
     {
         $this->model = $model;
-        $this->CLIENT_SECRET = env('CLIENT_ID');
+        $this->CLIENT_SECRET = env('TX_CLIENT_SECRET');
         $this->TX_BASE_URL = env('TX_BASE_URL');
         $this->ANIP_BASE_URL = env('ANIP_BASE_URL');
-        $this->CLIENT_ID = env('CLIENT_SECRET');
+        $this->CLIENT_ID = env('TX_CLIENT_ID');
     }
 
     public function attachFiles(mixed $files, string $attachmentId)
