@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Services\Consul;
 
 use Illuminate\Support\Facades\Storage;
