@@ -3,25 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Management\UpdateStructureStatusRequest;
-use App\Jobs\NotifyAdminJob;
-use App\Jobs\SendStructureInvitationEmail;
-use App\Models\Attachment;
-use App\Models\OTP;
-use App\Models\Structure;
-use App\Models\StructureInvitation;
-use App\Models\User;
-use App\Traits\AttachmentTrait;
-use Carbon\Carbon;
-use Exception;
+use App\Services\Structure\StructureManagementService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class StructureController extends BaseController
 {
-    use AttachmentTrait;
+    public function __construct(
+        private readonly StructureManagementService $structures,
+    ) {}
 
     /**
      * @OA\Get(
@@ -58,24 +49,9 @@ class StructureController extends BaseController
      */
     public function index(Request $request)
     {
-        try {
-            // Paginate the results with 10 items per page
-            $structures = Structure::paginate($request->get('perPage', 9999999999999));
-
-            // Prepare the data without nested 'data' key to avoid duplication
-            $flattenedData = $structures->toArray();
-            $data = $flattenedData['data'];  // Extract the actual data
-            unset($flattenedData['data']);   // Remove the nested data key
-
-            // Merge the remaining pagination data with the actual data
-            $response = array_merge(['data' => $data], ['pagination' => $flattenedData]);
-
-            return $this->sendPaginatedResponse('Liste des structures.', $response);
-        } catch (Exception $e) {
-            Log::error('Impossible de récupérer les structures: '.$e->getMessage());
-
-            return $this->sendError('Impossible de récupérer les structures.', null, 500);
-        }
+        return $this->respondPaginated(
+            $this->structures->list((int) $request->get('perPage', 9999999999999))
+        );
     }
 
     /**
@@ -103,36 +79,16 @@ class StructureController extends BaseController
      */
     public function mine()
     {
-        try {
-            $structures = Structure::where('manager_id', auth()->id())->get();
-
-            return $this->sendResponse('Mes entreprises.', $structures);
-        } catch (Exception $e) {
-            Log::error('Fetching structures failed: '.$e->getMessage());
-
-            return $this->sendError('Fetching structures failed.', null, 500);
-        }
+        return $this->respond($this->structures->mine((int) auth()->id()));
     }
 
-    public function search(Request $request)
+    public function search(Request $request): JsonResponse
     {
-        try {
-            $query = $request->input('query');
-            $structures = Structure::where('name', 'LIKE', "%$query%")
-                ->orWhere('ifu', 'LIKE', "%$query%")
-                ->orWhere('searchbase', 'LIKE', "%$query%")
-                ->where('status', '==', 'APPROVED')
-                ->take(2)
-                ->get();
+        $result = $this->structures->search((string) $request->input('query'));
 
-            Log::debug($structures);
-
-            return response()->json($structures);
-        } catch (Exception $e) {
-            Log::error('Searching structures failed: '.$e);
-
-            return response()->json(['error' => 'Searching structures failed.'], 500);
-        }
+        return $result->success
+            ? response()->json($result->data)
+            : response()->json(['error' => $result->message], $result->code);
     }
 
     /**
@@ -171,26 +127,7 @@ class StructureController extends BaseController
      */
     public function show($id)
     {
-        try {
-            $structure = Structure::with(['manager', 'attachments.documents', 'userSubscriptions', 'structureSubscriptions'])->findOrFail($id);
-            $user = User::find(auth()->id());
-
-            if ($user->hasRole('client')) {
-                if ($structure->manager_id !== $user->id) {
-                    return $this->sendError('Vous n\'êtes pas autorisé à accéder à cette entreprise.', null, 403);
-                }
-
-                return $this->sendResponse('Entreprise récupérée avec succès.', $structure);
-            } elseif ($user->hasAnyRole(['tech_one', 'tech_two', 'tech_three'])) {
-                return $this->sendResponse('Entreprise récupérée avec succès.', $structure);
-            } else {
-                return $this->sendError('Vous n\'êtes pas autorisé à accéder à cette entreprise.', null, 403);
-            }
-        } catch (Exception $e) {
-            Log::error('Impossible de récupérer cette entreprise: '.$e->getMessage());
-
-            return $this->sendError('Impossible de récupérer cette entreprise.', null, 500);
-        }
+        return $this->respond($this->structures->show((int) $id, auth()->user()));
     }
 
     /**
@@ -249,116 +186,12 @@ class StructureController extends BaseController
      */
     public function oneShotStore(Request $request)
     {
-        DB::beginTransaction();
-
-        try {
-            // Step 1: Validate Request Data
-            $validatedData = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('structures')->where(function ($query) {
-                        return $query->where('manager_id', Auth::id());
-                    }),
-                ],
-                'ifu' => 'required|string|unique:structures,ifu',
-                'attachements.*.name' => 'required|string|max:255',
-                // 'attachements.*.structure_id' => 'required|exists:structures,id',
-                'attachements.*.status' => 'required|in:SENT,VALIDATED,WAITING_MANAGER,REJECTED',
-                'attachements.*.message' => 'required_if:attachments.*.status,REJECTED|string',
-                'attachements.*.files.*' => 'required|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:10000',
-                // '' => 'required|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:2048',
-            ]);
-
-            // Create the structure
-            $structure = Structure::create([
-                'name' => $validatedData['name'],
-                'ifu' => $validatedData['ifu'],
-                'manager_id' => Auth::id(),
-                'status' => 'PENDING',
-                'searchbase' => "ou=Employees-Virtual ID,ou={$validatedData['name']},o=GOUV,c=BJ",
-            ]);
-
-            foreach ($request->input('attachements') as $key => $attachmentData) {
-                // Create each attachment
-                $attachment = Attachment::create(array_merge($attachmentData, ['structure_id' => $structure->id]));
-
-                // Handle file attachments for this attachment
-                $files = $request->file("attachements.{$key}.files");
-
-                if ($files) {
-                    $response = $this->attachFiles($files, $attachment->id);
-
-                    if (! $response['status']) {
-                        DB::rollBack();
-
-                        return $this->sendError(
-                            'Les fichiers n\'ont pas pu être attachés à une ou plusieurs pièces jointes. Veuillez réessayer.',
-                            null,
-                            400
-                        );
-                    }
-                }
-                $finalFiles[] = $response['data'] ?? [];
-            }
-
-            // Commit the transaction
-            DB::commit();
-
-            // Return Success Response
-            return $this->sendResponse(
-                'Votre entité a été créée avec succès et les fichiers ont été attachés. Vous recevrez une notification lorsque l\'activation sera complète et lorsque le statut changera.',
-                [
-                    'structure' => $structure,
-                    'files' => $finalFiles,
-                ]
-            );
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la création de la structure et de l\'attachement des fichiers : '.$e->getMessage());
-
-            return $this->sendError(
-                $e->getMessage(),
-                $e,
-                500
-            );
-        }
+        return $this->respond($this->structures->oneShotStore($request, (int) Auth::id()));
     }
 
-    public function oneShotAttach(object $request)
+    public function oneShotAttach(Request $request)
     {
-        DB::beginTransaction();
-
-        try {
-            // Create Attachment
-            $attachment = Attachment::create($request);
-
-            // Handle file attachments for this attachment
-            $files = $request->file('files');
-            $response = $this->attachFiles($files, $attachment->id);
-
-            if (! $response['status']) {
-                DB::rollBack();
-
-                return $this->sendError($response['message'], null, 400);
-            }
-
-            // Commit the transaction
-            DB::commit();
-
-            // Return Response
-            return $this->sendResponse($response['message'], $response['data']);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la création de la pièce jointe : '.$e->getMessage());
-
-            return $this->sendError(
-                'Une erreur est survenue pendant la création de la pièce jointe.',
-                null,
-                500
-            );
-        }
+        return $this->respond($this->structures->oneShotAttach($request));
     }
 
     /**
@@ -397,23 +230,12 @@ class StructureController extends BaseController
      */
     public function store(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'ifu' => 'required|string',
-            ]);
-            $validatedData['manager_id'] = Auth::user()->id;
-            $validatedData['status'] = 'PENDING';
-            $validatedData['searchbase'] = 'ou=Employees-Virtual ID,ou='.$validatedData['name'].',o=GOUV,c=BJ';
-            Structure::create($validatedData);
-            $structures = Structure::where('manager_id', auth()->id())->get();
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'ifu' => 'required|string',
+        ]);
 
-            return $this->sendResponse('Votre entité à bien été créée. Il vous faudra renseigner les pièces nécessaires à son activation. Elle sera dès lors en attente de validation d\'un agent de la plateforme. Vous serez notifié dès que le statut de votre document changera.', $structures);
-        } catch (Exception $e) {
-            Log::error('Creating structure failed: '.$e->getMessage());
-
-            return $this->sendError('Nous sommes dans le regret de vous annoncer que votre structure n\'a pas pu être créée et nous vous demandons de réessayer ultérieurement.', null, 500);
-        }
+        return $this->respond($this->structures->store($validatedData, (int) Auth::id()));
     }
 
     /**
@@ -447,27 +269,18 @@ class StructureController extends BaseController
      *      @OA\Response(response=500, description="Internal Server Error")
      * )
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
-        try {
-            $validatedData = $request->validate([
-                'name' => 'string|max:255',
-                'status' => 'string|max:255',
-            ]);
+        $validatedData = $request->validate([
+            'name' => 'string|max:255',
+            'status' => 'string|max:255',
+        ]);
 
-            if ($validatedData['status'] == 'APPROVED') {
-                $validatedData['status'] = 'WAITING_MANAGER';
-            }
+        $result = $this->structures->update((int) $id, $validatedData);
 
-            $structure = Structure::findOrFail($id);
-            $structure->update($validatedData);
-
-            return response()->json(['message' => 'Structure updated successfully.'], 200);
-        } catch (Exception $e) {
-            Log::error('Updating structure failed: '.$e->getMessage());
-
-            return response()->json(['error' => 'Updating structure failed.'], 500);
-        }
+        return $result->success
+            ? response()->json(['message' => $result->message], 200)
+            : response()->json(['error' => $result->message], $result->code);
     }
 
     /**
@@ -491,18 +304,13 @@ class StructureController extends BaseController
      *      @OA\Response(response=500, description="Internal Server Error")
      * )
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
-        try {
-            $structure = Structure::findOrFail($id);
-            $structure->delete();
+        $result = $this->structures->destroy((int) $id);
 
-            return response()->json(['message' => 'Structure deleted successfully.'], 200);
-        } catch (Exception $e) {
-            Log::error('Deleting structure failed: '.$e->getMessage());
-
-            return response()->json(['error' => 'Deleting structure failed.'], 500);
-        }
+        return $result->success
+            ? response()->json(['message' => $result->message], 200)
+            : response()->json(['error' => $result->message], $result->code);
     }
 
     /**
@@ -542,35 +350,7 @@ class StructureController extends BaseController
      */
     public function updateStructureStatus(UpdateStructureStatusRequest $request)
     {
-        $structures = $request->input('structures');
-
-        try {
-            foreach ($structures as $structureData) {
-                $structure = Structure::findOrFail($structureData['id']);
-                $status = $structureData['status'];
-
-                if ($status == 'APPROVED') {
-                    $status = 'WAITING_MANAGER';
-                    $allAttachmentsValidated = Attachment::where('structure_id', $structure->id)
-                        ->where('status', '!=', 'VALIDATED')
-                        ->doesntExist();
-
-                    if (! $allAttachmentsValidated) {
-                        return $this->sendError("Impossible de valider la structure n° {$structure->id} car tous ses documents n'ont pas été validés.", null, 500);
-                    }
-                }
-
-                $structure->update([
-                    'status' => $status,
-                ]);
-            }
-
-            return $this->sendResponse('Structures modifiées avec succès.', null, 200);
-        } catch (Exception $e) {
-            Log::error('Failed to update structures status: '.$e->getMessage());
-
-            return $this->sendError("Nous n'avons pas pu mettre à jour le statut de l'une ou plusieurs des structures.", null, 500);
-        }
+        return $this->respond($this->structures->updateStructureStatus($request->input('structures')));
     }
 
     /**
@@ -598,42 +378,12 @@ class StructureController extends BaseController
      */
     public function sendOtp(Request $request)
     {
-        // Validate that the email exists
         $request->validate([
             'email' => 'required|email',
             'entity_id' => 'required|integer|exists:structures,id',
         ]);
 
-        // Retrieve the user by email
-        $email = $request->input('email');
-
-        // Generate a 6-digit OTP
-        $otp = implode('', array_map(function () {
-            return mt_rand(0, 9);
-        }, range(1, 6)));
-
-        // Set OTP validity to 5 minutes
-        $validityMinutes = 5;
-        $validUntil = Carbon::now()->addMinutes($validityMinutes);
-
-        // Check if OTP already exists for this email
-        $existingOTP = OTP::where('email', $email)->first();
-        if ($existingOTP) {
-            $existingOTP->update(['otp' => $otp, 'valid_until' => $validUntil]);
-        } else {
-            OTP::create([
-                'email' => $email,
-                'otp' => $otp,
-                'valid_until' => $validUntil,
-            ]);
-        }
-
-        // Dispatch job to send OTP via email
-        Log::info("Dispatching NotifyAdminJob for email: $email with OTP: $otp");
-        NotifyAdminJob::dispatch($email, $otp);
-
-        // Return success response
-        return $this->sendResponse('OTP envoyé avec succès.', []);
+        return $this->respond($this->structures->sendOtp($request->input('email')));
     }
 
     /**
@@ -663,42 +413,13 @@ class StructureController extends BaseController
      */
     public function verifyOtp(Request $request)
     {
-        // Validate the input for email and OTP
         $validatedData = $request->validate([
             'email' => 'required|email',
             'otp' => 'required|string',
             'entity_id' => 'required|integer|exists:structures,id',
         ]);
 
-        $email = $request->input('email');
-        $otp = $request->input('otp');
-
-        // Verify if the OTP exists and is still valid
-        $existingOTP = OTP::where('email', $email)
-            ->where('otp', $otp)
-            ->where('valid_until', '>=', Carbon::now())
-            ->first();
-
-        if ($existingOTP) {
-            // Optionally, you can delete the OTP from the database after verification
-            $existingOTP->delete();
-            $structure = Structure::findOrFail($validatedData['entity_id']);
-
-            // Generate a token for the user
-            $structure->update([
-                'status' => 'APPROVED',
-            ]);
-
-            // Activate the manager user
-            $manager = User::find($structure->manager_id);
-            if ($manager) {
-                $manager->update(['status' => 'ACTIVE']);
-            }
-
-            return $this->sendResponse("Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!", $structure);
-        }
-
-        return $this->sendError('OTP invalide ou expiré.', null, 403);
+        return $this->respond($this->structures->verifyOtp($validatedData));
     }
 
     /**
@@ -735,38 +456,7 @@ class StructureController extends BaseController
      */
     public function listEmployees($structureId)
     {
-        try {
-            $structure = Structure::findOrFail($structureId);
-            $user = Auth::user();
-
-            // Check if user is the manager or has agent role
-            if ($user->hasRole('client') && $structure->manager_id !== $user->id) {
-                return $this->sendError('Vous n\'êtes pas autorisé à voir les employés de cette structure.', null, 403);
-            }
-
-            // Récupérer les employés associés à la structure
-            $employees = $structure->employees()
-                ->withPivot('role', 'status', 'joined_at')
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'npi' => $user->npi,
-                        'role' => $user->pivot->role,
-                        'status' => $user->pivot->status,
-                        'joined_at' => $user->pivot->joined_at,
-                        'invitation_message' => $user->pivot->invitation_message,
-                    ];
-                });
-
-            return $this->sendResponse('Liste des employés récupérée avec succès.', $employees);
-        } catch (Exception $e) {
-            Log::error('Erreur lors de la récupération des employés : '.$e->getMessage());
-
-            return $this->sendError('Impossible de récupérer la liste des employés.', null, 500);
-        }
+        return $this->respond($this->structures->listEmployees((int) $structureId, Auth::user()));
     }
 
     /**
@@ -818,90 +508,15 @@ class StructureController extends BaseController
      */
     public function inviteEmployee(Request $request, $structureId)
     {
-        DB::beginTransaction();
-        try {
-            $validatedData = $request->validate([
-                'user_identifier' => 'required|string',
-                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
-                'message' => 'sometimes|string|max:500',
-            ]);
+        $validatedData = $request->validate([
+            'user_identifier' => 'required|string',
+            'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
+            'message' => 'sometimes|string|max:500',
+        ]);
 
-            $structure = Structure::findOrFail($structureId);
-            $manager = auth()->user();
-
-            // Vérifier que l'utilisateur est le manager
-            if ($structure->manager_id !== $manager->id) {
-                return $this->sendError('Vous n\'êtes pas autorisé à inviter des employés dans cette structure.', null, 403);
-            }
-
-            // Vérifier que la structure est validée
-            if ($structure->status !== 'APPROVED') {
-                return $this->sendError('La structure doit être validée avant d\'inviter des employés.', null, 400);
-            }
-
-            // Chercher l'utilisateur
-            $user = User::where('email', $validatedData['user_identifier'])
-                ->orWhere('npi', $validatedData['user_identifier'])
-                ->first();
-
-            if (! $user && is_numeric($validatedData['user_identifier'])) {
-                $user = User::find($validatedData['user_identifier']);
-            }
-
-            if (! $user) {
-                return $this->sendError('Utilisateur non trouvé.', null, 404);
-            }
-
-            // Vérifier que l'utilisateur n'est pas déjà dans la structure
-            if ($structure->employees()->where('user_id', $user->id)->exists()) {
-                return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
-            }
-
-            // AJOUT DIRECT À LA STRUCTURE (pas d'invitation PENDING)
-            $structure->employees()->attach($user->id, [
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACTIVE', // DIRECTEMENT ACTIF
-                'joined_at' => Carbon::now(),
-                'invitation_message' => $validatedData['message'] ?? 'Ajouté par le manager',
-            ]);
-
-            // Activer l'utilisateur si ce n'est pas déjà fait
-            if ($user->status !== 'ACTIVE') {
-                $user->update(['status' => 'ACTIVE']);
-            }
-
-            // Créer une invitation "auto-acceptée" pour historique
-            $invitation = StructureInvitation::create([
-                'structure_id' => $structure->id,
-                'user_id' => $user->id,
-                'invited_by' => $manager->id,
-                'email' => $user->email,
-                'token' => bin2hex(random_bytes(32)),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
-                'expires_at' => Carbon::now()->addDays(7),
-                'accepted_at' => Carbon::now(),
-                'message' => $validatedData['message'] ?? null,
-            ]);
-
-            DB::commit();
-
-            // Envoyer notification (pas d'invitation à accepter)
-            Log::info("Dispatching SendStructureInvitationEmail job for auto-accepted invitation. {$invitation->user}");
-            SendStructureInvitationEmail::dispatch($invitation);
-
-            return $this->sendResponse('Employé ajouté directement à la structure.', [
-                'user' => $user->only(['id', 'email', 'name', 'status']),
-                'structure' => $structure->only(['id', 'name']),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'ajout de l\'employé : '.$e->getMessage());
-
-            return $this->sendError('Impossible d\'ajouter l\'employé.', null, 500);
-        }
+        return $this->respond(
+            $this->structures->inviteEmployee($validatedData, (int) $structureId, auth()->user())
+        );
     }
 
     /**
@@ -947,72 +562,14 @@ class StructureController extends BaseController
      */
     public function addEmployee(Request $request, $structureId)
     {
-        DB::beginTransaction();
-        try {
-            $validatedData = $request->validate([
-                'user_id' => 'required|integer|exists:users,id',
-                'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
-            ]);
+        $validatedData = $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+            'role' => 'sometimes|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
+        ]);
 
-            $structure = Structure::findOrFail($structureId);
-            $manager = Auth::user();
-
-            // Vérifier les permissions
-            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
-                return $this->sendError('Vous n\'êtes pas autorisé à ajouter des employés.', null, 403);
-            }
-
-            $user = User::findOrFail($validatedData['user_id']);
-
-            // Vérifier que l'utilisateur n'est pas déjà dans la structure
-            if ($structure->employees()->where('user_id', $user->id)->exists()) {
-                return $this->sendError('Cet utilisateur est déjà membre de la structure.', null, 400);
-            }
-
-            // Associer l'utilisateur à la structure
-            $structure->employees()->attach($user->id, [
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACTIVE',
-                'joined_at' => Carbon::now(),
-                'invitation_message' => 'Ajouté directement',
-            ]);
-
-            // Si l'utilisateur n'est pas actif, l'activer
-            if ($user->status !== 'ACTIVE' && $structure->status === 'APPROVED') {
-                $user->update(['status' => 'ACTIVE']);
-            }
-
-            // Créer une invitation "auto-acceptée" pour historique
-            $invitation = StructureInvitation::create([
-                'structure_id' => $structure->id,
-                'user_id' => $user->id,
-                'invited_by' => $manager->id,
-                'email' => $user->email,
-                'token' => bin2hex(random_bytes(32)),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
-                'expires_at' => Carbon::now()->addDays(7),
-                'accepted_at' => Carbon::now(),
-                'message' => $validatedData['message'] ?? null,
-            ]);
-
-            DB::commit();
-
-            // Envoyer notification (pas d'invitation à accepter)
-            SendStructureInvitationEmail::dispatch($invitation);
-
-            return $this->sendResponse('Employé ajouté avec succès à la structure.', [
-                'user' => $user->only(['id', 'email', 'name', 'npi']),
-                'structure' => $structure->only(['id', 'name']),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'ajout de l\'employé : '.$e->getMessage());
-
-            return $this->sendError('Impossible d\'ajouter l\'employé.', null, 500);
-        }
+        return $this->respond(
+            $this->structures->addEmployee($validatedData, (int) $structureId, Auth::user())
+        );
     }
 
     /**
@@ -1065,43 +622,13 @@ class StructureController extends BaseController
      */
     public function updateEmployeeRole(Request $request, $structureId, $userId)
     {
-        try {
-            $validatedData = $request->validate([
-                'role' => 'required|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
-            ]);
+        $validatedData = $request->validate([
+            'role' => 'required|string|in:EMPLOYEE,MANAGER_ASSISTANT,VIEWER',
+        ]);
 
-            $structure = Structure::findOrFail($structureId);
-            $manager = Auth::user();
-
-            // Vérifier les permissions
-            if ($structure->manager_id !== $manager->id) {
-                return $this->sendError('Vous n\'êtes pas autorisé à modifier les rôles.', null, 403);
-            }
-
-            // Vérifier que l'utilisateur est bien un employé de la structure
-            // NOTE: À adapter selon votre modèle de relation
-            $employee = $structure->employees()->where('user_id', $userId)->first();
-
-            if (! $employee) {
-                return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
-            }
-
-            // Mettre à jour le rôle
-            $structure->employees()->updateExistingPivot($userId, [
-                'role' => $validatedData['role'],
-                'updated_at' => Carbon::now(),
-            ]);
-
-            return $this->sendResponse('Rôle de l\'employé mis à jour avec succès.', [
-                'user_id' => $userId,
-                'new_role' => $validatedData['role'],
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('Erreur lors de la mise à jour du rôle : '.$e->getMessage());
-
-            return $this->sendError('Impossible de mettre à jour le rôle.', null, 500);
-        }
+        return $this->respond(
+            $this->structures->updateEmployeeRole($validatedData, (int) $structureId, (int) $userId, Auth::user())
+        );
     }
 
     /**
@@ -1139,44 +666,9 @@ class StructureController extends BaseController
      */
     public function removeEmployee($structureId, $userId)
     {
-        DB::beginTransaction();
-        try {
-            $structure = Structure::findOrFail($structureId);
-            $manager = Auth::user();
-
-            // Vérifier les permissions
-            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
-                return $this->sendError('Vous n\'êtes pas autorisé à retirer des employés.', null, 403);
-            }
-
-            // Empêcher de retirer le manager lui-même
-            if ($structure->manager_id == $userId) {
-                return $this->sendError('Vous ne pouvez pas retirer le manager de sa propre structure.', null, 400);
-            }
-
-            // Vérifier que l'utilisateur est bien un employé
-            $employeeExists = $structure->employees()->where('user_id', $userId)->exists();
-
-            if (! $employeeExists) {
-                return $this->sendError('Cet utilisateur n\'est pas employé dans cette structure.', null, 404);
-            }
-
-            // Retirer l'employé
-            $structure->employees()->detach($userId);
-
-            DB::commit();
-
-            return $this->sendResponse('Employé retiré de la structure avec succès.', [
-                'user_id' => $userId,
-                'structure_id' => $structureId,
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors du retrait de l\'employé : '.$e->getMessage());
-
-            return $this->sendError('Impossible de retirer l\'employé.', null, 500);
-        }
+        return $this->respond(
+            $this->structures->removeEmployee((int) $structureId, (int) $userId, Auth::user())
+        );
     }
 
     /**
@@ -1264,22 +756,6 @@ class StructureController extends BaseController
      */
     public function listPendingInvitations($structureId)
     {
-        try {
-            $structure = Structure::findOrFail($structureId);
-
-            // Récupérer les invitations en attente
-            $invitations = StructureInvitation::with(['user', 'inviter'])
-                ->where('structure_id', $structureId)
-                ->where('status', 'PENDING')
-                ->where('expires_at', '>', Carbon::now())
-                ->get();
-
-            return $this->sendResponse('Invitations en attente récupérées avec succès.', $invitations);
-
-        } catch (Exception $e) {
-            Log::error('Erreur lors de la récupération des invitations : '.$e->getMessage());
-
-            return $this->sendError('Impossible de récupérer les invitations.', null, 500);
-        }
+        return $this->respond($this->structures->listPendingInvitations((int) $structureId));
     }
 }

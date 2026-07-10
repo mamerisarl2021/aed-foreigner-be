@@ -3,7 +3,7 @@
 Tracked remediation items derived from the Laravel 12 best-practices audit (`guidelines.md`).  
 **Status key:** `todo` · `in-progress` · `blocked` · `done` · `deferred`
 
-**Last updated:** 2026-07-10 (P3 partial: 01, 02, 03, 07)
+**Last updated:** 2026-07-10 (P3 partial: 01, 02, 03, 04, 07)
 
 ---
 
@@ -23,7 +23,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P0](#p0-production--stability-blockers) | Production & stability blockers | 6 | 5 | Critical |
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
-| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 4 | High |
+| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 5 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 0 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 0 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 0 | Medium |
@@ -88,14 +88,14 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-01 | `done` | Extract `EnrollmentService` from `ForeignerEnrollmentController` | ~550 lines → ~230 (mostly OpenAPI) | `ForeignerEnrollmentService`; controller ~80 LOC logic |
 | P3-02 | `done` | Extract `IdentityReviewService` from `IdentityReviewController` | ~403 → ~80 lines | Claim, approve, reject, supervisor flows |
 | P3-03 | `done` | Extract `UserRegistrationService` from `UserController` | ~1,493 → ~947 lines | OTP, login, finalize, in-person approve, employee create; implemented missing `storeSubscription` |
-| P3-04 | `todo` | Extract `StructureManagementService` from `StructureController` | ~1,295 lines | L | CRUD, OTP, invitations |
+| P3-04 | `done` | Extract `StructureManagementService` from `StructureController` | ~1,295 → ~761 lines (mostly OpenAPI) | CRUD, OTP, invitations, employee management; `AttachmentTrait` on service |
 | P3-05 | `todo` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
 | P3-06 | `todo` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
 | P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
 | P3-09 | `todo` | Decompose `AttachmentTrait` into `AttachmentUploadService` | Trait + 4 controllers | S | File storage only |
 | P3-10 | `todo` | Decompose `ADTrait` into LDAP/AD service | `UserSubscriptionController` | M | |
-| P3-11 | `in-progress` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration |
+| P3-11 | `in-progress` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
 | P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
 
 ### Controller size targets (acceptance)
@@ -103,7 +103,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | Controller | Current ~lines | Target |
 |------------|---------------:|-------:|
 | `UserController` | 1,493 | < 300 (or split into multiple controllers) |
-| `StructureController` | 1,295 | < 300 |
+| `StructureController` | 761 | < 300 |
 | `SignatureController` | 783 | < 300 |
 | `SigningIdentityController` | 684 | < 300 |
 | `AuthController` | 591 | < 250 |
