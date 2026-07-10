@@ -2,11 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ServiceResult;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class BaseController extends Controller
 {
     protected $data = null;
+
+    protected function respond(ServiceResult $result): JsonResponse
+    {
+        if ($result->success) {
+            return $this->sendResponse($result->message, $result->data);
+        }
+
+        return $this->sendError($result->message, $result->data, $result->code);
+    }
+
+    protected function respondPaginated(ServiceResult $result): JsonResponse
+    {
+        if ($result->success) {
+            return $this->sendPaginatedResponse($result->message, $result->data);
+        }
+
+        return $this->sendError($result->message, $result->data, $result->code);
+    }
 
     public function sendResponse(string $message, $data = null)
     {

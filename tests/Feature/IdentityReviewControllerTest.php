@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\IdentityReviewController;
+use App\Services\IdentityReview\IdentityReviewService;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
@@ -140,8 +140,7 @@ class IdentityReviewControllerTest extends TestCase
         $supervisor->assignRole('superviseur');
         Sanctum::actingAs($supervisor);
 
-        $this->partialMock(IdentityReviewController::class, function ($mock) {
-            $mock->shouldAllowMockingProtectedMethods();
+        $this->partialMock(IdentityReviewService::class, function ($mock) {
             $mock->shouldReceive('register')->andReturn(['status' => true, 'has_user' => false]);
         });
 
