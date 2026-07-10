@@ -10,24 +10,15 @@ use App\Http\Requests\User\SendOtpRequest;
 use App\Http\Requests\User\UpdateIdentityStatusRequest;
 use App\Http\Requests\User\UpdateUserStatusRequest;
 use App\Http\Requests\User\VerifyOtpRequest;
-use App\Jobs\AdvancedIdRequestJob;
-use App\Jobs\PlanifiedEmailJob;
-use App\Jobs\SendInitLinkJob;
-use App\Jobs\SendOTPJob;
-use App\Jobs\SendStructureInvitationEmail;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
-use App\Models\OTP;
-use App\Models\PendingRegistration;
-use App\Models\Structure;
 use App\Models\StructureInvitation;
 use App\Models\User;
-use App\Traits\AuthTrait;
+use App\Services\Registration\UserRegistrationService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -37,7 +28,9 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends BaseController
 {
-    use AuthTrait;
+    public function __construct(
+        private readonly UserRegistrationService $registration,
+    ) {}
 
     /**
      * @OA\Post(
@@ -64,46 +57,7 @@ class UserController extends BaseController
      */
     public function sendOtp(SendOtpRequest $request)
     {
-        $npi = $request->input('npi');
-
-        $validityMinutes = 5;
-        $otp = implode('', array_map(function () {
-            return mt_rand(0, 9);
-        }, range(1, 6)));
-
-        $validUntil = Carbon::now()->addMinutes($validityMinutes);
-        $existingOTP = OTP::where('npi', $npi)
-            ->first();
-        if ($existingOTP) {
-            $existingOTP->update(['otp' => $otp, 'valid_until' => $validUntil]);
-        } else {
-            OTP::create([
-                'npi' => $npi,
-                'otp' => $otp,
-                'valid_until' => $validUntil,
-            ]);
-        }
-
-        $anipData = $this->getUserData($npi);
-        if ($anipData['status']) {
-            $phoneNumber = $anipData['data']['phonenumber'];
-            $email = $anipData['data']['email'];
-            // SendSmsJob::dispatch($phoneNumber, "Votre code OTP pour poursuivre votre inscription est le suivant: $otp");
-            // dd($phoneNumber);
-            // SendOTPJob::dispatch('anagoarmandine@gmail.com', $otp);
-            SendOTPJob::dispatch($email, $otp);
-            Cache::put('user_'.$npi, [
-                'data' => $anipData,
-            ], 600);
-        } else {
-            Log::error('NPI inexistant');
-
-            return $this->sendError('Le numéro personnel d\'identification renseigné n\'existe pas dans la base de donnée de l\'ANIP vérifiez bien qu\'il s\'agit du bon numéro et reéssayez.', null, 404);
-        }
-
-        return $this->sendResponse(
-            'Un code OTP vous a été envoyé par e-mail. Il expire dans 5 minutes.'
-        );
+        return $this->respond($this->registration->sendOtp($request->input('npi')));
     }
 
     /**
@@ -131,35 +85,10 @@ class UserController extends BaseController
      */
     public function verifyOtp(VerifyOtpRequest $request)
     {
-        try {
-            $npi = $request->input('npi');
-            $otp = $request->input('otp');
-
-            $existingOTP = OTP::where('npi', $npi)
-                ->where('otp', $otp)
-                ->where('valid_until', '>=', Carbon::now())
-                ->first();
-
-            if (! $existingOTP) {
-                return $this->sendError('OTP invalide ou expiré.', null, 400);
-            }
-
-            $cachedData = Cache::get('user_'.$npi);
-
-            if (! $cachedData) {
-                return $this->sendError("Le code OTP n'est plus valide veuillez réessayer", null, 404);
-            }
-
-            $ttlSeconds = Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
-            Cache::put('user_'.$npi.'_validate_otp', true, $ttlSeconds > 0 ? $ttlSeconds : 300);
-
-            return $this->sendResponse(
-                'OTP valide.',
-                $cachedData['data']
-            );
-        } catch (Exception $e) {
-            return $this->sendError($e->getMessage(), null, 500);
-        }
+        return $this->respond($this->registration->verifyOtp(
+            $request->input('npi'),
+            $request->input('otp'),
+        ));
     }
 
     /**
@@ -186,12 +115,7 @@ class UserController extends BaseController
      */
     public function login(LoginWithCodeRequest $request)
     {
-        $code = $request->input('code');
-        $response = $this->userInfo($code);
-
-        return $response['status'] ?
-            $this->sendResponse('Token obtenu avec succès!', $response['data']) :
-            $this->sendError($response['message'], null, 401);
+        return $this->respond($this->registration->login($request->input('code')));
     }
 
     /**
@@ -218,12 +142,7 @@ class UserController extends BaseController
      */
     public function loginMobile(LoginWithCodeRequest $request)
     {
-        $code = $request->input('code');
-        $response = $this->mobileUserInfo($code);
-
-        return $response['status'] ?
-            $this->sendResponse('Token obtenu avec succès!', $response['data']) :
-            $this->sendError($response['message'], null, 401);
+        return $this->respond($this->registration->loginMobile($request->input('code')));
     }
 
     /**
@@ -552,98 +471,7 @@ class UserController extends BaseController
      */
     public function updateInPersonIdentityStatus(ApproveInPersonIdentityRequest $request)
     {
-        DB::beginTransaction();
-        try {
-            $identityPayload = $request->all();
-            $userData = [
-                'data' => [
-                    'npi' => User::findOrFail($identityPayload['user_id'])->npi,
-                ],
-            ];
-
-            try {
-                if ($identityPayload['status'] == 'APPROVED') {
-                    DB::transaction(function () use ($identityPayload, $userData, $request) {
-                        $output = $this->register($userData);
-                        Log::info('Output from register: ', $output);
-
-                        if ($output['status']) {
-                            $selfiePath = $request->file('selfie') ? Storage::cloud()->put('selfies', $request->file('selfie')) : null;
-                            $rectoPath = $request->file('recto') ? Storage::cloud()->put('images', $request->file('recto')) : null;
-                            $versoPath = $request->file('verso') ? Storage::cloud()->put('images', $request->file('verso')) : null;
-
-                            $exp_date = $request->input('exp_date') ? Carbon::parse($request->input('exp_date'))->format('Y-m-d') : null;
-                            $birth_date = $request->input('birth_date') ? Carbon::parse($request->input('birth_date'))->format('Y-m-d') : null;
-
-                            $identity = Identity::findOrFail($identityPayload['id']);
-
-                            $identity->update([
-                                'proof' => json_encode([
-                                    'selfiePath' => $selfiePath,
-                                    'rectoPath' => $rectoPath,
-                                    'versoPath' => $versoPath,
-                                    'exp_date' => $exp_date,
-                                    'birth_date' => $birth_date,
-                                ]),
-                                'status' => $identityPayload['user_id'] == null ? 'PENDING' : $identityPayload['status'],
-                            ]);
-
-                            $email = optional(User::find($request->input('user_id')))->email;
-                            $npi = optional(User::find($request->input('user_id')))->npi;
-
-                            if (isset($output['has_user']) && $output['has_user'] === true) {
-                                $allToken = Str::random(60);
-                                DB::table('password_resets')->updateOrInsert(
-                                    ['npi' => $npi, 'type' => 'all'],
-                                    ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-                                );
-                                $link = config('app.frontend_url')."/init-account/all/$allToken/$npi";
-                                WelcomeUserJob::dispatch($email, User::findOrFail($identityPayload['user_id']), $link, true);
-                            } else {
-                                $allToken = Str::random(60);
-                                $pinToken = Str::random(60);
-                                $passwordToken = Str::random(60);
-
-                                DB::table('password_resets')->updateOrInsert(
-                                    ['npi' => $npi, 'type' => 'pin'],
-                                    ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
-                                );
-                                DB::table('password_resets')->updateOrInsert(
-                                    ['npi' => $npi, 'type' => 'password'],
-                                    ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
-                                );
-                                DB::table('password_resets')->updateOrInsert(
-                                    ['npi' => $npi, 'type' => 'all'],
-                                    ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-                                );
-
-                                $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
-                                WelcomeUserJob::dispatch($email, User::findOrFail($identityPayload['user_id']), $link, true);
-                            }
-                        } else {
-                            return $this->sendError($output['message'], $output, 400);
-                        }
-                    });
-                } else {
-                    $identity = Identity::findOrFail($identityPayload['id']);
-                    $identity->update([
-                        'status' => $identityPayload['user_id'] == null ? 'PENDING' : $identityPayload['status'],
-                    ]);
-                }
-                DB::commit();
-
-                return $this->sendResponse("Le statut de l'identité à bien été mis à jour", $identityPayload);
-            } catch (Exception $e) {
-                Log::error('Failed to update identity status: '.$e->getMessage());
-
-                return $this->sendError('Echec de la mise à jour.', null, 500);
-            }
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error($e->getMessage());
-
-            return $this->sendError('Erreur lors de la finalisation.', null, 500);
-        }
+        return $this->respond($this->registration->approveInPersonIdentity($request->all(), $request));
     }
 
     /**
@@ -676,56 +504,16 @@ class UserController extends BaseController
             'type' => 'required|string|in:password,pin',
         ]);
 
-        $user = $this->getUserWithNPI($request->input('npi'));
-        if ($user['status']) {
-            $output = $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], $request->input('type'));
-            if ($output['status']) {
-                $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
-                // SendSmsJob::dispatch($phoneNumber, "Votre mot de passe vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
-
-                $final = $this->sendResponse(
-                    'Votre mot de passe a bien été mis à jour.',
-                    [...$user['data'], ...$output['data']]
-                );
-            } else {
-                $final = $this->sendError($output['message'], null, 400);
-            }
-        } else {
-            $final = $this->sendError($user['message'], null, 400);
-        }
-
-        return $final;
+        return $this->respond($this->registration->setPassword(
+            $request->input('npi'),
+            $request->input('password'),
+            $request->input('type'),
+        ));
     }
 
     public function sendResetLink(string $npi, string $type)
     {
-        $token = Str::random(60);
-
-        DB::table('password_resets')->updateOrInsert(
-            ['npi' => $npi, 'type' => $type],
-            ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
-        );
-
-        $user = $this->getUserWithNPI($npi);
-        if ($user['status']) {
-            $link = config('app.frontend_url')."/reset/{$type}/$token/$npi";
-
-            $phoneNumber = User::whereNpi($npi)->first()->phonenumber;
-            $email = User::whereNpi($npi)->first()->email;
-            $typeLabel = $type == 'password' ? 'mot de passe' : 'pin';
-
-            // SendSmsJob::dispatch($phoneNumber, "Une demande de mise à jour de votre $typeLabel à été initialisée pour votre compte. Utilisez ce lien pour le mettre à jour : \n $link");
-            SendInitLinkJob::dispatch($email, $link, $typeLabel);
-
-            $final = $this->sendResponse(
-                "Un lien vous a été envoyé par MAIL consultez le pour mettre à jour votre $typeLabel.",
-                []
-            );
-        } else {
-            $final = $this->sendError($user['message'], null, 400);
-        }
-
-        return $final;
+        return $this->respond($this->registration->sendResetLink($npi, $type));
     }
 
     /**
@@ -766,190 +554,12 @@ class UserController extends BaseController
      */
     public function finalizeRegistration(FinalizeRegistrationRequest $request)
     {
-        DB::beginTransaction();
-        try {
-            $pendingRegistration = $request->pendingRegistration();
-            if ($pendingRegistration === null) {
-                return $this->sendError('Données invalides.', null, 422);
-            }
-
-            $isForeigner = $pendingRegistration->user_data['is_foreigner'] ?? false;
-
-            $transactionId = $request->input('transaction_id');
-
-            // Données utilisateur pré-enregistrées
-            $userData = $pendingRegistration->user_data['cached_data'];
-            $npi = $userData['data']['npi'] ?? null;
-
-            if ($isForeigner) {
-                // Fusionner les données OCR KYC
-                $form = $pendingRegistration->user_data['form'] ?? [];
-                $kyc = $request->input('kyc', []);
-
-                $name = $kyc['name'] ?? ($form['name'] ?? null);
-                $firstName = $kyc['first_name'] ?? ($form['first_name'] ?? null);
-                $phone = $kyc['phonenumber'] ?? ($form['phonenumber'] ?? null);
-                $nationality = $kyc['nationality'] ?? ($form['nationality'] ?? null);
-                $docType = $kyc['document_type'] ?? ($form['document_type'] ?? null);
-                $docNumber = $kyc['document_number'] ?? ($form['document_number'] ?? null);
-
-                $user = User::create([
-                    'npi' => $npi,
-                    'email' => $pendingRegistration->email,
-                    'name' => $name,
-                    'first_name' => $firstName,
-                    'phonenumber' => $phone,
-                    'nationality' => $nationality,
-                    'profile' => $pendingRegistration->profile_path,
-                ]);
-
-                $selfiePath = null;
-                $rectoPath = null;
-                $versoPath = null;
-                if ($request->input('type') === 'ONLINE') {
-                    $selfiePath = $request->file('selfie') ? Storage::cloud()->put('selfies', $request->file('selfie')) : null;
-                    $rectoPath = $request->file('recto') ? Storage::cloud()->put('images', $request->file('recto')) : null;
-                    $versoPath = $request->file('verso') ? Storage::cloud()->put('images', $request->file('verso')) : null;
-                }
-
-                $type = $request->input('type');
-                $similarity = $request->input('similarity');
-                $exp_date = $request->input('exp_date') !== null ? $request->input('exp_date') : '';
-                $birth_date = $request->input('birth_date') !== null ? $request->input('birth_date') : '';
-                $liveness = $request->input('liveness');
-
-                Identity::create([
-                    'type' => $type,
-                    'proof' => json_encode([
-                        'selfiePath' => $selfiePath,
-                        'rectoPath' => $rectoPath,
-                        'versoPath' => $versoPath,
-                        'liveness' => $liveness,
-                        'similarity' => $similarity,
-                        'exp_date' => $exp_date,
-                        'birth_date' => $birth_date,
-                        'document_type' => $docType,
-                        'document_number' => $docNumber,
-                        'nationality' => $nationality,
-                    ]),
-                    'level' => 'ADVANCED',
-                    'user_id' => $user->id,
-                    'status' => 'PENDING',
-                ]);
-
-                $subscriptionCreated = $this->storeSubscription($transactionId, $user->id, 'FOREIGNER');
-                if (! $subscriptionCreated['status']) {
-                    return $this->sendError($subscriptionCreated['message'], $subscriptionCreated['data'], 500);
-                }
-
-                $user->assignRole('client');
-                if ($request->input('type') === 'IN_PERSON') {
-                    PlanifiedEmailJob::dispatch($user->email);
-                } else {
-                    AdvancedIdRequestJob::dispatch($user->email);
-                }
-                Cache::forget('foreigner_otp_valid_'.$pendingRegistration->email);
-                $pendingRegistration->update(['status' => 'COMPLETED']);
-
-                DB::commit();
-
-                return $this->sendResponse('Inscription finalisée.', [
-                    'user_id' => $user->id,
-                    'phonenumber' => $user->phonenumber,
-                ]);
-            }
-
-            // Flux citoyen ANIP (existant)
-            $output = $this->register($userData);
-
-            if ($output['status']) {
-                // Créer l'utilisateur
-                $user = User::create([
-                    ...$userData['data'],
-                    'email' => $pendingRegistration->email,
-                    'profile' => $pendingRegistration->profile_path,
-                ]);
-
-                $selfiePath = null;
-                $rectoPath = null;
-                $versoPath = null;
-                if ($request->input('type') === 'ONLINE') {
-                    $selfiePath = $request->file('selfie') ? Storage::cloud()->put('selfies', $request->file('selfie')) : null;
-                    $rectoPath = $request->file('recto') ? Storage::cloud()->put('images', $request->file('recto')) : null;
-                    $versoPath = $request->file('verso') ? Storage::cloud()->put('images', $request->file('verso')) : null;
-                }
-
-                $type = $request->input('type');
-                $similarity = $request->input('similarity');
-                $exp_date = $request->input('exp_date') !== null ? $request->input('exp_date') : '';
-                $birth_date = $request->input('birth_date') !== null ? $request->input('birth_date') : '';
-                $liveness = $request->input('liveness');
-
-                Identity::create([
-                    'type' => $type,
-                    'proof' => json_encode([
-                        'selfiePath' => $selfiePath,
-                        'rectoPath' => $rectoPath,
-                        'versoPath' => $versoPath,
-                        'liveness' => $liveness,
-                        'similarity' => $similarity,
-                        'exp_date' => $exp_date,
-                        'birth_date' => $birth_date,
-                    ]),
-                    'level' => 'ADVANCED',
-                    'user_id' => $user->id,
-                    'status' => 'PENDING',
-                ]);
-
-                $subscriptionCreated = $this->storeSubscription($transactionId, $user->id);
-                if (! $subscriptionCreated['status']) {
-                    return $this->sendError($subscriptionCreated['message'], $subscriptionCreated['data'], 500);
-                }
-
-                $pass_output = $this->setDefaultPassword(['id' => $output['data']['id'], 'password' => $request->input('password')], 'password');
-                $pin_output = $this->setDefaultPassword(['id' => $output['data']['id'], 'password' => $request->input('pin')], 'pin');
-                if ($pass_output['status'] && $pin_output['status']) {
-                    $final = $this->sendResponse(
-                        "Bienvenue sur la plateforme d'enregistrement déléguée votre pin et votre mot de passe ont bien été enregistrés",
-                        [...$output['data'], 'passOut' => [...$pass_output['data'], ...$pin_output['data']], 'user_id' => $user->id, 'phonenumber' => $user->phonenumber]
-                    );
-                } elseif ($pass_output['status']) {
-                    $final = $this->sendResponse(
-                        "Bienvenue sur la plateforme d'enregistrement déléguée nous n'avons pas pu enregistrer votre pin cependant votre identité à bien été créée il vous suffira de lancer la procédure de mise à jour pour que l'opération soit effective.",
-                        [$output['data']]
-                    );
-                } else {
-                    return $this->sendError(
-                        "Nous n'avons pas pu enregistrer votre pin ni votre mot de passe. Veuillez réessayer.",
-                        null,
-                        500
-                    );
-                }
-                $user->assignRole('client');
-                // Notifier selon le type de vérification
-                if ($request->input('type') === 'IN_PERSON') {
-                    PlanifiedEmailJob::dispatch($user->email);
-                } else {
-                    AdvancedIdRequestJob::dispatch($user->email);
-                }
-                Cache::forget('user_'.$npi);
-                Cache::forget('user_'.$npi.'_validate_otp');
-
-                // Marquer l'inscription comme terminée
-                $pendingRegistration->update(['status' => 'COMPLETED']);
-
-                DB::commit();
-
-                return $final;
-            } else {
-                $final = $this->sendError($output['message'], $output, 400);
-            }
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error($e->getMessage());
-
-            return $this->sendError('Erreur lors de la finalisation.', null, 500);
+        $pendingRegistration = $request->pendingRegistration();
+        if ($pendingRegistration === null) {
+            return $this->sendError('Données invalides.', null, 422);
         }
+
+        return $this->respond($this->registration->finalizeRegistration($request, $pendingRegistration));
     }
 
     /**
@@ -1329,75 +939,9 @@ class UserController extends BaseController
      */
     public function createEmployee(CreateEmployeeRequest $request)
     {
-        DB::beginTransaction();
-        try {
-            $validatedData = $request->validated();
-
-            $manager = auth()->user();
-            $structure = Structure::findOrFail($validatedData['structure_id']);
-
-            // Vérifier que le manager est bien le propriétaire de la structure
-            if ($structure->manager_id !== $manager->id) {
-                return $this->sendError('Vous n\'êtes pas autorisé à créer des employés pour cette structure.', null, 403);
-            }
-
-            // Vérifier que la structure est validée
-            if ($structure->status !== 'APPROVED') {
-                return $this->sendError('La structure doit être validée avant de créer des employés.', null, 400);
-            }
-
-            // 1. Créer le nouvel utilisateur avec statut CREATED
-            $user = User::create([
-                'email' => $validatedData['email'],
-                'name' => $validatedData['name'],
-                'phonenumber' => $validatedData['phone'] ?? null,
-                'status' => 'CREATED',
-                // 'npi' => 'EMP_' . time() . '_' . rand(1000, 9999),
-                // 'password' => bcrypt(Str::random(32)),
-            ]);
-
-            $user->assignRole('client');
-
-            // 2. CRÉER L'ENTRÉE DANS structure_users AVEC STATUT ACTIVE (DIRECTEMENT)
-            $structure->employees()->attach($user->id, [
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACTIVE', // DIRECTEMENT ACTIF
-                'joined_at' => Carbon::now(),
-                'invitation_message' => $validatedData['message'] ?? 'Créé par le manager',
-            ]);
-
-            // 3. CRÉER UNE INVITATION "AUTO-ACCEPTED" (pour historique seulement)
-            $invitation = StructureInvitation::create([
-                'structure_id' => $structure->id,
-                'user_id' => $user->id,
-                'invited_by' => $manager->id,
-                'email' => $user->email,
-                'token' => bin2hex(random_bytes(32)),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'status' => 'ACCEPTED', // DIRECTEMENT ACCEPTÉE
-                'expires_at' => Carbon::now()->addDays(7),
-                'accepted_at' => Carbon::now(), // Date d'acceptation maintenant
-                'message' => $validatedData['message'] ?? null,
-            ]);
-
-            // 4. ENVOYER UN EMAIL D'ACTIVATION (pas d'invitation)
-
-            DB::commit();
-
-            SendStructureInvitationEmail::dispatch($invitation);
-
-            return $this->sendResponse('Employé créé et directement affilié à la structure.', [
-                'user' => $user->only(['id', 'email', 'name', 'status']),
-                'structure' => $structure->only(['id', 'name']),
-                'role' => $validatedData['role'] ?? 'EMPLOYEE',
-                'joined_at' => Carbon::now()->toDateTimeString(),
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la création de l\'employé : '.$e->getMessage());
-
-            return $this->sendError($e->getMessage() ?? 'Impossible de créer l\'employé.', null, 500);
-        }
+        return $this->respond($this->registration->createEmployee(
+            $request->validated(),
+            auth()->user(),
+        ));
     }
 }
