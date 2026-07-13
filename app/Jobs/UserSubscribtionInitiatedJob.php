@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
@@ -19,9 +17,7 @@ final class UserSubscribtionInitiatedJob implements ShouldQueue
     public function __construct(
         public readonly mixed $user,
         public readonly mixed $processId,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

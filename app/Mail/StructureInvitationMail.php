@@ -13,8 +13,11 @@ class StructureInvitationMail extends Mailable
     use Queueable, SerializesModels;
 
     public $invitation;
+
     public $user;
+
     public $acceptUrl;
+
     public $rejectUrl;
 
     public function __construct(StructureInvitation $invitation, User $user)
@@ -27,13 +30,13 @@ class StructureInvitationMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Invitation à rejoindre ' . $this->invitation->structure->name)
-                    ->markdown('emails.structure-invitation')
-                    ->with([
-                        'user' => $this->user,
-                        'invitation' => $this->invitation,
-                        'acceptUrl' => $this->acceptUrl,
-                        'rejectUrl' => $this->rejectUrl
-                    ]);
+        return $this->subject('Invitation à rejoindre '.$this->invitation->structure->name)
+            ->markdown('emails.structure-invitation')
+            ->with([
+                'user' => $this->user,
+                'invitation' => $this->invitation,
+                'acceptUrl' => $this->acceptUrl,
+                'rejectUrl' => $this->rejectUrl,
+            ]);
     }
 }

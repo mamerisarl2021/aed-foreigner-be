@@ -1,14 +1,11 @@
 <?php
 
-//declare(strict_types=1);
-
 namespace App\Services\Notifications;
 
 use App\Contracts\NotificationPublisherInterface;
 use App\DataTransferObjects\EmailNotificationData;
 use App\DataTransferObjects\SmsNotificationData;
 use App\DataTransferObjects\WebsocketNotificationData;
-use App\Enums\NotificationPlatform;
 use Junges\Kafka\Facades\Kafka;
 use Junges\Kafka\Message\Message;
 use Junges\Kafka\Producers\Builder as ProducerBuilder;
@@ -38,10 +35,10 @@ final class KafkaNotificationPublisher implements NotificationPublisherInterface
         $producer = $this->applySecurity($producer);
 
         $producer->withMessage(new Message(body: $payload))
-        ->send();
+            ->send();
     }
 
-    private function applySecurity(object $producer): object # ProducerBuilder
+    private function applySecurity(object $producer): object // ProducerBuilder
     {
         $protocol = (string) config('kafka.securityProtocol');
 

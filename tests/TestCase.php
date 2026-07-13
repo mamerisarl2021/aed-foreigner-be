@@ -10,6 +10,6 @@ abstract class TestCase extends BaseTestCase
 
     protected function api(string $path): string
     {
-        return '/api/v1' . (str_starts_with($path, '/') ? $path : '/' . $path);
+        return '/api/v1'.(str_starts_with($path, '/') ? $path : '/'.$path);
     }
 }

@@ -9,9 +9,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class UserSubscription extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
     use HasFactory;
-
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = ['type', 'status', 'structure_id', 'user_id', 'package_id', 'current'];
 
@@ -65,5 +64,6 @@ class UserSubscription extends Model implements Auditable
 
         return $this->userPackage;
     }
+
     protected $hidden = ['userPackage', 'structurePackage', 'user', 'structure'];
 }

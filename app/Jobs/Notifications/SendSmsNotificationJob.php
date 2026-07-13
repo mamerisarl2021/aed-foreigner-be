@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs\Notifications;
 
 use App\Contracts\NotificationPublisherInterface;
@@ -17,9 +15,7 @@ final class SendSmsNotificationJob implements ShouldQueue
 
     public function __construct(
         public readonly SmsNotificationData $notification,
-    )
-    {
-    }
+    ) {}
 
     public function backoff(): array
     {

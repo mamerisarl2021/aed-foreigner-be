@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Console\Commands;
 
 use App\Contracts\ConsulClientInterface;
@@ -16,10 +14,9 @@ final class ConsulDeregister extends Command
     protected $description = 'Deregister the microservice from Consul.';
 
     public function handle(
-        ConsulClientInterface   $consulClient,
+        ConsulClientInterface $consulClient,
         ConsulRegistrationStore $store,
-    ): int
-    {
+    ): int {
         $serviceId = $store->getServiceId();
 
         if ($serviceId === null) {
@@ -30,8 +27,8 @@ final class ConsulDeregister extends Command
 
         $response = $consulClient->deregister($serviceId);
 
-        if (!$response->successful()) {
-            throw new ConsulException('Consul deregistration failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new ConsulException('Consul deregistration failed: '.$response->body());
         }
 
         $store->forget();

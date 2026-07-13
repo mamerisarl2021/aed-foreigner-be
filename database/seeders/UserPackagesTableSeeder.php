@@ -81,7 +81,7 @@ class UserPackagesTableSeeder extends Seeder
                 'type' => 'VID',
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]
+            ],
         ]);
     }
 }

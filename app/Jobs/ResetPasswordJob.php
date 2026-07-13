@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
@@ -17,11 +15,9 @@ final class ResetPasswordJob implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly mixed  $user,
+        public readonly mixed $user,
         public readonly string $link,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
@@ -18,10 +16,8 @@ final class RescheduledAppointmentJob implements ShouldQueue
 
     public function __construct(
         public readonly string $email,
-        public readonly mixed  $data,
-    )
-    {
-    }
+        public readonly mixed $data,
+    ) {}
 
     public function handle(): void
     {

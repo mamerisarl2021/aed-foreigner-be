@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Attachment;
 use App\Models\Document;
 use App\Traits\AttachmentTrait;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,17 +14,19 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Exception;
 
 class ProcessStructureFilesJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, AttachmentTrait;
+    use AttachmentTrait, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private int $structureId;
+
     private array $attachmentsData;
+
     private array $files;
 
     public $tries = 3;
+
     public $timeout = 300; // 5 minutes
 
     public function __construct(int $structureId, array $attachmentsData, array $files)
@@ -37,7 +40,7 @@ class ProcessStructureFilesJob implements ShouldQueue
     {
         Log::info('Processing structure files', [
             'structure_id' => $this->structureId,
-            'attachments_count' => count($this->attachmentsData)
+            'attachments_count' => count($this->attachmentsData),
         ]);
 
         DB::beginTransaction();
@@ -49,37 +52,38 @@ class ProcessStructureFilesJob implements ShouldQueue
                 ->get();
 
             foreach ($this->attachmentsData as $idx => $attachmentData) {
-                if (!isset($attachments[$idx])) {
+                if (! isset($attachments[$idx])) {
                     Log::warning('Attachment not found for index', ['index' => $idx]);
+
                     continue;
                 }
 
                 $attachment = $attachments[$idx];
-                
+
                 // Traiter les fichiers pour cet attachment
                 $filesKey = "structure.attachements.{$idx}.files";
                 if (isset($this->files[$filesKey])) {
                     $uploadedFiles = $this->processAttachmentFiles($this->files[$filesKey], $attachment->id);
-                    
+
                     if ($uploadedFiles['status']) {
                         $attachment->update([
                             'status' => $attachmentData['status'] ?? 'SENT',
                             'message' => $attachmentData['message'] ?? null,
                         ]);
-                        
+
                         Log::info('Files processed successfully', [
                             'attachment_id' => $attachment->id,
-                            'files_count' => count($uploadedFiles['data'])
+                            'files_count' => count($uploadedFiles['data']),
                         ]);
                     } else {
                         $attachment->update([
                             'status' => 'REJECTED',
-                            'message' => 'Erreur lors du traitement des fichiers: ' . $uploadedFiles['message'],
+                            'message' => 'Erreur lors du traitement des fichiers: '.$uploadedFiles['message'],
                         ]);
-                        
+
                         Log::error('Failed to process files', [
                             'attachment_id' => $attachment->id,
-                            'error' => $uploadedFiles['message']
+                            'error' => $uploadedFiles['message'],
                         ]);
                     }
                 } else {
@@ -99,17 +103,17 @@ class ProcessStructureFilesJob implements ShouldQueue
             Log::error('Structure files processing failed', [
                 'structure_id' => $this->structureId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             // Marquer tous les attachments en erreur
             Attachment::where('structure_id', $this->structureId)
                 ->where('status', 'PROCESSING')
                 ->update([
                     'status' => 'REJECTED',
-                    'message' => 'Erreur technique lors du traitement des fichiers.'
+                    'message' => 'Erreur technique lors du traitement des fichiers.',
                 ]);
-            
+
             throw $e;
         }
     }
@@ -118,11 +122,11 @@ class ProcessStructureFilesJob implements ShouldQueue
     {
         try {
             $uploadedFiles = [];
-            
+
             foreach ($files as $file) {
                 // Upload du fichier
                 $path = Storage::cloud()->put('attachments', $file);
-                
+
                 // Créer l'enregistrement Document
                 $document = Document::create([
                     'name' => $file->getClientOriginalName(),
@@ -131,20 +135,20 @@ class ProcessStructureFilesJob implements ShouldQueue
                     'mime_type' => $file->getMimeType(),
                     'attachment_id' => $attachmentId,
                 ]);
-                
+
                 $uploadedFiles[] = [
                     'document_id' => $document->id,
                     'path' => $path,
                     'original_name' => $file->getClientOriginalName(),
                 ];
             }
-            
+
             return [
                 'status' => true,
                 'message' => 'Fichiers traités avec succès',
                 'data' => $uploadedFiles,
             ];
-            
+
         } catch (Exception $e) {
             // Nettoyer les fichiers déjà uploadés en cas d'erreur
             foreach ($uploadedFiles ?? [] as $uploadedFile) {
@@ -152,7 +156,7 @@ class ProcessStructureFilesJob implements ShouldQueue
                     Storage::cloud()->delete($uploadedFile['path']);
                 }
             }
-            
+
             return [
                 'status' => false,
                 'message' => $e->getMessage(),
@@ -166,15 +170,15 @@ class ProcessStructureFilesJob implements ShouldQueue
         Log::error('ProcessStructureFilesJob failed permanently', [
             'structure_id' => $this->structureId,
             'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString()
+            'trace' => $exception->getTraceAsString(),
         ]);
-        
+
         // Marquer tous les attachments en erreur définitive
         Attachment::where('structure_id', $this->structureId)
             ->where('status', 'PROCESSING')
             ->update([
                 'status' => 'REJECTED',
-                'message' => 'Échec définitif du traitement des fichiers après plusieurs tentatives.'
+                'message' => 'Échec définitif du traitement des fichiers après plusieurs tentatives.',
             ]);
     }
 }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
@@ -19,10 +17,8 @@ final class ForeignerOtpJob implements ShouldQueue
     public function __construct(
         public readonly string $email,
         public readonly string $otp,
-        public readonly int    $ttlMinutes = 5,
-    )
-    {
-    }
+        public readonly int $ttlMinutes = 5,
+    ) {}
 
     public function handle(): void
     {

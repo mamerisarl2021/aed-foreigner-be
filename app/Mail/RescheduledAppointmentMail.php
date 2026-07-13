@@ -20,6 +20,6 @@ class RescheduledAppointmentMail extends Mailable
     public function build()
     {
         return $this->view('emails.rescheduled')
-                    ->subject('Report de votre rendez-vous de vérification d\'identité');
+            ->subject('Report de votre rendez-vous de vérification d\'identité');
     }
 }

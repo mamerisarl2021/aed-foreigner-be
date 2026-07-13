@@ -8,5 +8,4 @@ use OwenIt\Auditing\Contracts\Auditable;
 class ActivityLog extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
-
 }

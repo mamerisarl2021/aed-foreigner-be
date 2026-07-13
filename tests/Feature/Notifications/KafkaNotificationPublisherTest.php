@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Tests\Feature\Notifications;
 
 use App\Contracts\NotificationPublisherInterface;

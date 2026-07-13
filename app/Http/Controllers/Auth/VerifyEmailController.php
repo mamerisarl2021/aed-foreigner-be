@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -15,7 +13,7 @@ final class VerifyEmailController extends Controller
     {
         if ($request->user()->hasVerifiedEmail()) {
             return redirect()->intended(
-                config('app.frontend_url') . config('app.home') . '?verified=1'
+                config('app.frontend_url').config('app.home').'?verified=1'
             );
         }
 
@@ -24,7 +22,7 @@ final class VerifyEmailController extends Controller
         }
 
         return redirect()->intended(
-            config('app.frontend_url') . config('app.home') . '?verified=1'
+            config('app.frontend_url').config('app.home').'?verified=1'
         );
     }
 }

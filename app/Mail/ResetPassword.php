@@ -12,6 +12,7 @@ class ResetPassword extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $user;
+
     public $link;
 
     public function __construct($user, $link)
@@ -22,10 +23,10 @@ class ResetPassword extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return  $this->from('collabone@qualitycorporate.com')
+        return $this->from('collabone@qualitycorporate.com')
             ->subject('Lien de réinitialisation')->view('emails.reset_link')->with([
                 'user' => $this->user,
-                'link' => $this->link
+                'link' => $this->link,
             ]);
     }
 }

@@ -41,7 +41,7 @@ return [
     |
     */
 
-    'debug' => (bool)env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -55,6 +55,8 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+
+    'api_url' => env('API_URL', env('APP_URL', 'http://localhost')),
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
@@ -71,7 +73,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------
@@ -131,7 +133,6 @@ return [
 
     'home' => env('APP_HOME', '/dashboard'),
 
-
     /*
     |--------------------------------------------------------------------------
     | Class Aliases
@@ -144,7 +145,7 @@ return [
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-    // 'Example' => App\Facades\Example::class,
-])->toArray(),
+        // 'Example' => App\Facades\Example::class,
+    ])->toArray(),
 
 ];

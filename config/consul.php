@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 return [
     'url' => env('CONSUL_URL', 'http://localhost:8500'),
     'scheme' => env('CONSUL_SCHEME', 'http'),

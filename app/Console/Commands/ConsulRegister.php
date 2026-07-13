@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Console\Commands;
 
 use App\Contracts\ConsulClientInterface;
@@ -17,14 +15,13 @@ final class ConsulRegister extends Command
     protected $description = 'Register the microservice in Consul.';
 
     public function handle(
-        ConsulClientInterface   $consulClient,
+        ConsulClientInterface $consulClient,
         ConsulRegistrationStore $store,
-    ): int
-    {
-        $name = (string)config('consul.service_name');
-        $ip = (string)(config('consul.service_ip') ?: gethostbyname(gethostname()));
-        $port = (int)config('consul.service_port');
-        $id = $name . '-' . Str::random(8);
+    ): int {
+        $name = (string) config('consul.service_name');
+        $ip = (string) (config('consul.service_ip') ?: gethostbyname(gethostname()));
+        $port = (int) config('consul.service_port');
+        $id = $name.'-'.Str::random(8);
 
         $response = $consulClient->register([
             'ID' => $id,
@@ -33,15 +30,15 @@ final class ConsulRegister extends Command
             'Port' => $port,
             'Tags' => config('consul.tags'),
             'Check' => [
-                'HTTP' => "http://{$ip}:{$port}" . config('consul.health_path'),
+                'HTTP' => "http://{$ip}:{$port}".config('consul.health_path'),
                 'Interval' => config('consul.check_interval'),
                 'Timeout' => config('consul.check_timeout'),
                 'DeregisterCriticalServiceAfter' => config('consul.deregister_after'),
             ],
         ]);
 
-        if (!$response->successful()) {
-            throw new ConsulException('Consul registration failed: ' . $response->body());
+        if (! $response->successful()) {
+            throw new ConsulException('Consul registration failed: '.$response->body());
         }
 
         $store->save($id, $name);

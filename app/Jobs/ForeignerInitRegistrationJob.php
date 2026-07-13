@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
@@ -19,9 +17,7 @@ final class ForeignerInitRegistrationJob implements ShouldQueue
     public function __construct(
         public readonly string $email,
         public readonly string $registrationLink,
-    )
-    {
-    }
+    ) {}
 
     public function handle(): void
     {
