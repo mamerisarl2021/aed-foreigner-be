@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class UserSubscribtionValidated extends Mailable implements ShouldQueue
+class UserSubscriptionCreated extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -24,7 +24,7 @@ class UserSubscribtionValidated extends Mailable implements ShouldQueue
     public function build()
     {
         return $this->from('collabone@qualitycorporate.com')
-            ->subject('Souscription validée')->view('emails.user_subscription_validated')->with([
+            ->subject('Souscription crée avec succès')->view('emails.user_subscription_created')->with([
                 'user' => $this->user,
                 'processId' => $this->processId,
             ]);

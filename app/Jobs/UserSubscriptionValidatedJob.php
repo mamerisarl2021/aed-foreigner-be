@@ -10,7 +10,7 @@ use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class UserSubscribtionValidatedJob implements ShouldQueue
+final class UserSubscriptionValidatedJob implements ShouldQueue
 {
     use Queueable;
 

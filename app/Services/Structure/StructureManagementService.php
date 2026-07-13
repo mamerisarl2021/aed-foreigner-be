@@ -9,8 +9,8 @@ use App\Models\OTP;
 use App\Models\Structure;
 use App\Models\StructureInvitation;
 use App\Models\User;
+use App\Services\AttachmentUploadService;
 use App\Services\ServiceResult;
-use App\Traits\AttachmentTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -21,7 +21,9 @@ use Illuminate\Validation\Rule;
 
 class StructureManagementService
 {
-    use AttachmentTrait;
+    public function __construct(
+        private readonly AttachmentUploadService $attachmentService,
+    ) {}
 
     public function list(int $perPage): ServiceResult
     {
@@ -130,7 +132,7 @@ class StructureManagementService
                 $files = $request->file("attachements.{$key}.files");
 
                 if ($files) {
-                    $response = $this->attachFiles($files, $attachment->id);
+                    $response = $this->attachmentService->attachFiles($files, $attachment->id);
 
                     if (! $response['status']) {
                         DB::rollBack();
@@ -170,7 +172,7 @@ class StructureManagementService
         try {
             $attachment = Attachment::create($request->all());
             $files = $request->file('files');
-            $response = $this->attachFiles($files, $attachment->id);
+            $response = $this->attachmentService->attachFiles($files, $attachment->id);
 
             if (! $response['status']) {
                 DB::rollBack();

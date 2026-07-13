@@ -93,7 +93,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-06 | `done` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 → ~180 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
 | P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
-| P3-09 | `todo` | Decompose `AttachmentTrait` into `AttachmentUploadService` | Trait + 4 controllers | S | File storage only |
+| P3-09 | `done` | Decompose `AttachmentTrait` into `AttachmentUploadService` | 4 consumers migrated; trait now unused | S | File storage only |
 | P3-10 | `todo` | Decompose `ADTrait` into LDAP/AD service | `UserSubscriptionController` | M | |
 | P3-11 | `done` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
 | P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
@@ -207,7 +207,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P10-01 | `todo` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/` | Breaking rename; coordinate imports |
+| P10-01 | `done` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/`, `app/Mail/` | Renamed 3 Jobs + 3 Mailables; updated all imports |
 | P10-02 | `todo` | Remove large commented-out code blocks | `UserController`, `SignatureController`, `SigningIdentityController`, `StatsController` | |
 | P10-03 | `todo` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
 | P10-04 | `todo` | Expand authorization beyond route middleware (policies) | `app/Policies/` | Only 2 policies today |

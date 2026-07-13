@@ -5,15 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Management\UpdateAttachmentStatusRequest;
 use App\Models\Attachment;
 use App\Models\Document;
-use App\Traits\AttachmentTrait;
+use App\Services\AttachmentUploadService;
 use App\Traits\AuditTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AttachmentController extends BaseController
 {
-    use AttachmentTrait;
     use AuditTrait;
+
+    public function __construct(
+        private readonly AttachmentUploadService $attachmentService,
+    ) {}
 
     /**
      * @OA\Get(
@@ -87,7 +90,7 @@ class AttachmentController extends BaseController
             ]);
 
             $attachment = Attachment::create($validatedData);
-            $response = $this->attachFiles($request->file('files'), $attachment['id']);
+            $response = $this->attachmentService->attachFiles($request->file('files'), $attachment['id']);
 
             return $response['status'] ? $this->sendResponse($response['message'], $response['data']) : $this->sendError($response['message'], null, 400);
         } catch (\Exception $e) {
@@ -107,7 +110,7 @@ class AttachmentController extends BaseController
 
             $attachment = Attachment::findOrFail($id);
             $attachment->update($validatedData);
-            $response = $this->attachFiles($request->file('files'), $id);
+            $response = $this->attachmentService->attachFiles($request->file('files'), $id);
 
             return $response['status'] ? $this->sendResponse($response['message'], $response['data']) : $this->sendError($response['message'], null, 400);
         } catch (\Exception $e) {

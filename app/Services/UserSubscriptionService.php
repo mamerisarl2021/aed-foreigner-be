@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Jobs\UserSubscribtionCreatedJob;
-use App\Jobs\UserSubscribtionInitiatedJob;
-use App\Jobs\UserSubscribtionValidatedJob;
+use App\Jobs\UserSubscriptionCreatedJob;
+use App\Jobs\UserSubscriptionInitiatedJob;
+use App\Jobs\UserSubscriptionValidatedJob;
 use App\Models\Structure;
 use App\Models\StructurePackage;
 use App\Models\StructureSubscription;
@@ -72,9 +72,9 @@ class UserSubscriptionService
                         Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
                         throw new Exception('Failed to update user subscriptions.');
                     }
-                    UserSubscribtionCreatedJob::dispatch(Auth::user()->email, $subscription->id);
+                    UserSubscriptionCreatedJob::dispatch(Auth::user()->email, $subscription->id);
                 } else {
-                    UserSubscribtionInitiatedJob::dispatch(Auth::user()->email, $subscription->id);
+                    UserSubscriptionInitiatedJob::dispatch(Auth::user()->email, $subscription->id);
                 }
             });
 
@@ -125,7 +125,7 @@ class UserSubscriptionService
 
                 if ($subscription->type == 'EMPLOYEE' && $subscriptionData['status'] === 'TRAITEDBYMANAGER') {
                     $updateStatus = $this->updateUserAttributesByNPI($user->npi, "$structure->ifu|$structure->name|$structure->searchbase|E", $subscription->package->validity);
-                    UserSubscribtionValidatedJob::dispatch($user->email, $subscription->id);
+                    UserSubscriptionValidatedJob::dispatch($user->email, $subscription->id);
                     if (! $updateStatus['status']) {
                         Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
                         throw new Exception('Failed to update user subscriptions.');
