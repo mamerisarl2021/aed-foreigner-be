@@ -118,14 +118,9 @@ class IdentityReviewService
             ->where('manager_id', $identity->user_id)
             ->latest('id')
             ->first();
+        $identity->setAttribute('structure', $structure);
 
-        $proof = json_decode($identity->proof ?? '{}', true);
-
-        return ServiceResult::ok('Détail de la demande.', [
-            'identity' => $identity,
-            'proof' => $proof,
-            'structure' => $structure,
-        ]);
+        return ServiceResult::ok('Détail de la demande.', $identity);
     }
 
     public function claim(int $id, int $agentId): ServiceResult

@@ -104,7 +104,7 @@ class IdentityReviewControllerTest extends TestCase
 
         $resp = $this->getJson($this->api("/management/identity-reviews/{$identity->id}"));
         $resp->assertStatus(200)
-            ->assertJsonPath('data.identity.id', $identity->id)
+            ->assertJsonPath('data.id', $identity->id)
             ->assertJsonPath('data.proof.foo', 'bar')
             ->assertJsonStructure(['data' => ['structure']]);
     }

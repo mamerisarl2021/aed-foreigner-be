@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Foreigner\FinalizeRegistrationRequest;
@@ -54,7 +56,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function sendOtp(SendOtpRequest $request)
+    public function sendOtp(SendOtpRequest $request): \Illuminate\Http\JsonResponse
     {
         return $this->respond($this->enrollment->sendOtp($request->input('email')));
     }
@@ -95,7 +97,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function verifyOtp(VerifyOtpRequest $request)
+    public function verifyOtp(VerifyOtpRequest $request): \Illuminate\Http\JsonResponse
     {
         return $this->respond($this->enrollment->verifyOtp(
             $request->input('email'),
@@ -147,7 +149,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function initRegistration(InitRegistrationRequest $request)
+    public function initRegistration(InitRegistrationRequest $request): \Illuminate\Http\JsonResponse
     {
         return $this->respond($this->enrollment->initRegistration(
             $request->input('email'),
@@ -215,7 +217,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function finalizeRegistration(FinalizeRegistrationRequest $request)
+    public function finalizeRegistration(FinalizeRegistrationRequest $request): \Illuminate\Http\JsonResponse
     {
         $pending = PendingRegistration::where('registration_token', $request->registration_token)
             ->where('status', 'PENDING')

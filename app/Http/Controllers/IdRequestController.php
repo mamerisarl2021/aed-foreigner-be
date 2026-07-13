@@ -1,40 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\IdRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class IdRequestController extends Controller
+class IdRequestController extends BaseController
 {
-    public function index(Request $request)
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         try {
             $idRequests = IdRequest::paginate(min((int) $request->get('perPage', 15), 100));
 
-            return response()->json($idRequests);
+            $flattenedData = $idRequests->toArray();
+            $data = $flattenedData['data'];
+            unset($flattenedData['data']);
+
+            $response = array_merge(['data' => $data], ['pagination' => $flattenedData]);
+
+            return $this->sendPaginatedResponse('Liste des demandes ID.', $response);
         } catch (\Exception $e) {
             Log::error('Fetching ID requests failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Fetching ID requests failed.'], 500);
+            return $this->sendError('Fetching ID requests failed.', [], 500);
         }
     }
 
-    public function show($id)
+    public function show($id): \Illuminate\Http\JsonResponse
     {
         try {
             $idRequest = IdRequest::findOrFail($id);
 
-            return response()->json($idRequest);
+            return $this->sendResponse('Détails de la demande ID.', $idRequest);
         } catch (\Exception $e) {
             Log::error('Fetching ID request failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Fetching ID request failed.'], 500);
+            return $this->sendError('Fetching ID request failed.', [], 500);
         }
     }
 
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\JsonResponse
     {
         try {
             $validatedData = $request->validate([
@@ -45,15 +53,15 @@ class IdRequestController extends Controller
 
             IdRequest::create($validatedData);
 
-            return response()->json(['message' => 'ID request created successfully.'], 201);
+            return $this->sendResponse('ID request created successfully.');
         } catch (\Exception $e) {
             Log::error('Creating ID request failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Creating ID request failed.'], 500);
+            return $this->sendError('Creating ID request failed.', [], 500);
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): \Illuminate\Http\JsonResponse
     {
         try {
             $validatedData = $request->validate([
@@ -65,25 +73,25 @@ class IdRequestController extends Controller
             $idRequest = IdRequest::findOrFail($id);
             $idRequest->update($validatedData);
 
-            return response()->json(['message' => 'ID request updated successfully.'], 200);
+            return $this->sendResponse('ID request updated successfully.');
         } catch (\Exception $e) {
             Log::error('Updating ID request failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Updating ID request failed.'], 500);
+            return $this->sendError('Updating ID request failed.', [], 500);
         }
     }
 
-    public function destroy($id)
+    public function destroy($id): \Illuminate\Http\JsonResponse
     {
         try {
             $idRequest = IdRequest::findOrFail($id);
             $idRequest->delete();
 
-            return response()->json(['message' => 'ID request deleted successfully.'], 200);
+            return $this->sendResponse('ID request deleted successfully.');
         } catch (\Exception $e) {
             Log::error('Deleting ID request failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Deleting ID request failed.'], 500);
+            return $this->sendError('Deleting ID request failed.', [], 500);
         }
     }
 }

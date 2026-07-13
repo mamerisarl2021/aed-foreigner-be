@@ -116,10 +116,10 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P4-01 | `todo` | Introduce `app/Http/Resources/` and baseline resource classes | New directory | Zero resources today |
-| P4-02 | `todo` | Migrate `IdentityReviewController` responses to API Resources | `IdentityReviewResource`, collection | Already has structured JSON |
-| P4-03 | `todo` | Migrate `ForeignerEnrollmentController` responses | Enrollment resources | |
-| P4-04 | `todo` | Normalize `IdRequestController` to standard `{ success, message, data }` envelope | `IdRequestController` | Currently raw model JSON |
+| P4-01 | `done` | Introduce `app/Http/Resources/` and baseline resource classes | New directory | Zero resources today |
+| P4-02 | `done` | Migrate `IdentityReviewController` responses to API Resources | `IdentityReviewResource`, collection | Already has structured JSON |
+| P4-03 | `done` | Migrate `ForeignerEnrollmentController` responses | Enrollment resources | |
+| P4-04 | `done` | Normalize `IdRequestController` to standard `{ success, message, data }` envelope | `IdRequestController` | Currently raw model JSON |
 | P4-05 | `todo` | Document public API schema (OpenAPI) aligned to `/api/v1` paths | `routes/api.php`, controller `@OA` blocks | Many annotations still say `/api/...` |
 
 ---
@@ -159,13 +159,13 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P7-01 | `todo` | Add `phpstan.neon` / `phpstan.dist.neon` (Larastan level 6+) | Project root | Package installed, not configured |
-| P7-02 | `todo` | Add `composer` scripts: `lint` (Pint), `analyse` (PHPStan), `test` | `composer.json` | |
-| P7-03 | `todo` | Add `declare(strict_types=1)` to new files; plan rollout for `app/` | All `app/` PHP | Zero strict files today |
-| P7-04 | `todo` | Add return types to `BaseController` helpers | `BaseController.php` | Foundation for all controllers |
-| P7-05 | `todo` | Add return types to all controller public methods | 30 controllers | ~14 typed vs ~150 untyped |
-| P7-06 | `todo` | Add return types to all Eloquent relationship methods | `app/Models/` | Only `Stamp` typed today |
-| P7-07 | `todo` | Fix PHPStan baseline / ratchet (allow incremental cleanup) | CI config | Optional after P7-01 |
+| P7-01 | `done` | Add `phpstan.neon` / `phpstan.dist.neon` (Larastan level 6+) | Project root | Package installed, not configured |
+| P7-02 | `done` | Add `composer` scripts: `lint` (Pint), `analyse` (PHPStan), `test` | `composer.json` | |
+| P7-03 | `done` | Add `declare(strict_types=1)` to new files; plan rollout for `app/` | All `app/` PHP | Zero strict files today |
+| P7-04 | `done` | Add return types to `BaseController` helpers | `BaseController.php` | Foundation for all controllers |
+| P7-05 | `done` | Add return types to all controller public methods | 30 controllers | ~14 typed vs ~150 untyped |
+| P7-06 | `done` | Add return types to all Eloquent relationship methods | `app/Models/` | Only `Stamp` typed today |
+| P7-07 | `done` | Fix PHPStan baseline / ratchet (allow incremental cleanup) | CI config | Optional after P7-01 |
 
 ---
 
