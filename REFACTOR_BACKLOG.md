@@ -24,13 +24,13 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
 | [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 11 | High |
-| [P4](#p4-api-contract--resources) | API contract & resources | 5 | 0 | Medium |
-| [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 0 | Medium |
-| [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 0 | Medium |
-| [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 0 | Medium |
+| [P4](#p4-api-contract--resources) | API contract & resources | 5 | 4 | Medium |
+| [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 8 | Medium |
+| [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 2 | Medium |
+| [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
 | [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 0 | Low |
-| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 0 | Low |
+| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 2 | Low |
 
 **Total:** 82 items
 
@@ -262,6 +262,8 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-08 | P2 complete: `ApiFormRequest`, 24 Form Requests, zero inline `Validator::make` in controllers |
 | 2026-07-10 | P3 partial: `ForeignerEnrollmentService`, `IdentityReviewService`, `AdminAuthService`, `ServiceResult` |
 | 2026-07-13 | P3-08, P3-09, P3-10: Decomposed AuthTrait, AttachmentTrait, and ADTrait into respective services. Traits deleted. |
+| 2026-07-13 | P5, P6: Async processing offloaded for revocations, N+1 queries addressed. |
+| 2026-07-13 | P4, P7: API resources introduced, `strict_types=1` enforced, PHPStan Level 6 configured with baseline. |
 
 ---
 
