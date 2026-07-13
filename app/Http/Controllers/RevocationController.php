@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\RevocatedEmailJob;
 use App\Jobs\SendSmsJob;
 use App\Models\Revocation;
-use App\Traits\AuthTrait;
+use App\Services\PKI\TrustedXClientService;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class RevocationController extends BaseController
 {
-    use AuthTrait;
+    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
 
     public function index(Request $request)
     {
@@ -100,7 +100,7 @@ class RevocationController extends BaseController
             // Si le statut est "TRAITEDBYAGENT", faire les appels API
             if ($validated['status'] === 'TRAITEDBYAGENT') {
                 $postData = ['sign_identities_group_id' => $revocation->group_id];
-                $tokenResponse = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
+                $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
                 if ($tokenResponse['status']) {
                     $token = $tokenResponse['token'];
                 } else {
@@ -111,7 +111,7 @@ class RevocationController extends BaseController
                 $postResponse = Http::withHeaders([
                     'Content-Type' => 'application/json',
                     'Authorization' => 'Bearer '.$token,
-                ])->post("https://$this->TX_BASE_URL/trustedx-resources/rap/v2/revocation_processes", $postData);
+                ])->post('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes', $postData);
 
                 if ($postResponse->failed()) {
                     throw new Exception('Erreur lors de la création du processus de révocation');
@@ -120,7 +120,7 @@ class RevocationController extends BaseController
                 // Appel DELETE
                 $deleteResponse = Http::withHeaders([
                     'Content-Type' => 'application/x-www-form-urlencoded',
-                ])->delete("https://$this->TX_BASE_URL/trustedx-resources/rap/v2/revocation_processes/".$revocation->id);
+                ])->delete('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes/'.$revocation->id);
 
                 // if ($deleteResponse->failed()) {
                 //     throw new Exception('Erreur lors de la suppression du processus de révocation');
@@ -152,7 +152,7 @@ class RevocationController extends BaseController
             ]);
 
             $revocations = Revocation::whereIn('id', $validated['revocation_ids'])->get();
-            $tokenResponse = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
+            $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
             if ($tokenResponse['status']) {
                 $token = $tokenResponse['token'];
             } else {
@@ -169,7 +169,7 @@ class RevocationController extends BaseController
                     $postResponse = Http::withHeaders([
                         'Content-Type' => 'application/json',
                         'Authorization' => 'Bearer '.$token,
-                    ])->post("https://$this->TX_BASE_URL/trustedx-resources/rap/v2/revocation_processes", $postData);
+                    ])->post('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes', $postData);
 
                     if ($postResponse->failed()) {
                         Log::debug($postResponse->body());
@@ -179,7 +179,7 @@ class RevocationController extends BaseController
                     // Appel DELETE
                     $deleteResponse = Http::withHeaders([
                         'Content-Type' => 'application/x-www-form-urlencoded',
-                    ])->delete("https://$this->TX_BASE_URL/trustedx-resources/rap/v2/revocation_processes/".$revocation->id);
+                    ])->delete('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes/'.$revocation->id);
 
                     // if ($deleteResponse->failed()) {
                     //     throw new Exception('Erreur lors de la suppression du processus de révocation pour ID ' . $revocation->id);
@@ -228,10 +228,10 @@ class RevocationController extends BaseController
 
     public function getSignIdentitiesGroupByUserId($userId)
     {
-        $url = "https://$this->TX_BASE_URL/trustedx-resources/rap/v2/sign_identities_groups?labels=server&user_id=".$userId.'&domain=gob-users';
+        $url = 'https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/sign_identities_groups?labels=server&user_id='.$userId.'&domain=gob-users';
 
         try {
-            $tokenResponse = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
+            $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
             if ($tokenResponse['status']) {
                 $token = $tokenResponse['token'];
             } else {

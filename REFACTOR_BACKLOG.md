@@ -23,7 +23,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P0](#p0-production--stability-blockers) | Production & stability blockers | 6 | 5 | Critical |
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
-| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 5 | High |
+| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 11 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 0 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 0 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 0 | Medium |
@@ -92,9 +92,9 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-05 | `done` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
 | P3-06 | `done` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 → ~180 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
-| P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
+| P3-08 | `done` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
 | P3-09 | `done` | Decompose `AttachmentTrait` into `AttachmentUploadService` | 4 consumers migrated; trait now unused | S | File storage only |
-| P3-10 | `todo` | Decompose `ADTrait` into LDAP/AD service | `UserSubscriptionController` | M | |
+| P3-10 | `done` | Decompose `ADTrait` into LDAP/AD service | Extracted into `ADService`; trait removed | M | |
 | P3-11 | `done` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
 | P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
 
@@ -259,7 +259,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-08 | P1-01/P1-07 notes updated: single `FRONTEND_URL` only |
 | 2026-07-08 | P2 complete: `ApiFormRequest`, 24 Form Requests, zero inline `Validator::make` in controllers |
 | 2026-07-10 | P3 partial: `ForeignerEnrollmentService`, `IdentityReviewService`, `AdminAuthService`, `ServiceResult` |
-| 2026-07-10 | P3-03: `UserRegistrationService` extracted; `storeSubscription` implemented in service |
+| 2026-07-13 | P3-08, P3-09, P3-10: Decomposed AuthTrait, AttachmentTrait, and ADTrait into respective services. Traits deleted. |
 
 ---
 

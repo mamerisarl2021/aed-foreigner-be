@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendLinkJob;
 use App\Jobs\SendSmsJob;
 use App\Models\User;
-use App\Traits\AuthTrait;
+use App\Services\PKI\TrustedXClientService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class PasswordResetController extends BaseController
 {
-    use AuthTrait;
+    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
 
     public function sendResetLink(Request $request)
     {
@@ -28,7 +28,7 @@ class PasswordResetController extends BaseController
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
 
-        $user = $this->getUserWithNPI($request->input('npi'));
+        $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
         if ($user['status']) {
             $type = $request->input('type') == 'password' ? 'mot de passe' : 'pin';
             $link = config('app.frontend_url')."/reset/{$request->input('type')}/$token/$npi";
@@ -73,9 +73,9 @@ class PasswordResetController extends BaseController
         $user = User::where('npi', $tokenData->npi)->first();
 
         if ($user) {
-            $user = $this->getUserWithNPI($request->input('npi'));
+            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $output = $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], $request->input('type'));
+                $output = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], $request->input('type'));
                 if ($output['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
@@ -118,10 +118,10 @@ class PasswordResetController extends BaseController
         $localUser = User::where('npi', $tokenData->npi)->first();
 
         if ($localUser) {
-            $user = $this->getUserWithNPI($request->input('npi'));
+            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $passwordOutput = $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password');
-                $pinOutput = $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin');
+                $passwordOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password');
+                $pinOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin');
                 if ($passwordOutput['status'] && $pinOutput['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
@@ -164,10 +164,10 @@ class PasswordResetController extends BaseController
         $localUser = User::where('npi', $tokenData->npi)->first();
 
         if ($localUser) {
-            $user = $this->getUserWithNPI($request->input('npi'));
+            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $passwordOutput = $request->input('password') != null ? $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password') : ['status' => true, 'data' => []];
-                $pinOutput = $request->input('pin') != null ? $this->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin') : ['status' => true, 'data' => []];
+                $passwordOutput = $request->input('password') != null ? $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password') : ['status' => true, 'data' => []];
+                $pinOutput = $request->input('pin') != null ? $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin') : ['status' => true, 'data' => []];
                 if ($passwordOutput['status'] && $pinOutput['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");

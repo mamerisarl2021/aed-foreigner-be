@@ -9,9 +9,9 @@ use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
+use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
-use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
 
 class IdentityReviewService
 {
-    use AuthTrait;
+    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
 
     public function list(Request $request): LengthAwarePaginator
     {
@@ -220,7 +220,7 @@ class IdentityReviewService
             }
 
             $payload = ['data' => ['npi' => $user->npi]];
-            $output = $this->register($payload);
+            $output = $this->trustedXClient->register($payload);
 
             $email = $user->email;
             $npi = $user->npi;

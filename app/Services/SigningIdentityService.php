@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserSubscription;
-use App\Traits\AuthTrait;
+use App\Services\PKI\TrustedXClientService;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -18,7 +18,7 @@ use phpseclib3\File\X509;
 
 class SigningIdentityService
 {
-    use AuthTrait;
+    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
 
     private string $baseUri = 'https://test-tx-pki.gouv.bj/trustedx-resources/esigp/v1/';
 
@@ -133,7 +133,7 @@ class SigningIdentityService
      */
     public function updateSigningIdentityStatus(string $identityId, string $value, string $reason): ServiceResult
     {
-        $tokenResponse = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
+        $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
         if (! $tokenResponse['status']) {
             return ServiceResult::fail($tokenResponse['message'], null, 401);
         }
@@ -181,7 +181,7 @@ class SigningIdentityService
      */
     public function deleteSigningIdentity(string $identityId): ServiceResult
     {
-        $tokenResponse = $this->getToken('urn:safelayer:eidas:sign:identity:manage');
+        $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
         if (! $tokenResponse['status']) {
             return ServiceResult::fail($tokenResponse['message'], null, 401);
         }
@@ -319,7 +319,7 @@ class SigningIdentityService
             $redirectUri = config('app.frontend_url').'/bridge-page?type=employee_'.$processId;
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirectUri");
+            ])->withBasicAuth((string) config('trustedx.client_id'), (string) config('trustedx.client_secret'))->post('https://'.config('trustedx.base_url').'/trustedx-authserver/oauth/'.config('trustedx.clients_logged_as')."/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirectUri");
 
             if (isset($response->json()['error'])) {
                 return [
@@ -351,7 +351,7 @@ class SigningIdentityService
         try {
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_ADMINS_LOGGED_AS/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirectUri");
+            ])->withBasicAuth((string) config('trustedx.client_id'), (string) config('trustedx.client_secret'))->post('https://'.config('trustedx.base_url').'/trustedx-authserver/oauth/'.config('trustedx.admins_logged_as')."/token?grant_type=authorization_code&code=$authorizationCode&redirect_uri=$redirectUri");
 
             if (isset($response->json()['error'])) {
                 return [
@@ -380,14 +380,14 @@ class SigningIdentityService
     {
         $response = Http::withOptions([
             'verify' => false,
-        ])->withToken($accessToken)->get("https://$this->TX_BASE_URL/trustedx-resources/openid/v1/users/me");
+        ])->withToken($accessToken)->get('https://'.config('trustedx.base_url').'/trustedx-resources/openid/v1/users/me');
 
         return json_decode($response->getBody(), true);
     }
 
     private function createIssuanceProcess(string $accessToken, array $userData, string $type): array
     {
-        $url = "https://{$this->TX_BASE_URL}/trustedx-resources/rap/v2/issuance_processes";
+        $url = 'https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/issuance_processes';
 
         $payload = [
             'sign_identities_group_labels' => ['gob', 'server', $type],
@@ -479,7 +479,7 @@ class SigningIdentityService
     private function deleteIssuanceProcess(string $processId, string $accessToken): ?array
     {
         $client = new Client;
-        $url = "https://$this->TX_BASE_URL/trustedx-resources/rap/v2/issuance_processes/{$processId}";
+        $url = 'https://'.config('trustedx.base_url')."/trustedx-resources/rap/v2/issuance_processes/{$processId}";
 
         try {
             $response = $client->delete($url, [

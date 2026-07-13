@@ -10,8 +10,7 @@ use App\Models\StructurePackage;
 use App\Models\StructureSubscription;
 use App\Models\UserPackage;
 use App\Models\UserSubscription;
-use App\Traits\ADTrait;
-use App\Traits\AuthTrait;
+use App\Services\PKI\TrustedXClientService;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +20,7 @@ use Throwable;
 
 class UserSubscriptionService
 {
-    use ADTrait;
-    use AuthTrait;
+    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
 
     public function kkiaPayement(string $transId)
     {
@@ -67,7 +65,7 @@ class UserSubscriptionService
                 $user = $subscription->user;
 
                 if ($validatedData['type'] === 'CITIZEN') {
-                    $updateStatus = $this->updateCertValidityByNPI($user->npi, $subscription->package->validity);
+                    $updateStatus = $this->trustedXClient->updateCertValidityByNPI($user->npi, $subscription->package->validity);
                     if (! $updateStatus['status']) {
                         Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
                         throw new Exception('Failed to update user subscriptions.');
@@ -124,7 +122,7 @@ class UserSubscriptionService
                 $user = $subscription->user;
 
                 if ($subscription->type == 'EMPLOYEE' && $subscriptionData['status'] === 'TRAITEDBYMANAGER') {
-                    $updateStatus = $this->updateUserAttributesByNPI($user->npi, "$structure->ifu|$structure->name|$structure->searchbase|E", $subscription->package->validity);
+                    $updateStatus = $this->trustedXClient->updateUserAttributesByNPI($user->npi, "$structure->ifu|$structure->name|$structure->searchbase|E", $subscription->package->validity);
                     UserSubscriptionValidatedJob::dispatch($user->email, $subscription->id);
                     if (! $updateStatus['status']) {
                         Log::error('Failed to update user subscriptions: '.$updateStatus['message'], $updateStatus);
@@ -133,7 +131,7 @@ class UserSubscriptionService
                 }
 
                 if ($subscription->type == 'CITIZEN' && $subscriptionData['status'] === 'TRAITEDBYSYSTEM') {
-                    // $updateStatus = $this->updateCertValidityByNPI($user->npi, $subscription->package->validity);
+                    // $updateStatus = $this->trustedXClient->updateCertValidityByNPI($user->npi, $subscription->package->validity);
                     // if (!$updateStatus['status']) {
                     //     Log::error('Failed to update user subscriptions: ' . $updateStatus['message'], $updateStatus);
                     //     throw new Exception('Failed to update user subscriptions.');

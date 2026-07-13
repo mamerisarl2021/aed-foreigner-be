@@ -16,8 +16,9 @@ use App\Models\StructureInvitation;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\UserSubscription;
+use App\Services\ANIP\AnipSimulatorService;
+use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
-use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -34,7 +35,10 @@ use Throwable;
 
 class UserRegistrationService
 {
-    use AuthTrait;
+    public function __construct(
+        private readonly TrustedXClientService $trustedXClient,
+        private readonly AnipSimulatorService $anipSimulator,
+    ) {}
 
     public function sendOtp(string $npi): ServiceResult
     {
@@ -52,7 +56,7 @@ class UserRegistrationService
             ]);
         }
 
-        $anipData = $this->getUserData($npi);
+        $anipData = $this->anipSimulator->getUserData($npi);
         if (! $anipData['status']) {
             Log::error('NPI inexistant');
 
@@ -97,7 +101,7 @@ class UserRegistrationService
 
     public function login(string $code): ServiceResult
     {
-        $response = $this->userInfo($code);
+        $response = $this->trustedXClient->userInfo($code);
 
         return $response['status']
             ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
@@ -106,7 +110,7 @@ class UserRegistrationService
 
     public function loginMobile(string $code): ServiceResult
     {
-        $response = $this->mobileUserInfo($code);
+        $response = $this->trustedXClient->mobileUserInfo($code);
 
         return $response['status']
             ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
@@ -115,12 +119,12 @@ class UserRegistrationService
 
     public function setPassword(string $npi, string $password, string $type): ServiceResult
     {
-        $user = $this->getUserWithNPI($npi);
+        $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
             return ServiceResult::fail($user['message'], null, 400);
         }
 
-        $output = $this->setDefaultPassword(
+        $output = $this->trustedXClient->setDefaultPassword(
             ['id' => $user['data']['id'], 'password' => $password],
             $type
         );
@@ -144,7 +148,7 @@ class UserRegistrationService
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
 
-        $user = $this->getUserWithNPI($npi);
+        $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
             return ServiceResult::fail($user['message'], null, 400);
         }
@@ -364,7 +368,7 @@ class UserRegistrationService
         array $userData,
         ?string $npi,
     ): ServiceResult {
-        $output = $this->register($userData);
+        $output = $this->trustedXClient->register($userData);
 
         if (! $output['status']) {
             DB::rollBack();
@@ -403,11 +407,11 @@ class UserRegistrationService
             return ServiceResult::fail($subscriptionCreated['message'], $subscriptionCreated['data'], 500);
         }
 
-        $passOutput = $this->setDefaultPassword(
+        $passOutput = $this->trustedXClient->setDefaultPassword(
             ['id' => $output['data']['id'], 'password' => $request->input('password')],
             'password'
         );
-        $pinOutput = $this->setDefaultPassword(
+        $pinOutput = $this->trustedXClient->setDefaultPassword(
             ['id' => $output['data']['id'], 'password' => $request->input('pin')],
             'pin'
         );
@@ -457,7 +461,7 @@ class UserRegistrationService
         array $userData,
         Request $request,
     ): ServiceResult {
-        $output = $this->register($userData);
+        $output = $this->trustedXClient->register($userData);
         Log::info('Output from register: ', $output);
 
         if (! $output['status']) {
