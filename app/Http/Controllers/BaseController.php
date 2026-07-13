@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Services\ServiceResult;
@@ -28,7 +30,7 @@ class BaseController extends Controller
         return $this->sendError($result->message, $result->data, $result->code);
     }
 
-    public function sendResponse(string $message, $data = null)
+    public function sendResponse(string $message, $data = null): JsonResponse
     {
         $response = [
             'success' => true,
@@ -39,7 +41,7 @@ class BaseController extends Controller
         return response()->json($response, 200);
     }
 
-    public function sendPaginatedResponse(string $message, $data = null)
+    public function sendPaginatedResponse(string $message, $data = null): JsonResponse
     {
         $response = [
             'success' => true,
@@ -51,7 +53,7 @@ class BaseController extends Controller
         return response()->json($response, 200);
     }
 
-    public function sendError($error, $errorMessages = [], $code = 400)
+    public function sendError(string $error, mixed $errorMessages = [], int $code = 400): JsonResponse
     {
         $response = [
             'success' => false,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +15,7 @@ class IdRequest extends Model implements Auditable
 
     protected $fillable = ['type', 'status', 'structure_id'];
 
-    public function structure()
+    public function structure(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Structure::class);
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Carbon\Carbon;
@@ -27,7 +29,7 @@ class Identity extends Model implements Auditable
 
     protected $appends = ['selfieUrl', 'rectoUrl', 'versoUrl'];
 
-    public function user()
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
     }

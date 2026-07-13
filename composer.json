@@ -65,6 +65,15 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently \"php artisan migrate\" \"php artisan serve\" \"php artisan queue:work\""
+        ],
+        "lint": [
+            "./vendor/bin/pint"
+        ],
+        "analyse": [
+            "./vendor/bin/phpstan analyse"
+        ],
+        "test": [
+            "@php artisan test"
         ]
     },
     "extra": {
