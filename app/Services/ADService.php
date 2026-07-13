@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Traits;
+namespace App\Services;
 
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Log;
 
-trait ADTrait
+class ADService
 {
     public function createUserInLDAP(array $userData)
     {

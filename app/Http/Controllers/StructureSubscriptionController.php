@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Management\StoreStructureSubscriptionRequest;
 use App\Http\Requests\Management\ValidateEmployeeSubscriptionRequest;
 use App\Models\StructurePackage;
+use App\Models\Structure;
 use App\Models\StructureSubscription;
+use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +18,7 @@ class StructureSubscriptionController extends BaseController
     public function index(Request $request)
     {
         try {
-            $structures = StructureSubscription::paginate($request->get('perPage', 9999999999999));
+            $structures = StructureSubscription::paginate(min((int) $request->get('perPage', 15), 100));
 
             $data = $structures->toArray();
 

@@ -3,21 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
-use App\Traits\AttachmentTrait;
+use App\Services\AttachmentUploadService;
 use App\Traits\EncryptionTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class DocumentController extends BaseController
 {
-    use AttachmentTrait;
     use EncryptionTrait;
+
+    public function __construct(
+        private readonly AttachmentUploadService $attachmentService,
+    ) {}
 
     public function index(Request $request)
     {
         try {
             // Paginate the results with 10 items per page
-            $documents = Document::paginate($request->get('perPage', 9999999999999));
+            $documents = Document::paginate(min((int) $request->get('perPage', 15), 100));
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $documents->toArray();
@@ -56,7 +59,7 @@ class DocumentController extends BaseController
                 'file' => 'required|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:2048',
             ]);
             $file = $request->file('file');
-            $response = $this->attachFiles([$file], $validatedData['attachment_id']);
+            $response = $this->attachmentService->attachFiles([$file], $validatedData['attachment_id']);
 
             return $response['status'] ? $this->sendResponse($response['message'], $response['data']) : $this->sendError($response['message'], null, 400);
         } catch (\Exception $e) {

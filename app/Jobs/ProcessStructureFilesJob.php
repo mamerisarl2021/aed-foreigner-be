@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\Attachment;
 use App\Models\Document;
-use App\Traits\AttachmentTrait;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ProcessStructureFilesJob implements ShouldQueue
 {
-    use AttachmentTrait, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private int $structureId;
 

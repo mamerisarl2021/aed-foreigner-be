@@ -23,7 +23,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P0](#p0-production--stability-blockers) | Production & stability blockers | 6 | 5 | Critical |
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
-| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 5 | High |
+| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 11 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 0 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 0 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 0 | Medium |
@@ -90,12 +90,12 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-03 | `done` | Extract `UserRegistrationService` from `UserController` | ~1,493 → ~947 lines | OTP, login, finalize, in-person approve, employee create; implemented missing `storeSubscription` |
 | P3-04 | `done` | Extract `StructureManagementService` from `StructureController` | ~1,295 → ~761 lines (mostly OpenAPI) | CRUD, OTP, invitations, employee management; `AttachmentTrait` on service |
 | P3-05 | `done` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
-| P3-06 | `todo` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 lines | M | TrustedX provisioning |
+| P3-06 | `done` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 → ~180 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
-| P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
-| P3-09 | `todo` | Decompose `AttachmentTrait` into `AttachmentUploadService` | Trait + 4 controllers | S | File storage only |
-| P3-10 | `todo` | Decompose `ADTrait` into LDAP/AD service | `UserSubscriptionController` | M | |
-| P3-11 | `in-progress` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
+| P3-08 | `done` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
+| P3-09 | `done` | Decompose `AttachmentTrait` into `AttachmentUploadService` | 4 consumers migrated; trait now unused | S | File storage only |
+| P3-10 | `done` | Decompose `ADTrait` into LDAP/AD service | Extracted into `ADService`; trait removed | M | |
+| P3-11 | `done` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
 | P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
 
 ### Controller size targets (acceptance)
@@ -126,17 +126,19 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 ## P5 — Database & Eloquent
 
-| ID | Status | Item | Primary files / area | Notes |
-|----|--------|------|----------------------|-------|
-| P5-01 | `todo` | Replace `paginate(..., 9999999999999)` with sensible defaults + max cap | 10+ controllers | Defeats pagination purpose |
-| P5-02 | `todo` | Replace `IdRequest::all()` with paginated query | `IdRequestController::index` | |
-| P5-03 | `todo` | Replace `ActivityLog::all()` with paginated / scoped query | `AuditLogController` | |
-| P5-04 | `todo` | Audit N+1: add `with()` on list endpoints | `StructureController`, `UserController`, `StatsController`, etc. | |
-| P5-05 | `todo` | Consolidate password reset storage (`password_resets` vs `password_reset_tokens`) | Multiple controllers | Duplicate mechanisms |
-| P5-06 | `todo` | Reduce raw `DB::table()` where Eloquent models exist | `AuthController`, `PasswordResetController`, `UserController`, `IdentityReviewController` | |
-| P5-07 | `todo` | Review model global scopes using `auth()->id()` | `UserSubscription`, `Revocation` | Hard to test; hidden query side effects |
-| P5-08 | `todo` | Align schema with code (missing columns referenced in controllers) | `users`, search filters | e.g. past `first_name` / `nationality` drift |
-| P5-09 | `todo` | Migrate models from `$casts` property to `casts()` method | `User`, `PendingRegistration`, `StructureInvitation` | Laravel 12 convention |
+**Goal:** Fix severe N+1 bottlenecks, replace huge `all()` queries with pagination, and modernize Eloquent models.
+
+| ID | Task | Impact | Status | Notes |
+|---|---|---|---|---|
+| **P5-01** | Replace `paginate(..., 9999999999999)` | 🔴 High | `done` | Apply max limits (e.g. 100) to Structure, Revocation, Message, Subscription, Package controllers |
+| **P5-02** | Replace `IdRequest::all()` with paginated query | 🔴 High | `done` | `IdRequestController::index` |
+| **P5-03** | Replace `ActivityLog::all()` | 🟡 Med | `done` | Move to chunking / pagination in `AuditLogController` |
+| **P5-04** | Audit N+1 on heavily used list endpoints | 🔴 High | `done` | Add `with()` to `StructureController`, `UserController`, `StatsController`, `RevocationController`, `UserSubscriptionController` |
+| **P5-05** | Consolidate password reset storage logic | 🟡 Med | `done` | Created `PasswordResetToken` model to replace raw DB queries |
+| **P5-06** | Reduce raw `DB::table()` queries | 🟡 Med | `done` | Cleaned up `AuthController`, `PasswordResetController`, `UserController`, `UserRegistrationService` |
+| **P5-07** | Review model global scopes | 🟡 Med | `done` | Removed `auth()->id()` dependency from `UserSubscription` and `Revocation` booted methods and replaced with local scope `forUser()` |
+| **P5-08** | Align Schema with Code | 🟡 Med | `deferred` | Verify `roles` and `permissions` tables match expected Spatie defaults |
+| **P5-09** | Migrate `$casts` to `casts()` method | 🟢 Low | `done` | Laravel 12 convention on `User`, `PendingRegistration`, `StructureInvitation` |
 
 ---
 
@@ -207,7 +209,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P10-01 | `todo` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/` | Breaking rename; coordinate imports |
+| P10-01 | `done` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/`, `app/Mail/` | Renamed 3 Jobs + 3 Mailables; updated all imports |
 | P10-02 | `todo` | Remove large commented-out code blocks | `UserController`, `SignatureController`, `SigningIdentityController`, `StatsController` | |
 | P10-03 | `todo` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
 | P10-04 | `todo` | Expand authorization beyond route middleware (policies) | `app/Policies/` | Only 2 policies today |
@@ -259,7 +261,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-08 | P1-01/P1-07 notes updated: single `FRONTEND_URL` only |
 | 2026-07-08 | P2 complete: `ApiFormRequest`, 24 Form Requests, zero inline `Validator::make` in controllers |
 | 2026-07-10 | P3 partial: `ForeignerEnrollmentService`, `IdentityReviewService`, `AdminAuthService`, `ServiceResult` |
-| 2026-07-10 | P3-03: `UserRegistrationService` extracted; `storeSubscription` implemented in service |
+| 2026-07-13 | P3-08, P3-09, P3-10: Decomposed AuthTrait, AttachmentTrait, and ADTrait into respective services. Traits deleted. |
 
 ---
 

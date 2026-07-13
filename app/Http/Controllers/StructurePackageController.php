@@ -18,7 +18,7 @@ class StructurePackageController extends BaseController
     {
         try {
             // Paginate the results with 10 items per page
-            $structures = StructurePackage::paginate($request->get('perPage', 9999999999999));
+            $structures = StructurePackage::paginate(min((int) $request->get('perPage', 15), 100));
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $structures->toArray();

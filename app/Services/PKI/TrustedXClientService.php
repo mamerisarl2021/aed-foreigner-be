@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Traits;
+namespace App\Services\PKI;
 
 use App\Models\User;
 use Exception;
@@ -11,15 +11,8 @@ use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-trait AuthTrait
+class TrustedXClientService
 {
-    /**
-     * @var Model
-     */
-    protected $model;
-
-    protected $client;
-
     private $TX_CLIENT_ID;
 
     private $TX_BASE_URL;
@@ -34,15 +27,12 @@ trait AuthTrait
 
     private $TX_ADMINS_LOGGED_AS;
 
-    private $ANIP_BASE_URL;
-
     private $TX_CLIENT_SECRET;
 
     private $TX_REDIRECT_URL;
 
-    public function __construct(User $model)
+    public function __construct()
     {
-        $this->model = $model;
         $this->TX_CLIENT_SECRET = config('trustedx.client_secret');
         $this->TX_BASE_URL = config('trustedx.base_url');
         $this->TIMESATAMP_API_BASE_URL = config('trustedx.timestamp.url');
@@ -50,7 +40,6 @@ trait AuthTrait
         $this->TIMESATAMP_API_PASSWORD = config('trustedx.timestamp.password');
         $this->TX_CLIENTS_LOGGED_AS = config('trustedx.clients_logged_as');
         $this->TX_ADMINS_LOGGED_AS = config('trustedx.admins_logged_as');
-        $this->TX_ANIP_BASE_URL = config('trustedx.anip_base_url');
         $this->TX_CLIENT_ID = config('trustedx.client_id');
         $this->TX_REDIRECT_URL = config('trustedx.redirect_url');
     }
@@ -60,16 +49,16 @@ trait AuthTrait
         try {
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token?grant_type=authorization_code&code=$code&redirect_uri=$this->TX_REDIRECT_URL");
+            ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
+                ->post("https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri={$this->TX_REDIRECT_URL}");
 
-            // if(response)
             return [
                 'status' => true,
                 'data' => $response->json(),
                 'message' => 'Poursuivez avec ce token.',
             ];
         } catch (HttpClientException $e) {
-            Log::error($e->getMessage(), $e);
+            Log::error($e->getMessage(), $e->getTrace());
 
             return [
                 'status' => false,
@@ -83,7 +72,8 @@ trait AuthTrait
         try {
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withBasicAuth($this->TX_CLIENT_ID, $this->TX_CLIENT_SECRET)->post("https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token?grant_type=authorization_code&code=$code&redirect_uri=com.aed.mobile://auth");
+            ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
+                ->post("https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri=com.aed.mobile://auth");
 
             return [
                 'status' => true,
@@ -91,7 +81,7 @@ trait AuthTrait
                 'message' => 'Poursuivez avec ce token.',
             ];
         } catch (HttpClientException $e) {
-            Log::error($e->getMessage(), $e);
+            Log::error($e->getMessage(), $e->getTrace());
 
             return [
                 'status' => false,
@@ -100,39 +90,11 @@ trait AuthTrait
         }
     }
 
-    public function getUserData($npi)
-    {
-        try {
-
-            $response = Http::withBasicAuth('admin', 'supersecret')->get("https://local-simulator.qcdigitalhub.com/api/user/{$npi}");
-
-            if ($response->successful()) {
-                return [
-                    'status' => true,
-                    'data' => [
-                        ...$response->json(),
-                        'role' => 'CLIENT',
-                    ],
-                ];
-            } else {
-                return [
-                    'status' => false,
-                    'message' => 'Ce NPI ne correspond à aucun utilisateur.',
-                ];
-            }
-        } catch (ClientException $e) {
-            Log::error($e->getMessage(), $e);
-
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
-
-    public function userInfo($code)
+    public function userInfo(string $code)
     {
         try {
             $resp = $this->obtainToken($code);
             if ($resp['status']) {
-                Log::debug($resp);
                 $access_token = $resp['data']['access_token'];
             } else {
                 return [
@@ -143,26 +105,23 @@ trait AuthTrait
             // Use the obtained access token for user info request
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withToken($access_token)->get("https://$this->TX_BASE_URL/trustedx-resources/openid/v1/users/me");
+            ])->withToken($access_token)->get("https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me");
+
             $existingUser = User::with(['identities' => function ($query) {
                 $query->select('user_id', 'type', 'level', 'status');
             }])->where('npi', $response['npi'])->first();
 
             if (! $existingUser) {
-                $exoutput = [
+                return [
                     'status' => false,
                     'message' => 'Aucun utilisateur ne correspond au NPI renseigné.',
                 ];
-
-                return $exoutput;
             }
-            if ($existingUser && $existingUser->status != 'ACTIVE') {
-                $exoutput = [
+            if ($existingUser->status != 'ACTIVE') {
+                return [
                     'status' => false,
                     'message' => "Votre compte a été désactivé par un agent veuillez contacter le service clientèle pour plus d'informations.",
                 ];
-
-                return $exoutput;
             }
 
             $token = $existingUser->createToken($existingUser->email.'-'.now())->plainTextToken;
@@ -177,22 +136,23 @@ trait AuthTrait
                     'token' => $token,
                     'pki_token' => $access_token,
                 ];
-                $output = [
+
+                return [
                     'status' => true,
                     'data' => $data,
                     'message' => "Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!",
                 ];
             }
 
-            return $output;
+            return ['status' => false, 'message' => 'Une erreur est survenue.'];
         } catch (ClientException $e) {
-            Log::error($e->getMessage(), $e);
+            Log::error($e->getMessage(), $e->getTrace());
 
-            return response()->json(['error' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'], 400);
+            return ['status' => false, 'message' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'];
         }
     }
 
-    public function mobileUserInfo($code)
+    public function mobileUserInfo(string $code)
     {
         try {
             $resp = $this->obtainMobileToken($code);
@@ -207,7 +167,8 @@ trait AuthTrait
             // Use the obtained access token for user info request
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withToken($access_token)->get("https://$this->TX_BASE_URL/trustedx-resources/openid/v1/users/me");
+            ])->withToken($access_token)->get("https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me");
+
             $existingUser = User::with([
                 'cases',
                 'structures',
@@ -217,21 +178,18 @@ trait AuthTrait
             ])->where('npi', $response['npi'])->first();
 
             if (! $existingUser) {
-                $exoutput = [
+                return [
                     'status' => false,
                     'message' => 'Aucun utilisateur ne correspond au NPI renseigné.',
                 ];
-
-                return $exoutput;
             }
-            if ($existingUser && $existingUser->status != 'ACTIVE') {
-                $exoutput = [
+            if ($existingUser->status != 'ACTIVE') {
+                return [
                     'status' => false,
                     'message' => "Votre compte a été désactivé par un agent veuillez contacter le service clientèle pour plus d'informations.",
                 ];
-
-                return $exoutput;
             }
+
             $token = $existingUser->createToken($existingUser->email.'-'.now())->plainTextToken;
             $existingUser['first_name'] = $response['first_name'];
             $existingUser['last_name'] = $response['last_name'];
@@ -244,47 +202,23 @@ trait AuthTrait
                     'token' => $token,
                     'pki_token' => $access_token,
                 ];
-                $output = [
+
+                return [
                     'status' => true,
                     'data' => $data,
                     'message' => "Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!",
                 ];
             }
 
-            return $output;
+            return ['status' => false, 'message' => 'Une erreur est survenue.'];
         } catch (ClientException $e) {
-            Log::error($e->getMessage(), $e);
+            Log::error($e->getMessage(), $e->getTrace());
 
-            return response()->json(['error' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'], 400);
+            return ['status' => false, 'message' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'];
         }
     }
 
-    public function sendSms(string $phoneNumber, string $otp)
-    {
-        try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/x-www-form-urlencoded',
-                'Cookie' => 'SERVERID=A',
-            ])->asForm()->post('https://api-public-2.mtarget.fr/messages', [
-                'username' => 'username',
-                'password' => 'password',
-                'msisdn' => $phoneNumber,
-                'msg' => 'Votre code OTP est le suivant: '.$otp,
-            ]);
-
-            if ($response->successful()) {
-                return ['status' => true];
-            } else {
-                return ['status' => false, 'message' => 'Nous n\'avons pas pû vous envoyer le message veuillez réessayer.'];
-            }
-        } catch (Exception $e) {
-            Log::error('Failed to send SMS: '.$e->getMessage());
-
-            return ['status' => false, 'message' => 'Erreur au cours de l\'envoi du SMS.'];
-        }
-    }
-
-    public function register(mixed $user)
+    public function register(array $user)
     {
         try {
             $foundUser = $this->getUserWithNPI($user['data']['npi']);
@@ -303,7 +237,7 @@ trait AuthTrait
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
             ];
-            $user = [
+            $payload = [
                 'npi' => $user['data']['npi'],
                 'uuid' => $user['data']['npi'],
                 'preferred2fa' => 'sms',
@@ -311,7 +245,7 @@ trait AuthTrait
                 'role' => 'ROLE_SUBSCRIBER',
                 'first_login' => 'YES',
             ];
-            $request = new Psr7Request('POST', 'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users', $headers, json_encode($user));
+            $request = new Psr7Request('POST', 'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users', $headers, json_encode($payload));
             $response = $client->sendAsync($request)->wait();
             if ($response->getStatusCode() == 200) {
                 $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
@@ -323,12 +257,11 @@ trait AuthTrait
         } catch (Exception $e) {
             Log::error('Failed to create account: '.$e->getMessage(), $e->getTrace());
 
-            // The substring was not found
             return ['status' => false, 'message' => 'Il se pourrait qu\'il y ait un problème avec un ou plusieurs des champs renseignés'];
         }
     }
 
-    public function setDefaultPassword(mixed $user, string $type)
+    public function setDefaultPassword(array $user, string $type)
     {
         try {
             $tokenResponse = $this->getToken('urn:safelayer:eidas:account:user:passwords:manage');
@@ -365,7 +298,7 @@ trait AuthTrait
     public function getToken(string $scope)
     {
         try {
-            $credentials = base64_encode("$this->TX_CLIENT_ID:$this->TX_CLIENT_SECRET");
+            $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
 
             $client = new Client;
             $headers = [
@@ -379,7 +312,7 @@ trait AuthTrait
                 ],
             ];
 
-            $request = new Psr7Request('POST', "https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_ADMINS_LOGGED_AS/token", $headers);
+            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token", $headers);
             $response = $client->sendAsync($request, $options)->wait();
 
             if ($response->getStatusCode() == 200) {
@@ -397,7 +330,7 @@ trait AuthTrait
     public function getClientToken(string $scope)
     {
         try {
-            $credentials = base64_encode("$this->TX_CLIENT_ID:$this->TX_CLIENT_SECRET");
+            $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
 
             $client = new Client;
             $headers = [
@@ -411,7 +344,7 @@ trait AuthTrait
                 ],
             ];
 
-            $request = new Psr7Request('POST', "https://$this->TX_BASE_URL/trustedx-authserver/oauth/$this->TX_CLIENTS_LOGGED_AS/token", $headers);
+            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token", $headers);
             $response = $client->sendAsync($request, $options)->wait();
 
             if ($response->getStatusCode() == 200) {
@@ -568,106 +501,6 @@ trait AuthTrait
             Log::error('Failed to update user attributes: '.$e->getMessage(), $e->getTrace());
 
             return ['status' => false, 'message' => 'An error occurred while updating user attributes.'];
-        }
-    }
-
-    public function addUserToAD(mixed $request)
-    {
-        try {
-            $ldapUser = [
-                'cn' => $request->input('name'),
-                'sn' => explode($request->input('name'), ' ')[0],
-                'mail' => $request->input('email'),
-                'uid' => $request->input('npi').$request->input('phonenumber'),
-                'userPassword' => 'default',
-                'objectClass' => ['inetOrgPerson', 'organizationalPerson', 'person', 'top'],
-            ];
-            $ldapAdded = $this->createLdapEntry('cn='.$request->input('name').',ou=Admins,ou=AED,dc=gouv-test,dc=bj', $ldapUser);
-
-            if ($ldapAdded) {
-                $output = [
-                    'status' => true,
-                    'data' => null,
-                ];
-            } else {
-                $output = [
-                    'status' => false,
-                    'message' => 'Nous n\'avons pas pû synchroniser ces informations avec l\'annuaire veuillez réessayer.',
-                ];
-            }
-
-            return $output;
-        } catch (Exception $e) {
-            Log::error('Failed to add user: '.$e->getMessage());
-
-            return ['status' => false, 'message' => 'Erreur au cours de l\'ajout dans l\'AD.'];
-        }
-    }
-
-    public function addClientsToAD(mixed $request)
-    {
-        try {
-            $ldapUser = [
-                'cn' => $request['name'],
-                'sn' => $request['first_name'],
-                'mail' => $request['email'],
-                'uid' => $request['npi'],
-                'userPassword' => 'default',
-                'objectClass' => ['inetOrgPerson', 'organizationalPerson', 'person', 'top'],
-            ];
-
-            $ldapAdded = $this->createLdapEntry('cn='.$request['name'].',ou=Users,ou=AED,dc=gouv-test,dc=bj', $ldapUser);
-
-            if ($ldapAdded) {
-                $output = [
-                    'status' => true,
-                    'data' => null,
-                ];
-            } else {
-                $output = [
-                    'status' => false,
-                    'message' => 'Nous n\'avons pas pû synchroniser ces informations avec l\'annuaire veuillez réessayer.',
-                ];
-            }
-
-            return $output;
-        } catch (Exception $e) {
-            Log::error('Failed to add user: '.$e->getMessage());
-
-            return ['status' => false, 'message' => 'Erreur au cours de l\'ajout dans l\'AD.'];
-        }
-    }
-
-    private function handleResponse($response)
-    {
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode === 200) {
-            return [
-                'status' => true,
-                'code' => $statusCode,
-                'data' => json_decode($response->getBody(), true),
-            ];
-        } elseif ($statusCode === 401) {
-            return [
-                'status' => false,
-                'code' => $statusCode,
-                'data' => 'Unauthorized',
-            ];
-        } elseif ($statusCode === 404) {
-            return [
-                'status' => false,
-                'code' => $statusCode,
-                'data' => 'Aucun process avec l\'id fourni n\'a été trouvé.',
-            ];
-        } else {
-            Log::error('Une erreur est survenue lors de la récupération des informations:', ['error' => $response->getBody()]);
-
-            return [
-                'status' => false,
-                'code' => $statusCode,
-                'data' => 'Nous avons des difficultés à communiquer avec la PKI veuillez réessayer un peu plus tard.',
-            ];
         }
     }
 }

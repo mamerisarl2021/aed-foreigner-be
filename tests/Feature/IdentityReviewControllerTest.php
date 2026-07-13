@@ -7,7 +7,7 @@ use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
 use App\Models\User;
-use App\Services\IdentityReview\IdentityReviewService;
+use App\Services\PKI\TrustedXClientService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Artisan;
@@ -140,7 +140,7 @@ class IdentityReviewControllerTest extends TestCase
         $supervisor->assignRole('superviseur');
         Sanctum::actingAs($supervisor);
 
-        $this->partialMock(IdentityReviewService::class, function ($mock) {
+        $this->partialMock(TrustedXClientService::class, function ($mock) {
             $mock->shouldReceive('register')->andReturn(['status' => true, 'has_user' => false]);
         });
 

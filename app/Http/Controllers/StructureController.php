@@ -50,7 +50,7 @@ class StructureController extends BaseController
     public function index(Request $request)
     {
         return $this->respondPaginated(
-            $this->structures->list((int) $request->get('perPage', 9999999999999))
+            $this->structures->list(min((int) $request->get('perPage', 15), 100))
         );
     }
 

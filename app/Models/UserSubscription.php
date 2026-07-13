@@ -16,14 +16,11 @@ class UserSubscription extends Model implements Auditable
 
     protected $appends = ['package', 'userdata', 'structuredata'];
 
-    protected static function booted()
+    public function scopeForUser(Builder $query, User $user)
     {
-        static::addGlobalScope('owned', function (Builder $builder) {
-            $user = User::find(auth()->id());
-            if ($user && $user->hasRole('client')) {
-                $builder->where('user_id', $user->id);
-            }
-        });
+        if ($user->hasRole('client')) {
+            $query->where('user_id', $user->id);
+        }
     }
 
     public function user()

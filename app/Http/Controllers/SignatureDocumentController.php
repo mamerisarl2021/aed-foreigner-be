@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Signature;
 use App\Models\SignatureDocument;
-use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Client;
@@ -17,8 +16,6 @@ use Illuminate\Support\Facades\Storage;
 
 class SignatureDocumentController extends BaseController
 {
-    use AuthTrait;
-
     public function store(Request $request)
     {
         $request->validate([
@@ -164,7 +161,7 @@ class SignatureDocumentController extends BaseController
         $signerProcessId = $request->query('signer_process_id');
 
         if ($status === 'finished') {
-            $documentUrl = "{$this->TX_BASE_URL}/trustedx-resources/esignsp/v2/signer_processes/{$signerProcessId}/documents/{$documentId}";
+            $documentUrl = config('trustedx.base_url')."/trustedx-resources/esignsp/v2/signer_processes/{$signerProcessId}/documents/{$documentId}";
 
             return $this->getSignedDocument($documentUrl);
         }

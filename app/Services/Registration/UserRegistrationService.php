@@ -10,17 +10,21 @@ use App\Jobs\SendStructureInvitationEmail;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\OTP;
+use App\Models\PasswordResetToken;
 use App\Models\PendingRegistration;
 use App\Models\Structure;
 use App\Models\StructureInvitation;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\UserSubscription;
+use App\Services\ANIP\AnipSimulatorService;
+use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
-use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +36,10 @@ use Throwable;
 
 class UserRegistrationService
 {
-    use AuthTrait;
+    public function __construct(
+        private readonly TrustedXClientService $trustedXClient,
+        private readonly AnipSimulatorService $anipSimulator,
+    ) {}
 
     public function sendOtp(string $npi): ServiceResult
     {
@@ -50,7 +57,7 @@ class UserRegistrationService
             ]);
         }
 
-        $anipData = $this->getUserData($npi);
+        $anipData = $this->anipSimulator->getUserData($npi);
         if (! $anipData['status']) {
             Log::error('NPI inexistant');
 
@@ -95,7 +102,7 @@ class UserRegistrationService
 
     public function login(string $code): ServiceResult
     {
-        $response = $this->userInfo($code);
+        $response = $this->trustedXClient->userInfo($code);
 
         return $response['status']
             ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
@@ -104,7 +111,7 @@ class UserRegistrationService
 
     public function loginMobile(string $code): ServiceResult
     {
-        $response = $this->mobileUserInfo($code);
+        $response = $this->trustedXClient->mobileUserInfo($code);
 
         return $response['status']
             ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
@@ -113,12 +120,12 @@ class UserRegistrationService
 
     public function setPassword(string $npi, string $password, string $type): ServiceResult
     {
-        $user = $this->getUserWithNPI($npi);
+        $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
             return ServiceResult::fail($user['message'], null, 400);
         }
 
-        $output = $this->setDefaultPassword(
+        $output = $this->trustedXClient->setDefaultPassword(
             ['id' => $user['data']['id'], 'password' => $password],
             $type
         );
@@ -137,12 +144,12 @@ class UserRegistrationService
     {
         $token = Str::random(60);
 
-        DB::table('password_resets')->updateOrInsert(
+        PasswordResetToken::updateOrCreate(
             ['npi' => $npi, 'type' => $type],
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
 
-        $user = $this->getUserWithNPI($npi);
+        $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
             return ServiceResult::fail($user['message'], null, 400);
         }
@@ -362,7 +369,7 @@ class UserRegistrationService
         array $userData,
         ?string $npi,
     ): ServiceResult {
-        $output = $this->register($userData);
+        $output = $this->trustedXClient->register($userData);
 
         if (! $output['status']) {
             DB::rollBack();
@@ -401,11 +408,11 @@ class UserRegistrationService
             return ServiceResult::fail($subscriptionCreated['message'], $subscriptionCreated['data'], 500);
         }
 
-        $passOutput = $this->setDefaultPassword(
+        $passOutput = $this->trustedXClient->setDefaultPassword(
             ['id' => $output['data']['id'], 'password' => $request->input('password')],
             'password'
         );
-        $pinOutput = $this->setDefaultPassword(
+        $pinOutput = $this->trustedXClient->setDefaultPassword(
             ['id' => $output['data']['id'], 'password' => $request->input('pin')],
             'pin'
         );
@@ -455,7 +462,7 @@ class UserRegistrationService
         array $userData,
         Request $request,
     ): ServiceResult {
-        $output = $this->register($userData);
+        $output = $this->trustedXClient->register($userData);
         Log::info('Output from register: ', $output);
 
         if (! $output['status']) {
@@ -485,7 +492,7 @@ class UserRegistrationService
 
         if (isset($output['has_user']) && $output['has_user'] === true) {
             $allToken = Str::random(60);
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'all'],
                 ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
             );
@@ -496,15 +503,15 @@ class UserRegistrationService
             $pinToken = Str::random(60);
             $passwordToken = Str::random(60);
 
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'pin'],
                 ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
             );
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'password'],
                 ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
             );
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'all'],
                 ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
             );
@@ -600,5 +607,147 @@ class UserRegistrationService
         $payment = $kkiapay->verifyTransaction($transId);
 
         return collect($payment->state);
+    }
+
+    /**
+     * Update user profile information.
+     */
+    public function updateUser(int $id, array $updateData, ?UploadedFile $profile): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $user = User::findOrFail($id);
+
+            if ($profile) {
+                $profilePath = Storage::cloud()->put('images', $profile);
+                if (! $profilePath) {
+                    DB::rollBack();
+
+                    return ServiceResult::fail("Échec du téléchargement de l'image.", null, 500);
+                }
+                $updateData['profile'] = $profilePath;
+            }
+
+            $user->update($updateData);
+            DB::commit();
+
+            return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load([
+                'cases',
+                'structures',
+                'userSubscriptions',
+                'identities',
+                'signatures',
+            ]));
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
+
+            return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
+        }
+    }
+
+    /**
+     * Accept a structure invitation.
+     */
+    public function acceptInvitation(int $invitationId, User $user): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $invitation = StructureInvitation::where('id', $invitationId)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+
+            if ($invitation->status !== 'PENDING' || $invitation->expires_at <= Carbon::now()) {
+                DB::rollBack();
+
+                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
+            }
+
+            $invitation->accept();
+
+            $invitation->structure->employees()->attach($user->id, [
+                'role' => $invitation->role,
+                'status' => 'ACTIVE',
+                'joined_at' => Carbon::now(),
+                'invitation_message' => $invitation->message,
+            ]);
+
+            if ($user->status !== 'ACTIVE') {
+                $user->update(['status' => 'ACTIVE']);
+            }
+
+            DB::commit();
+
+            return ServiceResult::ok('Invitation acceptée avec succès.', [
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return ServiceResult::fail('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'acceptation de l\'invitation : '.$e->getMessage());
+
+            return ServiceResult::fail('Impossible d\'accepter l\'invitation.', null, 500);
+        }
+    }
+
+    /**
+     * Respond to an invitation using a token.
+     */
+    public function respondToInvitation(string $token, string $action): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $invitation = StructureInvitation::with(['structure', 'user'])
+                ->where('token', $token)
+                ->firstOrFail();
+
+            if (! $invitation->isPending()) {
+                DB::rollBack();
+
+                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
+            }
+
+            if ($action === 'accept') {
+                $invitation->accept();
+
+                $invitation->structure->employees()->attach($invitation->user_id, [
+                    'role' => $invitation->role,
+                    'status' => 'ACTIVE',
+                    'joined_at' => Carbon::now(),
+                    'invitation_message' => $invitation->message,
+                ]);
+
+                $user = User::find($invitation->user_id);
+                if ($user && $user->status !== 'ACTIVE') {
+                    $user->update(['status' => 'ACTIVE']);
+                }
+
+                $message = 'Invitation acceptée avec succès.';
+            } else {
+                $invitation->reject();
+                $message = 'Invitation refusée avec succès.';
+            }
+
+            DB::commit();
+
+            return ServiceResult::ok($message, [
+                'action' => $action,
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return ServiceResult::fail('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du traitement de la réponse : '.$e->getMessage());
+
+            return ServiceResult::fail('Impossible de traiter votre réponse.', null, 500);
+        }
     }
 }
