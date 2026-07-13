@@ -20,9 +20,9 @@ class RevocatedEmail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Demande révocation traitée.')->view('emails.revocated')->with([
-                'user' => $this->user,
+                'user' => $this->user
             ]);
     }
 }

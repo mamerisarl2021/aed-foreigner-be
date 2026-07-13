@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Traits;
 
 use Illuminate\Support\Facades\Storage;
@@ -25,10 +26,9 @@ trait EncryptionTrait
         $file = ltrim($file, '/\\');
 
         return static::$keyPath
-            ? rtrim(static::$keyPath, '/\\').DIRECTORY_SEPARATOR.$file
+            ? rtrim(static::$keyPath, '/\\') . DIRECTORY_SEPARATOR . $file
             : storage_path($file);
     }
-
     /**
      * Execute the console command.
      *

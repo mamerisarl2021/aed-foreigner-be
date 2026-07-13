@@ -75,13 +75,13 @@
                                                 style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin: 0; margin-bottom: 24px;">
                                                 Un de nos agents prendra connaissance des informations soumises et procèdera à la validation de votre demande. En attendant celà; vous pourrez connecter et accéder à la panoplie de services que nous mettons à votre disposition via ce lien:
                                             </p>
-                                            <a href="{{ config('app.frontend_url') }}"
-                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ config('app.frontend_url') }}</a>
+                                            <a href="{{ env('FRONT_URL') }}"
+                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ env('FRONT_URL') }}</a>
                                             <table cellpadding="0" cellspacing="0" role="presentation">
                                                 <tr>
                                                     <td
                                                         style="mso-line-height-rule: exactly; mso-padding-alt: 16px 24px; border-radius: 4px; background-color: #225888; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif;">
-                                                        <a href="{{ config('app.frontend_url') }}"
+                                                        <a href="{{ env('FRONT_URL') }}"
                                                             style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; display: block; padding-left: 24px; padding-right: 24px; padding-top: 16px; padding-bottom: 16px; font-size: 16px; font-weight: 600; line-height: 100%; color: #ffffff; text-decoration: none;">Connexion&rarr;</a>
                                                     </td>
                                                 </tr>

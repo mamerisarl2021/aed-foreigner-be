@@ -14,7 +14,6 @@ class SignatureRejectedMail extends Mailable
     use Queueable, SerializesModels;
 
     public $signature;
-
     public $documentTitle;
 
     public function __construct(Signature $signature)
@@ -26,7 +25,7 @@ class SignatureRejectedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Document refusé: '.$this->documentTitle
+            subject: 'Document refusé: ' . $this->documentTitle
         );
     }
 
@@ -36,7 +35,7 @@ class SignatureRejectedMail extends Mailable
             view: 'emails.signature-rejected',
             with: [
                 'documentTitle' => $this->documentTitle,
-                'rejecterName' => $this->signature->user->name,
+                'rejecterName' => $this->signature->user->name
             ]
         );
     }

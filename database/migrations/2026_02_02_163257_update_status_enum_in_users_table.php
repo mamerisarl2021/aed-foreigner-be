@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    public function up(): void
+     public function up(): void
     {
         DB::statement("
             ALTER TABLE users 

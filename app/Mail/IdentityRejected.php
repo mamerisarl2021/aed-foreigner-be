@@ -15,7 +15,8 @@ class IdentityRejected extends Mailable
         public string $stage,
         public array $reasons,
         public ?string $comments = null
-    ) {}
+    ) {
+    }
 
     public function build()
     {

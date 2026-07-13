@@ -20,9 +20,9 @@ class AdvancedIdRequest extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Demande d\'une identité de type avancée.')->view('emails.advanced_id_request')->with([
-                'user' => $this->user,
+                'user' => $this->user
             ]);
     }
 }

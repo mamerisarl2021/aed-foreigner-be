@@ -10,11 +10,8 @@ use Illuminate\Queue\SerializesModels;
 class AdvancedIdMid extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
-
     public $email;
-
     public $link;
-
     public $name;
 
     public function __construct($email, $name, $link)
@@ -26,11 +23,11 @@ class AdvancedIdMid extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Paiement enregistré.')->view('emails.advanced_id_mid')->with([
                 'link' => $this->link,
                 'name' => $this->name,
-                'email' => $this->email,
+                'email' => $this->email
             ]);
     }
 }

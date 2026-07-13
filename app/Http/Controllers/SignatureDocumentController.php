@@ -4,18 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Signature;
 use App\Models\SignatureDocument;
+use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class SignatureDocumentController extends BaseController
 {
+    use AuthTrait;
     public function store(Request $request)
     {
         $request->validate([
@@ -36,13 +37,12 @@ class SignatureDocumentController extends BaseController
             Signature::create([
                 'signature_document_id' => $signature_document->id,
                 'user_id' => Auth::id(),
-                'status' => 'pending',
+                'status' => 'pending'
             ]);
 
             return $this->sendResponse('Document créé avec succès.', $signature_document);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Échec de la création du document:', ['exception' => $e->getMessage()]);
-
             return $this->sendError('Échec de la création du document.', [$e->getMessage()]);
         }
     }
@@ -57,7 +57,7 @@ class SignatureDocumentController extends BaseController
         try {
             try {
                 $path = Storage::cloud()->put('pdfs', $request->file('file'));
-                if (! $path || strlen($path) === 0) {
+                if (!$path || strlen($path) === 0) {
                     throw new Exception('Le chemin retourné est vide.');
                 }
             } catch (\Throwable $th) {
@@ -65,7 +65,6 @@ class SignatureDocumentController extends BaseController
                     'message' => $th->getMessage(),
                     'stack' => $th->getTraceAsString(),
                 ]);
-
                 return $this->sendError('Échec de l\'upload du fichier.', [$th->getMessage()]);
             }
 
@@ -77,9 +76,8 @@ class SignatureDocumentController extends BaseController
             ]);
 
             return $this->sendResponse('Document créé avec succès.', $signature_document);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Échec de la création du document:', ['exception' => $e->getMessage()]);
-
             return $this->sendError('Échec de la création du document.', [$e->getMessage()]);
         }
     }
@@ -87,7 +85,7 @@ class SignatureDocumentController extends BaseController
     public function verify(Request $request)
     {
         $request->validate([
-            'file' => 'required|file',
+            'file' => 'required|file'
         ]);
         try {
             $base64File = base64_encode(file_get_contents($request->file('file')));
@@ -97,7 +95,7 @@ class SignatureDocumentController extends BaseController
                 'TwsAuthN' => 'urn:safelayer:tws:policies:authentication:eseal',
                 'SOAPAction' => 'Verify',
             ];
-            $client = new Client;
+            $client = new Client();
             $body = '<?xml version="1.0" encoding="utf-8"?>
             <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <soapenv:Header>
@@ -115,7 +113,7 @@ class SignatureDocumentController extends BaseController
                     </OptionalInputs>
                     <InputDocuments>
                         <Document>
-                            <Base64Data MimeType="application/pdf">'.$base64File.' </Base64Data>
+                            <Base64Data MimeType="application/pdf">' . $base64File . ' </Base64Data>
                         </Document>
                     </InputDocuments>
                 </VerifyRequest>
@@ -127,7 +125,6 @@ class SignatureDocumentController extends BaseController
             return $this->sendResponse('Vérification éffectuée avec succès.', $res->getBody()->getContents());
         } catch (Exception $e) {
             Log::error('Échec de la vérification du document:', ['exception' => $e->getMessage()]);
-
             return $this->sendError('Échec de la vérification du document.', [$e->getMessage()]);
         }
     }
@@ -142,14 +139,11 @@ class SignatureDocumentController extends BaseController
                 Storage::cloud()->delete($signatureDoc->file_path);
 
                 $signatureDoc->delete();
-
                 return $this->sendResponse('Document supprimé avec succès.');
             }
-
             return $this->sendError('Non autorisé.', [], 403);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Échec de la suppression du document:', ['exception' => $e->getMessage()]);
-
             return $this->sendError('Échec de la suppression du document.', [$e->getMessage()]);
         }
     }
@@ -161,27 +155,22 @@ class SignatureDocumentController extends BaseController
         $signerProcessId = $request->query('signer_process_id');
 
         if ($status === 'finished') {
-            $documentUrl = config('trustedx.base_url')."/trustedx-resources/esignsp/v2/signer_processes/{$signerProcessId}/documents/{$documentId}";
-
+            $documentUrl = "{$this->TX_BASE_URL}/trustedx-resources/esignsp/v2/signer_processes/{$signerProcessId}/documents/{$documentId}";
             return $this->getSignedDocument($documentUrl);
         }
 
         abort(500, 'Signature process not completed');
     }
-
     public function show($id)
     {
         try {
             $signature = SignatureDocument::with(['user', 'signatures'])->find($id);
-
             return $this->sendResponse('Signature récupérée avec succès.', $signature);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Échec de la récupération de la signature:', ['exception' => $e->getMessage()]);
-
             return $this->sendError('Échec de la récupération de la signature.', [$e->getMessage()]);
         }
     }
-
     public function index()
     {
         try {
@@ -192,7 +181,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -203,7 +192,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -214,7 +203,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -271,15 +260,15 @@ class SignatureDocumentController extends BaseController
                 });
             };
 
+
             // Retourner la réponse JSON avec les documents organisés
             return response()->json([
                 'signed' => $mapSignatureData($signedDocuments),
                 'sent' => $mapCreatedAtSignatureData($sentDocuments),
                 'tosign' => $mapCreatedAtSignatureData($receivedDocuments),
             ]);
-        } catch (Exception $e) {
-            Log::error('Fetching users failed: '.$e->getMessage());
-
+        } catch (\Exception $e) {
+            Log::error('Fetching users failed: ' . $e->getMessage());
             return $this->sendError('Échec de la récupération des documents.', [$e->getMessage()]);
         }
     }
@@ -294,7 +283,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -305,7 +294,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -316,7 +305,7 @@ class SignatureDocumentController extends BaseController
                     'document.user:id,email,profile',
                     'document' => function ($query) {
                         $query->select('id', 'title', 'file_path', 'user_id');
-                    },
+                    }
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
 
@@ -361,9 +350,8 @@ class SignatureDocumentController extends BaseController
                 'sent' => $mapSignatureData($sentDocuments),
                 'tosign' => $mapSignatureData($receivedDocuments),
             ]);
-        } catch (Exception $e) {
-            Log::error('Fetching users failed: '.$e->getMessage());
-
+        } catch (\Exception $e) {
+            Log::error('Fetching users failed: ' . $e->getMessage());
             return $this->sendError('Échec de la récupération des documents.', [$e->getMessage()]);
         }
     }
@@ -371,8 +359,8 @@ class SignatureDocumentController extends BaseController
     /**
      * Handle the SOAP XML response.
      *
-     * @param  Request  $request
-     * @return Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
      */
     /**
      * Safely get the value of an XPath query.

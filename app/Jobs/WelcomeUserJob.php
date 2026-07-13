@@ -2,43 +2,44 @@
 
 namespace App\Jobs;
 
-use App\DataTransferObjects\EmailNotificationData;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
-use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
+use App\Mail\WelcomeUser;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-final class WelcomeUserJob implements ShouldQueue
+class WelcomeUserJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly string $email,
-        public readonly mixed $user,
-        public readonly string $activationUrl,
-        public readonly bool $hasAccount = false,
-    ) {}
+    public $email;
+    public $user;
+    public $hasAccount = false;
+    public $activationUrl;
 
-    public function handle(): void
+
+    /**
+     * Create a new job instance.
+     *
+     * @return void
+     */
+    public function __construct($email, $user, $activationUrl, $hasAccount = false)
     {
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Activation de votre compte client',
-            template: NotificationTemplate::UserAddedToAed,
-            recipients: [
-                NotificationRecipient::email($this->email, [
-                    'user' => $this->user,
-                    'activationUrl' => $this->activationUrl,
-                    'hasAccount' => $this->hasAccount,
-                ]),
-            ],
-            variables: [
-                'activationUrl' => $this->activationUrl,
-                'hasAccount' => $this->hasAccount,
-            ],
-            type: 'WELCOME_USER',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+        $this->hasAccount = $hasAccount;
+        $this->email = $email;
+        $this->activationUrl = $activationUrl;
+        $this->user = $user;
+    }
+
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        Mail::to($this->email)->queue(new WelcomeUser($this->user, $this->activationUrl, $this->hasAccount));
     }
 }

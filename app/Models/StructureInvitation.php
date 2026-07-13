@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class StructureInvitation extends Model
 {
@@ -21,17 +21,14 @@ class StructureInvitation extends Model
         'expires_at',
         'accepted_at',
         'rejected_at',
-        'message',
+        'message'
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'expires_at' => 'datetime',
-            'accepted_at' => 'datetime',
-            'rejected_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'accepted_at' => 'datetime',
+        'rejected_at' => 'datetime',
+    ];
 
     // Relations
     public function structure()
@@ -53,13 +50,13 @@ class StructureInvitation extends Model
     public function scopePending($query)
     {
         return $query->where('status', 'PENDING')
-            ->where('expires_at', '>', Carbon::now());
+                     ->where('expires_at', '>', Carbon::now());
     }
 
     public function scopeExpired($query)
     {
         return $query->where('status', 'PENDING')
-            ->where('expires_at', '<=', Carbon::now());
+                     ->where('expires_at', '<=', Carbon::now());
     }
 
     public function scopeAccepted($query)
@@ -97,7 +94,7 @@ class StructureInvitation extends Model
     {
         $this->update([
             'status' => 'ACCEPTED',
-            'accepted_at' => Carbon::now(),
+            'accepted_at' => Carbon::now()
         ]);
     }
 
@@ -105,7 +102,7 @@ class StructureInvitation extends Model
     {
         $this->update([
             'status' => 'REJECTED',
-            'rejected_at' => Carbon::now(),
+            'rejected_at' => Carbon::now()
         ]);
     }
 

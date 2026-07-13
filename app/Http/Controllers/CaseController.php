@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cases;
 use Illuminate\Http\Request;
+use App\Models\Cases;
 use Illuminate\Support\Facades\Log;
 
 class CaseController extends BaseController
@@ -12,7 +12,7 @@ class CaseController extends BaseController
     {
         try {
             // Paginate the results with 10 items per page
-            $cases = Cases::paginate(min((int) $request->get('perPage', 15), 100));
+            $cases = Cases::paginate($request->get('perPage', 9999999999999));
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $cases->toArray();
@@ -24,8 +24,7 @@ class CaseController extends BaseController
 
             return $this->sendPaginatedResponse('Liste des cases.', $response);
         } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les cases: '.$e->getMessage());
-
+            Log::error('Impossible de récupérer les cases: ' . $e->getMessage());
             return $this->sendError('Impossible de récupérer les cases.', null, 500);
         }
     }
@@ -34,11 +33,9 @@ class CaseController extends BaseController
     {
         try {
             $case = Cases::findOrFail($id);
-
             return response()->json($case);
         } catch (\Exception $e) {
-            Log::error('Fetching case failed: '.$e->getMessage());
-
+            Log::error('Fetching case failed: ' . $e->getMessage());
             return response()->json(['error' => 'Fetching case failed.'], 500);
         }
     }
@@ -54,11 +51,9 @@ class CaseController extends BaseController
             ]);
 
             $case = Cases::create($validatedData);
-
             return response()->json(['message' => 'Case created successfully.'], 201);
         } catch (\Exception $e) {
-            Log::error('Creating case failed: '.$e->getMessage());
-
+            Log::error('Creating case failed: ' . $e->getMessage());
             return response()->json(['error' => 'Creating case failed.'], 500);
         }
     }
@@ -79,8 +74,7 @@ class CaseController extends BaseController
 
             return response()->json(['message' => 'Case updated successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Updating case failed: '.$e->getMessage());
-
+            Log::error('Updating case failed: ' . $e->getMessage());
             return response()->json(['error' => 'Updating case failed.'], 500);
         }
     }
@@ -90,11 +84,9 @@ class CaseController extends BaseController
         try {
             $case = Cases::findOrFail($id);
             $case->delete();
-
             return response()->json(['message' => 'Case deleted successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Deleting case failed: '.$e->getMessage());
-
+            Log::error('Deleting case failed: ' . $e->getMessage());
             return response()->json(['error' => 'Deleting case failed.'], 500);
         }
     }

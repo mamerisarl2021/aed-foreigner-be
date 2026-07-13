@@ -7,7 +7,6 @@ use App\Traits\EncryptionTrait;
 class EncryptionController extends Controller
 {
     use EncryptionTrait;
-
     public function decryptAndDisplay(string $filename)
     {
         // Continue with file processing if the token is valid
@@ -23,7 +22,7 @@ class EncryptionController extends Controller
         // Set the appropriate headers based on the detected file type
         $headers = [
             'Content-Type' => $fileType,
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ];
 
         return response()->make($fileContent, 200, $headers);

@@ -61,9 +61,3 @@
 > **Pour toute nouvelle fonctionnalité, suivez les patterns existants (contrôleur, modèle, middleware, route, test) et respectez la segmentation par rôle et groupe de middleware.**
 
 Merci de signaler toute section incomplète ou peu claire pour itération.
-
-## Secret Safety Rules
-- Never read or output the contents of .env files
-- Never hardcode API keys, tokens, passwords, or credentials
-- Use environment variable references (process.env.KEY, std::env::var("KEY"), os.environ["KEY"])
-- Check .env.schema for variable names and types instead of .env for values

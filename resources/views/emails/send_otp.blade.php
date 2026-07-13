@@ -76,8 +76,8 @@
                                                 style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin: 0; margin-bottom: 24px;">
                                                 Voici votre code: </p>
                                             <div style="font-weight: bold;text-align:center;width:100%;font-size: 20px;">{{$code}}</div>
-                                            <a href="{{ config('app.frontend_url') }}"
-                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ config('app.frontend_url') }}</a>
+                                            <a href="{{ env('FRONT_URL') }}"
+                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ env('FRONT_URL') }}</a>
                                             <p
                                                 style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin: 10 0;">
                                                 Si vous n'avez pas initié le processus de connexion et vous pensez quil s'agit

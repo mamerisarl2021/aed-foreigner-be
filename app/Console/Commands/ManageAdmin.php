@@ -1,9 +1,8 @@
 <?php
-
 namespace App\Console\Commands;
 
-use App\Models\User;
 use Illuminate\Console\Command;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class ManageAdmin extends Command
@@ -26,23 +25,20 @@ class ManageAdmin extends Command
         $passwordConfirmation = $this->option('password-confirmation');
 
         // Ensure all options are provided
-        if (! $name || ! $email || ! $password) {
+        if (!$name || !$email || !$password) {
             $this->error('Name, email, and password options are required.');
-
             return;
         }
 
         // Validate email format
-        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->error('Invalid email format.');
-
             return;
         }
 
         // Confirm the password
         if ($password !== $passwordConfirmation) {
             $this->error('Passwords do not match.');
-
             return;
         }
 
@@ -62,7 +58,6 @@ class ManageAdmin extends Command
         // Check if user already exists
         if (User::where('email', $email)->exists()) {
             $this->error('An admin with this email already exists.');
-
             return;
         }
 
@@ -70,11 +65,11 @@ class ManageAdmin extends Command
         $admin = User::create([
             'name' => $name,
             'email' => $email,
-            'password' => $password,
+            'password' => $password
         ]);
 
         // Assign admin role
-        if (! $admin->hasRole('admin')) {
+        if (!$admin->hasRole('admin')) {
             $admin->assignRole('admin');
         }
 
@@ -86,9 +81,8 @@ class ManageAdmin extends Command
         // Find admin by email
         $admin = User::where('email', $email)->first();
 
-        if (! $admin) {
+        if (!$admin) {
             $this->error('No admin found with this email.');
-
             return;
         }
         $admin->password = $password;
@@ -96,7 +90,7 @@ class ManageAdmin extends Command
         // Update name and password
         $admin->update([
             'name' => $name,
-            'password' => $password,
+            'password' => $password
         ]);
         $this->info('Administrator updated successfully.');
     }

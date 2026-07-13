@@ -1,5 +1,4 @@
 <?php
-
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -16,14 +15,14 @@ class PermissionsSeeder extends Seeder
      */
     public function run()
     {
-        // =======================================================================================#
-        //			               Reset cached roles and permissions                          	#
-        // =======================================================================================#
+        #=======================================================================================#
+        #			               Reset cached roles and permissions                          	#
+        #=======================================================================================#
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // =======================================================================================#
-        //			                            Create permissions                              	#
-        // =======================================================================================#
+        #=======================================================================================#
+        #			                            Create permissions                              	#
+        #=======================================================================================#
         $permissions = [
             // User management
             'view users',
@@ -60,7 +59,7 @@ class PermissionsSeeder extends Seeder
             'create messages',
             'edit messages',
             'delete messages',
-            'edit subscriptions',
+            "edit subscriptions",
 
             // Subscription and package management
             'view subscriptions',
@@ -80,7 +79,7 @@ class PermissionsSeeder extends Seeder
             'update attachment status',
             'update user status',
             'update identity status',
-            'validate employee request',
+            'validate employee request'
         ];
 
         // Create permissions
@@ -88,9 +87,9 @@ class PermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // =======================================================================================#
-        //			                            Create roles                                      #
-        // =======================================================================================#
+        #=======================================================================================#
+        #			                            Create roles                                      #
+        #=======================================================================================#
         $roleAdmin = Role::create(['name' => 'admin']);
         $roleClient = Role::create(['name' => 'client']);
         $roleAuditeur = Role::create(['name' => 'auditeur']);
@@ -100,9 +99,9 @@ class PermissionsSeeder extends Seeder
         $roleTechTwo = Role::create(['name' => 'tech_two']);
         $roleTechThree = Role::create(['name' => 'tech_three']);
 
-        // =======================================================================================#
-        //			                            Assign permissions to roles                      #
-        // =======================================================================================#
+        #=======================================================================================#
+        #			                            Assign permissions to roles                      #
+        #=======================================================================================#
 
         // Assign all permissions to admin
         $roleAdmin->givePermissionTo(Permission::all());
@@ -137,7 +136,7 @@ class PermissionsSeeder extends Seeder
             'view cases',
             'edit cases',
             'view attachments',
-            'edit attachments',
+            'edit attachments'
         ]);
 
         // Define permissions for tech_one
@@ -150,7 +149,7 @@ class PermissionsSeeder extends Seeder
             'edit attachments',
             'update document status',
         ]);
-
+        
         // Define permissions for tech_one
         $roleSuperviseur->givePermissionTo([
             'view users',

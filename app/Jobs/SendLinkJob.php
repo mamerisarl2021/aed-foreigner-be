@@ -2,42 +2,40 @@
 
 namespace App\Jobs;
 
-use App\DataTransferObjects\EmailNotificationData;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
-use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
+use App\Mail\SendLink;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-final class SendLinkJob implements ShouldQueue
+class SendLinkJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly mixed $user,
-        public readonly string $code,
-    ) {}
+    public $user;
+    public $code;
 
-    public function handle(): void
+    /**
+     * Create a new job instance.
+     *
+     * @return void
+     */
+    public function __construct($user, $code)
     {
-        $email = NotificationRecipient::resolveEmail($this->user);
+        $this->code = $code;
+        $this->user = $user;
+    }
 
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Demande du lien de mise à jour',
-            template: NotificationTemplate::SendLink,
-            recipients: [
-                NotificationRecipient::email($this->user, [
-                    'code' => $this->code,
-                    'email' => $email,
-                ]),
-            ],
-            variables: [
-                'code' => $this->code,
-                'email' => $email,
-            ],
-            type: 'SEND_LINK',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        $code= $this->code;
+        Mail::to($this->user)->queue(new SendLink($code, $this->user));
     }
 }

@@ -9,18 +9,22 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class UserSubscription extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
+
 
     protected $fillable = ['type', 'status', 'structure_id', 'user_id', 'package_id', 'current'];
 
     protected $appends = ['package', 'userdata', 'structuredata'];
 
-    public function scopeForUser(Builder $query, User $user)
+    protected static function booted()
     {
-        if ($user->hasRole('client')) {
-            $query->where('user_id', $user->id);
-        }
+        static::addGlobalScope('owned', function (Builder $builder) {
+            $user = User::find(auth()->id());
+            if ($user && $user->hasRole('client')) {
+                $builder->where('user_id', $user->id);
+            }
+        });
     }
 
     public function user()
@@ -61,6 +65,5 @@ class UserSubscription extends Model implements Auditable
 
         return $this->userPackage;
     }
-
     protected $hidden = ['userPackage', 'structurePackage', 'user', 'structure'];
 }

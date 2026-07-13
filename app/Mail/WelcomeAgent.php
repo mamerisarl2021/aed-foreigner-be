@@ -12,7 +12,6 @@ class WelcomeAgent extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $user;
-
     public $link;
 
     public function __construct($user, $link)
@@ -23,10 +22,10 @@ class WelcomeAgent extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Ajout d\'un compte agent')->view('emails.agent_added_to_aed')->with([
                 'user' => $this->user,
-                'link' => $this->link,
+                'link' => $this->link
             ]);
     }
 }

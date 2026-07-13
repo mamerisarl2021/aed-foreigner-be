@@ -12,7 +12,6 @@ class NotifyAdmin extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $code;
-
     public $email;
 
     public function __construct($code, $email)
@@ -23,10 +22,10 @@ class NotifyAdmin extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Demande du code OTP')->view('emails.notify_admin')->with([
                 'code' => $this->code,
-                'email' => $this->email,
+                'email' => $this->email
             ]);
     }
 }

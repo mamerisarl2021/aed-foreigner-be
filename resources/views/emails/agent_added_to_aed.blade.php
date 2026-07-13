@@ -78,7 +78,7 @@
                                                 votre processus d'enrôllement.
                                             </p>
                                             <a href="{{ $link }}"
-                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ config('app.frontend_url') }}</a>
+                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ env('FRONT_URL') }}</a>
                                             <table cellpadding="0" cellspacing="0" role="presentation">
                                                 <tr>
                                                     <td

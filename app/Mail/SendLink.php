@@ -12,7 +12,6 @@ class SendLink extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $code;
-
     public $email;
 
     public function __construct($code, $email)
@@ -23,10 +22,10 @@ class SendLink extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Demande du lien de mise à jour')->view('emails.send_link')->with([
                 'code' => $this->code,
-                'email' => $this->email,
+                'email' => $this->email
             ]);
     }
 }

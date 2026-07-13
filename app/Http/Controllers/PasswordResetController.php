@@ -3,35 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendLinkJob;
+use App\Jobs\SendOTPJob;
 use App\Jobs\SendSmsJob;
-use App\Models\PasswordResetToken;
-use App\Models\User;
-use App\Services\PKI\TrustedXClientService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use App\Models\User;
+use App\Traits\AuthTrait;
 
 class PasswordResetController extends BaseController
 {
-    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
+    use AuthTrait;
 
     public function sendResetLink(Request $request)
     {
-        $request->validate(['npi' => 'required|string', 'type' => 'required|string']);
+        $request->validate(['npi' => 'required|string', 'type' => 'required|string',]);
 
         $npi = $request->input('npi');
         $type = $request->input('type');
         $token = Str::random(60);
 
-        PasswordResetToken::updateOrCreate(
+        DB::table('password_resets')->updateOrInsert(
             ['npi' => $npi],
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
 
-        $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
+        $user = $this->getUserWithNPI($request->input('npi'));
         if ($user['status']) {
             $type = $request->input('type') == 'password' ? 'mot de passe' : 'pin';
-            $link = config('app.frontend_url')."/reset/{$request->input('type')}/$token/$npi";
+            $link = env('FRONT_URL') . "/reset/{$request->input('type')}/$token/$npi";
 
             $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
             $email = User::whereNpi($request->input('npi'))->first()->email;
@@ -46,7 +47,6 @@ class PasswordResetController extends BaseController
         } else {
             $final = $this->sendError($user['message'], null, 400);
         }
-
         return $final;
     }
 
@@ -60,9 +60,9 @@ class PasswordResetController extends BaseController
         ]);
         $type = $request->input('type') == 'password' ? 'mot de passe' : 'pin';
 
-        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
+        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
 
-        if (! $tokenData) {
+        if (!$tokenData) {
             return response()->json(['message' => "Le lien de mise à jour du $type est invalide"], 404);
         }
 
@@ -73,9 +73,9 @@ class PasswordResetController extends BaseController
         $user = User::where('npi', $tokenData->npi)->first();
 
         if ($user) {
-            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
+            $user = $this->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $output = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], $request->input('type'));
+                $output = $this->setDefaultPassword(["id" => $user['data']['id'], "password" => $request->input('password')], $request->input('type'));
                 if ($output['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
@@ -90,10 +90,8 @@ class PasswordResetController extends BaseController
             } else {
                 $final = $this->sendError($user['message'], null, 400);
             }
-
             return $final;
         }
-
         return $this->sendError('Aucun utilisateur ne correspond à ce npi', null, 404);
     }
 
@@ -103,43 +101,41 @@ class PasswordResetController extends BaseController
             'token' => 'required|string',
             'password' => 'required|string',
             'pin' => 'required|string',
-            'npi' => 'required|string',
+            'npi' => 'required|string'
         ]);
-        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
+        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
 
-        if (! $tokenData) {
-            return response()->json(['message' => 'Le lien de mise à jour des identifiants est invalide'], 404);
+        if (!$tokenData) {
+            return response()->json(['message' => "Le lien de mise à jour des identifiants est invalide"], 404);
         }
 
         if (Carbon::parse($tokenData->created_at)->addMinutes(60)->isPast()) {
-            return response()->json(['message' => 'Le lien de mise à jour  des identifiants est expiré.'], 400);
+            return response()->json(['message' => "Le lien de mise à jour  des identifiants est expiré."], 400);
         }
 
         $localUser = User::where('npi', $tokenData->npi)->first();
 
         if ($localUser) {
-            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
+            $user = $this->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $passwordOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password');
-                $pinOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin');
+                $passwordOutput = $this->setDefaultPassword(["id" => $user['data']['id'], "password" => $request->input('password')], 'password');
+                $pinOutput = $this->setDefaultPassword(["id" => $user['data']['id'], "password" => $request->input('pin')], 'pin');
                 if ($passwordOutput['status'] && $pinOutput['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
 
                     $final = $this->sendResponse(
-                        'Vos identifiants ont bien été mis à jour.',
+                        "Vos identifiants ont bien été mis à jour.",
                         [...json_decode(json_encode($localUser->load('identities')), true), ...$user['data'], ...$passwordOutput['data']]
                     );
                 } else {
-                    $final = $this->sendError($passwordOutput['message'].' '.$pinOutput['message'], null, 400);
+                    $final = $this->sendError($passwordOutput['message'] . " " . $pinOutput['message'], null, 400);
                 }
             } else {
                 $final = $this->sendError($user['message'], null, 400);
             }
-
             return $final;
         }
-
         return $this->sendError('Aucun utilisateur ne correspond à ce npi', null, 404);
     }
 
@@ -149,43 +145,41 @@ class PasswordResetController extends BaseController
             'token' => 'required|string',
             'password' => 'sometimes|string',
             'pin' => 'sometimes|string',
-            'npi' => 'required|string',
+            'npi' => 'required|string'
         ]);
-        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
+        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
 
-        if (! $tokenData) {
-            return response()->json(['message' => 'Le lien de mise à jour des identifiants est invalide'], 404);
+        if (!$tokenData) {
+            return response()->json(['message' => "Le lien de mise à jour des identifiants est invalide"], 404);
         }
 
         if (Carbon::parse($tokenData->created_at)->addMinutes(60)->isPast()) {
-            return response()->json(['message' => 'Le lien de mise à jour  des identifiants est expiré.'], 400);
+            return response()->json(['message' => "Le lien de mise à jour  des identifiants est expiré."], 400);
         }
 
         $localUser = User::where('npi', $tokenData->npi)->first();
 
         if ($localUser) {
-            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
+            $user = $this->getUserWithNPI($request->input('npi'));
             if ($user['status']) {
-                $passwordOutput = $request->input('password') != null ? $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password') : ['status' => true, 'data' => []];
-                $pinOutput = $request->input('pin') != null ? $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin') : ['status' => true, 'data' => []];
+                $passwordOutput = $request->input('password') != null ? $this->setDefaultPassword(["id" => $user['data']['id'], "password" => $request->input('password')], 'password') : ['status' => true, 'data' => []];
+                $pinOutput = $request->input('pin') != null ? $this->setDefaultPassword(["id" => $user['data']['id'], "password" => $request->input('pin')], 'pin') : ['status' => true, 'data' => []];
                 if ($passwordOutput['status'] && $pinOutput['status']) {
                     $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
                     // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
 
                     $final = $this->sendResponse(
-                        'Vos identifiants ont bien été mis à jour.',
-                        [...json_decode(json_encode($localUser->load('identities')), true), ...$user['data'], ...$passwordOutput['data']]
+                        "Vos identifiants ont bien été mis à jour.",
+                        [...json_decode(json_encode($localUser->load('identities')), true),...$user['data'], ...$passwordOutput['data']]
                     );
                 } else {
-                    $final = $this->sendError($passwordOutput['message'].' '.$pinOutput['message'], null, 400);
+                    $final = $this->sendError($passwordOutput['message'] . " " . $pinOutput['message'], null, 400);
                 }
             } else {
                 $final = $this->sendError($user['message'], null, 400);
             }
-
             return $final;
         }
-
         return $this->sendError('Aucun utilisateur ne correspond à ce npi', null, 404);
     }
 }

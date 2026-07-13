@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\Cases;
+use App\Models\Structure;
+use App\Models\Message;
+use App\Models\Attachment;
 use App\Models\Identity;
-use App\Models\OTP;
-use App\Models\Revocation;
 use App\Models\Signature;
 use App\Models\SignatureDocument;
-use App\Models\Structure;
-use App\Models\StructureSubscription;
-use App\Models\User;
+use App\Models\Revocation;
+use App\Models\OTP;
 use App\Models\UserSubscription;
+use App\Models\StructureSubscription;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -88,7 +91,7 @@ class StatsController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'type' => 'VID',
+                    'type' => "VID",
                     'validity' => $item->validity,
                     'count' => $item->count,
                 ];
@@ -107,6 +110,7 @@ class StatsController extends Controller
                     'count' => $item->count,
                 ];
             });
+
 
         $total_revenue += StructureSubscription::with('structurePackage')
             ->get()
@@ -150,7 +154,7 @@ class StatsController extends Controller
             'earnings' => $earnings,
             'expenses' => $expenses,
             'udistribution' => $userPackageDistribution,
-            'sdistribution' => $structurePackageDistribution,
+            'sdistribution' => $structurePackageDistribution
         ];
 
         return response()->json($data);
@@ -164,14 +168,14 @@ class StatsController extends Controller
         // Filter by package type
         if ($request->has('type')) {
             $query->whereHas('structurePackage', function ($q) use ($request) {
-                $q->where('type', 'LIKE', '%'.$request->input('type').'%');
+                $q->where('type', 'LIKE', '%' . $request->input('type') . '%');
             });
         }
 
         // Filter by structure name
         if ($request->has('user')) {
             $query->whereHas('structure', function ($q) use ($request) {
-                $q->where('name', 'LIKE', '%'.$request->input('user').'%');
+                $q->where('name', 'LIKE', '%' . $request->input('user') . '%');
             });
         }
 
@@ -216,18 +220,18 @@ class StatsController extends Controller
         // Apply filters on relationships
         if ($request->has('type')) {
             $query->whereHas('userPackage', function ($q) use ($request) {
-                $q->where('type', 'LIKE', '%'.$request->input('type').'%');
+                $q->where('type', 'LIKE', '%' . $request->input('type') . '%');
             });
         }
 
         if ($request->has('user')) {
             $query->whereHas('structure', function ($q) use ($request) {
-                $q->where('name', 'LIKE', '%'.$request->input('user').'%');
+                $q->where('name', 'LIKE', '%' . $request->input('user') . '%');
             });
         }
 
         if ($request->has('status')) {
-            $query->where('status', 'LIKE', '%'.$request->input('status').'%');
+            $query->where('status', 'LIKE', '%' . $request->input('status') . '%');
         }
 
         // Calculate current month's revenue from 'userPackage'

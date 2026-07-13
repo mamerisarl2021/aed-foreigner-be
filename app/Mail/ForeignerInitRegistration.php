@@ -13,7 +13,7 @@ class ForeignerInitRegistration extends Mailable
     public function __construct(
         public string $registrationLink
     ) {
-        $this->subject('Complétez votre inscription');
+        $this->subject("Complétez votre inscription");
     }
 
     public function build()

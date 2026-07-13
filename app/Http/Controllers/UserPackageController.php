@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPackage;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -12,13 +11,14 @@ class UserPackageController extends BaseController
     /**
      * Display a listing of the user packages.
      *
-     * @return JsonResponse
+     * @return \Illuminate\Http\JsonResponse
      */
+
     public function index(Request $request)
     {
         try {
             // Paginate the results with 10 items per page
-            $structures = UserPackage::paginate(min((int) $request->get('perPage', 15), 100));
+            $structures = UserPackage::paginate($request->get('perPage', 9999999999999));
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $structures->toArray();
@@ -30,8 +30,7 @@ class UserPackageController extends BaseController
 
             return $this->sendPaginatedResponse('Liste des packages utilisateurs.', $response);
         } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les packages utilisateurs: '.$e->getMessage());
-
+            Log::error('Impossible de récupérer les packages utilisateurs: ' . $e->getMessage());
             return $this->sendError('Impossible de récupérer les packages utilisateurs.', null, 500);
         }
     }
@@ -39,7 +38,8 @@ class UserPackageController extends BaseController
     /**
      * Store a newly created user package in storage.
      *
-     * @return JsonResponse
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -51,15 +51,14 @@ class UserPackageController extends BaseController
         ]);
 
         $userPackage = UserPackage::create($request->all());
-
         return $this->sendResponse('User package created successfully.', $userPackage);
     }
 
     /**
      * Display the specified user package.
      *
-     * @param  int  $id
-     * @return JsonResponse
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {
@@ -75,8 +74,9 @@ class UserPackageController extends BaseController
     /**
      * Update the specified user package in storage.
      *
-     * @param  int  $id
-     * @return JsonResponse
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
     {
@@ -94,15 +94,14 @@ class UserPackageController extends BaseController
         }
 
         $userPackage->update($request->all());
-
         return $this->sendResponse('User package updated successfully.', $userPackage);
     }
 
     /**
      * Remove the specified user package from storage.
      *
-     * @param  int  $id
-     * @return JsonResponse
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
     {
@@ -113,7 +112,6 @@ class UserPackageController extends BaseController
         }
 
         $userPackage->delete();
-
         return $this->sendResponse('User package deleted successfully.');
     }
 }

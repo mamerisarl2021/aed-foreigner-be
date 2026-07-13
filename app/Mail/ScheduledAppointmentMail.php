@@ -20,6 +20,6 @@ class ScheduledAppointmentMail extends Mailable
     public function build()
     {
         return $this->view('emails.scheduled')
-            ->subject('Validation de votre rendez-vous de vérification d\'identité');
+                    ->subject('Validation de votre rendez-vous de vérification d\'identité');
     }
 }

@@ -6,55 +6,55 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CaseController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EncryptionController;
-use App\Http\Controllers\ForeignerEnrollmentController;
-use App\Http\Controllers\IdentityReviewController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\RevocationController;
 use App\Http\Controllers\SignatureController;
 use App\Http\Controllers\SignatureDocumentController;
-use App\Http\Controllers\SigningIdentityController;
-use App\Http\Controllers\StampController;
-use App\Http\Controllers\StatsController;
 use App\Http\Controllers\StructureController;
 use App\Http\Controllers\StructurePackageController;
 use App\Http\Controllers\StructureSubscriptionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserPackageController;
 use App\Http\Controllers\UserSubscriptionController;
+use App\Http\Controllers\ForeignerEnrollmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SigningIdentityController;
+use App\Http\Controllers\StampController;
+use App\Http\Controllers\StatsController;
+use App\Http\Controllers\IdentityReviewController;
 
 /*
-| API routes — loaded by bootstrap/app.php with the "api" middleware group.
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|'auth:sanctum'
 */
 
-Route::group([], function () {
-    Route::get('/health', function () {
-        try {
-            DB::connection()->getPdo();
-        } catch (Throwable $e) {
-            return response()->json(['status' => 'DOWN'], 503);
-        }
 
-        return response()->json(['status' => 'UP'], 200);
-    });
 
+Route::middleware(['json.response'])->group(function () {
     Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
         return $request->user();
     });
 
     Route::resource('user-packages', UserPackageController::class)->only([
         'index',
-        'show',
+        'show'
     ]);
     Route::resource('structure-packages', StructurePackageController::class)->only([
         'index',
-        'show',
+        'show'
     ]);
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('structures', [StructureController::class, 'index']);
+
 
         Route::apiResource('attachments', AttachmentController::class);
         Route::apiResource('documents', DocumentController::class);
@@ -73,7 +73,7 @@ Route::group([], function () {
         });
 
         Route::middleware('role:admin')->group(function () {
-            // AGENTS MANAGEMENT ROUTES
+            //AGENTS MANAGEMENT ROUTES
             Route::post('/agents/register', [AuthController::class, 'registerAgent']);
             Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
             Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
@@ -82,7 +82,7 @@ Route::group([], function () {
         });
 
         Route::middleware('role:admin|tech_one|tech_two|tech_three|auditeur|superviseur')->group(function () {
-            // AGENTS MANAGEMENT ROUTES
+            //AGENTS MANAGEMENT ROUTES
             Route::get('/audits', [AuditLogController::class, 'index']);
             Route::get('/stats', [StatsController::class, 'index']);
             Route::get('/incomming/citizen', [StatsController::class, 'getUserSubscriptions']);
@@ -91,17 +91,17 @@ Route::group([], function () {
             Route::resource('user-packages', UserPackageController::class)->only([
                 'store',
                 'update',
-                'destroy',
+                'destroy'
             ]);
             Route::resource('structure-packages', StructurePackageController::class)->only([
                 'store',
                 'update',
-                'destroy',
+                'destroy'
             ]);
         });
 
         Route::middleware('role:tech_one|tech_two|tech_three|superviseur')->group(function () {
-            // MANAGEMENT ROUTES
+            //MANAGEMENT ROUTES
             Route::post('/management/documents/update-status', [DocumentController::class, 'updateDocumentStatus']);
             Route::post('/management/structures/update-status', [StructureController::class, 'updateStructureStatus']);
             Route::post('/management/structures/notify-admin', [StructureController::class, 'sendOtp']);
@@ -132,7 +132,9 @@ Route::group([], function () {
                 Route::post('/management/identity-reviews/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
             });
 
+
             Route::get('users', [UserController::class, 'index']);
+
 
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
 
@@ -140,19 +142,20 @@ Route::group([], function () {
         });
 
         Route::middleware('role:client')->group(function () {
-            // CLIENTS MANAGEMENT ROUTES
+            //CLIENTS MANAGEMENT ROUTES
             Route::post('/clients/link-entity', [StructureController::class, 'store']);
             Route::post('/clients/one-shot-link', [StructureController::class, 'oneShotStore']);
             Route::get('/entities/mine', [StructureController::class, 'mine']);
             Route::get('/revocations/mine', [RevocationController::class, 'mine']);
             Route::post('/management/structures/verify-admin', [StructureController::class, 'verifyOtp']);
 
-            // ENTITIES ATTACHMENTS MANAGEMENT ROUTES
+
+            //ENTITIES ATTACHMENTS MANAGEMENT ROUTES
             Route::post('/entities/attachments', [AttachmentController::class, 'store']);
             Route::post('/entities/attachments/{id}', [AttachmentController::class, 'update']);
             Route::delete('/entities/attachments/{id}', [AttachmentController::class, 'destroy']);
 
-            // ATTACHMENTS DOCUMENTS MANAGEMENT ROUTES
+            //ATTACHMENTS DOCUMENTS MANAGEMENT ROUTES
             Route::post('/attachments/documents', [DocumentController::class, 'store']);
             Route::delete('/attachments/documents/{id}', [DocumentController::class, 'destroy']);
 
@@ -226,7 +229,7 @@ Route::group([], function () {
         });
     });
 
-    // CLIENTS AUTHENTICATIONS PUBLICS ROUTES
+    //CLIENTS AUTHENTICATIONS PUBLICS ROUTES
     Route::post('/clients/send-otp', [UserController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
     Route::post('/clients/verify-otp', [UserController::class, 'verifyOtp'])->middleware(['guest']);
     Route::post('/clients/login', [UserController::class, 'login']);
@@ -246,7 +249,9 @@ Route::group([], function () {
     Route::post('/foreigner/register/init', [ForeignerEnrollmentController::class, 'initRegistration'])->middleware(['guest', 'transaction']);
     Route::post('/foreigner/register/finalize', [ForeignerEnrollmentController::class, 'finalizeRegistration'])->middleware(['guest']);
 
-    // ADMINS AUTHENTICATIONS PUBLICS ROUTES
+
+
+    //ADMINS AUTHENTICATIONS PUBLICS ROUTES
     Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');
     Route::post('/admins/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/admins/logout', [AuthController::class, 'logoutAdmin'])->middleware('auth');
@@ -257,8 +262,8 @@ Route::group([], function () {
     Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::post('users-email/search', [UserController::class, 'searchPost']);
-
+    
     // AJOUTEZ ICI LES ROUTES PUBLIQUES D'INVITATION:
     Route::get('/invitations/{token}/details', [UserController::class, 'getInvitationDetails']);
-    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);
+    Route::post('/invitations/{token}/respond', [UserController::class, 'respondToInvitation']);        
 });

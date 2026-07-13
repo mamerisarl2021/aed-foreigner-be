@@ -8,8 +8,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class Signature extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
 
     protected $fillable = ['signature_document_id', 'user_id', 'status', 'location', 'toTimestamp'];
 
@@ -45,7 +45,6 @@ class Signature extends Model implements Auditable
     public function scopeSent($query)
     {
         $userId = auth()->id();
-
         return $query->whereHas('document', function ($query) use ($userId) {
             $query->where('user_id', $userId) // The authenticated user is the sender
                 ->whereHas('signatures', function ($query) use ($userId) {
@@ -58,7 +57,6 @@ class Signature extends Model implements Auditable
     public function scopeSigned($query)
     {
         $userId = auth()->id();
-
         return $query->where('user_id', $userId)->whereHas('document', function ($query) {
             $query->whereDoesntHave('signatures', function ($query) {
                 $query->where('status', '!=', 'signed');
@@ -69,7 +67,6 @@ class Signature extends Model implements Auditable
     public function scopeReceived($query)
     {
         $userId = auth()->id();
-
         return $query->where('user_id', $userId)
             ->where('status', '!=', 'signed')
             ->orWhereHas('document', function ($query) use ($userId) {

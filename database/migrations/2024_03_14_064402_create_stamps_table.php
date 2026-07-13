@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('stamps', function (Blueprint $table) {
             $table->id();
             $table->string('fichier');
-            $table->enum('type', ['SIGNATURE', 'VISA'])->default('SIGNATURE');
+            $table->enum('type',['SIGNATURE','VISA'])->default('SIGNATURE');
             $table->foreignIdFor(User::class);
             $table->timestamps();
         });

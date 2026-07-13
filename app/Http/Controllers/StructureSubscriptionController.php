@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Management\StoreStructureSubscriptionRequest;
-use App\Http\Requests\Management\ValidateEmployeeSubscriptionRequest;
 use App\Models\StructurePackage;
-use App\Models\Structure;
 use App\Models\StructureSubscription;
-use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Kkiapay\Kkiapay;
+
 
 class StructureSubscriptionController extends BaseController
 {
     public function index(Request $request)
     {
         try {
-            $structures = StructureSubscription::paginate(min((int) $request->get('perPage', 15), 100));
+            $structures = StructureSubscription::paginate($request->get('perPage', 9999999999999));
 
             $data = $structures->toArray();
 
@@ -31,23 +29,22 @@ class StructureSubscriptionController extends BaseController
 
             $response = [
                 'data' => $data,
-                'pagination' => $paginationData,
+                'pagination' => $paginationData
             ];
 
             return $this->sendPaginatedResponse('Liste des structures.', $response);
         } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les abonnements des entreprises: '.$e->getMessage());
-
+            Log::error('Impossible de récupérer les abonnements des entreprises: ' . $e->getMessage());
             return $this->sendError('Impossible de récupérer les abonnements des entreprises.', null, 500);
         }
     }
 
-    public function kkiaPayement(string $transId)
+    public function kkiaPayement(String $transId)
     {
 
-        $public_key = config('kkiapay.public_key');
-        $private_key = config('kkiapay.private_key');
-        $secret = config('kkiapay.secret');
+        $public_key = env('KKIA_PUBLIC_KEY');
+        $private_key = env('KKIA_PRIVATE_KEY');
+        $secret = env('KKIA_SECRET_KEY');
 
         // $public_key = "9d0fc7a0649011ef9e4c8f724a020285";
         // $private_key = "tpk_9d0fc7a2649011ef9e4c8f724a020285";
@@ -57,26 +54,33 @@ class StructureSubscriptionController extends BaseController
             $public_key,
             $private_key,
             $secret,
-            config('kkiapay.sandbox')
+            $sandbox = true
         );
 
         $payement = $kkiapay->verifyTransaction($transId);
-
         return collect($payement->state);
     }
 
     // Store a new structure subscription
-    public function store(StoreStructureSubscriptionRequest $request)
+    public function store(Request $request)
     {
-        $state = $this->kkiaPayement($request->input('transaction_id'));
-        if (StructurePackage::where('id', json_decode($state[0], true)['package'])->where('prix', (int) json_decode($state[0], true)['amount'])->count() != 1) {
-            Log::alert('Failed to create user subscription');
+        $validator = Validator::make($request->all(), [
+            'structure_id' => 'required|exists:structures,id',
+            'structure_package_id' => 'required|exists:structure_packages,id',
+            'transaction_id' => 'required',
+        ]);
 
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+
+        $state = $this->kkiaPayement($request->input('transaction_id'));
+        if (StructurePackage::where('id', json_decode($state[0], true)['package'])->where('prix', (int)json_decode($state[0], true)['amount'])->count() != 1) {
+            Log::alert('Failed to create user subscription');
             return $this->sendError('Ooops tentative de fraude détectée!', [], 500);
         }
 
         $structureSubscription = StructureSubscription::create($request->all());
-
         return $this->sendResponse('Structure subscription created successfully.', $structureSubscription);
     }
 
@@ -98,21 +102,27 @@ class StructureSubscriptionController extends BaseController
         try {
             $structureSubscription = StructureSubscription::findOrFail($id);
             $structureSubscription->delete();
-
             return $this->sendResponse('Structure subscription deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('Deleting structure subscription failed: '.$e->getMessage());
-
+            Log::error('Deleting structure subscription failed: ' . $e->getMessage());
             return $this->sendError('Failed to delete structure subscription.', null, 500);
         }
     }
 
     // Validate employee requests
-    public function validateEmployeeRequest(ValidateEmployeeSubscriptionRequest $request)
+    public function validateEmployeeRequest(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'user_subscription_id' => 'required|exists:user_subscriptions,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors());
+        }
+
         $userSubscription = UserSubscription::find($request->input('user_subscription_id'));
-        if (! $userSubscription) { // Should be covered by validation but good practice
-            return $this->sendError('Validation Error.', ['user_subscription_id' => 'Invalid subscription']);
+        if (!$userSubscription) { // Should be covered by validation but good practice
+             return $this->sendError('Validation Error.', ['user_subscription_id' => 'Invalid subscription']);
         }
 
         $structure = Structure::find($userSubscription->structure_id); // Assuming relationship or column exists
@@ -120,12 +130,12 @@ class StructureSubscriptionController extends BaseController
         // Let's check schema/relationship. UserSubscription has structure_id?
         // Based on `2024_07_04_150253_create_user_subscriptions_table.php`, let's assume structure_id is there or reachable.
         // Actually, let's verify UserSubscription model first.
-
+        
         // Waiting for tool check before applying this specific replace if unsure.
         // But based on `calculateRemainingIdentities` using `UserSubscription::where('structure_id', ...)` it implies `structure_id` exists on `UserSubscription`.
-
+        
         if ($structure && $structure->status !== 'APPROVED') {
-            return $this->sendError('Impossible de valider un employé car l\'entreprise n\'est pas encore validée (Statut: '.$structure->status.').', null, 403);
+             return $this->sendError('Impossible de valider un employé car l\'entreprise n\'est pas encore validée (Statut: ' . $structure->status . ').', null, 403);
         }
 
         $remainingIdentities = $this->calculateRemainingIdentities($request->input('user_subscription_id'));
@@ -136,7 +146,7 @@ class StructureSubscriptionController extends BaseController
 
         // Approve the request and deduct the identities
         $userRequest = UserSubscription::find($request->input('user_subscription_id'));
-        $userRequest->update(['status' => 'TRAITEDBYMANAGER']);
+        $userRequest->update(["status" => 'TRAITEDBYMANAGER']);
 
         // Activate the employee user
         $user = User::find($userRequest->user_id);

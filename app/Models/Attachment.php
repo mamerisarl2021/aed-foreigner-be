@@ -8,8 +8,9 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class Attachment extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    
+    use HasFactory;
 
     protected $fillable = ['name', 'structure_id', 'status', 'message'];
 

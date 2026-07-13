@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
 
-class Message extends Model implements Auditable
+class Message extends Model  implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
 
     protected $fillable = ['user_id', 'message', 'case_id'];
 

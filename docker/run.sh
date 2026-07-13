@@ -7,12 +7,5 @@ cd /var/www
 # php artisan passport:install --force
 php artisan cache:clear
 php artisan route:cache
-php artisan consul:register
-
-cleanup() {
-    php artisan consul:deregister
-}
-
-trap cleanup TERM INT
 
 /usr/bin/supervisord -c /etc/supervisord.conf

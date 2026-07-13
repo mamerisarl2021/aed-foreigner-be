@@ -3,16 +3,18 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class Structure extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
 
-    protected $fillable = ['name', 'ifu', 'manager_id', 'searchbase', 'status'];
+
+    protected $fillable = ['name', 'ifu', 'manager_id','searchbase', 'status'];
 
     public function manager()
     {
@@ -38,16 +40,16 @@ class Structure extends Model implements Auditable
     public function employees()
     {
         return $this->belongsToMany(User::class, 'structure_users')
-            ->withPivot('role', 'status', 'joined_at', 'invitation_message')
-            ->withTimestamps();
+                    ->withPivot('role', 'status', 'joined_at', 'invitation_message')
+                    ->withTimestamps();
     }
 
     public function activeEmployees()
     {
         return $this->belongsToMany(User::class, 'structure_users')
-            ->wherePivot('status', 'ACTIVE')
-            ->withPivot('role', 'joined_at')
-            ->withTimestamps();
+                    ->wherePivot('status', 'ACTIVE')
+                    ->withPivot('role', 'joined_at')
+                    ->withTimestamps();
     }
 
     public function invitations()
@@ -58,7 +60,7 @@ class Structure extends Model implements Auditable
     public function pendingInvitations()
     {
         return $this->hasMany(StructureInvitation::class)
-            ->where('status', 'PENDING')
-            ->where('expires_at', '>', Carbon::now());
+                    ->where('status', 'PENDING')
+                    ->where('expires_at', '>', Carbon::now());
     }
 }

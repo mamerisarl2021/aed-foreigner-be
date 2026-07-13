@@ -2,62 +2,47 @@
 
 namespace App\Jobs;
 
-use App\DataTransferObjects\EmailNotificationData;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
-use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Models\StructureInvitation;
-use App\Support\NotificationRecipient;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\StructureInvitationMail;
 use Illuminate\Support\Facades\Log;
 
-final class SendStructureInvitationEmail implements ShouldQueue
+class SendStructureInvitationEmail implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly StructureInvitation $invitation,
-    ) {}
+    public $invitation;
 
-    public function handle(): void
+    public function __construct(StructureInvitation $invitation)
     {
-        $invitation = $this->invitation->load(['user', 'structure']);
+        $this->invitation = $invitation;
+    }
 
-        Log::info('Envoi email invitation', [
+    public function handle()
+    {
+        $invitation = $this->invitation->load('user');
+
+        Log::info("Envoi email invitation", [
             'invitation_id' => $invitation->id,
             'email' => $invitation->email,
-            'user_id' => $invitation->user?->id,
-            'user_email' => $invitation->user?->email,
+            'user_id' => optional($invitation->user)->id,
+            'user_email' => optional($invitation->user)->email,
         ]);
 
-        if ($invitation->user === null) {
+        if (!$invitation->user) {
             Log::error('Invitation sans user associé', [
                 'invitation_id' => $invitation->id,
             ]);
 
             return;
         }
-
-        $acceptUrl = url("/api/v1/invitations/{$invitation->token}/accept");
-        $rejectUrl = url("/api/v1/invitations/{$invitation->token}/reject");
-
-        $variables = [
-            'user' => $invitation->user,
-            'invitation' => $invitation,
-            'acceptUrl' => $acceptUrl,
-            'rejectUrl' => $rejectUrl,
-        ];
-
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Invitation à rejoindre '.$invitation->structure->name,
-            template: NotificationTemplate::StructureInvitation,
-            recipients: [
-                NotificationRecipient::email($invitation->email, $variables),
-            ],
-            variables: $variables,
-            type: 'STRUCTURE_INVITATION',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+        
+        Mail::to($invitation->email)
+            ->send(new StructureInvitationMail($invitation, $invitation->user));
     }
 }

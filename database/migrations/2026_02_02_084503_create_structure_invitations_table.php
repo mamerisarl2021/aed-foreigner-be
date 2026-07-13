@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamp('rejected_at')->nullable();
             $table->text('message')->nullable();
             $table->timestamps();
-
+            
             $table->index('token');
             $table->index(['structure_id', 'user_id']);
             $table->index(['email', 'status']);

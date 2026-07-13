@@ -13,8 +13,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements Auditable
 {
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
     use \OwenIt\Auditing\Auditable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -27,7 +27,7 @@ class User extends Authenticatable implements Auditable
         'profile',
         'email',
         'status',
-        'npi',
+        'npi'
     ];
 
     protected $appends = ['link'];
@@ -42,14 +42,15 @@ class User extends Authenticatable implements Auditable
         'remember_token',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
-
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
     public function cases()
     {
         return $this->hasMany(Cases::class);
@@ -57,7 +58,7 @@ class User extends Authenticatable implements Auditable
 
     public function structures()
     {
-        return $this->hasMany(Structure::class, 'manager_id');
+        return $this->hasMany(Structure::class,"manager_id");
     }
 
     public function userSubscriptions()
@@ -74,26 +75,25 @@ class User extends Authenticatable implements Auditable
     {
         return $this->hasMany(Signature::class);
     }
-
     public function getLinkAttribute()
     {
-        return $this->profile ? Storage::cloud()->temporaryUrl($this->profile, Carbon::now()->addDays(3)) : '';
+        return $this->profile ? Storage::cloud()->temporaryUrl($this->profile, Carbon::now()->addDays(3)): "";
     }
 
     // Dans app/Models/User.php
     public function structuresUsers()
     {
         return $this->belongsToMany(Structure::class, 'structure_users')
-            ->withPivot('role', 'status', 'joined_at')
-            ->withTimestamps();
+                    ->withPivot('role', 'status', 'joined_at')
+                    ->withTimestamps();
     }
 
     public function activeStructures()
     {
         return $this->belongsToMany(Structure::class, 'structure_users')
-            ->wherePivot('status', 'ACTIVE')
-            ->withPivot('role', 'joined_at')
-            ->withTimestamps();
+                    ->wherePivot('status', 'ACTIVE')
+                    ->withPivot('role', 'joined_at')
+                    ->withTimestamps();
     }
 
     public function invitations()
@@ -104,7 +104,7 @@ class User extends Authenticatable implements Auditable
     public function pendingInvitations()
     {
         return $this->hasMany(StructureInvitation::class, 'user_id')
-            ->where('status', 'PENDING')
-            ->where('expires_at', '>', Carbon::now());
+                    ->where('status', 'PENDING')
+                    ->where('expires_at', '>', Carbon::now());
     }
 }

@@ -14,7 +14,6 @@ class SignatureInvitationMail extends Mailable
     use Queueable, SerializesModels;
 
     public $signature;
-
     public $documentTitle;
 
     public function __construct(Signature $signature)
@@ -26,7 +25,7 @@ class SignatureInvitationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Invitation de signature pour '.$this->documentTitle
+            subject: 'Invitation de signature pour ' . $this->documentTitle
         );
     }
 
@@ -37,7 +36,7 @@ class SignatureInvitationMail extends Mailable
             with: [
                 'documentTitle' => $this->documentTitle,
                 'inviterName' => $this->signature->document->user->name,
-                'signatureLink' => config('app.frontend_url').'/backoffice/client/received-documents',
+                'signatureLink' => env('FRONTEND_URL')."/backoffice/client/received-documents"
             ]
         );
     }

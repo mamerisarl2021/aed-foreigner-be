@@ -39,16 +39,15 @@ class RegulaAnalysisJob implements ShouldQueue
 
         try {
             $identity = Identity::find($this->identityId);
-            if (! $identity) {
+            if (!$identity) {
                 Log::error("Identity not found: {$this->identityId}");
-
                 return;
             }
 
             // In a real scenario, we would retrieve files from Storage based on $identity->proof
             // For the mock, we pass the proof array
             $proof = json_decode($identity->proof, true) ?? [];
-
+            
             $result = $regulaService->analyzeIdentity([], $proof);
 
             if ($result['status'] === 'OK') {
@@ -57,10 +56,10 @@ class RegulaAnalysisJob implements ShouldQueue
                 // We don't automatically approve, we just enrich the data for the agent
                 // But we could auto-reject if score is too high (e.g. > 90)
                 // For now, let's just save the score.
-
+                
                 // Update status to indicate analysis is done if we want granular status
-                // $identity->status = 'ANALYZED';
-
+                // $identity->status = 'ANALYZED'; 
+                
                 $identity->save();
                 Log::info("Regula analysis completed for Identity ID: {$this->identityId}. Score: {$result['risk_score']}");
             } else {
@@ -68,9 +67,9 @@ class RegulaAnalysisJob implements ShouldQueue
             }
 
         } catch (Exception $e) {
-            Log::error('Error in RegulaAnalysisJob: '.$e->getMessage());
+            Log::error("Error in RegulaAnalysisJob: " . $e->getMessage());
             // Optionally release the job back to queue
-            // $this->release(60);
+            // $this->release(60); 
         }
     }
 }

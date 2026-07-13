@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('invited_at')->useCurrent();
             $table->text('invitation_message')->nullable();
             $table->timestamps();
-
+            
             $table->unique(['structure_id', 'user_id']);
         });
     }

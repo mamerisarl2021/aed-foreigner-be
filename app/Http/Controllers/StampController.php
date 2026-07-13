@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Stamp;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class StampController extends BaseController
 {
@@ -25,7 +25,6 @@ class StampController extends BaseController
                 ->orderByDesc('id')
                 ->get()
                 ->load($this->stampRelationship);
-
             return $this->sendResponse('Cachets récupérées avec succès', $stamps);
         } catch (\Exception $e) {
             return $this->sendError('Une erreur s\'est produite lors de la récupération des preuves.');
@@ -37,7 +36,7 @@ class StampController extends BaseController
     {
         $request->validate([
             'type' => 'required|string',
-            'fichier' => 'required|mimes:png,jpg,jpeg',
+            'fichier' => 'required|mimes:png,jpg,jpeg'
         ]);
 
         try {
@@ -49,10 +48,9 @@ class StampController extends BaseController
             $stamp = new Stamp([
                 'user_id' => Auth()->user()->id,
                 'fichier' => $path,
-                'type' => $type,
+                'type' => $type
             ]);
             $stamp->save();
-
             return $this->sendResponse('Cachet créé avec succès', $stamp);
         } catch (QueryException $exception) {
             return $this->sendError('Une erreur s\'est produite lors de la création de la preuve.');
@@ -64,7 +62,6 @@ class StampController extends BaseController
     {
         try {
             $stamp = Stamp::with($this->stampRelationship)->findOrFail($id);
-
             return $this->sendResponse('Cachet récupérée avec succès', $stamp);
         } catch (ModelNotFoundException $e) {
             return $this->sendError('Une erreur s\'est produite lors de la récupération de la preuve.');
@@ -76,7 +73,7 @@ class StampController extends BaseController
     {
         $request->validate([
             'type' => 'required|string',
-            'fichier' => 'required|mimes:png,jpg,jpeg',
+            'fichier' => 'required|mimes:png,jpg,jpeg'
         ]);
 
         try {
@@ -92,13 +89,12 @@ class StampController extends BaseController
             $stamp->update([
                 'user_id' => Auth()->user()->id,
                 'fichier' => $path,
-                'type' => $type,
+                'type' => $type
             ]);
 
             return $this->sendResponse('Cachet modifiée avec succès', $stamp);
         } catch (\Exception $e) {
             Log::error('Error while updating stamp', ['error' => json_encode($e)]);
-
             return $this->sendError('Une erreur s\'est produite lors de la modification de la preuve.');
         }
     }
@@ -112,7 +108,6 @@ class StampController extends BaseController
             $this->deleteFileSpecificFolder($stamp->fichier);
             // Delete the stamp from the database
             $stamp->delete();
-
             return $this->sendResponse('Cachet supprimée avec succès', null);
         } catch (ModelNotFoundException $e) {
             return $this->sendError('Cachet non trouvée.');
@@ -127,7 +122,6 @@ class StampController extends BaseController
         if (Storage::cloud()->exists($name)) {
             Storage::cloud()->delete($name);
         }
-
-        return 'file not found';
+        return "file not found";
     }
 }

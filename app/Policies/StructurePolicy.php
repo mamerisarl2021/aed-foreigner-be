@@ -1,9 +1,8 @@
 <?php
-
 namespace App\Policies;
 
-use App\Models\Structure;
 use App\Models\User;
+use App\Models\Structure;
 
 class StructurePolicy
 {

@@ -14,7 +14,6 @@ class DocumentSignedMail extends Mailable
     use Queueable, SerializesModels;
 
     public $signature;
-
     public $documentTitle;
 
     public function __construct(Signature $signature)
@@ -26,7 +25,7 @@ class DocumentSignedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Document signé: '.$this->documentTitle
+            subject: 'Document signé: ' . $this->documentTitle
         );
     }
 
@@ -36,7 +35,7 @@ class DocumentSignedMail extends Mailable
             view: 'emails.document-signed',
             with: [
                 'documentTitle' => $this->documentTitle,
-                'signerName' => $this->signature->user->name,
+                'signerName' => $this->signature->user->name
             ]
         );
     }

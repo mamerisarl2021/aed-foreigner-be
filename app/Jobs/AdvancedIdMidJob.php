@@ -2,43 +2,40 @@
 
 namespace App\Jobs;
 
-use App\DataTransferObjects\EmailNotificationData;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
-use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
+use App\Mail\AdvancedIdMid;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-final class AdvancedIdMidJob implements ShouldQueue
+class AdvancedIdMidJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly string $email,
-        public readonly string $name,
-        public readonly string $link,
-    ) {}
-
-    public function handle(): void
+    public $email;
+    public $link;
+    public $name;
+    /**
+     * Create a new job instance.
+     *
+     * @return void
+     */
+    public function __construct($email, $name, $link)
     {
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Paiement enregistré.',
-            template: NotificationTemplate::AdvancedIdMid,
-            recipients: [
-                NotificationRecipient::email($this->email, [
-                    'email' => $this->email,
-                    'name' => $this->name,
-                    'link' => $this->link,
-                ]),
-            ],
-            variables: [
-                'email' => $this->email,
-                'name' => $this->name,
-                'link' => $this->link,
-            ],
-            type: 'ADVANCED_ID_MID',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+        $this->email = $email;
+        $this->link = $link;
+        $this->name = $name;
+    }
+
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        Mail::to($this->email)->queue(new AdvancedIdMid($this->email, $this->name,  $this->link));
     }
 }

@@ -2,36 +2,29 @@
 
 namespace App\Jobs;
 
-use App\DataTransferObjects\EmailNotificationData;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
-use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Support\NotificationRecipient;
+use App\Mail\ScheduledAppointmentMail;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-final class ScheduledAppointmentJob implements ShouldQueue
+class ScheduledAppointmentJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public readonly string $email,
-        public readonly mixed $data,
-    ) {}
+    protected $email;
+    protected $data;
 
-    public function handle(): void
+    public function __construct($email, $data)
     {
-        $variables = is_array($this->data) ? $this->data : ['data' => $this->data];
+        $this->email = $email;
+        $this->data = $data;
+    }
 
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Validation de votre rendez-vous de vérification d\'identité',
-            template: NotificationTemplate::Scheduled,
-            recipients: [
-                NotificationRecipient::email($this->email, $variables),
-            ],
-            variables: $variables,
-            type: 'SCHEDULED_APPOINTMENT',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+    public function handle()
+    {
+        Mail::to($this->email)->send(new ScheduledAppointmentMail($this->data));
     }
 }

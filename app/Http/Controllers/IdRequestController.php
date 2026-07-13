@@ -1,48 +1,36 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Http\Controllers;
 
-use App\Models\IdRequest;
 use Illuminate\Http\Request;
+use App\Models\IdRequest;
 use Illuminate\Support\Facades\Log;
 
-class IdRequestController extends BaseController
+class IdRequestController extends Controller
 {
-    public function index(Request $request): \Illuminate\Http\JsonResponse
+    public function index()
     {
         try {
-            $idRequests = IdRequest::paginate(min((int) $request->get('perPage', 15), 100));
-
-            $flattenedData = $idRequests->toArray();
-            $data = $flattenedData['data'];
-            unset($flattenedData['data']);
-
-            $response = array_merge(['data' => $data], ['pagination' => $flattenedData]);
-
-            return $this->sendPaginatedResponse('Liste des demandes ID.', $response);
+            $idRequests = IdRequest::all();
+            return response()->json($idRequests);
         } catch (\Exception $e) {
-            Log::error('Fetching ID requests failed: '.$e->getMessage());
-
-            return $this->sendError('Fetching ID requests failed.', [], 500);
+            Log::error('Fetching ID requests failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Fetching ID requests failed.'], 500);
         }
     }
 
-    public function show($id): \Illuminate\Http\JsonResponse
+    public function show($id)
     {
         try {
             $idRequest = IdRequest::findOrFail($id);
-
-            return $this->sendResponse('Détails de la demande ID.', $idRequest);
+            return response()->json($idRequest);
         } catch (\Exception $e) {
-            Log::error('Fetching ID request failed: '.$e->getMessage());
-
-            return $this->sendError('Fetching ID request failed.', [], 500);
+            Log::error('Fetching ID request failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Fetching ID request failed.'], 500);
         }
     }
 
-    public function store(Request $request): \Illuminate\Http\JsonResponse
+    public function store(Request $request)
     {
         try {
             $validatedData = $request->validate([
@@ -52,16 +40,14 @@ class IdRequestController extends BaseController
             ]);
 
             IdRequest::create($validatedData);
-
-            return $this->sendResponse('ID request created successfully.');
+            return response()->json(['message' => 'ID request created successfully.'], 201);
         } catch (\Exception $e) {
-            Log::error('Creating ID request failed: '.$e->getMessage());
-
-            return $this->sendError('Creating ID request failed.', [], 500);
+            Log::error('Creating ID request failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Creating ID request failed.'], 500);
         }
     }
 
-    public function update(Request $request, $id): \Illuminate\Http\JsonResponse
+    public function update(Request $request, $id)
     {
         try {
             $validatedData = $request->validate([
@@ -73,25 +59,22 @@ class IdRequestController extends BaseController
             $idRequest = IdRequest::findOrFail($id);
             $idRequest->update($validatedData);
 
-            return $this->sendResponse('ID request updated successfully.');
+            return response()->json(['message' => 'ID request updated successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Updating ID request failed: '.$e->getMessage());
-
-            return $this->sendError('Updating ID request failed.', [], 500);
+            Log::error('Updating ID request failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Updating ID request failed.'], 500);
         }
     }
 
-    public function destroy($id): \Illuminate\Http\JsonResponse
+    public function destroy($id)
     {
         try {
             $idRequest = IdRequest::findOrFail($id);
             $idRequest->delete();
-
-            return $this->sendResponse('ID request deleted successfully.');
+            return response()->json(['message' => 'ID request deleted successfully.'], 200);
         } catch (\Exception $e) {
-            Log::error('Deleting ID request failed: '.$e->getMessage());
-
-            return $this->sendError('Deleting ID request failed.', [], 500);
+            Log::error('Deleting ID request failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Deleting ID request failed.'], 500);
         }
     }
 }

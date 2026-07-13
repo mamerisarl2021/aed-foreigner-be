@@ -2,20 +2,12 @@
 
 namespace App\Providers;
 
-use App\Models\Attachment;
-use App\Models\Cases;
-use App\Models\Identity;
-use App\Models\IdRequest;
-use App\Models\Message;
-use App\Models\OTP;
-use App\Models\Structure;
-use App\Models\StructurePackage;
-use App\Models\StructureSubscription;
-use App\Models\UserPackage;
-use App\Models\UserSubscription;
-use App\Policies\AuthorizationPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use App\Models\{
+    Attachment, Cases, Identity, IdRequest, Message, OTP, Structure, StructurePackage, StructureSubscription, UserPackage, UserSubscription
+};
+use App\Policies\AuthorizationPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {

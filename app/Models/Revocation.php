@@ -9,16 +9,20 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class Revocation extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
+
 
     protected $fillable = ['group_id', 'status', 'structure_id', 'user_id', 'identity_id'];
 
-    public function scopeForUser(Builder $query, User $user)
+    protected static function booted()
     {
-        if ($user->hasRole('client')) {
-            $query->where('user_id', $user->id);
-        }
+        static::addGlobalScope('owned', function (Builder $builder) {
+            $user = User::find(auth()->id());
+            if ($user && $user->hasRole('client')) {
+                $builder->where('user_id', $user->id);
+            }
+        });
     }
 
     protected $appends = ['userdata'];

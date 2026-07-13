@@ -10,9 +10,9 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class Document extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
-
+    
+    use HasFactory; 
     protected $appends = ['link'];
 
     protected $fillable = ['name', 'type', 'path', 'attachment_id', 'status'];
@@ -24,6 +24,6 @@ class Document extends Model implements Auditable
 
     public function getLinkAttribute()
     {
-        return $this->path ? Storage::cloud()->temporaryUrl($this->path, Carbon::now()->addDays(3)) : '';
+        return $this->path ? Storage::cloud()->temporaryUrl($this->path, Carbon::now()->addDays(3)): "";
     }
 }

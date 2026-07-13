@@ -10,8 +10,9 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class SignatureDocument extends Model implements Auditable
 {
-    use HasFactory;
     use \OwenIt\Auditing\Auditable;
+    use HasFactory;
+
 
     protected $fillable = ['user_id', 'title', 'file_path', 'status'];
 

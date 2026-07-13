@@ -17,16 +17,16 @@ class Stamp extends Model
     protected $fillable = [
         'fichier',
         'user_id',
-        'type',
+        'type'
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-
+    
     public function getLinkAttribute()
     {
-        return $this->fichier ? Storage::cloud()->temporaryUrl($this->fichier, Carbon::now()->addDays(1)) : '';
+        return $this->fichier ? Storage::cloud()->temporaryUrl($this->fichier, Carbon::now()->addDays(1)): "";
     }
 }

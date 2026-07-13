@@ -20,9 +20,9 @@ class PlanifiedEmail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->from('collabone@qualitycorporate.com')
+        return  $this->from('collabone@qualitycorporate.com')
             ->subject('Planification d\'une rencontre en face à face.')->view('emails.planned')->with([
-                'user' => $this->user,
+                'user' => $this->user
             ]);
     }
 }
