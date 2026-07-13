@@ -61,7 +61,7 @@ trait AttachmentTrait
                 'message' => 'Pièce jointe crée avec succès.',
             ];
         } catch (\Exception $e) {
-            Log::error('Creating document failed: ' . $e->getMessage());
+            Log::error('Creating document failed: '.$e->getMessage());
 
             return [
                 'status' => false,

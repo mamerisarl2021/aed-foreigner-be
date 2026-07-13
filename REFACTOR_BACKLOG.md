@@ -89,7 +89,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-02 | `done` | Extract `IdentityReviewService` from `IdentityReviewController` | ~403 → ~80 lines | Claim, approve, reject, supervisor flows |
 | P3-03 | `done` | Extract `UserRegistrationService` from `UserController` | ~1,493 → ~947 lines | OTP, login, finalize, in-person approve, employee create; implemented missing `storeSubscription` |
 | P3-04 | `done` | Extract `StructureManagementService` from `StructureController` | ~1,295 → ~761 lines (mostly OpenAPI) | CRUD, OTP, invitations, employee management; `AttachmentTrait` on service |
-| P3-05 | `todo` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
+| P3-05 | `done` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
 | P3-06 | `todo` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
 | P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |

@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Services\IdentityReview\IdentityReviewService;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
 use App\Models\User;
+use App\Services\IdentityReview\IdentityReviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Artisan;

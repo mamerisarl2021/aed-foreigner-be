@@ -1,6 +1,5 @@
 <?php
 
-
 return [
     AppServiceProvider::class,
     AuthServiceProvider::class,

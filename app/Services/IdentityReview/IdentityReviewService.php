@@ -9,7 +9,6 @@ use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\Structure;
-use App\Models\User;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use App\Traits\AuthTrait;
