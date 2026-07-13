@@ -26,7 +26,10 @@ class UserSubscriptionController extends BaseController
     {
         try {
             // Paginate the results with 10 items per page
-            $structures = UserSubscription::paginate($request->get('perPage', 9999999999999));
+            $perPage = min((int) $request->get('perPage', 15), 100);
+            $structures = UserSubscription::with(['user', 'structure.manager', 'userPackage', 'structurePackage'])
+                ->forUser($request->user())
+                ->paginate($perPage);
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $structures->toArray();

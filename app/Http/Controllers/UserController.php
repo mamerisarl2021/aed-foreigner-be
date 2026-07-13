@@ -12,6 +12,7 @@ use App\Http\Requests\User\UpdateUserStatusRequest;
 use App\Http\Requests\User\VerifyOtpRequest;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
+use App\Models\PasswordResetToken;
 use App\Models\StructureInvitation;
 use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
@@ -399,7 +400,7 @@ class UserController extends BaseController
                 if ($status === 'APPROVED') {
                     $user = $identity->user;
                     $allToken = Str::random(60);
-                    DB::table('password_resets')->updateOrInsert(
+                    PasswordResetToken::updateOrCreate(
                         ['npi' => $user->npi, 'type' => 'all'],
                         ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                     );

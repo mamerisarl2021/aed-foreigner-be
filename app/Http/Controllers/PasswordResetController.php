@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendLinkJob;
 use App\Jobs\SendSmsJob;
+use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\PKI\TrustedXClientService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PasswordResetController extends BaseController
@@ -23,7 +23,7 @@ class PasswordResetController extends BaseController
         $type = $request->input('type');
         $token = Str::random(60);
 
-        DB::table('password_resets')->updateOrInsert(
+        PasswordResetToken::updateOrCreate(
             ['npi' => $npi],
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
@@ -60,7 +60,7 @@ class PasswordResetController extends BaseController
         ]);
         $type = $request->input('type') == 'password' ? 'mot de passe' : 'pin';
 
-        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
+        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
 
         if (! $tokenData) {
             return response()->json(['message' => "Le lien de mise à jour du $type est invalide"], 404);
@@ -105,7 +105,7 @@ class PasswordResetController extends BaseController
             'pin' => 'required|string',
             'npi' => 'required|string',
         ]);
-        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
+        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
 
         if (! $tokenData) {
             return response()->json(['message' => 'Le lien de mise à jour des identifiants est invalide'], 404);
@@ -151,7 +151,7 @@ class PasswordResetController extends BaseController
             'pin' => 'sometimes|string',
             'npi' => 'required|string',
         ]);
-        $tokenData = DB::table('password_resets')->where('token', $request->input('token'))->first();
+        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
 
         if (! $tokenData) {
             return response()->json(['message' => 'Le lien de mise à jour des identifiants est invalide'], 404);

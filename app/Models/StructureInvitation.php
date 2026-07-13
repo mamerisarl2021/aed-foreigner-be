@@ -24,11 +24,14 @@ class StructureInvitation extends Model
         'message',
     ];
 
-    protected $casts = [
-        'expires_at' => 'datetime',
-        'accepted_at' => 'datetime',
-        'rejected_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+            'accepted_at' => 'datetime',
+            'rejected_at' => 'datetime',
+        ];
+    }
 
     // Relations
     public function structure()

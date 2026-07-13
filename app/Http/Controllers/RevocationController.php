@@ -21,7 +21,10 @@ class RevocationController extends BaseController
     public function index(Request $request)
     {
         try {
-            $revocations = Revocation::paginate($request->get('perPage', 9999999999999));
+            $perPage = min((int) $request->get('perPage', 15), 100);
+            $revocations = Revocation::with('user')
+                ->forUser($request->user())
+                ->paginate($perPage);
 
             $flattenedData = $revocations->toArray();
             $data = $flattenedData['data'];

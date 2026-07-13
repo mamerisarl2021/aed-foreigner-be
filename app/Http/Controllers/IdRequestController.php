@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Log;
 
 class IdRequestController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $idRequests = IdRequest::all();
+            $idRequests = IdRequest::paginate(min((int) $request->get('perPage', 15), 100));
 
             return response()->json($idRequests);
         } catch (\Exception $e) {

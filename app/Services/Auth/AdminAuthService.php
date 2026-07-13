@@ -151,7 +151,7 @@ class AdminAuthService
     public function listAgents(Request $request): ServiceResult
     {
         try {
-            $perPage = $request->get('perPage', 9999999999999);
+            $perPage = min((int) $request->get('perPage', 15), 100);
             $role = $request->get('role', null);
             $allowedRoles = ['superviseur', 'auditeur', 'tech_one', 'tech_two', 'tech_three'];
 

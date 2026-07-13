@@ -8,6 +8,7 @@ use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
+use App\Models\PasswordResetToken;
 use App\Models\Structure;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
@@ -227,7 +228,7 @@ class IdentityReviewService
 
             if (isset($output['has_user']) && $output['has_user'] === true) {
                 $allToken = Str::random(60);
-                DB::table('password_resets')->updateOrInsert(
+                PasswordResetToken::updateOrCreate(
                     ['npi' => $npi, 'type' => 'all'],
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );
@@ -238,15 +239,15 @@ class IdentityReviewService
                 $pinToken = Str::random(60);
                 $passwordToken = Str::random(60);
 
-                DB::table('password_resets')->updateOrInsert(
+                PasswordResetToken::updateOrCreate(
                     ['npi' => $npi, 'type' => 'pin'],
                     ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
                 );
-                DB::table('password_resets')->updateOrInsert(
+                PasswordResetToken::updateOrCreate(
                     ['npi' => $npi, 'type' => 'password'],
                     ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
                 );
-                DB::table('password_resets')->updateOrInsert(
+                PasswordResetToken::updateOrCreate(
                     ['npi' => $npi, 'type' => 'all'],
                     ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
                 );

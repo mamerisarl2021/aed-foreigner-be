@@ -28,7 +28,7 @@ class StructureManagementService
     public function list(int $perPage): ServiceResult
     {
         try {
-            $structures = Structure::paginate($perPage);
+            $structures = Structure::with('manager')->paginate($perPage);
 
             return ServiceResult::ok('Liste des structures.', $this->flattenPagination($structures));
         } catch (Exception $e) {

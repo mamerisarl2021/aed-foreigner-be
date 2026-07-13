@@ -126,17 +126,19 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 ## P5 — Database & Eloquent
 
-| ID | Status | Item | Primary files / area | Notes |
-|----|--------|------|----------------------|-------|
-| P5-01 | `todo` | Replace `paginate(..., 9999999999999)` with sensible defaults + max cap | 10+ controllers | Defeats pagination purpose |
-| P5-02 | `todo` | Replace `IdRequest::all()` with paginated query | `IdRequestController::index` | |
-| P5-03 | `todo` | Replace `ActivityLog::all()` with paginated / scoped query | `AuditLogController` | |
-| P5-04 | `todo` | Audit N+1: add `with()` on list endpoints | `StructureController`, `UserController`, `StatsController`, etc. | |
-| P5-05 | `todo` | Consolidate password reset storage (`password_resets` vs `password_reset_tokens`) | Multiple controllers | Duplicate mechanisms |
-| P5-06 | `todo` | Reduce raw `DB::table()` where Eloquent models exist | `AuthController`, `PasswordResetController`, `UserController`, `IdentityReviewController` | |
-| P5-07 | `todo` | Review model global scopes using `auth()->id()` | `UserSubscription`, `Revocation` | Hard to test; hidden query side effects |
-| P5-08 | `todo` | Align schema with code (missing columns referenced in controllers) | `users`, search filters | e.g. past `first_name` / `nationality` drift |
-| P5-09 | `todo` | Migrate models from `$casts` property to `casts()` method | `User`, `PendingRegistration`, `StructureInvitation` | Laravel 12 convention |
+**Goal:** Fix severe N+1 bottlenecks, replace huge `all()` queries with pagination, and modernize Eloquent models.
+
+| ID | Task | Impact | Status | Notes |
+|---|---|---|---|---|
+| **P5-01** | Replace `paginate(..., 9999999999999)` | 🔴 High | `done` | Apply max limits (e.g. 100) to Structure, Revocation, Message, Subscription, Package controllers |
+| **P5-02** | Replace `IdRequest::all()` with paginated query | 🔴 High | `done` | `IdRequestController::index` |
+| **P5-03** | Replace `ActivityLog::all()` | 🟡 Med | `done` | Move to chunking / pagination in `AuditLogController` |
+| **P5-04** | Audit N+1 on heavily used list endpoints | 🔴 High | `done` | Add `with()` to `StructureController`, `UserController`, `StatsController`, `RevocationController`, `UserSubscriptionController` |
+| **P5-05** | Consolidate password reset storage logic | 🟡 Med | `done` | Created `PasswordResetToken` model to replace raw DB queries |
+| **P5-06** | Reduce raw `DB::table()` queries | 🟡 Med | `done` | Cleaned up `AuthController`, `PasswordResetController`, `UserController`, `UserRegistrationService` |
+| **P5-07** | Review model global scopes | 🟡 Med | `done` | Removed `auth()->id()` dependency from `UserSubscription` and `Revocation` booted methods and replaced with local scope `forUser()` |
+| **P5-08** | Align Schema with Code | 🟡 Med | `deferred` | Verify `roles` and `permissions` tables match expected Spatie defaults |
+| **P5-09** | Migrate `$casts` to `casts()` method | 🟢 Low | `done` | Laravel 12 convention on `User`, `PendingRegistration`, `StructureInvitation` |
 
 ---
 

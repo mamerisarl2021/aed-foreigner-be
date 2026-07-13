@@ -16,8 +16,11 @@ class PendingRegistration extends Model
         'status',
     ];
 
-    protected $casts = [
-        'user_data' => 'array',
-        'expires_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'user_data' => 'array',
+            'expires_at' => 'datetime',
+        ];
+    }
 }

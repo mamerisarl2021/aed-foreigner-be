@@ -14,14 +14,11 @@ class Revocation extends Model implements Auditable
 
     protected $fillable = ['group_id', 'status', 'structure_id', 'user_id', 'identity_id'];
 
-    protected static function booted()
+    public function scopeForUser(Builder $query, User $user)
     {
-        static::addGlobalScope('owned', function (Builder $builder) {
-            $user = User::find(auth()->id());
-            if ($user && $user->hasRole('client')) {
-                $builder->where('user_id', $user->id);
-            }
-        });
+        if ($user->hasRole('client')) {
+            $query->where('user_id', $user->id);
+        }
     }
 
     protected $appends = ['userdata'];

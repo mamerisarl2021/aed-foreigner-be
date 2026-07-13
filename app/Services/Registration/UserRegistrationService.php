@@ -10,6 +10,7 @@ use App\Jobs\SendStructureInvitationEmail;
 use App\Jobs\WelcomeUserJob;
 use App\Models\Identity;
 use App\Models\OTP;
+use App\Models\PasswordResetToken;
 use App\Models\PendingRegistration;
 use App\Models\Structure;
 use App\Models\StructureInvitation;
@@ -143,7 +144,7 @@ class UserRegistrationService
     {
         $token = Str::random(60);
 
-        DB::table('password_resets')->updateOrInsert(
+        PasswordResetToken::updateOrCreate(
             ['npi' => $npi, 'type' => $type],
             ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
         );
@@ -491,7 +492,7 @@ class UserRegistrationService
 
         if (isset($output['has_user']) && $output['has_user'] === true) {
             $allToken = Str::random(60);
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'all'],
                 ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
             );
@@ -502,15 +503,15 @@ class UserRegistrationService
             $pinToken = Str::random(60);
             $passwordToken = Str::random(60);
 
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'pin'],
                 ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
             );
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'password'],
                 ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
             );
-            DB::table('password_resets')->updateOrInsert(
+            PasswordResetToken::updateOrCreate(
                 ['npi' => $npi, 'type' => 'all'],
                 ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
             );
