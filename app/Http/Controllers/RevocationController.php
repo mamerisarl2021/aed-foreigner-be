@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\RevocatedEmailJob;
-use App\Jobs\SendSmsJob;
 use App\Models\Revocation;
 use App\Services\PKI\TrustedXClientService;
 use Exception;
@@ -11,7 +9,6 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class RevocationController extends BaseController
@@ -100,42 +97,9 @@ class RevocationController extends BaseController
 
             $revocation->update(['status' => $validated['status']]);
 
-            // Si le statut est "TRAITEDBYAGENT", faire les appels API
+            // Si le statut est "TRAITEDBYAGENT", faire les appels API en arrière-plan
             if ($validated['status'] === 'TRAITEDBYAGENT') {
-                $postData = ['sign_identities_group_id' => $revocation->group_id];
-                $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
-                if ($tokenResponse['status']) {
-                    $token = $tokenResponse['token'];
-                } else {
-                    return ['status' => false, 'message' => 'Nous n\'avons pas pu récupérer le token d\'authentification.'];
-                }
-
-                // Appel POST
-                $postResponse = Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer '.$token,
-                ])->post('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes', $postData);
-
-                if ($postResponse->failed()) {
-                    throw new Exception('Erreur lors de la création du processus de révocation');
-                }
-
-                // Appel DELETE
-                $deleteResponse = Http::withHeaders([
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ])->delete('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes/'.$revocation->id);
-
-                // if ($deleteResponse->failed()) {
-                //     throw new Exception('Erreur lors de la suppression du processus de révocation');
-                // }
-                $user = $revocation->user;
-                if (isset($user) && $user->email != null) {
-                    $email = $user->email;
-                    RevocatedEmailJob::dispatch($email);
-                } else {
-                    $phoneNumber = $user->phonenumber;
-                    // SendSmsJob::dispatch($phoneNumber, "Votre demande de révocation d'identité numérique a bien été traité pas nos agents accédez à votre espace pour consulter les détails.");
-                }
+                \App\Jobs\ProcessRevocationJob::dispatch($revocation->id);
             }
 
             return $this->sendResponse('Statut du processus de révocation mis à jour avec succès', $revocation);
@@ -155,46 +119,12 @@ class RevocationController extends BaseController
             ]);
 
             $revocations = Revocation::whereIn('id', $validated['revocation_ids'])->get();
-            $tokenResponse = $this->trustedXClient->getToken('urn:safelayer:eidas:sign:identity:manage');
-            if ($tokenResponse['status']) {
-                $token = $tokenResponse['token'];
-            } else {
-                return ['status' => false, 'message' => 'Nous n\'avons pas pu récupérer le token d\'authentification.'];
-            }
 
             foreach ($revocations as $revocation) {
                 $revocation->update(['status' => $validated['status']]);
 
                 if ($validated['status'] === 'TRAITEDBYAGENT') {
-                    $postData = ['sign_identities_group_id' => $revocation->group_id];
-
-                    // Appel POST
-                    $postResponse = Http::withHeaders([
-                        'Content-Type' => 'application/json',
-                        'Authorization' => 'Bearer '.$token,
-                    ])->post('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes', $postData);
-
-                    if ($postResponse->failed()) {
-                        Log::debug($postResponse->body());
-                        throw new Exception('Erreur lors de la création du processus de révocation pour ID '.$revocation->id);
-                    }
-
-                    // Appel DELETE
-                    $deleteResponse = Http::withHeaders([
-                        'Content-Type' => 'application/x-www-form-urlencoded',
-                    ])->delete('https://'.config('trustedx.base_url').'/trustedx-resources/rap/v2/revocation_processes/'.$revocation->id);
-
-                    // if ($deleteResponse->failed()) {
-                    //     throw new Exception('Erreur lors de la suppression du processus de révocation pour ID ' . $revocation->id);
-                    // }
-                    $user = $revocation->user;
-                    if (isset($user) && $user->email != null) {
-                        $email = $user->email;
-                        RevocatedEmailJob::dispatch($email);
-                    } else {
-                        $phoneNumber = $user->phonenumber;
-                        // SendSmsJob::dispatch($phoneNumber, "Votre demande de révocation d'identité numérique a bien été traité pas nos agents accédez à votre espace pour consulter les détails.");
-                    }
+                    \App\Jobs\ProcessRevocationJob::dispatch($revocation->id);
                 }
             }
 

@@ -1,10 +1,10 @@
 <?php
 
 return [
-    AppServiceProvider::class,
-    AuthServiceProvider::class,
-    EventServiceProvider::class,
-    ConsulServiceProvider::class,
-    NotificationServiceProvider::class,
-    AuditingServiceProvider::class,
+    App\Providers\AppServiceProvider::class,
+    App\Providers\AuthServiceProvider::class,
+    App\Providers\EventServiceProvider::class,
+    App\Providers\ConsulServiceProvider::class,
+    App\Providers\NotificationServiceProvider::class,
+    App\Providers\AuditingServiceProvider::class,
 ];

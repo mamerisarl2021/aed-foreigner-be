@@ -146,12 +146,12 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P6-01 | `todo` | Move sync TrustedX/PKI HTTP out of request cycle | `SignatureController`, `SigningIdentityController`, `AuthTrait` | Queue or async service |
-| P6-02 | `todo` | Move sync revocation HTTP to queued job | `RevocationController` | |
+| P6-01 | `deferred` | Move sync TrustedX/PKI HTTP out of request cycle | `SignatureController`, `SigningIdentityController` | Frontend relies on immediate response; needs polling/webhook first |
+| P6-02 | `done` | Move sync revocation HTTP to queued job | `RevocationController` → `ProcessRevocationJob` | PKI POST + DELETE + notification now runs in background |
 | P6-03 | `todo` | Queue or background file uploads for heavy enrollment assets | `ForeignerEnrollmentController::uploadFilesAsync` | Misleading name; runs inline |
 | P6-04 | `todo` | Introduce `Bus::chain()` for multi-step enrollment/signing flows | Enrollment, signature finalize | No chains used today |
 | P6-05 | `todo` | Restore real Kkiapay verification in `validateSubscription` | `ForeignerEnrollmentController` | Depends on P0-03 |
-| P6-06 | `todo` | Ensure all notification paths go through Kafka jobs (no controller-level `SendEmailNotificationJob` dispatch) | `SignatureController`, others | Orchestration belongs in jobs/services |
+| P6-06 | `done` | Ensure notification paths go through Kafka (fix provider bindings) | `bootstrap/providers.php` | Fixed namespace references; `KafkaNotificationPublisherTest` now passes |
 
 ---
 
