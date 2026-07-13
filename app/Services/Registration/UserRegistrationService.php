@@ -20,7 +20,9 @@ use App\Services\ServiceResult;
 use App\Traits\AuthTrait;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -600,5 +602,147 @@ class UserRegistrationService
         $payment = $kkiapay->verifyTransaction($transId);
 
         return collect($payment->state);
+    }
+
+    /**
+     * Update user profile information.
+     */
+    public function updateUser(int $id, array $updateData, ?UploadedFile $profile): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $user = User::findOrFail($id);
+
+            if ($profile) {
+                $profilePath = Storage::cloud()->put('images', $profile);
+                if (! $profilePath) {
+                    DB::rollBack();
+
+                    return ServiceResult::fail("Échec du téléchargement de l'image.", null, 500);
+                }
+                $updateData['profile'] = $profilePath;
+            }
+
+            $user->update($updateData);
+            DB::commit();
+
+            return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load([
+                'cases',
+                'structures',
+                'userSubscriptions',
+                'identities',
+                'signatures',
+            ]));
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
+
+            return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
+        }
+    }
+
+    /**
+     * Accept a structure invitation.
+     */
+    public function acceptInvitation(int $invitationId, User $user): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $invitation = StructureInvitation::where('id', $invitationId)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+
+            if ($invitation->status !== 'PENDING' || $invitation->expires_at <= Carbon::now()) {
+                DB::rollBack();
+
+                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
+            }
+
+            $invitation->accept();
+
+            $invitation->structure->employees()->attach($user->id, [
+                'role' => $invitation->role,
+                'status' => 'ACTIVE',
+                'joined_at' => Carbon::now(),
+                'invitation_message' => $invitation->message,
+            ]);
+
+            if ($user->status !== 'ACTIVE') {
+                $user->update(['status' => 'ACTIVE']);
+            }
+
+            DB::commit();
+
+            return ServiceResult::ok('Invitation acceptée avec succès.', [
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return ServiceResult::fail('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de l\'acceptation de l\'invitation : '.$e->getMessage());
+
+            return ServiceResult::fail('Impossible d\'accepter l\'invitation.', null, 500);
+        }
+    }
+
+    /**
+     * Respond to an invitation using a token.
+     */
+    public function respondToInvitation(string $token, string $action): ServiceResult
+    {
+        DB::beginTransaction();
+        try {
+            $invitation = StructureInvitation::with(['structure', 'user'])
+                ->where('token', $token)
+                ->firstOrFail();
+
+            if (! $invitation->isPending()) {
+                DB::rollBack();
+
+                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
+            }
+
+            if ($action === 'accept') {
+                $invitation->accept();
+
+                $invitation->structure->employees()->attach($invitation->user_id, [
+                    'role' => $invitation->role,
+                    'status' => 'ACTIVE',
+                    'joined_at' => Carbon::now(),
+                    'invitation_message' => $invitation->message,
+                ]);
+
+                $user = User::find($invitation->user_id);
+                if ($user && $user->status !== 'ACTIVE') {
+                    $user->update(['status' => 'ACTIVE']);
+                }
+
+                $message = 'Invitation acceptée avec succès.';
+            } else {
+                $invitation->reject();
+                $message = 'Invitation refusée avec succès.';
+            }
+
+            DB::commit();
+
+            return ServiceResult::ok($message, [
+                'action' => $action,
+                'structure' => $invitation->structure->only(['id', 'name']),
+                'role' => $invitation->role,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return ServiceResult::fail('Invitation non trouvée.', null, 404);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors du traitement de la réponse : '.$e->getMessage());
+
+            return ServiceResult::fail('Impossible de traiter votre réponse.', null, 500);
+        }
     }
 }

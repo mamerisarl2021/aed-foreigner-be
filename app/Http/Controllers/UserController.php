@@ -21,7 +21,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -266,43 +265,23 @@ class UserController extends BaseController
                 ],
             ]);
 
-            DB::beginTransaction();
-
-            $user = User::findOrFail($id);
-
-            // Initialiser les données à mettre à jour
             $updateData = [
                 'email' => $request->input('email'),
             ];
+            $profile = $request->file('profile');
 
-            // Gestion de l'upload de l'image de profil si fournie
-            if ($request->hasFile('profile')) {
-                $profilePath = Storage::cloud()->put('images', $request->file('profile'));
-                if (! $profilePath) {
-                    return $this->sendError("Échec du téléchargement de l'image.", null, 500);
-                }
-                $updateData['profile'] = $profilePath;
+            $result = $this->registration->updateUser((int) $id, $updateData, $profile);
+
+            if (! $result->success) {
+                return $this->sendError($result->message, $result->data ?? [], $result->code);
             }
 
-            // Mettre à jour les données de l'utilisateur
-            $user->update($updateData);
-
-            DB::commit();
-
-            return $this->sendResponse('Vos informations ont bien été mises à jour!', $user->load([
-                'cases',
-                'structures',
-                'userSubscriptions',
-                'identities',
-                'signatures',
-            ]));
+            return $this->sendResponse($result->message, $result->data ?? []);
         } catch (ValidationException $e) {
-            DB::rollBack();
             Log::warning("Erreur de validation lors de la mise à jour de l'utilisateur : ", $e->errors());
 
             return $this->sendError('Erreur de validation.', $e->errors(), 422);
         } catch (Exception $e) {
-            DB::rollBack();
             Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
 
             return $this->sendError('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
@@ -645,50 +624,13 @@ class UserController extends BaseController
      */
     public function acceptInvitation($invitationId)
     {
-        DB::beginTransaction();
-        try {
-            $user = auth()->user();
+        $result = $this->registration->acceptInvitation((int) $invitationId, auth()->user());
 
-            $invitation = StructureInvitation::where('id', $invitationId)
-                ->where('user_id', $user->id)
-                ->firstOrFail();
-
-            // Vérifier que l'invitation est encore valide
-            if ($invitation->status !== 'PENDING' || $invitation->expires_at <= Carbon::now()) {
-                return $this->sendError('Cette invitation n\'est plus valide.', null, 400);
-            }
-
-            // Marquer l'invitation comme acceptée
-            $invitation->accept();
-
-            // Ajouter l'utilisateur à la structure
-            $invitation->structure->employees()->attach($user->id, [
-                'role' => $invitation->role,
-                'status' => 'ACTIVE',
-                'joined_at' => Carbon::now(),
-                'invitation_message' => $invitation->message,
-            ]);
-
-            // Activer l'utilisateur si ce n'est pas déjà fait
-            if ($user->status !== 'ACTIVE') {
-                $user->update(['status' => 'ACTIVE']);
-            }
-
-            DB::commit();
-
-            return $this->sendResponse('Invitation acceptée avec succès.', [
-                'structure' => $invitation->structure->only(['id', 'name']),
-                'role' => $invitation->role,
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-            return $this->sendError('Invitation non trouvée.', null, 404);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'acceptation de l\'invitation : '.$e->getMessage());
-
-            return $this->sendError('Impossible d\'accepter l\'invitation.', null, 500);
+        if (! $result->success) {
+            return $this->sendError($result->message, $result->data ?? [], $result->code);
         }
+
+        return $this->sendResponse($result->message, $result->data ?? []);
     }
 
     /**
@@ -850,62 +792,17 @@ class UserController extends BaseController
      */
     public function respondToInvitation(Request $request, $token)
     {
-        DB::beginTransaction();
-        try {
-            $validatedData = $request->validate([
-                'action' => 'required|string|in:accept,reject',
-            ]);
+        $validatedData = $request->validate([
+            'action' => 'required|string|in:accept,reject',
+        ]);
 
-            $invitation = StructureInvitation::with(['structure', 'user'])
-                ->where('token', $token)
-                ->firstOrFail();
+        $result = $this->registration->respondToInvitation($token, $validatedData['action']);
 
-            // Vérifier que l'invitation est encore valide
-            if (! $invitation->isPending()) {
-                return $this->sendError('Cette invitation n\'est plus valide.', null, 400);
-            }
-
-            if ($validatedData['action'] === 'accept') {
-                // Marquer comme acceptée
-                $invitation->accept();
-
-                // Ajouter l'utilisateur à la structure
-                $invitation->structure->employees()->attach($invitation->user_id, [
-                    'role' => $invitation->role,
-                    'status' => 'ACTIVE',
-                    'joined_at' => Carbon::now(),
-                    'invitation_message' => $invitation->message,
-                ]);
-
-                // Activer l'utilisateur si ce n'est pas déjà fait
-                $user = User::find($invitation->user_id);
-                if ($user && $user->status !== 'ACTIVE') {
-                    $user->update(['status' => 'ACTIVE']);
-                }
-
-                $message = 'Invitation acceptée avec succès.';
-            } else {
-                // Marquer comme rejetée
-                $invitation->reject();
-                $message = 'Invitation refusée avec succès.';
-            }
-
-            DB::commit();
-
-            return $this->sendResponse($message, [
-                'action' => $validatedData['action'],
-                'structure' => $invitation->structure->only(['id', 'name']),
-                'role' => $invitation->role,
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-            return $this->sendError('Invitation non trouvée.', null, 404);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors du traitement de la réponse : '.$e->getMessage());
-
-            return $this->sendError('Impossible de traiter votre réponse.', null, 500);
+        if (! $result->success) {
+            return $this->sendError($result->message, $result->data ?? [], $result->code);
         }
+
+        return $this->sendResponse($result->message, $result->data ?? []);
     }
 
     /**

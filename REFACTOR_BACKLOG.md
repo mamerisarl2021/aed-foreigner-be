@@ -90,12 +90,12 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-03 | `done` | Extract `UserRegistrationService` from `UserController` | ~1,493 → ~947 lines | OTP, login, finalize, in-person approve, employee create; implemented missing `storeSubscription` |
 | P3-04 | `done` | Extract `StructureManagementService` from `StructureController` | ~1,295 → ~761 lines (mostly OpenAPI) | CRUD, OTP, invitations, employee management; `AttachmentTrait` on service |
 | P3-05 | `done` | Extract `SignatureService` from `SignatureController` | ~783 lines | L | PKI HTTP, timestamps |
-| P3-06 | `todo` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 lines | M | TrustedX provisioning |
+| P3-06 | `done` | Extract `SigningIdentityService` from `SigningIdentityController` | ~684 → ~180 lines | M | TrustedX provisioning |
 | P3-07 | `done` | Extract `AdminAuthService` from `AuthController` | ~591 → ~200 lines | Agents, OTP, password reset |
 | P3-08 | `todo` | Decompose `AuthTrait` into injectable services | ~674 lines trait | L | Used by 10+ controllers; HTTP client logic |
 | P3-09 | `todo` | Decompose `AttachmentTrait` into `AttachmentUploadService` | Trait + 4 controllers | S | File storage only |
 | P3-10 | `todo` | Decompose `ADTrait` into LDAP/AD service | `UserSubscriptionController` | M | |
-| P3-11 | `in-progress` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
+| P3-11 | `done` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
 | P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
 
 ### Controller size targets (acceptance)
