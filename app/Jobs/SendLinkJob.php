@@ -2,40 +2,42 @@
 
 namespace App\Jobs;
 
-use App\Mail\SendLink;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class SendLinkJob implements ShouldQueue
+final class SendLinkJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $user;
-    public $code;
+    public function __construct(
+        public readonly mixed $user,
+        public readonly string $code,
+    ) {}
 
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct($user, $code)
+    public function handle(): void
     {
-        $this->code = $code;
-        $this->user = $user;
-    }
+        $email = NotificationRecipient::resolveEmail($this->user);
 
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle()
-    {
-        $code= $this->code;
-        Mail::to($this->user)->queue(new SendLink($code, $this->user));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Demande du lien de mise à jour',
+            template: NotificationTemplate::SendLink,
+            recipients: [
+                NotificationRecipient::email($this->user, [
+                    'code' => $this->code,
+                    'email' => $email,
+                ]),
+            ],
+            variables: [
+                'code' => $this->code,
+                'email' => $email,
+            ],
+            type: 'SEND_LINK',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

@@ -75,13 +75,13 @@
                                                 style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin: 0; margin-bottom: 24px;">
                                                 Utilisez ce lien pour vous connecter et accéder à la panoplie de services d$que nous mettons à disposition.
                                             </p>
-                                            <a href="{{ env('FRONT_URL') }}"
-                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ env('FRONT_URL') }}</a>
+                                            <a href="{{ config('app.frontend_url') }}"
+                                                style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; margin-bottom: 24px; display: block; font-size: 16px; line-height: 100%; color: #225888; text-decoration: none;">{{ config('app.frontend_url') }}</a>
                                             <table cellpadding="0" cellspacing="0" role="presentation">
                                                 <tr>
                                                     <td
                                                         style="mso-line-height-rule: exactly; mso-padding-alt: 16px 24px; border-radius: 4px; background-color: #225888; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif;">
-                                                        <a href="{{ env('FRONT_URL') }}"
+                                                        <a href="{{ config('app.frontend_url') }}"
                                                             style="font-family: 'Montserrat', sans-serif; mso-line-height-rule: exactly; display: block; padding-left: 24px; padding-right: 24px; padding-top: 16px; padding-bottom: 16px; font-size: 16px; font-weight: 600; line-height: 100%; color: #ffffff; text-decoration: none;">Connexion&rarr;</a>
                                                     </td>
                                                 </tr>

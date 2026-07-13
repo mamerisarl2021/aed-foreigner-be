@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class GenerateKeyPair extends Command
 {
     use EncryptionTrait;
+
     /**
      * The name and signature of the console command.
      *

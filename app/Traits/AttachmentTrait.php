@@ -1,19 +1,11 @@
 <?php
 
-
 namespace App\Traits;
 
-use App\Jobs\SendSmsJob;
 use App\Models\Attachment;
 use App\Models\Document;
 use App\Models\User;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
-use GuzzleHttp\Psr7\Request as Psr7Request;
-use Illuminate\Http\Client\HttpClientException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Storage;
 
 trait AttachmentTrait
@@ -22,20 +14,26 @@ trait AttachmentTrait
      * @var Model
      */
     protected $model;
+
     protected $client;
+
     private $CLIENT_ID;
+
     private $TX_BASE_URL;
+
     private $ANIP_BASE_URL;
+
     private $CLIENT_SECRET;
+
     use EncryptionTrait;
 
     public function __construct(User $model)
     {
         $this->model = $model;
-        $this->CLIENT_SECRET = env('CLIENT_ID');
-        $this->TX_BASE_URL = env('TX_BASE_URL');
-        $this->ANIP_BASE_URL = env('ANIP_BASE_URL');
-        $this->CLIENT_ID = env('CLIENT_SECRET');
+        $this->CLIENT_SECRET = config('trustedx.client_secret');
+        $this->TX_BASE_URL = config('trustedx.base_url');
+        $this->ANIP_BASE_URL = config('trustedx.anip_base_url');
+        $this->CLIENT_ID = config('trustedx.client_id');
     }
 
     public function attachFiles(mixed $files, string $attachmentId)
@@ -56,16 +54,18 @@ trait AttachmentTrait
                 Document::create($doc);
             }
             $document = Attachment::with(['documents'])->find($attachmentId);
+
             return [
                 'status' => true,
                 'data' => $document,
-                'message' => 'Pièce jointe crée avec succès.'
+                'message' => 'Pièce jointe crée avec succès.',
             ];
         } catch (\Exception $e) {
-            Log::error('Creating document failed: ' . $e->getMessage());
+            Log::error('Creating document failed: '.$e->getMessage());
+
             return [
                 'status' => false,
-                'message' => 'Erreur pendant la création de la pièce jointe.'
+                'message' => 'Erreur pendant la création de la pièce jointe.',
             ];
         }
     }

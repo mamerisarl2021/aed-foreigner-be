@@ -12,15 +12,15 @@ class MockRegulaService implements RegulaService
         // Simulate a successful analysis with a random risk score low enough to pass most checks
         // or occasionally high to test rejection logic
         $riskScore = rand(0, 10);
-        
+
         return [
             'status' => 'OK',
             'risk_score' => $riskScore,
             'details' => [
                 'face_match' => true,
                 'doc_validity' => true,
-                'ocr_data' => $data 
-            ]
+                'ocr_data' => $data,
+            ],
         ];
     }
 }

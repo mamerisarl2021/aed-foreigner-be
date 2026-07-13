@@ -2,23 +2,23 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Identity;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\Identity;
 
 class HasAdvancedIdentity
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -27,7 +27,7 @@ class HasAdvancedIdentity
             ->whereIn('status', ['APPROVED', 'APPROVED_BY_AGENT'])
             ->exists();
 
-        if (!$hasAdvancedIdentity) {
+        if (! $hasAdvancedIdentity) {
             return response()->json(['message' => 'Votre demande d\'identité doit au préalable avoir été validée pour que vous puissiez acheter un certificat.', 'can_buy' => false], 403);
         }
 

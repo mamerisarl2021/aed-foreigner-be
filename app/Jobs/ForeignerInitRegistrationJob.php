@@ -2,26 +2,38 @@
 
 namespace App\Jobs;
 
-use App\Mail\ForeignerInitRegistration;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class ForeignerInitRegistrationJob implements ShouldQueue
+final class ForeignerInitRegistrationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
     public function __construct(
-        public string $email,
-        public string $registrationLink
-    ) {
-    }
+        public readonly string $email,
+        public readonly string $registrationLink,
+    ) {}
 
     public function handle(): void
     {
-        Mail::to($this->email)->send(new ForeignerInitRegistration($this->registrationLink));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Complétez votre inscription',
+            template: NotificationTemplate::ForeignerInitRegistration,
+            recipients: [
+                NotificationRecipient::email($this->email, [
+                    'link' => $this->registrationLink,
+                ]),
+            ],
+            variables: [
+                'link' => $this->registrationLink,
+            ],
+            type: 'FOREIGNER_INIT_REGISTRATION',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }

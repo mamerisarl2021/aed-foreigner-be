@@ -2,22 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Document;
-use App\Traits\AttachmentTrait;
+use App\Services\AttachmentUploadService;
 use App\Traits\EncryptionTrait;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class DocumentController extends BaseController
 {
     use EncryptionTrait;
-    use AttachmentTrait;
+
+    public function __construct(
+        private readonly AttachmentUploadService $attachmentService,
+    ) {}
 
     public function index(Request $request)
     {
         try {
             // Paginate the results with 10 items per page
-            $documents = Document::paginate($request->get('perPage', 9999999999999));
+            $documents = Document::paginate(min((int) $request->get('perPage', 15), 100));
 
             // Prepare the data without nested 'data' key to avoid duplication
             $flattenedData = $documents->toArray();
@@ -29,7 +32,8 @@ class DocumentController extends BaseController
 
             return $this->sendPaginatedResponse('Liste des documents.', $response);
         } catch (\Exception $e) {
-            Log::error('Impossible de récupérer les documents: ' . $e->getMessage());
+            Log::error('Impossible de récupérer les documents: '.$e->getMessage());
+
             return $this->sendError('Impossible de récupérer les documents.', null, 500);
         }
     }
@@ -38,9 +42,11 @@ class DocumentController extends BaseController
     {
         try {
             $document = Document::findOrFail($id);
+
             return response()->json($document);
         } catch (\Exception $e) {
-            Log::error('Fetching document failed: ' . $e->getMessage());
+            Log::error('Fetching document failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Fetching document failed.'], 500);
         }
     }
@@ -50,14 +56,16 @@ class DocumentController extends BaseController
         try {
             $validatedData = $request->validate([
                 'attachment_id' => 'required|exists:attachments,id',
-                'file' => 'required|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:2048'
+                'file' => 'required|mimes:pdf,docx,doc,xls,mp4,png,jpeg,jpg|max:2048',
             ]);
             $file = $request->file('file');
-            $response = $this->attachFiles([$file], $validatedData["attachment_id"]);
-            return $response['status'] ?  $this->sendResponse($response["message"], $response["data"]) : $this->sendError($response["message"], null, 400);
+            $response = $this->attachmentService->attachFiles([$file], $validatedData['attachment_id']);
+
+            return $response['status'] ? $this->sendResponse($response['message'], $response['data']) : $this->sendError($response['message'], null, 400);
         } catch (\Exception $e) {
-            Log::error('Creating document failed: ' . $e->getMessage());
-            return $this->sendError("Creating document failed.", null, 400);
+            Log::error('Creating document failed: '.$e->getMessage());
+
+            return $this->sendError('Creating document failed.', null, 400);
         }
     }
 
@@ -76,9 +84,10 @@ class DocumentController extends BaseController
                 Document::where('id', $doc['id'])->update(['status' => $doc['status']]);
             }
 
-            return $this->sendResponse("Documents updated successfully.", null);
+            return $this->sendResponse('Documents updated successfully.', null);
         } catch (\Exception $e) {
-            Log::error('Failed to update documents status: ' . $e->getMessage());
+            Log::error('Failed to update documents status: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to update documents status.'], 500);
         }
     }
@@ -88,10 +97,12 @@ class DocumentController extends BaseController
         try {
             $document = Document::findOrFail($id);
             $document->delete();
-            return $this->sendResponse("Document deleted successfully.", null);
+
+            return $this->sendResponse('Document deleted successfully.', null);
         } catch (\Exception $e) {
-            Log::error('Deleting document failed: ' . $e->getMessage());
-            return $this->sendError("Deleting document failed.", null, 400);
+            Log::error('Deleting document failed: '.$e->getMessage());
+
+            return $this->sendError('Deleting document failed.', null, 400);
         }
     }
 }

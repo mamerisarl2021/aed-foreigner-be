@@ -8,9 +8,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class UserPackage extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
     use HasFactory;
-
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = ['prix', 'validity', 'quantity', 'type'];
 

@@ -14,7 +14,7 @@ class CreateStructuresTable extends Migration
             $table->string('ifu');
             $table->string('searchbase');
             $table->foreignId('manager_id')->constrained('users');
-            $table->enum('status',['APPROVED', 'REJECTED', 'PENDING']);
+            $table->enum('status', ['APPROVED', 'REJECTED', 'PENDING']);
             $table->timestamps();
         });
     }

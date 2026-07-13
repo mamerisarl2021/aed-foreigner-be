@@ -8,13 +8,12 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class StructureSubscription extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
     use HasFactory;
-
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = ['structure_id', 'structure_package_id'];
-    protected $appends = ['packagedata', 'package', 'structuredata'];
 
+    protected $appends = ['packagedata', 'package', 'structuredata'];
 
     public function structure()
     {

@@ -8,9 +8,9 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class OTP extends Model implements Auditable
 {
-    use \OwenIt\Auditing\Auditable;
     use HasFactory;
-    
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'otps'; // Specify the table name if different from the model name
 
     protected $fillable = [

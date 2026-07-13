@@ -12,13 +12,15 @@ class WelcomeUser extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $user;
+
     // public $otp;
     public $activationUrl;
+
     public $hasAccount;
 
     public function __construct(
         $user,
-        //  $otp, 
+        //  $otp,
         $activationUrl,
         $hasAccount = false
     ) {

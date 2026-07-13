@@ -17,3 +17,10 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+.claude
+.cursorignore
+.cursorrules
+.envforgeignore
+txdocs
+.commands
+#implementation_plan.md

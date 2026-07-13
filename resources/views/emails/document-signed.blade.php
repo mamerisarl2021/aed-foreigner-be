@@ -41,7 +41,7 @@
                     <table class="sm-w-full" style="width: 600px;" cellpadding="0" cellspacing="0" role="presentation">
                         <tr>
                             <td class="sm-py-32 sm-px-24" style="padding: 48px; text-align: center;">
-                                <a href="{{ env('APP_URL') }}" style="text-decoration: none;">
+                                <a href="{{ config('app.url') }}" style="text-decoration: none;">
                                     <img src="https://example.com/logo.png" width="155" alt="Votre Application" style="max-width: 100%; vertical-align: middle;">
                                 </a>
                             </td>

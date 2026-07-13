@@ -1,0 +1,89 @@
+
+laravel 12 best practices
+
+To build secure, fast, and maintainable applications, Laravel 12 best practices emphasize strict PHP 8.4+ type safety, thin controllers, and native framework scaling tools. Adhering to these patterns prevents technical debt and ensures your app leverages the full performance gains of the modern Laravel ecosystem.
+
+Smithery
+ +4
+🏛️ Code Architecture & Architecture Patterns
+Keep Controllers Thin
+Controllers should only handle HTTP requests and return responses. Move complex business logic into Services or Action classes, and database queries into dedicated model scopes.
+
+YouTube
+·Laravel Daily
+ +2
+For single-responsibility actions, use Invokable Controllers via php artisan make:controller SendInvoice --invokable.
+
+DEV Community
+Delegate Validation to Form Requests
+Never write validation logic inside your controller methods. Run php artisan make:request StorePostRequest to decouple validation rules from your core business logic.
+
+Smithery
+ +1
+Always Use Type Hints
+Leverage modern PHP by adding explicit return types and parameter type hints to every method. Rely on Constructor Property Promotion for clean dependency injection.
+
+Smithery
+ +2
+💾 Database & Eloquent Optimization
+Prevent N+1 Problems with Eager Loading
+Always load model relationships using with() to avoid executing individual database queries inside loops.
+
+Smithery
+ +2
+php
+// Bad: Executes a query for every single post's author
+$posts = Post::all();
+
+// Good: Executes exactly two optimized queries
+$posts = Post::with('author')->get();
+Utilisez le code avec précaution.
+Process Large Datasets Safely
+Never use all() or get() on thousands of rows, as it will exhaust server memory. Use Lazy Collections (cursor()) or data chunking (chunk()) to process data efficiently in chunks.
+
+devmio
+ +4
+Never Call env() Outside Config Files
+Calling env() directly in your application will return null once you run php artisan config:cache in production. Always load environment variables inside files within the config/ directory, and fetch them using the config() helper.
+
+Smithery
+ +4
+⚡ Performance & Async Background Work
+Offload Heavy Operations to Queues
+Time-consuming operations like sending emails, processing images, or calling third-party APIs should never delay HTTP responses. Implement the ShouldQueue interface on your events and jobs to push them to a background queue worker.
+
+DEV Community
+ +4
+Chain Interdependent Background Tasks
+When a background process relies on multi-step workflows, use Bus::chain() to execute them strictly in order. If one step fails, the subsequent tasks are gracefully aborted.
+
+DEV Community
+ +1
+php
+Bus::chain([
+    new ProcessVideo($video),
+    new AddWatermark($video),
+    new DeployToProduction($video),
+])->dispatch();
+Utilisez le code avec précaution.
+🔒 Security & Code Standards
+Adopt Automated Code Styling & Static Analysis
+Enforce team consistency by checking your codebase against modern standards.
+Laravel Pint: Automatically formats your code according to PSR-12 and Laravel styling guides.
+Larastan: Run static analysis at Level 6 or higher to catch type mismatches and silent bugs before they reach production.
+Standardize REST APIs with API Resources
+When building backend API paths, utilize API Resources to format JSON outputs. This decouples your internal database column naming conventions from the public API schema payload.
+
+Medium
+·Paulo Martins
+ +2
+📋 Checklist: Production Readiness
+Practice
+Target Implementation	Why It Matters
+Routing	Use Route::resource() or route groups	Cleaner routes/web.php files
+Caching	Enable Laravel 12 query caching	Drops server database resource usage
+Auth Check	Use $request->user() instead of Auth::user()	Retains pure dependency injection standards
+Testing	Write automated feature tests with Pest	Catches breaking changes instantly
+
+https://www.tatvasoft.com/outsourcing/2025/09/laravel-best-practices.html
+https://smithery.ai/skills/matula/laravel-12

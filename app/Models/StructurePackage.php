@@ -8,9 +8,8 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class StructurePackage extends Model implements Auditable
 {
+    use HasFactory;
     use \OwenIt\Auditing\Auditable;
-    use  HasFactory;
-
 
     protected $fillable = ['prix', 'validity', 'quantity', 'type'];
 

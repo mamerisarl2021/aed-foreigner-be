@@ -2,40 +2,40 @@
 
 namespace App\Jobs;
 
-use App\Mail\NotifyAdmin;
-use Illuminate\Bus\Queueable;
+use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Foundation\Queue\Queueable;
 
-class NotifyAdminJob implements ShouldQueue
+final class NotifyAdminJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $user;
-    public $code;
+    public function __construct(
+        public readonly mixed $user,
+        public readonly string $code,
+    ) {}
 
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct($user, $code)
+    public function handle(): void
     {
-        $this->code = $code;
-        $this->user = $user;
-    }
-
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle()
-    {
-        $code= $this->code;
-        Mail::to($this->user)->queue(new NotifyAdmin($code, $this->user));
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Demande du code OTP',
+            template: NotificationTemplate::NotifyAdmin,
+            recipients: [
+                NotificationRecipient::email($this->user, [
+                    'code' => $this->code,
+                    'email' => NotificationRecipient::resolveEmail($this->user),
+                ]),
+            ],
+            variables: [
+                'code' => $this->code,
+                'email' => NotificationRecipient::resolveEmail($this->user),
+            ],
+            type: 'NOTIFY_ADMIN',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 }
