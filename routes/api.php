@@ -30,19 +30,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::group([], function () {
-    Route::get('/health', function () {
-        try {
-            DB::connection()->getPdo();
-        } catch (Throwable $e) {
-            return response()->json(['status' => 'DOWN'], 503);
-        }
+    Route::get('/health', \App\Http\Controllers\Singletons\HealthCheckController::class);
 
-        return response()->json(['status' => 'UP'], 200);
-    });
-
-    Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
-        return $request->user();
-    });
+    Route::middleware(['auth:sanctum'])->get('/me', \App\Http\Controllers\Singletons\UserProfileController::class);
 
     Route::resource('user-packages', UserPackageController::class)->only([
         'index',
@@ -177,16 +167,12 @@ Route::group([], function () {
 
             // Routes requiring any advanced identity verification
             Route::middleware(['advanced.identity'])->group(function () {
-                Route::get('can-buy-vid', function () {
-                    return response()->json(['message' => 'You can buy a VID.', 'can_buy' => true]);
-                });
+                Route::get('can-buy-vid', \App\Http\Controllers\Singletons\CheckVidEligibilityController::class);
             });
 
             // Routes requiring specifically in-person advanced verification
             Route::middleware(['inperson.advanced.identity'])->group(function () {
-                Route::get('can-buy-token', function () {
-                    return response()->json(['message' => 'You can buy a token.', 'can_buy' => true]);
-                });
+                Route::get('can-buy-token', \App\Http\Controllers\Singletons\CheckTokenEligibilityController::class);
             });
 
             Route::post('/identity/initiate-in-person', [UserController::class, 'initiateInPersonIdentity']);

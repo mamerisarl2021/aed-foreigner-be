@@ -23,13 +23,13 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P0](#p0-production--stability-blockers) | Production & stability blockers | 6 | 5 | Critical |
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
-| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 11 | High |
+| [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 12 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 4 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 8 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 4 | Medium |
 | [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
-| [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 0 | Low |
+| [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 5 | Low |
 | [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 2 | Low |
 
 **Total:** 82 items
@@ -96,7 +96,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P3-09 | `done` | Decompose `AttachmentTrait` into `AttachmentUploadService` | 4 consumers migrated; trait now unused | S | File storage only |
 | P3-10 | `done` | Decompose `ADTrait` into LDAP/AD service | Extracted into `ADService`; trait removed | M | |
 | P3-11 | `done` | Move `DB::beginTransaction()` blocks from controllers into services | 6 controllers | Done for ForeignerEnrollment, IdentityReview, AdminAuth, UserRegistration, StructureManagement |
-| P3-12 | `todo` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
+| P3-12 | `done` | Introduce invokable controllers for single-action endpoints | New structure | S | e.g. health-adjacent actions, one-offs |
 
 ### Controller size targets (acceptance)
 
@@ -197,11 +197,11 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
-| P9-01 | `todo` | Replace route closures with invokable controllers | `routes/api.php` (`/health`, `/me`, `can-buy-*`) | Blocks `route:cache` |
-| P9-02 | `todo` | Update `.github/copilot-instructions.md` to Laravel 12 | `.github/copilot-instructions.md` | Still says Laravel 10 |
-| P9-03 | `todo` | Remove or register orphan `BroadcastServiceProvider` | `app/Providers/` vs `bootstrap/providers.php` | Dead file |
-| P9-04 | `todo` | Review CSRF exemption scope (`/api/v1/*`) | `VerifyCsrfToken.php` | Document intentional choice |
-| P9-05 | `todo` | Evaluate `route:cache` compatibility after P9-01 | Deploy docs | |
+| P9-01 | `done` | Replace route closures with invokable controllers | `routes/api.php` (`/health`, `/me`, `can-buy-*`) | Blocks `route:cache` |
+| P9-02 | `done` | Update `.github/copilot-instructions.md` to Laravel 12 | `.github/copilot-instructions.md` | Still says Laravel 10 |
+| P9-03 | `done` | Remove or register orphan `BroadcastServiceProvider` | `app/Providers/` vs `bootstrap/providers.php` | Dead file |
+| P9-04 | `done` | Review CSRF exemption scope (`/api/v1/*`) | `VerifyCsrfToken.php` | Document intentional choice |
+| P9-05 | `done` | Evaluate `route:cache` compatibility after P9-01 | Deploy docs | |
 
 ---
 
@@ -265,6 +265,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-13 | P5, P6: Async processing offloaded for revocations, N+1 queries addressed. |
 | 2026-07-13 | P4, P7: API resources introduced, `strict_types=1` enforced, PHPStan Level 6 configured with baseline. |
 | 2026-07-14 | P6-03, P6-04: Implemented `Bus::chain()` and offloaded file uploads and signature finalization to background jobs. |
+| 2026-07-14 | P3-12, P9: Extracted route closures to `Singletons` invokables. Cleaned up dead providers and middleware. Route caching verified. |
 
 ---
 

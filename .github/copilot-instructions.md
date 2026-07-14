@@ -1,9 +1,9 @@
 # Copilot Instructions for AED-Foreigner API
 
 ## Vue d'ensemble de l'architecture
-- **Laravel 10** : API structurée autour du framework Laravel, avec une séparation claire entre les couches (app, routes, config, database, tests).
+- **Laravel 12** : API structurée autour du framework Laravel 12, avec une séparation claire entre les couches (app, routes, config, database, tests). Note: Le dossier `app/Http/Middleware` n'existe plus par défaut; la configuration se fait dans `bootstrap/app.php`.
 - **Domaines principaux** : Gestion des utilisateurs, des structures, des documents, des signatures, des abonnements et des rôles/permissions (Spatie).
-- **Flux de données** : Les contrôleurs dans `app/Http/Controllers` orchestrent les opérations métier, les modèles dans `app/Models` gèrent la persistance, et les middlewares dans `app/Http/Middleware` assurent la sécurité et la validation des requêtes.
+- **Flux de données** : Les contrôleurs dans `app/Http/Controllers` orchestrent les opérations métier et les modèles dans `app/Models` gèrent la persistance.
 - **Sécurité** : Authentification via Laravel Sanctum, gestion fine des rôles et permissions avec Spatie.
 - **Exceptions** : Les erreurs d'autorisation sont interceptées et renvoyées en JSON avec un message spécifique (voir `app/Exceptions/Handler.php`).
 
