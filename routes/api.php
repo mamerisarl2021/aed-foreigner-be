@@ -224,13 +224,11 @@ Route::group([], function () {
     Route::post('/clients/init-password-reset', [UserController::class, 'forgotPassword']);
 
     Route::post('/clients/advanced-id-mid', [UserController::class, 'advancedSubscriptionMid']);
-    Route::post('/finalize-registration', [UserController::class, 'finalizeRegistration']);
 
     // PUBLIC FOREIGNER ENROLLMENT ROUTES (no NPI)
     Route::post('/foreigner/send-otp', [ForeignerEnrollmentController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
     Route::post('/foreigner/verify-otp', [ForeignerEnrollmentController::class, 'verifyOtp'])->middleware(['guest']);
-    Route::post('/foreigner/register/init', [ForeignerEnrollmentController::class, 'initRegistration'])->middleware(['guest', 'transaction']);
-    Route::post('/foreigner/register/finalize', [ForeignerEnrollmentController::class, 'finalizeRegistration'])->middleware(['guest']);
+    Route::post('/foreigner/enroll', [ForeignerEnrollmentController::class, 'submitEnrollment'])->middleware(['guest']);
 
     // ADMINS AUTHENTICATIONS PUBLICS ROUTES
     Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');

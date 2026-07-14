@@ -7,9 +7,10 @@ use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
+use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
-use App\Models\Structure;
+use App\Models\User;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
@@ -28,8 +29,7 @@ class IdentityReviewService
     public function list(Request $request): LengthAwarePaginator
     {
         $allowedStatuses = ['PENDING', 'REJECTED', 'APPROVED', 'APPROVED_BY_AGENT'];
-        $allowedTypes = ['IN_PERSON', 'ONLINE'];
-        $allowedLevels = ['SIMPLE', 'ADVANCED'];
+        $allowedTypes = ['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'];
 
         $statusesParam = $request->input('status');
         if (is_null($statusesParam)) {
@@ -44,8 +44,7 @@ class IdentityReviewService
             }
         }
 
-        $query = Identity::with(['user:id,name,email,phonenumber,npi'])
-            ->whereIn('status', $statuses);
+        $query = EnrollmentRequest::whereIn('status', $statuses);
 
         if ($request->filled('assigned')) {
             $assigned = filter_var($request->input('assigned'), FILTER_VALIDATE_BOOLEAN);
@@ -64,19 +63,13 @@ class IdentityReviewService
             }
         }
 
-        if ($request->filled('level')) {
-            $level = strtoupper($request->input('level'));
-            if (in_array($level, $allowedLevels, true)) {
-                $query->where('level', $level);
-            }
-        }
-
         if ($request->filled('q')) {
             $q = $request->input('q');
-            $query->whereHas('user', function ($uq) use ($q) {
+            $query->where(function ($uq) use ($q) {
                 $uq->where('email', 'like', "%$q%")
-                    ->orWhere('name', 'like', "%$q%")
-                    ->orWhere('phonenumber', 'like', "%$q%");
+                    ->orWhere('phonenumber', 'like', "%$q%")
+                    ->orWhereJsonContains('kyc_data->name', $q)
+                    ->orWhereJsonContains('kyc_data->first_name', $q);
             });
         }
 
@@ -96,76 +89,51 @@ class IdentityReviewService
         $query->orderBy($orderBy, $orderDir);
 
         $perPage = (int) $request->input('per_page', 15);
-        $items = $query->paginate($perPage);
-
-        $items->getCollection()->transform(function ($identity) {
-            $structure = Structure::with(['attachments.documents'])
-                ->where('manager_id', $identity->user_id)
-                ->latest('id')
-                ->first();
-            $identity->setAttribute('structure', $structure);
-
-            return $identity;
-        });
-
-        return $items;
+        return $query->paginate($perPage);
     }
 
     public function show(int $id): ServiceResult
     {
-        $identity = Identity::with(['user:id,name,email,phonenumber,npi'])->findOrFail($id);
-        $structure = Structure::with(['attachments.documents'])
-            ->where('manager_id', $identity->user_id)
-            ->latest('id')
-            ->first();
-        $identity->setAttribute('structure', $structure);
-
-        return ServiceResult::ok('Détail de la demande.', $identity);
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
 
     public function claim(int $id, int $agentId): ServiceResult
     {
-        $identity = Identity::findOrFail($id);
+        $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($identity->status !== 'PENDING') {
+        if ($enrollment->status !== 'PENDING') {
             return ServiceResult::fail('Impossible de réserver cette demande (statut non PENDING).', null, 422);
         }
 
-        if ($identity->assigned_agent_id && $identity->assigned_agent_id !== $agentId) {
+        if ($enrollment->assigned_agent_id && $enrollment->assigned_agent_id !== $agentId) {
             return ServiceResult::fail('Demande déjà assignée à un autre agent.', null, 409);
         }
 
-        $identity->assigned_agent_id = $agentId;
-        $identity->save();
+        $enrollment->assigned_agent_id = $agentId;
+        $enrollment->save();
 
-        return ServiceResult::ok('Demande assignée.', $identity);
+        return ServiceResult::ok('Demande assignée.', $enrollment);
     }
 
     public function approve(int $id, int $agentId): ServiceResult
     {
-        $identity = Identity::with('user')->findOrFail($id);
+        $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($identity->status !== 'PENDING') {
+        if ($enrollment->status !== 'PENDING') {
             return ServiceResult::fail('Statut non PENDING.', null, 422);
         }
 
         DB::beginTransaction();
         try {
-            $identity->assigned_agent_id = $agentId;
-
-            $user = $identity->user;
-            if (! $user->npi) {
-                $user->npi = 'F-'.str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
-                $user->save();
-            }
-
-            $recipientName = $user->name ?? $user->email;
+            $enrollment->assigned_agent_id = $agentId;
+            $recipientName = $enrollment->kyc_data['name'] ?? $enrollment->email;
 
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
                 subject: "Votre demande a passé l'étape agent",
                 template: NotificationTemplate::IdentityStepApproved,
                 recipients: [
-                    NotificationRecipient::email($user->email, [
+                    NotificationRecipient::email($enrollment->email, [
                         'name' => $recipientName,
                     ]),
                 ],
@@ -176,24 +144,16 @@ class IdentityReviewService
                 platform: NotificationPlatform::from(config('notifications.platform')),
             ));
 
-            $identity->status = 'APPROVED_BY_AGENT';
-            $identity->save();
+            $enrollment->status = 'APPROVED_BY_AGENT';
+            $enrollment->save();
             DB::commit();
 
             return ServiceResult::ok('Demande validée par l’agent et transmise au superviseur.', [
-                'identity_id' => $identity->id,
-                'user_id' => $user->id,
-                'npi' => $user->npi,
+                'enrollment_id' => $enrollment->id,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Approve identity failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-
-            if (app()->environment('testing')) {
-                return ServiceResult::fail("Erreur lors de l'approbation agent.", [
-                    'exception' => $e->getMessage(),
-                ], 500);
-            }
+            Log::error('Approve enrollment failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return ServiceResult::fail("Erreur lors de l'approbation agent.", null, 500);
         }
@@ -201,62 +161,83 @@ class IdentityReviewService
 
     public function supervisorApprove(int $id, int $supervisorId): ServiceResult
     {
-        $identity = Identity::with('user')->findOrFail($id);
+        $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($identity->status !== 'APPROVED_BY_AGENT') {
+        if ($enrollment->status !== 'APPROVED_BY_AGENT') {
             return ServiceResult::fail('Statut non APPROVED_BY_AGENT.', null, 422);
         }
 
         DB::beginTransaction();
         try {
-            $user = $identity->user;
+            $user = User::where('email', $enrollment->email)->first();
+
+            if (! $user) {
+                $user = User::create([
+                    'email' => $enrollment->email,
+                    'name' => $enrollment->kyc_data['name'] ?? '',
+                    'first_name' => $enrollment->kyc_data['first_name'] ?? '',
+                    'phonenumber' => $enrollment->phonenumber,
+                    'nationality' => $enrollment->kyc_data['nationality'] ?? '',
+                    'profile' => $enrollment->documents['profile'] ?? null,
+                    'status' => 'ACTIVE',
+                ]);
+            }
+
             if (! $user->npi) {
                 $user->npi = 'F-'.str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
                 $user->save();
             }
 
+            $user->assignRole('client');
+
+            Identity::create([
+                'user_id' => $user->id,
+                'type' => 'IN_PERSON',
+                'level' => 'ADVANCED',
+                'proof' => json_encode([
+                    'selfiePath' => $enrollment->documents['selfie'] ?? '',
+                    'rectoPath' => $enrollment->documents['recto'] ?? '',
+                    'versoPath' => $enrollment->documents['verso'] ?? '',
+                    'liveness' => $enrollment->liveness,
+                    'similarity' => $enrollment->similarity,
+                    'document_type' => $enrollment->kyc_data['document_type'] ?? '',
+                    'document_number' => $enrollment->kyc_data['document_number'] ?? '',
+                    'nationality' => $enrollment->kyc_data['nationality'] ?? '',
+                ]),
+                'status' => 'APPROVED',
+                'assigned_agent_id' => $supervisorId,
+            ]);
+
             $payload = ['data' => ['npi' => $user->npi]];
             $output = $this->trustedXClient->register($payload);
 
-            $email = $user->email;
-            $npi = $user->npi;
+            $allToken = Str::random(60);
+            $pinToken = Str::random(60);
+            $passwordToken = Str::random(60);
 
-            if (isset($output['has_user']) && $output['has_user'] === true) {
-                $allToken = Str::random(60);
-                PasswordResetToken::updateOrCreate(
-                    ['npi' => $npi, 'type' => 'all'],
-                    ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-                );
-                $link = config('app.frontend_url')."/init-account/all/$allToken/$npi";
-                WelcomeUserJob::dispatch($email, $user, $link, true);
-            } else {
-                $allToken = Str::random(60);
-                $pinToken = Str::random(60);
-                $passwordToken = Str::random(60);
+            PasswordResetToken::updateOrCreate(
+                ['npi' => $user->npi, 'type' => 'pin'],
+                ['token' => $pinToken, 'created_at' => Carbon::now()]
+            );
+            PasswordResetToken::updateOrCreate(
+                ['npi' => $user->npi, 'type' => 'password'],
+                ['token' => $passwordToken, 'created_at' => Carbon::now()]
+            );
+            PasswordResetToken::updateOrCreate(
+                ['npi' => $user->npi, 'type' => 'all'],
+                ['token' => $allToken, 'created_at' => Carbon::now()]
+            );
 
-                PasswordResetToken::updateOrCreate(
-                    ['npi' => $npi, 'type' => 'pin'],
-                    ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
-                );
-                PasswordResetToken::updateOrCreate(
-                    ['npi' => $npi, 'type' => 'password'],
-                    ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
-                );
-                PasswordResetToken::updateOrCreate(
-                    ['npi' => $npi, 'type' => 'all'],
-                    ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-                );
+            // Since it's AED Etranger, they need to finalize their account via a link (password/pin setup)
+            $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/{$user->npi}";
+            WelcomeUserJob::dispatch($user->email, $user, $link, true);
 
-                $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
-                WelcomeUserJob::dispatch($email, $user, $link, true);
-            }
-
-            $identity->status = 'APPROVED';
-            $identity->save();
+            $enrollment->status = 'APPROVED';
+            $enrollment->save();
             DB::commit();
 
-            return ServiceResult::ok('Demande approuvée par le superviseur et compte initialisé.', [
-                'identity_id' => $identity->id,
+            return ServiceResult::ok('Demande approuvée par le superviseur, compte créé et initialisé.', [
+                'enrollment_id' => $enrollment->id,
                 'user_id' => $user->id,
                 'npi' => $user->npi,
             ]);
@@ -270,9 +251,9 @@ class IdentityReviewService
 
     public function reject(int $id, string $stage, array $reasons, ?string $comments, string $requiredStatus): ServiceResult
     {
-        $identity = Identity::with('user')->findOrFail($id);
+        $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($identity->status !== $requiredStatus) {
+        if ($enrollment->status !== $requiredStatus) {
             $message = $requiredStatus === 'PENDING'
                 ? 'Statut non PENDING.'
                 : 'Statut non APPROVED_BY_AGENT.';
@@ -282,16 +263,16 @@ class IdentityReviewService
 
         DB::beginTransaction();
         try {
-            $this->applyRejection($identity, $stage, $reasons, $comments);
+            $this->applyRejection($enrollment, $stage, $reasons, $comments);
 
             $successMessage = $requiredStatus === 'PENDING'
                 ? 'Demande rejetée et notifiée.'
                 : 'Demande rejetée par le superviseur et notifiée.';
 
-            return ServiceResult::ok($successMessage, ['identity_id' => $identity->id]);
+            return ServiceResult::ok($successMessage, ['enrollment_id' => $enrollment->id]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Reject identity failed: '.$e->getMessage());
+            Log::error('Reject enrollment failed: '.$e->getMessage());
 
             $errorMessage = $requiredStatus === 'PENDING'
                 ? 'Erreur lors du rejet.'
@@ -301,32 +282,32 @@ class IdentityReviewService
         }
     }
 
-    private function applyRejection(Identity $identity, string $stage, array $reasons, ?string $comments): void
+    private function applyRejection(EnrollmentRequest $enrollment, string $stage, array $reasons, ?string $comments): void
     {
-        $identity->reject_stage = $stage;
-        $identity->reject_reasons = json_encode($reasons);
-        $identity->review_comments = $comments;
-        $identity->status = 'REJECTED';
-        $identity->save();
+        $enrollment->reject_stage = $stage;
+        $enrollment->reject_reasons = $reasons;
+        $enrollment->review_comments = $comments;
+        $enrollment->status = 'REJECTED';
+        $enrollment->save();
 
-        $recipientName = $identity->user->name ?? $identity->user->email;
+        $recipientName = $enrollment->kyc_data['name'] ?? $enrollment->email;
 
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Votre demande d\'identité a été rejetée',
+            subject: 'Votre demande d\'enrôlement a été rejetée',
             template: NotificationTemplate::IdentityRejected,
             recipients: [
-                NotificationRecipient::email($identity->user->email, [
+                NotificationRecipient::email($enrollment->email, [
                     'name' => $recipientName,
-                    'stage' => $identity->reject_stage,
+                    'stage' => $enrollment->reject_stage,
                     'reasons' => $reasons,
-                    'comments' => $identity->review_comments,
+                    'comments' => $enrollment->review_comments,
                 ]),
             ],
             variables: [
                 'name' => $recipientName,
-                'stage' => $identity->reject_stage,
+                'stage' => $enrollment->reject_stage,
                 'reasons' => $reasons,
-                'comments' => $identity->review_comments,
+                'comments' => $enrollment->review_comments,
             ],
             type: 'IDENTITY_REJECTED',
             platform: NotificationPlatform::from(config('notifications.platform')),

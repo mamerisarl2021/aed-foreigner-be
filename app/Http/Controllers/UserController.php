@@ -496,51 +496,6 @@ class UserController extends BaseController
         return $this->respond($this->registration->sendResetLink($npi, $type));
     }
 
-    /**
-     * @OA\Post(
-     *      path="/api/v1/finalize-registration",
-     *      operationId="finalizeCitizenRegistration",
-     *      tags={"Registration"},
-     *      summary="Finalize Citizen Registration (ANIP flow)",
-     *      description="Finalizes registration for citizens using NPI.",
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\MediaType(
-     *              mediaType="multipart/form-data",
-     *
-     *              @OA\Schema(
-     *                  required={"registration_token", "transaction_id", "type", "level"},
-     *
-     *                  @OA\Property(property="registration_token", type="string"),
-     *                  @OA\Property(property="transaction_id", type="string"),
-     *                  @OA\Property(property="type", type="string", enum={"IN_PERSON", "ONLINE"}),
-     *                  @OA\Property(property="level", type="string", enum={"SIMPLE", "ADVANCED"}),
-     *                  @OA\Property(property="password", type="string", description="Required for non-foreigners"),
-     *                  @OA\Property(property="pin", type="string", description="Required for non-foreigners"),
-     *                  @OA\Property(property="selfie", type="string", format="binary"),
-     *                  @OA\Property(property="recto", type="string", format="binary"),
-     *                  @OA\Property(property="verso", type="string", format="binary"),
-     *                  @OA\Property(property="similarity", type="string"),
-     *                  @OA\Property(property="liveness", type="string")
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Registration success"),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
-    public function finalizeRegistration(FinalizeRegistrationRequest $request)
-    {
-        $pendingRegistration = $request->pendingRegistration();
-        if ($pendingRegistration === null) {
-            return $this->sendError('Données invalides.', null, 422);
-        }
-
-        return $this->respond($this->registration->finalizeRegistration($request, $pendingRegistration));
-    }
 
     /**
      * @OA\Get(

@@ -25,6 +25,7 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
+        \App\Models\EnrollmentRequest::class => \App\Policies\EnrollmentRequestPolicy::class,
         Attachment::class => AuthorizationPolicy::class,
         Cases::class => AuthorizationPolicy::class,
         Identity::class => AuthorizationPolicy::class,

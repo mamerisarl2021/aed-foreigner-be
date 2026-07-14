@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Foreigner\FinalizeRegistrationRequest;
-use App\Http\Requests\Foreigner\InitRegistrationRequest;
+use App\Http\Requests\Enrollment\SubmitEnrollmentRequest;
 use App\Http\Requests\Foreigner\SendOtpRequest;
 use App\Http\Requests\Foreigner\VerifyOtpRequest;
-use App\Models\PendingRegistration;
 use App\Services\Enrollment\ForeignerEnrollmentService;
-use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class ForeignerEnrollmentController extends BaseController
 {
@@ -21,7 +19,7 @@ class ForeignerEnrollmentController extends BaseController
     /**
      * @OA\Post(
      *      path="/api/v1/foreigner/send-otp",
-     *      operationId="sendOtp",
+     *      operationId="sendForeignerOtp",
      *      tags={"Enrollment"},
      *      summary="Send OTP to email",
      *      description="Sends an OTP to the provided email address for verification.",
@@ -56,7 +54,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function sendOtp(SendOtpRequest $request): \Illuminate\Http\JsonResponse
+    public function sendOtp(SendOtpRequest $request): JsonResponse
     {
         return $this->respond($this->enrollment->sendOtp($request->input('email')));
     }
@@ -64,7 +62,7 @@ class ForeignerEnrollmentController extends BaseController
     /**
      * @OA\Post(
      *      path="/api/v1/foreigner/verify-otp",
-     *      operationId="verifyOtp",
+     *      operationId="verifyForeignerOtp",
      *      tags={"Enrollment"},
      *      summary="Verify OTP",
      *      description="Verifies the OTP sent to the email.",
@@ -97,7 +95,7 @@ class ForeignerEnrollmentController extends BaseController
      *      )
      * )
      */
-    public function verifyOtp(VerifyOtpRequest $request): \Illuminate\Http\JsonResponse
+    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
         return $this->respond($this->enrollment->verifyOtp(
             $request->input('email'),
@@ -107,11 +105,11 @@ class ForeignerEnrollmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/v1/foreigner/register/init",
-     *      operationId="initRegistration",
+     *      path="/api/v1/foreigner/enroll",
+     *      operationId="submitForeignerEnrollment",
      *      tags={"Enrollment"},
-     *      summary="Initialize Registration",
-     *      description="Initializes the registration process, returning a registration token.",
+     *      summary="Submit foreigner enrollment request",
+     *      description="Submits a complete enrollment request for a physical foreigner. All KYC data, identity documents, and liveness data are provided in a single step. The request is stored for agent review.",
      *
      *      @OA\RequestBody(
      *          required=true,
@@ -120,110 +118,51 @@ class ForeignerEnrollmentController extends BaseController
      *              mediaType="multipart/form-data",
      *
      *              @OA\Schema(
-     *                  required={"email"},
+     *                  required={"email", "phonenumber", "name", "first_name", "sex", "date_of_birth", "place_of_birth", "nationality", "country_of_residence", "address", "document_type", "document_number", "selfie", "recto"},
      *
-     *                  @OA\Property(property="email", type="string", format="email", example="user@example.com"),
-     *                  @OA\Property(property="profile", type="string", format="binary")
+     *                  @OA\Property(property="email", type="string", format="email"),
+     *                  @OA\Property(property="phonenumber", type="string"),
+     *                  @OA\Property(property="name", type="string"),
+     *                  @OA\Property(property="first_name", type="string"),
+     *                  @OA\Property(property="sex", type="string", enum={"M", "F"}),
+     *                  @OA\Property(property="date_of_birth", type="string", format="date"),
+     *                  @OA\Property(property="place_of_birth", type="string"),
+     *                  @OA\Property(property="nationality", type="string"),
+     *                  @OA\Property(property="country_of_residence", type="string"),
+     *                  @OA\Property(property="address", type="string"),
+     *                  @OA\Property(property="document_type", type="string", enum={"PASSPORT", "CNI_ECOWAS"}),
+     *                  @OA\Property(property="document_number", type="string"),
+     *                  @OA\Property(property="selfie", type="string", format="binary"),
+     *                  @OA\Property(property="recto", type="string", format="binary"),
+     *                  @OA\Property(property="verso", type="string", format="binary"),
+     *                  @OA\Property(property="profile", type="string", format="binary"),
+     *                  @OA\Property(property="liveness", type="string"),
+     *                  @OA\Property(property="similarity", type="string")
      *              )
      *          )
      *      ),
      *
      *      @OA\Response(
      *          response=200,
-     *          description="Registration initialized",
+     *          description="Enrollment request submitted successfully",
      *
      *          @OA\JsonContent(
      *
      *              @OA\Property(property="success", type="boolean", example=true),
+     *              @OA\Property(property="message", type="string", example="Demande enregistrée avec succès."),
      *              @OA\Property(property="data", type="object",
-     *                  @OA\Property(property="registration_token", type="string"),
-     *                  @OA\Property(property="expires_at", type="string", format="date-time"),
-     *                  @OA\Property(property="link", type="string")
+     *                  @OA\Property(property="enrollment_request_id", type="integer")
      *              )
      *          )
      *      ),
      *
-     *      @OA\Response(
-     *          response=400,
-     *          description="OTP not verified"
-     *      )
+     *      @OA\Response(response=400, description="OTP not verified"),
+     *      @OA\Response(response=422, description="Validation error"),
+     *      @OA\Response(response=500, description="Internal server error")
      * )
      */
-    public function initRegistration(InitRegistrationRequest $request): \Illuminate\Http\JsonResponse
+    public function submitEnrollment(SubmitEnrollmentRequest $request): JsonResponse
     {
-        return $this->respond($this->enrollment->initRegistration(
-            $request->input('email'),
-            $request->file('profile'),
-        ));
-    }
-
-    /**
-     * @OA\Post(
-     *      path="/api/v1/foreigner/register/finalize",
-     *      operationId="finalizeRegistration",
-     *      tags={"Enrollment"},
-     *      summary="Finalize Registration",
-     *      description="Finalizes the registration with full details and documents.",
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\MediaType(
-     *              mediaType="multipart/form-data",
-     *
-     *              @OA\Schema(
-     *                  required={"registration_token", "transaction_id"},
-     *
-     *                  @OA\Property(property="registration_token", type="string"),
-     *                  @OA\Property(property="transaction_id", type="string"),
-     *                  @OA\Property(property="selfie", type="string", format="binary", description="Required"),
-     *                  @OA\Property(property="recto", type="string", format="binary", description="Required"),
-     *                  @OA\Property(property="verso", type="string", format="binary", description="Required"),
-     *                  @OA\Property(property="similarity", type="string", description="Required"),
-     *                  @OA\Property(property="liveness", type="string", description="Required"),
-     *                  @OA\Property(property="exp_date", type="string", format="date", description="Expiration date of document"),
-     *                  @OA\Property(property="birth_date", type="string", format="date", description="Birth date"),
-     *                  @OA\Property(property="kyc[name]", type="string"),
-     *                  @OA\Property(property="kyc[first_name]", type="string"),
-     *                  @OA\Property(property="kyc[phonenumber]", type="string"),
-     *                  @OA\Property(property="kyc[nationality]", type="string"),
-     *                  @OA\Property(property="kyc[document_type]", type="string", enum={"PASSPORT", "RESIDENCE_PERMIT", "OTHER"}),
-     *                  @OA\Property(property="kyc[document_number]", type="string")
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(
-     *          response=200,
-     *          description="Registration finalized",
-     *
-     *          @OA\JsonContent(
-     *
-     *              @OA\Property(property="success", type="boolean", example=true),
-     *              @OA\Property(property="data", type="object",
-     *                  @OA\Property(property="user_id", type="integer"),
-     *                  @OA\Property(property="phonenumber", type="string")
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(
-     *          response=422,
-     *          description="Validation error"
-     *      ),
-     *      @OA\Response(
-     *          response=500,
-     *          description="Internal server error"
-     *      )
-     * )
-     */
-    public function finalizeRegistration(FinalizeRegistrationRequest $request): \Illuminate\Http\JsonResponse
-    {
-        $pending = PendingRegistration::where('registration_token', $request->registration_token)
-            ->where('status', 'PENDING')
-            ->where('expires_at', '>', Carbon::now())
-            ->firstOrFail();
-
-        return $this->respond($this->enrollment->finalizeRegistration($request, $pending));
+        return $this->respond($this->enrollment->submitEnrollment($request));
     }
 }
