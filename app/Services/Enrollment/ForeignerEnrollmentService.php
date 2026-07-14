@@ -96,6 +96,7 @@ class ForeignerEnrollmentService
 
     public function finalizeRegistration(Request $request, PendingRegistration $pending): ServiceResult
     {
+        // TODO: I will have to eventually remove non foreigner logic from this codebase cos this backend is exclusively for AED étranger
         $isForeigner = $pending->user_data['is_foreigner'] ?? false;
         if (! $isForeigner) {
             return ServiceResult::fail('Flux non étranger non pris en charge ici.', null, 400);
@@ -129,12 +130,12 @@ class ForeignerEnrollmentService
                 'profile' => $pending->profile_path,
             ]);
 
-            Identity::create([
+            $identity = Identity::create([
                 'type' => 'ONLINE',
                 'proof' => json_encode([
-                    'selfiePath' => $uploadedFiles['selfie'] ?? null,
-                    'rectoPath' => $uploadedFiles['recto'] ?? null,
-                    'versoPath' => $uploadedFiles['verso'] ?? null,
+                    'selfiePath' => null, // Will be updated by UploadEnrollmentFilesJob
+                    'rectoPath' => null,
+                    'versoPath' => null,
                     'liveness' => $request->input('liveness'),
                     'similarity' => $request->input('similarity'),
                     'exp_date' => $request->input('exp_date', ''),
@@ -157,7 +158,7 @@ class ForeignerEnrollmentService
 
             DB::commit();
 
-            $this->dispatchPostRegistrationJobs($user, $request, null, $uploadedFiles);
+            $this->dispatchPostRegistrationJobs($user, $request, null, $uploadedFiles, $identity->id);
 
             return ServiceResult::ok('Inscription finalisée.', [
                 'user_id' => $user->id,
@@ -185,13 +186,13 @@ class ForeignerEnrollmentService
 
         if ($request->input('type') === 'ONLINE') {
             if ($request->hasFile('selfie')) {
-                $uploadedFiles['selfie'] = Storage::cloud()->put('selfies', $request->file('selfie'));
+                $uploadedFiles['selfie'] = $request->file('selfie')?->store('tmp/enrollments', 'local');
             }
             if ($request->hasFile('recto')) {
-                $uploadedFiles['recto'] = Storage::cloud()->put('images', $request->file('recto'));
+                $uploadedFiles['recto'] = $request->file('recto')?->store('tmp/enrollments', 'local');
             }
             if ($request->hasFile('verso')) {
-                $uploadedFiles['verso'] = Storage::cloud()->put('images', $request->file('verso'));
+                $uploadedFiles['verso'] = $request->file('verso')?->store('tmp/enrollments', 'local');
             }
         }
 
@@ -257,24 +258,25 @@ class ForeignerEnrollmentService
     /**
      * @param  array<string, string|null>  $uploadedFiles
      */
-    private function dispatchPostRegistrationJobs(User $user, Request $request, ?int $structureId, array $uploadedFiles): void
+    private function dispatchPostRegistrationJobs(User $user, Request $request, ?int $structureId, array $uploadedFiles, int $identityId): void
     {
         $type = $request->input('type');
-
-        if ($type === 'IN_PERSON') {
-            PlanifiedEmailJob::dispatch($user->email);
-        } else {
-            AdvancedIdRequestJob::dispatch($user->email);
-        }
-        ForeignerFinalizedJob::dispatch($user->email, $type);
+        $chain = [];
 
         if ($type === 'ONLINE') {
-            Log::info("Dispatching Regula analysis for user {$user->id}");
-            $identity = Identity::where('user_id', $user->id)->latest()->first();
-            if ($identity) {
-                RegulaAnalysisJob::dispatch($identity->id);
-            }
+            $chain[] = new \App\Jobs\UploadEnrollmentFilesJob($identityId, $uploadedFiles);
+            $chain[] = new RegulaAnalysisJob($identityId);
         }
+
+        $chain[] = new ForeignerFinalizedJob($user->email, $type);
+
+        if ($type === 'IN_PERSON') {
+            $chain[] = new PlanifiedEmailJob($user->email);
+        } else {
+            $chain[] = new AdvancedIdRequestJob($user->email);
+        }
+
+        \Illuminate\Support\Facades\Bus::chain($chain)->dispatch();
 
         if ($structureId && $request->has('structure.attachements')) {
             ProcessStructureFilesJob::dispatch($structureId, $request->input('structure.attachements'), $request->allFiles());
@@ -287,8 +289,8 @@ class ForeignerEnrollmentService
     private function cleanupUploadedFiles(array $uploadedFiles): void
     {
         foreach ($uploadedFiles as $path) {
-            if ($path && Storage::cloud()->exists($path)) {
-                Storage::cloud()->delete($path);
+            if ($path && Storage::disk('local')->exists($path)) {
+                Storage::disk('local')->delete($path);
             }
         }
     }
