@@ -10,7 +10,6 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,14 +27,14 @@ class SignatureDocumentController extends BaseController
             $url = Storage::cloud()->temporaryUrl($path, Carbon::now()->addMinutes(60));
 
             $signature_document = SignatureDocument::create([
-                'user_id' => Auth::id(),
+                'user_id' => $request->user()->id,
                 'title' => $request->title,
                 'file_path' => $path,
                 'status' => 'pending',
             ]);
             Signature::create([
                 'signature_document_id' => $signature_document->id,
-                'user_id' => Auth::id(),
+                'user_id' => $request->user()->id,
                 'status' => 'pending',
             ]);
 
@@ -70,7 +69,7 @@ class SignatureDocumentController extends BaseController
             }
 
             $signature_document = SignatureDocument::create([
-                'user_id' => Auth::id(),
+                'user_id' => $request->user()->id,
                 'title' => $request->title,
                 'file_path' => $path,
                 'status' => 'pending',
@@ -132,12 +131,12 @@ class SignatureDocumentController extends BaseController
         }
     }
 
-    public function destroy($signature_document)
+    public function destroy(Request $request, $signature_document)
     {
         try {
             $signatureDoc = SignatureDocument::find($signature_document);
 
-            if ($signatureDoc->canBeDeletedBy(Auth::user())) {
+            if ($signatureDoc->canBeDeletedBy($request->user())) {
                 // Suppression du fichier du stockage
                 Storage::cloud()->delete($signatureDoc->file_path);
 
@@ -219,23 +218,6 @@ class SignatureDocumentController extends BaseController
                     },
                 ])
                 ->get(['id', 'signature_document_id', 'user_id', 'status', 'created_at', 'updated_at']);
-
-            // Map the results to include the necessary information
-            // $mapSignatureData = function ($signatures) {
-            //     return $signatures->map(function ($signature) {
-            //         return [
-            //             'signature_id' => $signature->id,
-            //             'signature_user_email' => $signature->user->email,
-            //             'signature_created_at' => $signature->created_at,
-            //             'signature_updated_at' => $signature->updated_at,
-            //             'document_id' => $signature->document->id,
-            //             'document_title' => $signature->document->title,
-            //             'document_creator_email' => $signature->document->user->email,
-            //             'document_creator_link' => $signature->document->user->link,
-            //             'document_link' => $signature->document->link, // Use the accessor to get the temporary URL
-            //         ];
-            //     });
-            // };
 
             $mapSignatureData = function ($signatures) {
                 return $signatures->sortByDesc(function ($signature) {
@@ -338,24 +320,6 @@ class SignatureDocumentController extends BaseController
                     ];
                 });
             };
-
-            // $mapSignatureData = function ($signatures) {
-            //     return $signatures->sortByDesc(function ($signature) {
-            //         return $signature->updated_at;
-            //     })->map(function ($signature) {
-            //         return [
-            //             'signature_id' => $signature->id,
-            //             'signature_user_email' => $signature->user->email,
-            //             'signature_created_at' => $signature->created_at,
-            //             'signature_updated_at' => $signature->updated_at,
-            //             'document_id' => $signature->document->id,
-            //             'document_title' => $signature->document->title,
-            //             'document_creator_email' => $signature->document->user->email,
-            //             'document_creator_link' => $signature->document->user->link,
-            //             'document_link' => $signature->document->link, // Use the accessor to get the temporary URL
-            //         ];
-            //     });
-            // };
 
             // Retourner la réponse JSON avec les documents organisés
             return response()->json([

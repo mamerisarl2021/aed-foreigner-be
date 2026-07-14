@@ -8,7 +8,6 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class RevocationController extends BaseController
@@ -75,7 +74,7 @@ class RevocationController extends BaseController
             }
 
             $revocation = Revocation::create([
-                'user_id' => Auth::user()->id,
+                'user_id' => $request->user()->id,
                 'structure_id' => isset($validated['structure_id']) ? $validated['structure_id'] : null,
                 'identity_id' => $validated['identity_id'],
                 'group_id' => $group['id'],

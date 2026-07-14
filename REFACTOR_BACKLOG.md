@@ -3,7 +3,7 @@
 Tracked remediation items derived from the Laravel 12 best-practices audit (`guidelines.md`).  
 **Status key:** `todo` · `in-progress` · `blocked` · `done` · `deferred`
 
-**Last updated:** 2026-07-14 (P6 partial: 03, 04)
+**Last updated:** 2026-07-14 (P4-05; P10-02, P10-03, P10-05)
 
 ---
 
@@ -24,13 +24,13 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P1](#p1-configuration--environment) | Configuration & environment | 8 | 8 | High |
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
 | [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 12 | High |
-| [P4](#p4-api-contract--resources) | API contract & resources | 5 | 4 | Medium |
+| [P4](#p4-api-contract--resources) | API contract & resources | 5 | 5 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 8 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 4 | Medium |
 | [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
 | [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 5 | Low |
-| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 2 | Low |
+| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 5 | Low |
 
 **Total:** 82 items
 
@@ -120,7 +120,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P4-02 | `done` | Migrate `IdentityReviewController` responses to API Resources | `IdentityReviewResource`, collection | Already has structured JSON |
 | P4-03 | `done` | Migrate `ForeignerEnrollmentController` responses | Enrollment resources | |
 | P4-04 | `done` | Normalize `IdRequestController` to standard `{ success, message, data }` envelope | `IdRequestController` | Currently raw model JSON |
-| P4-05 | `todo` | Document public API schema (OpenAPI) aligned to `/api/v1` paths | `routes/api.php`, controller `@OA` blocks | Many annotations still say `/api/...` |
+| P4-05 | `done` | Document public API schema (OpenAPI) aligned to `/api/v1` paths | `routes/api.php`, controller `@OA` blocks | Many annotations still say `/api/...` |
 
 ---
 
@@ -210,10 +210,10 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | ID | Status | Item | Primary files / area | Notes |
 |----|--------|------|----------------------|-------|
 | P10-01 | `done` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/`, `app/Mail/` | Renamed 3 Jobs + 3 Mailables; updated all imports |
-| P10-02 | `todo` | Remove large commented-out code blocks | `UserController`, `SignatureController`, `SigningIdentityController`, `StatsController` | |
-| P10-03 | `todo` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
-| P10-04 | `todo` | Expand authorization beyond route middleware (policies) | `app/Policies/` | Only 2 policies today |
-| P10-05 | `todo` | Replace `Auth::user()` / `auth()->user()` with `$request->user()` | See audit list (15+ locations) | As controllers are touched |
+| P10-02 | `done` | Remove large commented-out code blocks | `SignatureDocumentController`, `StatsController`, `StructureSubscriptionController` | |
+| P10-03 | `done` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
+| P10-04 | `deferred` | Expand authorization beyond route middleware (policies) | `app/Policies/` | Only 2 policies today |
+| P10-05 | `done` | Replace `Auth::user()` / `auth()->user()` with `$request->user()` | See audit list (15+ locations) | As controllers are touched |
 | P10-06 | `done` | Delete unused stub Form Requests or implement them | `app/Http/Requests/` | Completed in P2-01/P2-08 |
 
 ---

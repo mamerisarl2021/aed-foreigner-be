@@ -20,7 +20,7 @@ class ForeignerEnrollmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/foreigner/send-otp",
+     *      path="/api/v1/foreigner/send-otp",
      *      operationId="sendOtp",
      *      tags={"Enrollment"},
      *      summary="Send OTP to email",
@@ -63,7 +63,7 @@ class ForeignerEnrollmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/foreigner/verify-otp",
+     *      path="/api/v1/foreigner/verify-otp",
      *      operationId="verifyOtp",
      *      tags={"Enrollment"},
      *      summary="Verify OTP",
@@ -107,7 +107,7 @@ class ForeignerEnrollmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/foreigner/register/init",
+     *      path="/api/v1/foreigner/register/init",
      *      operationId="initRegistration",
      *      tags={"Enrollment"},
      *      summary="Initialize Registration",
@@ -159,7 +159,7 @@ class ForeignerEnrollmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/foreigner/register/finalize",
+     *      path="/api/v1/foreigner/register/finalize",
      *      operationId="finalizeRegistration",
      *      tags={"Enrollment"},
      *      summary="Finalize Registration",

@@ -49,10 +49,6 @@ class StructureSubscriptionController extends BaseController
         $private_key = config('kkiapay.private_key');
         $secret = config('kkiapay.secret');
 
-        // $public_key = "9d0fc7a0649011ef9e4c8f724a020285";
-        // $private_key = "tpk_9d0fc7a2649011ef9e4c8f724a020285";
-        // $secret = "tsk_9d0fc7a3649011ef9e4c8f724a020285";
-
         $kkiapay = new Kkiapay(
             $public_key,
             $private_key,

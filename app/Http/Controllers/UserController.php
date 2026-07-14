@@ -34,7 +34,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/send-otp",
+     *      path="/api/v1/clients/send-otp",
      *      operationId="userSendOtp",
      *      tags={"User Auth"},
      *      summary="Send OTP to User (ANIP flow)",
@@ -62,7 +62,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/verify-otp",
+     *      path="/api/v1/clients/verify-otp",
      *      operationId="userVerifyOtp",
      *      tags={"User Auth"},
      *      summary="Verify User OTP",
@@ -93,7 +93,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/login",
+     *      path="/api/v1/clients/login",
      *      operationId="userLogin",
      *      tags={"User Auth"},
      *      summary="User Login",
@@ -120,7 +120,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/mobile/login",
+     *      path="/api/v1/mobile/login",
      *      operationId="userMobileLogin",
      *      tags={"User Auth"},
      *      summary="User Mobile Login",
@@ -147,7 +147,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="getUser",
      *      tags={"Users"},
      *      summary="Get User Details",
@@ -174,7 +174,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/users/search",
+     *      path="/api/v1/users/search",
      *      operationId="searchUsers",
      *      tags={"Users"},
      *      summary="Search Users",
@@ -228,7 +228,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="updateUser",
      *      tags={"Users"},
      *      summary="Update User Profile",
@@ -291,7 +291,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Delete(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="deleteUser",
      *      tags={"Users"},
      *      summary="Delete User",
@@ -318,7 +318,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/users/update-status",
+     *      path="/api/v1/management/users/update-status",
      *      operationId="updateUserStatus",
      *      tags={"Management"},
      *      summary="Update User Status (Bulk)",
@@ -366,7 +366,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/users/identity-status",
+     *      path="/api/v1/management/users/identity-status",
      *      operationId="updateIdentityStatus",
      *      tags={"Management"},
      *      summary="Update Identity Status",
@@ -419,7 +419,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/identity/approve",
+     *      path="/api/v1/identity/approve",
      *      operationId="updateInPersonIdentityStatus",
      *      tags={"Management"},
      *      summary="Approve In-Person Identity",
@@ -456,7 +456,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/set-password",
+     *      path="/api/v1/clients/set-password",
      *      operationId="setUserPassword",
      *      tags={"User Auth"},
      *      summary="Set User Password/Pin",
@@ -498,7 +498,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/finalize-registration",
+     *      path="/api/v1/finalize-registration",
      *      operationId="finalizeCitizenRegistration",
      *      tags={"Registration"},
      *      summary="Finalize Citizen Registration (ANIP flow)",
@@ -544,7 +544,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/invitations",
+     *      path="/api/v1/invitations",
      *      operationId="listInvitations",
      *      tags={"Users"},
      *      summary="List user invitations",
@@ -563,10 +563,10 @@ class UserController extends BaseController
      *      )
      * )
      */
-    public function listInvitations()
+    public function listInvitations(Request $request)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
             // Récupérer les invitations de l'utilisateur
             $invitations = StructureInvitation::with(['structure', 'inviter'])
@@ -600,7 +600,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{invitation}/accept",
+     *      path="/api/v1/invitations/{invitation}/accept",
      *      operationId="acceptInvitation",
      *      tags={"Users"},
      *      summary="Accept an invitation",
@@ -623,9 +623,9 @@ class UserController extends BaseController
      *      @OA\Response(response=400, description="Invitation expired or already processed")
      * )
      */
-    public function acceptInvitation($invitationId)
+    public function acceptInvitation(Request $request, $invitationId)
     {
-        $result = $this->registration->acceptInvitation((int) $invitationId, auth()->user());
+        $result = $this->registration->acceptInvitation((int) $invitationId, $request->user());
 
         if (! $result->success) {
             return $this->sendError($result->message, $result->data ?? [], $result->code);
@@ -636,7 +636,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{invitation}/reject",
+     *      path="/api/v1/invitations/{invitation}/reject",
      *      operationId="rejectInvitation",
      *      tags={"Users"},
      *      summary="Reject an invitation",
@@ -659,10 +659,10 @@ class UserController extends BaseController
      *      @OA\Response(response=400, description="Invitation expired or already processed")
      * )
      */
-    public function rejectInvitation($invitationId)
+    public function rejectInvitation(Request $request, $invitationId)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
             $invitation = StructureInvitation::where('id', $invitationId)
                 ->where('user_id', $user->id)
@@ -691,7 +691,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/invitations/{token}/details",
+     *      path="/api/v1/invitations/{token}/details",
      *      operationId="getInvitationDetails",
      *      tags={"Users"},
      *      summary="Get invitation details by token",
@@ -754,7 +754,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{token}/respond",
+     *      path="/api/v1/invitations/{token}/respond",
      *      operationId="respondToInvitation",
      *      tags={"Users"},
      *      summary="Respond to invitation by token",
@@ -808,7 +808,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/employees/create",
+     *      path="/api/v1/employees/create",
      *      operationId="createEmployee",
      *      tags={"Users"},
      *      summary="Create a new employee user",
@@ -839,7 +839,7 @@ class UserController extends BaseController
     {
         return $this->respond($this->registration->createEmployee(
             $request->validated(),
-            auth()->user(),
+            $request->user(),
         ));
     }
 }

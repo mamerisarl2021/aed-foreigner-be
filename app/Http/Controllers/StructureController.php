@@ -6,8 +6,6 @@ use App\Http\Requests\Management\UpdateStructureStatusRequest;
 use App\Services\Structure\StructureManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
 class StructureController extends BaseController
 {
     public function __construct(
@@ -16,7 +14,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/structures",
+     *      path="/api/v1/structures",
      *      operationId="getStructures",
      *      tags={"Structures"},
      *      summary="List Structures",
@@ -56,7 +54,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/entities/mine",
+     *      path="/api/v1/entities/mine",
      *      operationId="getMyStructures",
      *      tags={"Structures"},
      *      summary="Get My Structures",
@@ -93,7 +91,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/structures/{id}",
+     *      path="/api/v1/structures/{id}",
      *      operationId="getStructure",
      *      tags={"Structures"},
      *      summary="Get Structure Details",
@@ -125,14 +123,14 @@ class StructureController extends BaseController
      *      @OA\Response(response=500, description="Internal Server Error")
      * )
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        return $this->respond($this->structures->show((int) $id, auth()->user()));
+        return $this->respond($this->structures->show((int) $id, $request->user()));
     }
 
     /**
      * @OA\Post(
-     *      path="/api/clients/one-shot-link",
+     *      path="/api/v1/clients/one-shot-link",
      *      operationId="createStructureOneShot",
      *      tags={"Structures"},
      *      summary="Create Structure (One Shot)",
@@ -186,7 +184,7 @@ class StructureController extends BaseController
      */
     public function oneShotStore(Request $request)
     {
-        return $this->respond($this->structures->oneShotStore($request, (int) Auth::id()));
+        return $this->respond($this->structures->oneShotStore($request, (int) $request->user()->id));
     }
 
     public function oneShotAttach(Request $request)
@@ -196,7 +194,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/link-entity",
+     *      path="/api/v1/clients/link-entity",
      *      operationId="createStructure",
      *      tags={"Structures"},
      *      summary="Create Structure (Basic)",
@@ -235,12 +233,12 @@ class StructureController extends BaseController
             'ifu' => 'required|string',
         ]);
 
-        return $this->respond($this->structures->store($validatedData, (int) Auth::id()));
+        return $this->respond($this->structures->store($validatedData, (int) $request->user()->id));
     }
 
     /**
      * @OA\Put(
-     *      path="/api/structures/{id}",
+     *      path="/api/v1/structures/{id}",
      *      operationId="updateStructure",
      *      tags={"Structures"},
      *      summary="Update Structure",
@@ -285,7 +283,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Delete(
-     *      path="/api/structures/{id}",
+     *      path="/api/v1/structures/{id}",
      *      operationId="deleteStructure",
      *      tags={"Structures"},
      *      summary="Delete Structure",
@@ -315,7 +313,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/structures/update-status",
+     *      path="/api/v1/management/structures/update-status",
      *      operationId="updateStructureStatus",
      *      tags={"Structures"},
      *      summary="Update Structure Status (Bulk)",
@@ -355,7 +353,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/structures/notify-admin",
+     *      path="/api/v1/management/structures/notify-admin",
      *      operationId="sendStructureOtp",
      *      tags={"Structures"},
      *      summary="Send OTP for Structure Admin",
@@ -388,7 +386,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/structures/verify-admin",
+     *      path="/api/v1/management/structures/verify-admin",
      *      operationId="verifyStructureOtp",
      *      tags={"Structures"},
      *      summary="Verify OTP for Structure Admin",
@@ -424,7 +422,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/structures/{structure}/employees",
+     *      path="/api/v1/structures/{structure}/employees",
      *      operationId="listEmployees",
      *      tags={"Structures"},
      *      summary="List employees of a structure",
@@ -454,14 +452,14 @@ class StructureController extends BaseController
      *      @OA\Response(response=404, description="Structure not found")
      * )
      */
-    public function listEmployees($structureId)
+    public function listEmployees(Request $request, $structureId)
     {
-        return $this->respond($this->structures->listEmployees((int) $structureId, Auth::user()));
+        return $this->respond($this->structures->listEmployees((int) $structureId, $request->user()));
     }
 
     /**
      * @OA\Post(
-     *      path="/api/structures/{structure}/invite-employee",
+     *      path="/api/v1/structures/{structure}/invite-employee",
      *      operationId="inviteEmployee",
      *      tags={"Structures"},
      *      summary="Invite an employee to join a structure",
@@ -515,13 +513,13 @@ class StructureController extends BaseController
         ]);
 
         return $this->respond(
-            $this->structures->inviteEmployee($validatedData, (int) $structureId, auth()->user())
+            $this->structures->inviteEmployee($validatedData, (int) $structureId, $request->user())
         );
     }
 
     /**
      * @OA\Post(
-     *      path="/api/structures/{structure}/add-employee",
+     *      path="/api/v1/structures/{structure}/add-employee",
      *      operationId="addEmployee",
      *      tags={"Structures"},
      *      summary="Add an employee directly to a structure",
@@ -568,13 +566,13 @@ class StructureController extends BaseController
         ]);
 
         return $this->respond(
-            $this->structures->addEmployee($validatedData, (int) $structureId, Auth::user())
+            $this->structures->addEmployee($validatedData, (int) $structureId, $request->user())
         );
     }
 
     /**
      * @OA\Put(
-     *      path="/api/structures/{structure}/employees/{user}",
+     *      path="/api/v1/structures/{structure}/employees/{user}",
      *      operationId="updateEmployeeRole",
      *      tags={"Structures"},
      *      summary="Update employee role in a structure",
@@ -627,13 +625,13 @@ class StructureController extends BaseController
         ]);
 
         return $this->respond(
-            $this->structures->updateEmployeeRole($validatedData, (int) $structureId, (int) $userId, Auth::user())
+            $this->structures->updateEmployeeRole($validatedData, (int) $structureId, (int) $userId, $request->user())
         );
     }
 
     /**
      * @OA\Delete(
-     *      path="/api/structures/{structure}/employees/{user}",
+     *      path="/api/v1/structures/{structure}/employees/{user}",
      *      operationId="removeEmployee",
      *      tags={"Structures"},
      *      summary="Remove an employee from a structure",
@@ -664,16 +662,16 @@ class StructureController extends BaseController
      *      @OA\Response(response=404, description="Employee not found")
      * )
      */
-    public function removeEmployee($structureId, $userId)
+    public function removeEmployee(Request $request, $structureId, $userId)
     {
         return $this->respond(
-            $this->structures->removeEmployee((int) $structureId, (int) $userId, Auth::user())
+            $this->structures->removeEmployee((int) $structureId, (int) $userId, $request->user())
         );
     }
 
     /**
      * @OA\Post(
-     *      path="/api/management/structures/{structure}/force-add-employee",
+     *      path="/api/v1/management/structures/{structure}/force-add-employee",
      *      operationId="forceAddEmployee",
      *      tags={"Management"},
      *      summary="Force add employee to structure (Agent only)",
@@ -725,7 +723,7 @@ class StructureController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/management/structures/{structure}/pending-invitations",
+     *      path="/api/v1/management/structures/{structure}/pending-invitations",
      *      operationId="listPendingInvitations",
      *      tags={"Management"},
      *      summary="List pending invitations for a structure",
