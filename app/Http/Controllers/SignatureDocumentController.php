@@ -163,7 +163,9 @@ class SignatureDocumentController extends BaseController
         if ($status === 'finished') {
             $documentUrl = config('trustedx.base_url')."/trustedx-resources/esignsp/v2/signer_processes/{$signerProcessId}/documents/{$documentId}";
 
-            return $this->getSignedDocument($documentUrl);
+            \App\Jobs\FinalizeSignatureJob::dispatch($documentUrl, $signerProcessId, $documentId);
+
+            return $this->sendResponse('Signature en cours de finalisation.', []);
         }
 
         abort(500, 'Signature process not completed');

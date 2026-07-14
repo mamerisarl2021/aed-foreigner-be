@@ -757,12 +757,6 @@ parameters:
 			path: app/Http/Controllers/RevocationController.php
 
 		-
-			message: '#^Call to an undefined method App\\Http\\Controllers\\SignatureDocumentController\:\:getSignedDocument\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:destroy\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1

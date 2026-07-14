@@ -3,7 +3,7 @@
 Tracked remediation items derived from the Laravel 12 best-practices audit (`guidelines.md`).  
 **Status key:** `todo` · `in-progress` · `blocked` · `done` · `deferred`
 
-**Last updated:** 2026-07-10 (P3 partial: 01, 02, 03, 04, 07)
+**Last updated:** 2026-07-14 (P6 partial: 03, 04)
 
 ---
 
@@ -26,7 +26,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 11 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 4 | Medium |
 | [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 8 | Medium |
-| [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 2 | Medium |
+| [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 4 | Medium |
 | [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
 | [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 0 | Low |
@@ -148,8 +148,8 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 |----|--------|------|----------------------|-------|
 | P6-01 | `deferred` | Move sync TrustedX/PKI HTTP out of request cycle | `SignatureController`, `SigningIdentityController` | Frontend relies on immediate response; needs polling/webhook first |
 | P6-02 | `done` | Move sync revocation HTTP to queued job | `RevocationController` → `ProcessRevocationJob` | PKI POST + DELETE + notification now runs in background |
-| P6-03 | `todo` | Queue or background file uploads for heavy enrollment assets | `ForeignerEnrollmentController::uploadFilesAsync` | Misleading name; runs inline |
-| P6-04 | `todo` | Introduce `Bus::chain()` for multi-step enrollment/signing flows | Enrollment, signature finalize | No chains used today |
+| P6-03 | `done` | Queue or background file uploads for heavy enrollment assets | `ForeignerEnrollmentController::uploadFilesAsync` | Misleading name; runs inline |
+| P6-04 | `done` | Introduce `Bus::chain()` for multi-step enrollment/signing flows | Enrollment, signature finalize | No chains used today |
 | P6-05 | `todo` | Restore real Kkiapay verification in `validateSubscription` | `ForeignerEnrollmentController` | Depends on P0-03 |
 | P6-06 | `done` | Ensure notification paths go through Kafka (fix provider bindings) | `bootstrap/providers.php` | Fixed namespace references; `KafkaNotificationPublisherTest` now passes |
 
@@ -264,6 +264,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-13 | P3-08, P3-09, P3-10: Decomposed AuthTrait, AttachmentTrait, and ADTrait into respective services. Traits deleted. |
 | 2026-07-13 | P5, P6: Async processing offloaded for revocations, N+1 queries addressed. |
 | 2026-07-13 | P4, P7: API resources introduced, `strict_types=1` enforced, PHPStan Level 6 configured with baseline. |
+| 2026-07-14 | P6-03, P6-04: Implemented `Bus::chain()` and offloaded file uploads and signature finalization to background jobs. |
 
 ---
 
