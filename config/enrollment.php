@@ -12,7 +12,7 @@ return [
         'notify_roles' => [
             'level1' => ['tech_one', 'tech_two', 'tech_three'],
             'level2' => ['superviseur'],
-            'level3' => ['admin', 'superviseur'],
+            'level3' => ['manager'],
         ],
     ],
 

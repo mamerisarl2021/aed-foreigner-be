@@ -26,12 +26,12 @@ class EnrollmentRequestPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur']);
+        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur', 'manager']);
     }
 
     public function view(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur']);
+        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur', 'manager']);
     }
 
     public function claim(User $user, EnrollmentRequest $enrollmentRequest): bool
@@ -70,16 +70,18 @@ class EnrollmentRequestPolicy
 
     public function supervisorReject(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole('superviseur');
+        return $user->hasRole('superviseur')
+            && $enrollmentRequest->status === 'REJECTED_BY_AGENT';
     }
 
     public function supervisorReturn(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole('superviseur');
+        return $user->hasRole('superviseur')
+            && in_array($enrollmentRequest->status, ['APPROVED_BY_AGENT', 'REJECTED_BY_AGENT'], true);
     }
 
     public function viewEnrollmentStats(User $user): bool
     {
-        return $user->hasAnyRole(['superviseur', 'admin']);
+        return $user->hasRole('manager');
     }
 }

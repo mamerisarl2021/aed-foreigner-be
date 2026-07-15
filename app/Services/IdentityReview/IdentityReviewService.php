@@ -12,7 +12,6 @@ use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSimilarityService;
-use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use Carbon\Carbon;
@@ -26,7 +25,6 @@ use Illuminate\Support\Str;
 class IdentityReviewService
 {
     public function __construct(
-        private readonly TrustedXClientService $trustedXClient,
         private readonly EnrollmentSimilarityService $similarityService,
     ) {}
 
@@ -36,9 +34,11 @@ class IdentityReviewService
             'PENDING',
             'VISIO_REQUESTED',
             'APPROVED_BY_AGENT',
+            'REJECTED_BY_AGENT',
             'RETURNED_TO_AGENT',
             'REJECTED',
             'APPROVED',
+            'FINALIZED',
         ];
         $allowedTypes = ['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'];
 
@@ -162,7 +162,7 @@ class IdentityReviewService
             $enrollment->save();
             DB::commit();
 
-            return ServiceResult::ok('Demande validée par l’agent et transmise au superviseur.', [
+            return ServiceResult::ok('Demande validée par l’agent et transmise au responsable.', [
                 'enrollment_id' => $enrollment->id,
             ]);
         } catch (Exception $e) {
@@ -227,8 +227,8 @@ class IdentityReviewService
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($enrollment->status !== 'APPROVED_BY_AGENT') {
-            return ServiceResult::fail('Statut non APPROVED_BY_AGENT.', null, 422);
+        if (! in_array($enrollment->status, ['APPROVED_BY_AGENT', 'REJECTED_BY_AGENT'], true)) {
+            return ServiceResult::fail('Statut non éligible au renvoi (APPROVED_BY_AGENT ou REJECTED_BY_AGENT).', null, 422);
         }
 
         $enrollment->status = 'RETURNED_TO_AGENT';
@@ -285,7 +285,7 @@ class IdentityReviewService
                     'phonenumber' => $enrollment->phonenumber,
                     'nationality' => $enrollment->kyc_data['nationality'] ?? '',
                     'profile' => $enrollment->documents['profile'] ?? null,
-                    'status' => 'ACTIVE',
+                    'status' => 'CREATED',
                 ]);
             }
 
@@ -318,9 +318,6 @@ class IdentityReviewService
                 'assigned_agent_id' => $supervisorId,
             ]);
 
-            $payload = ['data' => ['npi' => $user->npi]];
-            $this->trustedXClient->register($payload);
-
             $allToken = Str::random(60);
             $pinToken = Str::random(60);
             $passwordToken = Str::random(60);
@@ -345,7 +342,7 @@ class IdentityReviewService
             $enrollment->save();
             DB::commit();
 
-            return ServiceResult::ok('Demande approuvée par le superviseur, compte créé et initialisé.', [
+            return ServiceResult::ok('Demande approuvée par le responsable. Invitation de finalisation envoyée.', [
                 'enrollment_id' => $enrollment->id,
                 'user_id' => $user->id,
                 'npi' => $user->npi,
@@ -354,80 +351,96 @@ class IdentityReviewService
             DB::rollBack();
             Log::error('Supervisor approve failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-            return ServiceResult::fail("Erreur lors de l'approbation superviseur.", null, 500);
+            return ServiceResult::fail("Erreur lors de l'approbation responsable.", null, 500);
         }
     }
 
     /**
-     * @param  list<string>  $allowedStatuses
+     * Agent proposes a rejection — waits for responsable confirmation (PDF §3.1 / §3.2).
      */
-    public function reject(int $id, string $stage, array $reasons, ?string $comments, array $allowedStatuses): ServiceResult
+    public function proposeReject(int $id, string $stage, array $reasons, ?string $comments): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if (! in_array($enrollment->status, $allowedStatuses, true)) {
+        if (! in_array($enrollment->status, ['PENDING', 'RETURNED_TO_AGENT'], true)) {
             return ServiceResult::fail(
-                'Statut non éligible au rejet (attendu: '.implode('|', $allowedStatuses).').',
+                'Statut non éligible au rejet agent (PENDING ou RETURNED_TO_AGENT).',
                 null,
                 422
             );
         }
 
-        $isSupervisor = in_array('APPROVED_BY_AGENT', $allowedStatuses, true)
-            && ! in_array('PENDING', $allowedStatuses, true);
-
-        DB::beginTransaction();
-        try {
-            $this->applyRejection($enrollment, $stage, $reasons, $comments);
-
-            $successMessage = $isSupervisor
-                ? 'Demande rejetée par le superviseur et notifiée.'
-                : 'Demande rejetée et notifiée.';
-
-            return ServiceResult::ok($successMessage, ['enrollment_id' => $enrollment->id]);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Reject enrollment failed: '.$e->getMessage());
-
-            $errorMessage = $isSupervisor
-                ? 'Erreur lors du rejet superviseur.'
-                : 'Erreur lors du rejet.';
-
-            return ServiceResult::fail($errorMessage, null, 500);
-        }
-    }
-
-    private function applyRejection(EnrollmentRequest $enrollment, string $stage, array $reasons, ?string $comments): void
-    {
         $enrollment->reject_stage = $stage;
         $enrollment->reject_reasons = $reasons;
         $enrollment->review_comments = $comments;
-        $enrollment->status = 'REJECTED';
+        $enrollment->status = 'REJECTED_BY_AGENT';
         $enrollment->save();
 
-        $recipientName = $enrollment->kyc_data['name'] ?? $enrollment->email;
+        return ServiceResult::ok('Rejet proposé et transmis au responsable.', [
+            'enrollment_id' => $enrollment->id,
+        ]);
+    }
 
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: 'Votre demande d\'enrôlement a été rejetée',
-            template: NotificationTemplate::IdentityRejected,
-            recipients: [
-                NotificationRecipient::email($enrollment->email, [
+    /**
+     * Responsable confirms the agent's rejection proposal (PDF §3.2 — Approbation du rejet).
+     */
+    public function supervisorApproveReject(int $id, ?string $stage = null, ?array $reasons = null, ?string $comments = null): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if ($enrollment->status !== 'REJECTED_BY_AGENT') {
+            return ServiceResult::fail('Statut non REJECTED_BY_AGENT.', null, 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            if ($stage !== null) {
+                $enrollment->reject_stage = $stage;
+            }
+            if ($reasons !== null) {
+                $enrollment->reject_reasons = $reasons;
+            }
+            if ($comments !== null) {
+                $enrollment->review_comments = $comments;
+            }
+
+            $enrollment->status = 'REJECTED';
+            $enrollment->save();
+
+            $recipientName = $enrollment->kyc_data['name'] ?? $enrollment->email;
+            $rejectReasons = $enrollment->reject_reasons ?? [];
+
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: 'Votre demande d\'enrôlement a été rejetée',
+                template: NotificationTemplate::IdentityRejected,
+                recipients: [
+                    NotificationRecipient::email($enrollment->email, [
+                        'name' => $recipientName,
+                        'stage' => $enrollment->reject_stage,
+                        'reasons' => $rejectReasons,
+                        'comments' => $enrollment->review_comments,
+                    ]),
+                ],
+                variables: [
                     'name' => $recipientName,
                     'stage' => $enrollment->reject_stage,
-                    'reasons' => $reasons,
+                    'reasons' => $rejectReasons,
                     'comments' => $enrollment->review_comments,
-                ]),
-            ],
-            variables: [
-                'name' => $recipientName,
-                'stage' => $enrollment->reject_stage,
-                'reasons' => $reasons,
-                'comments' => $enrollment->review_comments,
-            ],
-            type: 'IDENTITY_REJECTED',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
+                ],
+                type: 'IDENTITY_REJECTED',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
 
-        DB::commit();
+            DB::commit();
+
+            return ServiceResult::ok('Rejet confirmé par le responsable et notifié au demandeur.', [
+                'enrollment_id' => $enrollment->id,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Supervisor approve reject failed: '.$e->getMessage());
+
+            return ServiceResult::fail('Erreur lors de la confirmation du rejet.', null, 500);
+        }
     }
 }

@@ -31,6 +31,8 @@ class User extends Authenticatable implements Auditable
         'email',
         'status',
         'npi',
+        'trustedx_registered_at',
+        'security_questions',
     ];
 
     protected $appends = ['link'];
@@ -50,6 +52,8 @@ class User extends Authenticatable implements Auditable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'trustedx_registered_at' => 'datetime',
+            'security_questions' => 'array',
         ];
     }
 
