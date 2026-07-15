@@ -761,35 +761,35 @@ class UserController extends BaseController
         return $this->sendResponse($result->message, $result->data ?? []);
     }
 
-    /**
-     * @OA\Post(
-     *      path="/api/v1/employees/create",
-     *      operationId="createEmployee",
-     *      tags={"Users"},
-     *      summary="Create a new employee user",
-     *      description="Creates a new employee user and sends invitation to join structure.",
-     *      security={{"sanctum":{}}},
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *              required={"email", "structure_id"},
-     *
-     *              @OA\Property(property="email", type="string", format="email"),
-     *              @OA\Property(property="structure_id", type="integer"),
-     *              @OA\Property(property="name", type="string"),
-     *              @OA\Property(property="phone", type="string"),
-     *              @OA\Property(property="role", type="string", enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}),
-     *              @OA\Property(property="message", type="string", max=500)
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Employee created and invitation sent"),
-     *      @OA\Response(response=403, description="Forbidden"),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
+//    /**
+//     * @OA\Post(
+//     *      path="/api/v1/employees/create",
+//     *      operationId="createEmployee",
+//     *      tags={"Users"},
+//     *      summary="Create a new employee user",
+//     *      description="Creates a new employee user and sends invitation to join structure.",
+//     *      security={{"sanctum":{}}},
+//     *
+//     *      @OA\RequestBody(
+//     *          required=true,
+//     *
+//     *          @OA\JsonContent(
+//     *              required={"email", "structure_id"},
+//     *
+//     *              @OA\Property(property="email", type="string", format="email"),
+//     *              @OA\Property(property="structure_id", type="integer"),
+//     *              @OA\Property(property="name", type="string"),
+//     *              @OA\Property(property="phone", type="string"),
+//     *              @OA\Property(property="role", type="string", enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}),
+//     *              @OA\Property(property="message", type="string", max=500)
+//     *          )
+//     *      ),
+//     *
+//     *      @OA\Response(response=200, description="Employee created and invitation sent"),
+//     *      @OA\Response(response=403, description="Forbidden"),
+//     *      @OA\Response(response=422, description="Validation error")
+//     * )
+//     */
     public function createEmployee(CreateEmployeeRequest $request)
     {
         return $this->respond($this->registration->createEmployee(

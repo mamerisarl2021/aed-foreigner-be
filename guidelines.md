@@ -2,7 +2,14 @@
 
 This document defines the practices we **strictly follow** when building and maintaining `aed-foreigner-be`. It applies to all contributors and AI-assisted changes.
 
-Sources consolidated from:
+**Product source of truth** (business rules for enrollment):
+
+- [`txdocs/Parcours d’enrolement des étrangers – vf.pdf`](./txdocs/Parcours%20d’enrolement%20des%20étrangers%20–%20vf.pdf)
+- [`pics/`](./pics/) UI reference screens for the same parcours
+
+When code, backlog notes, or older guideline sections conflict with that PDF/`pics` set, **follow the PDF/`pics`**. Engineering practices below still apply.
+
+Engineering sources consolidated from:
 
 - [`laravel12bestpractices.txt`](./laravel12bestpractices.txt)
 - [TatvaSoft — Laravel Best Practices](https://www.tatvasoft.com/outsourcing/2025/09/laravel-best-practices.html)
@@ -12,16 +19,23 @@ Sources consolidated from:
 
 ## 1. Scope & stack
 
-| Item | Standard                                                                            |
-|------|-------------------------------------------------------------------------------------|
-| Framework | Laravel **12**                                                                      |
-| PHP | **8.4+**                                                                            |
-| API prefix | `/api/v1` (configured in `bootstrap/app.php`)                                       |
-| Auth | Laravel Sanctum + Spatie Permission                                                 |
+| Item | Standard |
+|------|----------|
+| Framework | Laravel **12** |
+| PHP | **8.4+** |
+| API prefix | `/api/v1` (configured in `bootstrap/app.php`) |
+| Auth | Laravel Sanctum + Spatie Permission (roles) + **Laravel Policies** (resource actions) |
 | Notifications | Kafka publisher (`KafkaNotificationPublisher`) — not direct `Mail::` in domain code |
-| Service discovery | Consul (when infra is available)                                                    |
+| Service discovery | Consul (when infra is available) |
 
-This backend serves the **foreigner enrollment and identity review** domain. Business rules may evolve during genesis; code structure must remain clean enough to adapt without rewrites.
+This backend is **exclusively for AED Étranger** (foreigner enrollment and identity review). Do not expand it into citizen / national enrollment flows that belong on other platforms.
+
+Two enrollment tracks exist in the product spec:
+
+| Track | Status in this backend |
+|-------|------------------------|
+| **Personne physique** | Implemented (OTP → `enrollment_requests` → agent → supervisor → finalization invite) |
+| **Personne morale** | Specified in the PDF; **not** the current implementation focus unless explicitly requested |
 
 ---
 
@@ -44,13 +58,13 @@ Follow the **streamlined Laravel 12 skeleton**. Do not reintroduce legacy patter
 **Always** scaffold with Artisan. Do not hand-create boilerplate.
 
 ```bash
-php artisan make:model Post -mfsc --policy   # model + migration + factory + seeder + controller
-php artisan make:request StorePostRequest
-php artisan make:controller PostController --resource
-php artisan make:controller SendInvoice --invokable   # single-action endpoints
-php artisan make:job ProcessEnrollment
-php artisan make:class Services/EnrollmentService
-php artisan make:resource PostResource
+php artisan make:model EnrollmentRequest -mfsc --policy
+php artisan make:request Enrollment/SubmitEnrollmentRequest
+php artisan make:controller ForeignerEnrollmentController
+php artisan make:controller Singletons/HealthCheckController --invokable
+php artisan make:job UploadEnrollmentFilesJob
+php artisan make:class Services/Enrollment/ForeignerEnrollmentService
+php artisan make:resource EnrollmentRequestResource
 ```
 
 When running commands in CI or automation, pass `--no-interaction`.
@@ -64,7 +78,7 @@ When running commands in CI or automation, pass `--no-interaction`.
 Controllers **MUST** only:
 
 - Accept HTTP input (`Request`, Form Requests)
-- Authorize (policies / middleware / roles)
+- Authorize via **policies** (`$this->authorize(...)`) for resource actions
 - Delegate to services, actions, or jobs
 - Return typed responses (`JsonResponse`, API Resources, etc.)
 
@@ -72,7 +86,7 @@ Controllers **MUST NOT** contain:
 
 - Complex business workflows
 - Raw multi-step DB orchestration (use services + transactions)
-- Direct third-party integration logic (Consul, Kafka, Kkiapay, etc.)
+- Direct third-party integration logic (Consul, Kafka, TrustedX, etc.)
 
 Move logic to:
 
@@ -86,34 +100,30 @@ Move logic to:
 **Never** validate inside controller methods with inline `Validator::make()` for new code.
 
 ```bash
-php artisan make:request StoreForeignerRegistrationRequest
+php artisan make:request Enrollment/SubmitEnrollmentRequest
 ```
 
 Form Requests **MUST** include:
 
 - `rules(): array`
 - Custom messages when defaults are unclear
-- `authorize(): bool` when access depends on input or role
+- `authorize(): bool` when access depends on input or role (guest enrollment requests typically `return true` and rely on OTP gates in the service)
 
 Existing controllers with inline validation should be migrated when touched.
 
 ### 4.3 Service classes for business logic
 
-Extract workflows (registration, identity review, subscription validation) into dedicated services. Inject them via constructor property promotion.
+Extract workflows (enrollment submission, identity review, TrustedX provisioning) into dedicated services. Inject them via constructor property promotion.
 
 ```php
 public function __construct(
-    private readonly EnrollmentService $enrollment,
+    private readonly ForeignerEnrollmentService $enrollment,
 ) {}
 ```
 
 ### 4.4 Single-responsibility HTTP actions
 
-For one endpoint = one action, prefer **invokable controllers**:
-
-```bash
-php artisan make:controller FinalizeForeignerRegistration --invokable
-```
+For one endpoint = one action, prefer **invokable controllers** under `app/Http/Controllers/Singletons/` when appropriate.
 
 ---
 
@@ -140,8 +150,9 @@ Use the `casts()` method (not the deprecated `$casts` property) on new models:
 protected function casts(): array
 {
     return [
-        'published_at' => 'datetime',
-        'metadata' => 'array',
+        'kyc_data' => 'array',
+        'documents' => 'array',
+        'analysis_details' => 'array',
     ];
 }
 ```
@@ -170,15 +181,16 @@ Static analysis with **Larastan** at **level 6 or higher**:
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Models | Singular PascalCase | `Identity`, `PendingRegistration` |
+| Models | Singular PascalCase | `EnrollmentRequest`, `Identity` |
 | Controllers | PascalCase + `Controller` | `ForeignerEnrollmentController` |
-| Tables | Plural snake_case | `pending_registrations` |
+| Tables | Plural snake_case | `enrollment_requests` |
 | Columns | snake_case | `assigned_agent_id` |
-| Methods / variables | camelCase | `finalizeRegistration`, `$pendingRegistration` |
-| Routes | kebab-case URI segments | `/foreigner/register/finalize` |
+| Methods / variables | camelCase | `submitEnrollment`, `$enrollmentRequest` |
+| Routes | kebab-case URI segments | `/foreigner/enroll`, `/management/identity-reviews/{id}/claim` |
 | Config keys | snake_case | `config('notifications.topics.email')` |
-| Jobs | Verb + noun + `Job` | `ForeignerFinalizedJob` |
-| Enums | PascalCase cases | `NotificationTemplate::UserAddedToAed` |
+| Jobs | Verb + noun + `Job` | `ForeignerFinalizedJob`, `UploadEnrollmentFilesJob` |
+| Enums | PascalCase cases | `NotificationTemplate::ForeignerFinalized` |
+| Policies | Model name + `Policy` | `EnrollmentRequestPolicy` |
 
 Use **named routes** and the `route()` helper where applicable.
 
@@ -218,21 +230,17 @@ For local development and migrations, prefer `CACHE_STORE=file` unless the `cach
 
 ```php
 // ✅ Preferred
-User::query()->where('status', 'ACTIVE')->get();
+EnrollmentRequest::query()->where('status', 'PENDING')->get();
 
 // ❌ Avoid unless there is a measured performance reason
-DB::table('users')->where('status', 'ACTIVE')->get();
+DB::table('enrollment_requests')->where('status', 'PENDING')->get();
 ```
 
 When raw SQL is required, **always** use parameter binding — never concatenate user input.
 
 ### 8.2 Prevent N+1 queries
 
-**Always** eager load relationships used in loops or API collections:
-
-```php
-Identity::with(['user:id,name,email,phonenumber,npi'])->paginate();
-```
+**Always** eager load relationships used in loops or API collections.
 
 Review list endpoints and exports for N+1 before merging.
 
@@ -244,32 +252,35 @@ Use:
 
 - `cursor()` / lazy collections
 - `chunk()` / `chunkById()` for batch processing
-- Pagination for HTTP list endpoints
+- Pagination for HTTP list endpoints (cap `per_page`, e.g. max 100)
 
 ### 8.4 Migrations
 
-When **changing** a column, include **all** previous attributes or they will be lost:
-
-```php
-// ❌ Loses nullable
-$table->string('email')->unique()->change();
-
-// ✅ Preserves nullable
-$table->string('email')->nullable()->unique()->change();
-```
+When **changing** a column, include **all** previous attributes or they will be lost.
 
 One concern per migration. Name migrations descriptively.
 
 Use factories and seeders for test and local data:
 
 ```bash
-php artisan make:factory IdentityFactory
-php artisan make:seeder IdentitySeeder
+php artisan make:factory UserFactory
+php artisan make:factory EnrollmentRequestFactory
 ```
 
 ### 8.5 Keep models focused
 
 Models hold relationships, scopes, casts, and accessors — not orchestration logic. Move workflows to services.
+
+### 8.6 Enrollment data separation (product rule)
+
+Per the PDF: keep **demandes** and **identités validées** in distinct stores.
+
+| Stage | Storage |
+|-------|---------|
+| Demande en instruction | `enrollment_requests` (`PENDING`, `APPROVED_BY_AGENT`, `REJECTED`, …) |
+| Identité définitivement approuvée | `users` + `identities` (created on supervisor approval) |
+
+Do not create `User` / `Identity` at submit time for personne physique.
 
 ---
 
@@ -288,18 +299,14 @@ public function index(Request $request): JsonResponse
 
 **Do not** use `auth()->user()` or `Auth::user()` in new code.
 
-Tests may use `Sanctum::actingAs()` or project test helpers (e.g. `actingAsAgent()`).
+Tests may use `Sanctum::actingAs()` or project test helpers.
 
 ### 9.2 API responses
 
 - All API routes return JSON (`ForceJsonResponse` middleware is global)
-- Use **API Resources** to decouple DB shape from public JSON:
+- Use **API Resources** to decouple DB shape from public JSON (e.g. `EnrollmentRequestResource`)
 
-```bash
-php artisan make:resource IdentityReviewResource
-```
-
-Standard success envelope (existing project pattern):
+Standard success envelope:
 
 ```json
 {
@@ -311,11 +318,24 @@ Standard success envelope (existing project pattern):
 
 Use appropriate HTTP status codes; validation errors return **422**.
 
-### 9.3 Authorization
+### 9.3 Authorization (policies first — P10-04)
 
-- Route middleware: `role:`, `permission:`, `auth:sanctum`
-- Fine-grained checks: policies + `$this->authorize()`
-- Spatie `UnauthorizedException` is rendered as JSON 403 in `bootstrap/app.php` — preserve this behavior
+**Source of truth for “can this user do this action on this resource?” is Laravel Policies**, not duplicated `role:` middleware lists.
+
+| Layer | Responsibility |
+|-------|----------------|
+| `auth:sanctum` | Caller is authenticated (when required) |
+| **Policy** (`$this->authorize(...)`) | Role + ownership + status rules (claim, approve, reject, supervisor actions, …) |
+| Route `role:` middleware | **Transitional coarse gate only** — may remain while migrating legacy routes; must not diverge from the matching policy |
+
+Rules for new / touched enrollment-review code:
+
+1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
+2. Policies **MUST** use the real Spatie role names used by AED agents: `tech_one`, `tech_two`, `tech_three`, `superviseur`, `admin` (and `client` where relevant). Do **not** invent parallel role names like a bare `agent` unless product renames roles everywhere.
+3. Prefer expanding policies over adding more nested `role:` middleware groups.
+4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
+
+Spatie `UnauthorizedException` / authorization failures are rendered as JSON **403** — preserve this behavior.
 
 ### 9.4 Security baseline
 
@@ -335,8 +355,8 @@ Use appropriate HTTP status codes; validation errors return **422**.
 Any operation that is slow, external, or retryable **MUST** be a queued job implementing `ShouldQueue`:
 
 - Email/SMS/notifications (via Kafka jobs)
-- File processing, Regula analysis
-- Third-party API calls (Kkiapay, Consul side effects)
+- File upload to cloud storage, Regula analysis
+- Third-party API calls (TrustedX, etc.)
 
 HTTP responses **MUST NOT** wait on these operations.
 
@@ -344,15 +364,7 @@ Configure sensible `$tries`, `$timeout`, and `$backoff` on jobs.
 
 ### 10.2 Job chains
 
-For ordered multi-step workflows, use:
-
-```php
-Bus::chain([
-    new ProcessVideo($video),
-    new AddWatermark($video),
-    new DeployToProduction($video),
-])->dispatch();
-```
+For ordered multi-step workflows (e.g. after enrollment submit: upload files → Regula → confirmation email), use `Bus::chain([...])->dispatch()`.
 
 If one step fails, subsequent steps must not run.
 
@@ -361,6 +373,7 @@ If one step fails, subsequent steps must not run.
 - Publish through `NotificationPublisherInterface` / `KafkaNotificationPublisher`
 - Always call `->send()` on the Kafka producer builder
 - Do not reintroduce `Mail::` in controllers or domain jobs for new features
+- Prefer **reusing / adapting** existing Blade templates under `resources/views/emails/` before creating new ones
 - Template names and payloads must match the notification module contract (`config/notifications.php`)
 
 ### 10.4 Production optimization
@@ -393,13 +406,15 @@ Monitor and fix N+1 queries and slow endpoints before scaling hardware.
 
 - Use PHPUnit `#[Test]` attribute — **not** `/** @test */` docblocks (deprecated in PHPUnit 12)
 - Use `$this->api('/path')` helper from `tests/TestCase.php` for `/api/v1` prefix
-- Fake external systems: `Bus::fake()`, `Kafka::fake()`, `Storage::fake()`, HTTP fakes
-- Assign Spatie roles in test setup when hitting role-protected routes
+- Fake external systems: `Bus::fake()`, `Storage::fake()`, HTTP fakes, mock TrustedX where needed
+- Assign Spatie roles in test setup when hitting authenticated management routes
+- Prefer workflow-oriented feature tests for enrollment (see `PersonnePhysiqueEnrollmentWorkflowTest`)
 
 ### 11.3 Test database
 
 - Prefer a dedicated MySQL test database (`.env.testing` or `phpunit.xml`)
 - Seed only what each test needs; avoid depending on production-like fixtures
+- Spatie permission tables **must** exist via migrations (do not publish migrations ad hoc inside tests)
 
 Run suite:
 
@@ -420,27 +435,68 @@ Check new PHP dependencies for known vulnerabilities before adoption.
 
 ---
 
-## 13. Project-specific rules
+## 13. Project-specific rules (AED Étranger)
 
-### 13.1 Foreigner enrollment
+### 13.1 Personne physique enrollment (implemented)
 
-- `ForeignerEnrollmentController` currently forces `type = ONLINE` and `level = ADVANCED` for the foreigner flow — treat this as intentional until product spec changes
-- Do not expand scope into citizen flows; those belong elsewhere (`UserController`, etc.)
+Canonical HTTP flow:
 
-### 13.2 Identity review
+```
+POST /foreigner/send-otp     { email } | { phonenumber }
+POST /foreigner/verify-otp   { email|phonenumber, otp }
+POST /foreigner/enroll       multipart KYC + documents (+ liveness/similarity)
+```
 
-- Agent routes require Spatie roles (`tech_one`, `tech_two`, `tech_three`, `superviseur`)
-- List/filter logic belongs in query scopes or a dedicated service, not duplicated in controllers
+Business rules:
 
-### 13.3 Infrastructure integration
+- Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
+- Submit creates an `enrollment_requests` row with `type = PERSONNE_PHYSIQUE` and `status = PENDING`.
+- Do **not** create `User` / `Identity` / NPI at submit time.
+- After submit: queue cloud upload + Regula analysis; send confirmation using the existing foreigner finalized notification template (reuse, do not invent a parallel “advanced id request” mail for this path).
+- Guest endpoints; no Sanctum token required for OTP/enroll.
+
+### 13.2 Agent / supervisor review (implemented)
+
+Status machine for demandes:
+
+```
+PENDING → APPROVED_BY_AGENT → APPROVED
+        ↘ REJECTED
+```
+
+- Agents (`tech_one` | `tech_two` | `tech_three`): claim, approve, reject (with stage + reasons).
+- Supervisor (`superviseur`): approve (creates user/identity, assigns foreigner NPI `F-…`, TrustedX register, finalization invite) or reject.
+- Authorization for these actions lives in `EnrollmentRequestPolicy` (see §9.3).
+
+### 13.3 Finalization & authentication after approval (product)
+
+Per PDF §§4–5, after supervisor validation the foreigner:
+
+- Receives a secure finalization link (password / PIN / recovery questions on the frontend)
+- Authenticates later with unique ID + password + OTP (and optionally Mobile ID)
+
+This backend’s responsibility on approval is: persist enrolled identity, provision TrustedX as configured, issue finalization tokens, dispatch the welcome/finalization notification. The frontend init-account UI is out of band.
+
+### 13.4 Explicitly out of current API scope (PDF features not built yet)
+
+Do not pretend these exist in code without implementing them:
+
+- Agent-requested **visio**
+- **SLA** alerts / manager enrollment dashboard
+- Systematic similarity vs already-approved identities UI/API (beyond stored Regula/`risk_score` fields)
+- Full **personne morale** parcours (async email link + SMS after submit, PSCEQ APIs, company account transfer, …)
+
+### 13.5 Infrastructure integration
 
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
 
-### 13.4 Legacy code
+### 13.6 Legacy code
 
-`app/Mail/` and `resources/views/emails/` are reference material during the Kafka migration. Do not build new features on `Mail::` facades.
+`app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
+
+Legacy citizen-oriented endpoints under `UserController` (old in-person identity paths, etc.) are **not** the AED Étranger enrollment source of truth; do not extend them for the foreigner parcours.
 
 ---
 
@@ -448,14 +504,17 @@ Check new PHP dependencies for known vulnerabilities before adoption.
 
 Before opening or approving a PR, verify:
 
+- [ ] Behavior matches PDF/`pics` for the touched enrollment path (or documents a deliberate gap)
 - [ ] Controller is thin; validation is in Form Requests
+- [ ] Resource actions use **policies** (`authorize`); role middleware does not contradict the policy
 - [ ] No `env()` outside `config/`
 - [ ] No secrets in code or commits
 - [ ] Types on all new/changed methods and relationships
 - [ ] Eager loading where relationships are accessed
-- [ ] Slow/external work dispatched to queues
+- [ ] Slow/external work dispatched to queues / `Bus::chain` where ordered
 - [ ] API changes use Resources and `/api/v1` paths
-- [ ] `$request->user()` used instead of facades
+- [ ] `$request->user()` used instead of auth facades
+- [ ] Emails: reuse/adapt `resources/views/emails/**` before adding templates
 - [ ] Tests added/updated; `php artisan test` passes
 - [ ] Pint (and Larastan when configured) clean on touched files
 - [ ] Migrations reversible and safe for existing data
@@ -464,12 +523,15 @@ Before opening or approving a PR, verify:
 
 ## 15. References
 
-| Resource | URL |
-|----------|-----|
-| Internal notes | [`laravel12bestpractices.txt`](./laravel12bestpractices.txt) |
+| Resource | URL / path |
+|----------|------------|
+| Enrollment parcours (product SoT) | [`txdocs/Parcours d’enrolement des étrangers – vf.pdf`](./txdocs/Parcours%20d’enrolement%20des%20étrangers%20–%20vf.pdf) |
+| UI references | [`pics/`](./pics/) |
+| Internal engineering notes | [`laravel12bestpractices.txt`](./laravel12bestpractices.txt) |
+| Refactor backlog | [`REFACTOR_BACKLOG.md`](./REFACTOR_BACKLOG.md) |
 | TatvaSoft Laravel practices | https://www.tatvasoft.com/outsourcing/2025/09/laravel-best-practices.html |
 | Smithery Laravel 12 skill | https://smithery.ai/skills/matula/laravel-12 |
 | Laravel 12 docs | https://laravel.com/docs/12.x |
 | Laravel Kafka (notifications) | https://laravelkafka.com/docs/v2.11 |
 
-When guidelines conflict with legacy code, **follow this document for all new work** and refactor touched legacy code toward these standards incrementally.
+When guidelines conflict with legacy code, **follow this document for all new work** and refactor touched legacy code toward these standards incrementally. When this document conflicts with the enrollment PDF/`pics`, **update this document** — do not silently diverge from the product SoT.

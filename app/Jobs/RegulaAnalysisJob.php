@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Models\Identity;
+use App\Models\EnrollmentRequest;
 use App\Services\RegulaService;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -16,61 +18,42 @@ class RegulaAnalysisJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $identityId;
+    public function __construct(
+        public readonly int $enrollmentRequestId,
+    ) {}
 
-    /**
-     * Create a new job instance.
-     *
-     * @return void
-     */
-    public function __construct(int $identityId)
+    public function handle(RegulaService $regulaService): void
     {
-        $this->identityId = $identityId;
-    }
-
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
-    public function handle(RegulaService $regulaService)
-    {
-        Log::info("Starting Regula analysis (FaceMatch + DocValid) for Identity ID: {$this->identityId}");
+        Log::info("Starting Regula analysis for EnrollmentRequest ID: {$this->enrollmentRequestId}");
 
         try {
-            $identity = Identity::find($this->identityId);
-            if (! $identity) {
-                Log::error("Identity not found: {$this->identityId}");
+            $enrollment = EnrollmentRequest::find($this->enrollmentRequestId);
+            if (! $enrollment) {
+                Log::error("EnrollmentRequest not found: {$this->enrollmentRequestId}");
 
                 return;
             }
 
-            // In a real scenario, we would retrieve files from Storage based on $identity->proof
-            // For the mock, we pass the proof array
-            $proof = json_decode($identity->proof, true) ?? [];
+            $documents = $enrollment->documents ?? [];
+            $kycData = $enrollment->kyc_data ?? [];
 
-            $result = $regulaService->analyzeIdentity([], $proof);
+            $result = $regulaService->analyzeIdentity([], array_merge($kycData, [
+                'documents' => $documents,
+                'liveness' => $enrollment->liveness,
+                'similarity' => $enrollment->similarity,
+            ]));
 
             if ($result['status'] === 'OK') {
-                $identity->risk_score = $result['risk_score'];
-                $identity->analysis_details = json_encode($result['details']);
-                // We don't automatically approve, we just enrich the data for the agent
-                // But we could auto-reject if score is too high (e.g. > 90)
-                // For now, let's just save the score.
+                $enrollment->risk_score = (string) $result['risk_score'];
+                $enrollment->analysis_details = $result['details'] ?? [];
+                $enrollment->save();
 
-                // Update status to indicate analysis is done if we want granular status
-                // $identity->status = 'ANALYZED';
-
-                $identity->save();
-                Log::info("Regula analysis completed for Identity ID: {$this->identityId}. Score: {$result['risk_score']}");
+                Log::info("Regula analysis completed for EnrollmentRequest ID: {$this->enrollmentRequestId}. Score: {$result['risk_score']}");
             } else {
-                Log::warning("Regula analysis returned non-OK status for Identity ID: {$this->identityId}");
+                Log::warning("Regula analysis returned non-OK status for EnrollmentRequest ID: {$this->enrollmentRequestId}");
             }
-
         } catch (Exception $e) {
             Log::error('Error in RegulaAnalysisJob: '.$e->getMessage());
-            // Optionally release the job back to queue
-            // $this->release(60);
         }
     }
 }

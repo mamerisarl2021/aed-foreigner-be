@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
-use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\ForeignerOtpJob;
 use App\Jobs\RegulaAnalysisJob;
+use App\Jobs\SendSmsJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Services\ServiceResult;
@@ -20,30 +20,63 @@ use Illuminate\Support\Facades\Storage;
 
 class ForeignerEnrollmentService
 {
-    public function sendOtp(string $email): ServiceResult
+    public function sendOtp(?string $email = null, ?string $phonenumber = null): ServiceResult
     {
-        $email = strtolower(trim($email));
+        if ($email) {
+            $email = strtolower(trim($email));
+            $otp = (string) random_int(100000, 999999);
+            $ttl = 5;
+
+            Cache::put('foreigner_otp_'.$email, $otp, now()->addMinutes($ttl));
+            ForeignerOtpJob::dispatch($email, $otp, $ttl);
+
+            return ServiceResult::ok('OTP envoyé à votre adresse email.', ['email' => $email, 'channel' => 'email']);
+        }
+
+        $phone = $this->normalizePhone((string) $phonenumber);
         $otp = (string) random_int(100000, 999999);
         $ttl = 5;
 
-        Cache::put('foreigner_otp_'.$email, $otp, now()->addMinutes($ttl));
-        ForeignerOtpJob::dispatch($email, $otp, $ttl);
+        Cache::put('foreigner_otp_phone_'.$phone, $otp, now()->addMinutes($ttl));
+        SendSmsJob::dispatch(
+            $phone,
+            "Votre code OTP AED est : {$otp} (valide {$ttl} minutes)."
+        );
 
-        return ServiceResult::ok('OTP envoyé à votre adresse email.', ['email' => $email]);
+        return ServiceResult::ok('OTP envoyé à votre numéro de téléphone.', [
+            'phonenumber' => $phone,
+            'channel' => 'phone',
+        ]);
     }
 
-    public function verifyOtp(string $email, string $otp): ServiceResult
+    public function verifyOtp(?string $email = null, ?string $phonenumber = null, ?string $otp = null): ServiceResult
     {
-        $email = strtolower(trim($email));
-        $expected = Cache::get('foreigner_otp_'.$email);
+        if ($email) {
+            $email = strtolower(trim($email));
+            $expected = Cache::get('foreigner_otp_'.$email);
+
+            if (! $expected || $expected !== $otp) {
+                return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
+            }
+
+            Cache::put('foreigner_otp_valid_'.$email, true, now()->addMinutes(10));
+
+            return ServiceResult::ok('OTP email vérifié.', ['email' => $email, 'channel' => 'email']);
+        }
+
+        $phone = $this->normalizePhone((string) $phonenumber);
+        $expected = Cache::get('foreigner_otp_phone_'.$phone);
 
         if (! $expected || $expected !== $otp) {
             return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
         }
 
-        Cache::put('foreigner_otp_valid_'.$email, true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_phone_'.$phone, true, now()->addMinutes(10));
 
-        return ServiceResult::ok('OTP vérifié.', ['email' => $email]);
+        return ServiceResult::ok('OTP téléphone vérifié.', [
+            'phonenumber' => $phone,
+            'channel' => 'phone',
+        ]);
     }
 
     /**
@@ -54,9 +87,14 @@ class ForeignerEnrollmentService
     public function submitEnrollment(Request $request): ServiceResult
     {
         $email = strtolower(trim($request->input('email')));
+        $phone = $this->normalizePhone((string) $request->input('phonenumber'));
 
         if (! Cache::get('foreigner_otp_valid_'.$email)) {
-            return ServiceResult::fail("Veuillez d'abord vérifier votre OTP.", null, 400);
+            return ServiceResult::fail("Veuillez d'abord vérifier l'OTP de votre adresse email.", null, 400);
+        }
+
+        if (! Cache::get('foreigner_otp_valid_phone_'.$phone)) {
+            return ServiceResult::fail("Veuillez d'abord vérifier l'OTP de votre numéro de téléphone.", null, 400);
         }
 
         $uploadedFiles = $this->uploadEnrollmentFiles($request);
@@ -65,7 +103,7 @@ class ForeignerEnrollmentService
         try {
             $enrollmentRequest = EnrollmentRequest::create([
                 'email' => $email,
-                'phonenumber' => $request->input('phonenumber'),
+                'phonenumber' => $phone,
                 'kyc_data' => [
                     'name' => $request->input('name'),
                     'first_name' => $request->input('first_name'),
@@ -87,6 +125,8 @@ class ForeignerEnrollmentService
 
             Cache::forget('foreigner_otp_'.$email);
             Cache::forget('foreigner_otp_valid_'.$email);
+            Cache::forget('foreigner_otp_phone_'.$phone);
+            Cache::forget('foreigner_otp_valid_phone_'.$phone);
 
             DB::commit();
 
@@ -106,6 +146,11 @@ class ForeignerEnrollmentService
 
             return ServiceResult::fail('Erreur lors de la soumission de la demande.', null, 500);
         }
+    }
+
+    public function normalizePhone(string $phonenumber): string
+    {
+        return preg_replace('/[^\d+]/', '', trim($phonenumber)) ?? '';
     }
 
     /**
@@ -131,6 +176,9 @@ class ForeignerEnrollmentService
         return $uploadedFiles;
     }
 
+    /**
+     * @param  array<string, string|null>  $uploadedFiles
+     */
     private function dispatchPostSubmissionJobs(EnrollmentRequest $enrollmentRequest, array $uploadedFiles): void
     {
         $chain = [];
@@ -140,11 +188,9 @@ class ForeignerEnrollmentService
             $chain[] = new RegulaAnalysisJob($enrollmentRequest->id);
         }
 
-        $chain[] = new AdvancedIdRequestJob($enrollmentRequest->email);
+        $chain[] = new ForeignerFinalizedJob($enrollmentRequest->email, 'PERSONNE_PHYSIQUE');
 
-        if (! empty($chain)) {
-            Bus::chain($chain)->dispatch();
-        }
+        Bus::chain($chain)->dispatch();
     }
 
     /**

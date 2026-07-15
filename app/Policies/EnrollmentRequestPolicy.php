@@ -10,6 +10,9 @@ class EnrollmentRequestPolicy
 {
     use HandlesAuthorization;
 
+    /** @var list<string> */
+    private const AGENT_ROLES = ['tech_one', 'tech_two', 'tech_three'];
+
     public function before(User $user, $ability)
     {
         if ($user->hasRole('admin')) {
@@ -17,37 +20,39 @@ class EnrollmentRequestPolicy
         }
     }
 
-    public function viewAny(User $user)
+    public function viewAny(User $user): bool
     {
-        return $user->hasRole(['agent', 'superviseur']);
+        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur']);
     }
 
-    public function view(User $user, EnrollmentRequest $enrollmentRequest)
+    public function view(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole(['agent', 'superviseur']);
+        return $user->hasAnyRole([...self::AGENT_ROLES, 'superviseur']);
     }
 
-    public function claim(User $user, EnrollmentRequest $enrollmentRequest)
+    public function claim(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole('agent');
+        return $user->hasAnyRole(self::AGENT_ROLES);
     }
 
-    public function approve(User $user, EnrollmentRequest $enrollmentRequest)
+    public function approve(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole('agent') && $enrollmentRequest->assigned_agent_id === $user->id;
+        return $user->hasAnyRole(self::AGENT_ROLES)
+            && $enrollmentRequest->assigned_agent_id === $user->id;
     }
 
-    public function reject(User $user, EnrollmentRequest $enrollmentRequest)
+    public function reject(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasRole('agent') && $enrollmentRequest->assigned_agent_id === $user->id;
+        return $user->hasAnyRole(self::AGENT_ROLES)
+            && $enrollmentRequest->assigned_agent_id === $user->id;
     }
 
-    public function supervisorApprove(User $user, EnrollmentRequest $enrollmentRequest)
+    public function supervisorApprove(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $user->hasRole('superviseur');
     }
 
-    public function supervisorReject(User $user, EnrollmentRequest $enrollmentRequest)
+    public function supervisorReject(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $user->hasRole('superviseur');
     }

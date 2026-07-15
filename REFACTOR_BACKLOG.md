@@ -3,7 +3,7 @@
 Tracked remediation items derived from the Laravel 12 best-practices audit (`guidelines.md`).  
 **Status key:** `todo` · `in-progress` · `blocked` · `done` · `deferred`
 
-**Last updated:** 2026-07-14 (P4-05; P10-02, P10-03, P10-05)
+**Last updated:** 2026-07-15 (personne physique enrollment: phone OTP, Regula on EnrollmentRequest, confirmation via ForeignerFinalized)
 
 ---
 
@@ -25,7 +25,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P2](#p2-validation--http-layer) | Validation & HTTP layer | 10 | 10 | High |
 | [P3](#p3-architecture--controller-decomposition) | Architecture & controller decomposition | 12 | 12 | High |
 | [P4](#p4-api-contract--resources) | API contract & resources | 5 | 5 | Medium |
-| [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 8 | Medium |
+| [P5](#p5-database--eloquent) | Database & Eloquent | 9 | 9 | Medium |
 | [P6](#p6-async--external-integrations) | Async & external integrations | 6 | 4 | Medium |
 | [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
@@ -137,7 +137,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | **P5-05** | Consolidate password reset storage logic | 🟡 Med | `done` | Created `PasswordResetToken` model to replace raw DB queries |
 | **P5-06** | Reduce raw `DB::table()` queries | 🟡 Med | `done` | Cleaned up `AuthController`, `PasswordResetController`, `UserController`, `UserRegistrationService` |
 | **P5-07** | Review model global scopes | 🟡 Med | `done` | Removed `auth()->id()` dependency from `UserSubscription` and `Revocation` booted methods and replaced with local scope `forUser()` |
-| **P5-08** | Align Schema with Code | 🟡 Med | `deferred` | Verify `roles` and `permissions` tables match expected Spatie defaults |
+| **P5-08** | Align Schema with Code | 🟡 Med | `done` | Spatie permission tables migration added; `password_resets` table added for multi-token finalization; `EnrollmentRequestPolicy` roles aligned to `tech_*` / `superviseur` |
 | **P5-09** | Migrate `$casts` to `casts()` method | 🟢 Low | `done` | Laravel 12 convention on `User`, `PendingRegistration`, `StructureInvitation` |
 
 ---
@@ -186,8 +186,8 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 
 | Area | Test file | Status |
 |------|-----------|--------|
-| Foreigner enrollment | `ForeignerEnrollmentControllerTest` | Partial |
-| Identity review | `IdentityReviewControllerTest` | Partial |
+| Foreigner enrollment (OTP + submit) | `ForeignerEnrollmentControllerTest` | Covered |
+| Personne physique E2E workflow | `PersonnePhysiqueEnrollmentWorkflowTest` | Covered (happy path + reject/claim/filter) |
 | Kafka notifications | `KafkaNotificationPublisherTest` | Minimal |
 | All other controllers (~27) | — | **Untested** |
 
@@ -212,7 +212,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P10-01 | `done` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/`, `app/Mail/` | Renamed 3 Jobs + 3 Mailables; updated all imports |
 | P10-02 | `done` | Remove large commented-out code blocks | `SignatureDocumentController`, `StatsController`, `StructureSubscriptionController` | |
 | P10-03 | `done` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
-| P10-04 | `deferred` | Expand authorization beyond route middleware (policies) | `app/Policies/` | Only 2 policies today |
+| P10-04 | `in-progress` | Expand authorization beyond route middleware (policies) | `EnrollmentRequestPolicy` + remaining domains | Policies are SoT for resource actions (`guidelines.md` §9.3). Identity-review already uses `$this->authorize()`. Next: align/remove redundant `role:` groups on those routes; add policies for other management resources |
 | P10-05 | `done` | Replace `Auth::user()` / `auth()->user()` with `$request->user()` | See audit list (15+ locations) | As controllers are touched |
 | P10-06 | `done` | Delete unused stub Form Requests or implement them | `app/Http/Requests/` | Completed in P2-01/P2-08 |
 
@@ -266,6 +266,8 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-13 | P4, P7: API resources introduced, `strict_types=1` enforced, PHPStan Level 6 configured with baseline. |
 | 2026-07-14 | P6-03, P6-04: Implemented `Bus::chain()` and offloaded file uploads and signature finalization to background jobs. |
 | 2026-07-14 | P3-12, P9: Extracted route closures to `Singletons` invokables. Cleaned up dead providers and middleware. Route caching verified. |
+| 2026-07-15 | Personne physique enrollment hardening: phone OTP (SMS), Regula/Upload jobs on `EnrollmentRequest`, submit confirmation via existing `ForeignerFinalized` template, feature tests rewritten for `/enroll`. |
+| 2026-07-15 | `guidelines.md` rewritten against PDF/`pics` SoT; §9.3 policies-first (P10-04 in-progress); obsolete ONLINE/finalize guidance removed. |
 
 ---
 

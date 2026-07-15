@@ -25,6 +25,8 @@ class EnrollmentRequestResource extends JsonResource
             'kyc_data' => $this->kyc_data,
             'liveness' => $this->liveness,
             'similarity' => $this->similarity,
+            'risk_score' => $this->risk_score,
+            'analysis_details' => $this->analysis_details,
             'status' => $this->status,
             'type' => $this->type,
             

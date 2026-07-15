@@ -13,6 +13,8 @@ class EnrollmentRequest extends Model
         'documents',
         'liveness',
         'similarity',
+        'risk_score',
+        'analysis_details',
         'status',
         'assigned_agent_id',
         'reject_stage',
@@ -26,6 +28,7 @@ class EnrollmentRequest extends Model
         return [
             'kyc_data' => 'array',
             'documents' => 'array',
+            'analysis_details' => 'array',
             'reject_reasons' => 'array',
         ];
     }

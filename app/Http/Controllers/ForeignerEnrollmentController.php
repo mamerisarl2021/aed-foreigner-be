@@ -21,16 +21,16 @@ class ForeignerEnrollmentController extends BaseController
      *      path="/api/v1/foreigner/send-otp",
      *      operationId="sendForeignerOtp",
      *      tags={"Enrollment"},
-     *      summary="Send OTP to email",
-     *      description="Sends an OTP to the provided email address for verification.",
+     *      summary="Send OTP to email or phone",
+     *      description="Sends an OTP to the provided email address or phone number for verification. Provide either email or phonenumber.",
      *
      *      @OA\RequestBody(
      *          required=true,
      *
      *          @OA\JsonContent(
-     *              required={"email"},
      *
-     *              @OA\Property(property="email", type="string", format="email", example="user@example.com")
+     *              @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *              @OA\Property(property="phonenumber", type="string", example="+22990123456")
      *          )
      *      ),
      *
@@ -56,7 +56,10 @@ class ForeignerEnrollmentController extends BaseController
      */
     public function sendOtp(SendOtpRequest $request): JsonResponse
     {
-        return $this->respond($this->enrollment->sendOtp($request->input('email')));
+        return $this->respond($this->enrollment->sendOtp(
+            $request->input('email'),
+            $request->input('phonenumber'),
+        ));
     }
 
     /**
@@ -65,15 +68,16 @@ class ForeignerEnrollmentController extends BaseController
      *      operationId="verifyForeignerOtp",
      *      tags={"Enrollment"},
      *      summary="Verify OTP",
-     *      description="Verifies the OTP sent to the email.",
+     *      description="Verifies the OTP sent to the email or phone number. Provide either email or phonenumber with the otp.",
      *
      *      @OA\RequestBody(
      *          required=true,
      *
      *          @OA\JsonContent(
-     *              required={"email", "otp"},
+     *              required={"otp"},
      *
      *              @OA\Property(property="email", type="string", format="email", example="user@example.com"),
+     *              @OA\Property(property="phonenumber", type="string", example="+22990123456"),
      *              @OA\Property(property="otp", type="string", example="123456")
      *          )
      *      ),
@@ -99,6 +103,7 @@ class ForeignerEnrollmentController extends BaseController
     {
         return $this->respond($this->enrollment->verifyOtp(
             $request->input('email'),
+            $request->input('phonenumber'),
             $request->input('otp'),
         ));
     }

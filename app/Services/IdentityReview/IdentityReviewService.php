@@ -205,6 +205,10 @@ class IdentityReviewService
                     'nationality' => $enrollment->kyc_data['nationality'] ?? '',
                 ]),
                 'status' => 'APPROVED',
+                'risk_score' => $enrollment->risk_score,
+                'analysis_details' => is_array($enrollment->analysis_details)
+                    ? json_encode($enrollment->analysis_details)
+                    : $enrollment->analysis_details,
                 'assigned_agent_id' => $supervisorId,
             ]);
 

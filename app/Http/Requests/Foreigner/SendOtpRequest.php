@@ -9,7 +9,20 @@ class SendOtpRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required_without:phonenumber|nullable|email|unique:users,email',
+            'phonenumber' => 'required_without:email|nullable|string|min:8|max:20',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.required_without' => 'L\'adresse email ou le numéro de téléphone est obligatoire.',
+            'phonenumber.required_without' => 'L\'adresse email ou le numéro de téléphone est obligatoire.',
+            'email.unique' => 'Cette adresse email est déjà utilisée.',
         ];
     }
 }
