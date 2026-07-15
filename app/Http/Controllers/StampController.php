@@ -6,7 +6,7 @@ use App\Models\Stamp;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,9 +16,9 @@ class StampController extends BaseController
     protected $stampRelationship = ['user'];
 
     // Fetch all stamps for a specific user
-    public function index()
+    public function index(Request $request)
     {
-        $user_id = Auth::user()->id;
+        $user_id = $request->user()->id;
         try {
             $stamps = Stamp::withCount($this->stampRelationship)
                 ->whereUserId($user_id)
@@ -47,7 +47,7 @@ class StampController extends BaseController
 
             // Save the stamp to the database
             $stamp = new Stamp([
-                'user_id' => Auth()->user()->id,
+                'user_id' => $request->user()->id,
                 'fichier' => $path,
                 'type' => $type,
             ]);
@@ -90,7 +90,7 @@ class StampController extends BaseController
 
             // Update the stamp in the database
             $stamp->update([
-                'user_id' => Auth()->user()->id,
+                'user_id' => $request->user()->id,
                 'fichier' => $path,
                 'type' => $type,
             ]);

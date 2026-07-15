@@ -14,7 +14,7 @@ class SigningIdentityController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/signing-identities",
+     *      path="/api/v1/signing-identities",
      *      operationId="getSigningIdentities",
      *      tags={"Certificates"},
      *      summary="List Signing Identities",
@@ -44,7 +44,7 @@ class SigningIdentityController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/signing-identities/{identityId}",
+     *      path="/api/v1/signing-identities/{identityId}",
      *      operationId="getSigningIdentity",
      *      tags={"Certificates"},
      *      summary="Get Signing Identity Details",
@@ -72,7 +72,7 @@ class SigningIdentityController extends BaseController
 
     /**
      * @OA\Put(
-     *      path="/api/signing-identities/{identityId}/status",
+     *      path="/api/v1/signing-identities/{identityId}/status",
      *      operationId="updateSigningIdentityStatus",
      *      tags={"Certificates"},
      *      summary="Update Signing Identity Status",
@@ -112,7 +112,7 @@ class SigningIdentityController extends BaseController
 
     /**
      * @OA\Delete(
-     *      path="/api/signing-identities/{identityId}",
+     *      path="/api/v1/signing-identities/{identityId}",
      *      operationId="deleteSigningIdentity",
      *      tags={"Certificates"},
      *      summary="Delete Signing Identity",
@@ -136,7 +136,7 @@ class SigningIdentityController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/signing-identities/provision",
+     *      path="/api/v1/signing-identities/provision",
      *      operationId="provisionSignature",
      *      tags={"Certificates"},
      *      summary="Provision Certificate (Signature)",

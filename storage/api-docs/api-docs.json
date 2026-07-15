@@ -13,7 +13,7 @@
         "version": "1.0.0"
     },
     "paths": {
-        "/api/attachments/{id}": {
+        "/api/v1/attachments/{id}": {
             "get": {
                 "tags": [
                     "Attachments"
@@ -42,7 +42,7 @@
                 ]
             }
         },
-        "/api/entities/attachments": {
+        "/api/v1/entities/attachments": {
             "post": {
                 "tags": [
                     "Attachments"
@@ -98,7 +98,7 @@
                 ]
             }
         },
-        "/api/management/attachments/update-status": {
+        "/api/v1/management/attachments/update-status": {
             "post": {
                 "tags": [
                     "Management"
@@ -155,7 +155,7 @@
                 ]
             }
         },
-        "/api/admin/login": {
+        "/api/v1/admin/login": {
             "post": {
                 "tags": [
                     "Admin Auth"
@@ -196,7 +196,7 @@
                 }
             }
         },
-        "/api/agents/{id}": {
+        "/api/v1/agents/{id}": {
             "post": {
                 "tags": [
                     "Admin Auth"
@@ -252,7 +252,7 @@
                 }
             }
         },
-        "/api/admins/logout": {
+        "/api/v1/admins/logout": {
             "post": {
                 "tags": [
                     "Admin Auth"
@@ -271,7 +271,7 @@
                 ]
             }
         },
-        "/api/agents/register": {
+        "/api/v1/agents/register": {
             "post": {
                 "tags": [
                     "Admin Auth"
@@ -319,7 +319,7 @@
                 }
             }
         },
-        "/api/admins/verify-otp": {
+        "/api/v1/admins/verify-otp": {
             "post": {
                 "tags": [
                     "Admin Auth"
@@ -359,14 +359,14 @@
                 }
             }
         },
-        "/api/foreigner/send-otp": {
+        "/api/v1/foreigner/send-otp": {
             "post": {
                 "tags": [
                     "Enrollment"
                 ],
                 "summary": "Send OTP to email",
                 "description": "Sends an OTP to the provided email address for verification.",
-                "operationId": "sendOtp",
+                "operationId": "sendForeignerOtp",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -423,14 +423,14 @@
                 }
             }
         },
-        "/api/foreigner/verify-otp": {
+        "/api/v1/foreigner/verify-otp": {
             "post": {
                 "tags": [
                     "Enrollment"
                 ],
                 "summary": "Verify OTP",
                 "description": "Verifies the OTP sent to the email.",
-                "operationId": "verifyOtp",
+                "operationId": "verifyForeignerOtp",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -483,31 +483,103 @@
                 }
             }
         },
-        "/api/foreigner/register/init": {
+        "/api/v1/foreigner/enroll": {
             "post": {
                 "tags": [
                     "Enrollment"
                 ],
-                "summary": "Initialize Registration",
-                "description": "Initializes the registration process, returning a registration token.",
-                "operationId": "initRegistration",
+                "summary": "Submit foreigner enrollment request",
+                "description": "Submits a complete enrollment request for a physical foreigner. All KYC data, identity documents, and liveness data are provided in a single step. The request is stored for agent review.",
+                "operationId": "submitForeignerEnrollment",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "email"
+                                    "email",
+                                    "phonenumber",
+                                    "name",
+                                    "first_name",
+                                    "sex",
+                                    "date_of_birth",
+                                    "place_of_birth",
+                                    "nationality",
+                                    "country_of_residence",
+                                    "address",
+                                    "document_type",
+                                    "document_number",
+                                    "selfie",
+                                    "recto"
                                 ],
                                 "properties": {
                                     "email": {
                                         "type": "string",
-                                        "format": "email",
-                                        "example": "user@example.com"
+                                        "format": "email"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "first_name": {
+                                        "type": "string"
+                                    },
+                                    "sex": {
+                                        "type": "string",
+                                        "enum": [
+                                            "M",
+                                            "F"
+                                        ]
+                                    },
+                                    "date_of_birth": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "place_of_birth": {
+                                        "type": "string"
+                                    },
+                                    "nationality": {
+                                        "type": "string"
+                                    },
+                                    "country_of_residence": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    },
+                                    "document_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "PASSPORT",
+                                            "CNI_ECOWAS"
+                                        ]
+                                    },
+                                    "document_number": {
+                                        "type": "string"
+                                    },
+                                    "selfie": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "recto": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "verso": {
+                                        "type": "string",
+                                        "format": "binary"
                                     },
                                     "profile": {
                                         "type": "string",
                                         "format": "binary"
+                                    },
+                                    "liveness": {
+                                        "type": "string"
+                                    },
+                                    "similarity": {
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -517,7 +589,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Registration initialized",
+                        "description": "Enrollment request submitted successfully",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -526,17 +598,14 @@
                                             "type": "boolean",
                                             "example": true
                                         },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Demande enregistrée avec succès."
+                                        },
                                         "data": {
                                             "properties": {
-                                                "registration_token": {
-                                                    "type": "string"
-                                                },
-                                                "expires_at": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                },
-                                                "link": {
-                                                    "type": "string"
+                                                "enrollment_request_id": {
+                                                    "type": "integer"
                                                 }
                                             },
                                             "type": "object"
@@ -549,123 +618,6 @@
                     },
                     "400": {
                         "description": "OTP not verified"
-                    }
-                }
-            }
-        },
-        "/api/foreigner/register/finalize": {
-            "post": {
-                "tags": [
-                    "Enrollment"
-                ],
-                "summary": "Finalize Registration",
-                "description": "Finalizes the registration with full details and documents.",
-                "operationId": "finalizeRegistration",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "required": [
-                                    "registration_token",
-                                    "transaction_id"
-                                ],
-                                "properties": {
-                                    "registration_token": {
-                                        "type": "string"
-                                    },
-                                    "transaction_id": {
-                                        "type": "string"
-                                    },
-                                    "selfie": {
-                                        "description": "Required",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "recto": {
-                                        "description": "Required",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "verso": {
-                                        "description": "Required",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "similarity": {
-                                        "description": "Required",
-                                        "type": "string"
-                                    },
-                                    "liveness": {
-                                        "description": "Required",
-                                        "type": "string"
-                                    },
-                                    "exp_date": {
-                                        "description": "Expiration date of document",
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "birth_date": {
-                                        "description": "Birth date",
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "kyc[name]": {
-                                        "type": "string"
-                                    },
-                                    "kyc[first_name]": {
-                                        "type": "string"
-                                    },
-                                    "kyc[phonenumber]": {
-                                        "type": "string"
-                                    },
-                                    "kyc[nationality]": {
-                                        "type": "string"
-                                    },
-                                    "kyc[document_type]": {
-                                        "type": "string",
-                                        "enum": [
-                                            "PASSPORT",
-                                            "RESIDENCE_PERMIT",
-                                            "OTHER"
-                                        ]
-                                    },
-                                    "kyc[document_number]": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Registration finalized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "user_id": {
-                                                    "type": "integer"
-                                                },
-                                                "phonenumber": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
                     },
                     "422": {
                         "description": "Validation error"
@@ -676,7 +628,7 @@
                 }
             }
         },
-        "/api/signing-identities": {
+        "/api/v1/signing-identities": {
             "get": {
                 "tags": [
                     "Certificates"
@@ -708,7 +660,7 @@
                 ]
             }
         },
-        "/api/signing-identities/{identityId}": {
+        "/api/v1/signing-identities/{identityId}": {
             "get": {
                 "tags": [
                     "Certificates"
@@ -772,7 +724,7 @@
                 ]
             }
         },
-        "/api/signing-identities/{identityId}/status": {
+        "/api/v1/signing-identities/{identityId}/status": {
             "put": {
                 "tags": [
                     "Certificates"
@@ -826,7 +778,7 @@
                 ]
             }
         },
-        "/api/signing-identities/provision": {
+        "/api/v1/signing-identities/provision": {
             "post": {
                 "tags": [
                     "Certificates"
@@ -877,7 +829,7 @@
                 }
             }
         },
-        "/api/structures": {
+        "/api/v1/structures": {
             "get": {
                 "tags": [
                     "Structures"
@@ -933,7 +885,7 @@
                 ]
             }
         },
-        "/api/entities/mine": {
+        "/api/v1/entities/mine": {
             "get": {
                 "tags": [
                     "Structures"
@@ -975,7 +927,7 @@
                 ]
             }
         },
-        "/api/structures/{id}": {
+        "/api/v1/structures/{id}": {
             "get": {
                 "tags": [
                     "Structures"
@@ -1111,7 +1063,7 @@
                 ]
             }
         },
-        "/api/clients/one-shot-link": {
+        "/api/v1/clients/one-shot-link": {
             "post": {
                 "tags": [
                     "Structures"
@@ -1216,7 +1168,7 @@
                 ]
             }
         },
-        "/api/clients/link-entity": {
+        "/api/v1/clients/link-entity": {
             "post": {
                 "tags": [
                     "Structures"
@@ -1279,7 +1231,7 @@
                 ]
             }
         },
-        "/api/management/structures/update-status": {
+        "/api/v1/management/structures/update-status": {
             "post": {
                 "tags": [
                     "Structures"
@@ -1343,7 +1295,7 @@
                 ]
             }
         },
-        "/api/management/structures/notify-admin": {
+        "/api/v1/management/structures/notify-admin": {
             "post": {
                 "tags": [
                     "Structures"
@@ -1386,7 +1338,7 @@
                 ]
             }
         },
-        "/api/management/structures/verify-admin": {
+        "/api/v1/management/structures/verify-admin": {
             "post": {
                 "tags": [
                     "Structures"
@@ -1436,7 +1388,421 @@
                 ]
             }
         },
-        "/api/clients/send-otp": {
+        "/api/v1/structures/{structure}/employees": {
+            "get": {
+                "tags": [
+                    "Structures"
+                ],
+                "summary": "List employees of a structure",
+                "description": "Returns a list of employees associated with a structure.",
+                "operationId": "listEmployees",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Structure not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/structures/{structure}/invite-employee": {
+            "post": {
+                "tags": [
+                    "Structures"
+                ],
+                "summary": "Invite an employee to join a structure",
+                "description": "Sends an invitation to a user to join the structure as an employee.",
+                "operationId": "inviteEmployee",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "user_identifier"
+                                ],
+                                "properties": {
+                                    "user_identifier": {
+                                        "description": "Email, NPI, or user ID",
+                                        "type": "string"
+                                    },
+                                    "role": {
+                                        "description": "Role in the structure",
+                                        "type": "string",
+                                        "default": "EMPLOYEE",
+                                        "enum": [
+                                            "EMPLOYEE",
+                                            "MANAGER_ASSISTANT",
+                                            "VIEWER"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Invitation sent successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "User or structure not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/structures/{structure}/add-employee": {
+            "post": {
+                "tags": [
+                    "Structures"
+                ],
+                "summary": "Add an employee directly to a structure",
+                "description": "Adds a user directly as an employee to the structure (bypass invitation).",
+                "operationId": "addEmployee",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "user_id"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "default": "EMPLOYEE",
+                                        "enum": [
+                                            "EMPLOYEE",
+                                            "MANAGER_ASSISTANT",
+                                            "VIEWER"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employee added successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/structures/{structure}/employees/{user}": {
+            "put": {
+                "tags": [
+                    "Structures"
+                ],
+                "summary": "Update employee role in a structure",
+                "description": "Updates the role of an employee in the structure.",
+                "operationId": "updateEmployeeRole",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "role"
+                                ],
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "EMPLOYEE",
+                                            "MANAGER_ASSISTANT",
+                                            "VIEWER"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Role updated successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Employee not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Structures"
+                ],
+                "summary": "Remove an employee from a structure",
+                "description": "Removes an employee from the structure.",
+                "operationId": "removeEmployee",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employee removed successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Employee not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/management/structures/{structure}/force-add-employee": {
+            "post": {
+                "tags": [
+                    "Management"
+                ],
+                "summary": "Force add employee to structure (Agent only)",
+                "description": "Agents can forcefully add an employee to a structure.",
+                "operationId": "forceAddEmployee",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "user_id"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "default": "EMPLOYEE",
+                                        "enum": [
+                                            "EMPLOYEE",
+                                            "MANAGER_ASSISTANT",
+                                            "VIEWER"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "description": "Reason for force adding",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employee force added successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/management/structures/{structure}/pending-invitations": {
+            "get": {
+                "tags": [
+                    "Management"
+                ],
+                "summary": "List pending invitations for a structure",
+                "description": "Returns a list of pending invitations for a structure (Agent only).",
+                "operationId": "listPendingInvitations",
+                "parameters": [
+                    {
+                        "name": "structure",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/clients/send-otp": {
             "post": {
                 "tags": [
                     "User Auth"
@@ -1476,7 +1842,7 @@
                 }
             }
         },
-        "/api/clients/verify-otp": {
+        "/api/v1/clients/verify-otp": {
             "post": {
                 "tags": [
                     "User Auth"
@@ -1516,7 +1882,7 @@
                 }
             }
         },
-        "/api/clients/login": {
+        "/api/v1/clients/login": {
             "post": {
                 "tags": [
                     "User Auth"
@@ -1552,7 +1918,7 @@
                 }
             }
         },
-        "/api/mobile/login": {
+        "/api/v1/mobile/login": {
             "post": {
                 "tags": [
                     "User Auth"
@@ -1588,7 +1954,7 @@
                 }
             }
         },
-        "/api/users/{id}": {
+        "/api/v1/users/{id}": {
             "get": {
                 "tags": [
                     "Users"
@@ -1696,7 +2062,7 @@
                 ]
             }
         },
-        "/api/users/search": {
+        "/api/v1/users/search": {
             "get": {
                 "tags": [
                     "Users"
@@ -1733,7 +2099,7 @@
                 ]
             }
         },
-        "/api/management/users/update-status": {
+        "/api/v1/management/users/update-status": {
             "post": {
                 "tags": [
                     "Management"
@@ -1785,7 +2151,7 @@
                 ]
             }
         },
-        "/api/management/users/identity-status": {
+        "/api/v1/management/users/identity-status": {
             "post": {
                 "tags": [
                     "Management"
@@ -1832,7 +2198,7 @@
                 ]
             }
         },
-        "/api/identity/approve": {
+        "/api/v1/identity/approve": {
             "post": {
                 "tags": [
                     "Management"
@@ -1900,7 +2266,7 @@
                 ]
             }
         },
-        "/api/clients/set-password": {
+        "/api/v1/clients/set-password": {
             "post": {
                 "tags": [
                     "User Auth"
@@ -1944,71 +2310,179 @@
                 }
             }
         },
-        "/api/finalize-registration": {
+        "/api/v1/invitations": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List user invitations",
+                "description": "Returns a list of invitations for the authenticated user.",
+                "operationId": "listInvitations",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/invitations/{invitation}/accept": {
             "post": {
                 "tags": [
-                    "Registration"
+                    "Users"
                 ],
-                "summary": "Finalize Citizen Registration (ANIP flow)",
-                "description": "Finalizes registration for citizens using NPI.",
-                "operationId": "finalizeCitizenRegistration",
+                "summary": "Accept an invitation",
+                "description": "Accepts a structure invitation.",
+                "operationId": "acceptInvitation",
+                "parameters": [
+                    {
+                        "name": "invitation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation accepted"
+                    },
+                    "404": {
+                        "description": "Invitation not found"
+                    },
+                    "400": {
+                        "description": "Invitation expired or already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/invitations/{invitation}/reject": {
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Reject an invitation",
+                "description": "Rejects a structure invitation.",
+                "operationId": "rejectInvitation",
+                "parameters": [
+                    {
+                        "name": "invitation",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation rejected"
+                    },
+                    "404": {
+                        "description": "Invitation not found"
+                    },
+                    "400": {
+                        "description": "Invitation expired or already processed"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/invitations/{token}/details": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get invitation details by token",
+                "description": "Returns invitation details using the invitation token (public route).",
+                "operationId": "getInvitationDetails",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation details retrieved"
+                    },
+                    "404": {
+                        "description": "Invitation not found or expired"
+                    }
+                }
+            }
+        },
+        "/api/v1/invitations/{token}/respond": {
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Respond to invitation by token",
+                "description": "Accepts or rejects an invitation using the token (public route).",
+                "operationId": "respondToInvitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "required": [
-                                    "registration_token",
-                                    "transaction_id",
-                                    "type",
-                                    "level"
+                                    "action"
                                 ],
                                 "properties": {
-                                    "registration_token": {
-                                        "type": "string"
-                                    },
-                                    "transaction_id": {
-                                        "type": "string"
-                                    },
-                                    "type": {
+                                    "action": {
                                         "type": "string",
                                         "enum": [
-                                            "IN_PERSON",
-                                            "ONLINE"
-                                        ]
-                                    },
-                                    "level": {
-                                        "type": "string",
-                                        "enum": [
-                                            "SIMPLE",
-                                            "ADVANCED"
-                                        ]
-                                    },
-                                    "password": {
-                                        "description": "Required for non-foreigners",
-                                        "type": "string"
-                                    },
-                                    "pin": {
-                                        "description": "Required for non-foreigners",
-                                        "type": "string"
-                                    },
-                                    "selfie": {
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "recto": {
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "verso": {
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "similarity": {
-                                        "type": "string"
-                                    },
-                                    "liveness": {
-                                        "type": "string"
+                                            "accept",
+                                            "reject"
+                                        ],
+                                        "example": "accept"
                                     }
                                 },
                                 "type": "object"
@@ -2018,10 +2492,13 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Registration success"
+                        "description": "Response processed"
                     },
-                    "422": {
-                        "description": "Validation error"
+                    "404": {
+                        "description": "Invitation not found"
+                    },
+                    "400": {
+                        "description": "Invalid action or invitation expired"
                     }
                 }
             }
@@ -2059,10 +2536,6 @@
         {
             "name": "Users",
             "description": "Users"
-        },
-        {
-            "name": "Registration",
-            "description": "Registration"
         }
     ]
 }

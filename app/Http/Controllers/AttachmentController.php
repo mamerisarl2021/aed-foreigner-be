@@ -20,7 +20,7 @@ class AttachmentController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/attachments/{id}",
+     *      path="/api/v1/attachments/{id}",
      *      operationId="getAttachment",
      *      tags={"Attachments"},
      *      summary="Get Attachment Details",
@@ -51,7 +51,7 @@ class AttachmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/entities/attachments",
+     *      path="/api/v1/entities/attachments",
      *      operationId="createAttachment",
      *      tags={"Attachments"},
      *      summary="Upload Attachment",
@@ -136,7 +136,7 @@ class AttachmentController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/attachments/update-status",
+     *      path="/api/v1/management/attachments/update-status",
      *      operationId="updateAttachmentStatus",
      *      tags={"Management"},
      *      summary="Update Attachment Status (Bulk)",

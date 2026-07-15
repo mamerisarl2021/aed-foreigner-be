@@ -30,19 +30,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::group([], function () {
-    Route::get('/health', function () {
-        try {
-            DB::connection()->getPdo();
-        } catch (Throwable $e) {
-            return response()->json(['status' => 'DOWN'], 503);
-        }
+    Route::get('/health', \App\Http\Controllers\Singletons\HealthCheckController::class);
 
-        return response()->json(['status' => 'UP'], 200);
-    });
-
-    Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
-        return $request->user();
-    });
+    Route::middleware(['auth:sanctum'])->get('/me', \App\Http\Controllers\Singletons\UserProfileController::class);
 
     Route::resource('user-packages', UserPackageController::class)->only([
         'index',
@@ -115,28 +105,21 @@ Route::group([], function () {
             Route::post('/identity/approve-date', [UserController::class, 'approveIdentityDate']);
             Route::post('/identity/approve', [UserController::class, 'updateInPersonIdentityStatus']);
 
-            // Identity review list/view for agents & supervisors
-            Route::get('/management/identity-reviews', [IdentityReviewController::class, 'index']);
-            Route::get('/management/identity-reviews/{id}', [IdentityReviewController::class, 'show']);
-
-            // Agent actions
-            Route::middleware('role:tech_one|tech_two|tech_three')->group(function () {
-                Route::post('/management/identity-reviews/{id}/claim', [IdentityReviewController::class, 'claim']);
-                Route::post('/management/identity-reviews/{id}/approve', [IdentityReviewController::class, 'approve']);
-                Route::post('/management/identity-reviews/{id}/reject', [IdentityReviewController::class, 'reject']);
-            });
-
-            // Supervisor actions
-            Route::middleware('role:superviseur')->group(function () {
-                Route::post('/management/identity-reviews/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
-                Route::post('/management/identity-reviews/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
-            });
-
             Route::get('users', [UserController::class, 'index']);
 
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
 
             Route::get('revocations', [RevocationController::class, 'index']);
+        });
+
+        Route::prefix('management/identity-reviews')->group(function () {
+            Route::get('/', [IdentityReviewController::class, 'index']);
+            Route::get('/{id}', [IdentityReviewController::class, 'show']);
+            Route::post('/{id}/claim', [IdentityReviewController::class, 'claim']);
+            Route::post('/{id}/approve', [IdentityReviewController::class, 'approve']);
+            Route::post('/{id}/reject', [IdentityReviewController::class, 'reject']);
+            Route::post('/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
+            Route::post('/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
         });
 
         Route::middleware('role:client')->group(function () {
@@ -177,16 +160,12 @@ Route::group([], function () {
 
             // Routes requiring any advanced identity verification
             Route::middleware(['advanced.identity'])->group(function () {
-                Route::get('can-buy-vid', function () {
-                    return response()->json(['message' => 'You can buy a VID.', 'can_buy' => true]);
-                });
+                Route::get('can-buy-vid', \App\Http\Controllers\Singletons\CheckVidEligibilityController::class);
             });
 
             // Routes requiring specifically in-person advanced verification
             Route::middleware(['inperson.advanced.identity'])->group(function () {
-                Route::get('can-buy-token', function () {
-                    return response()->json(['message' => 'You can buy a token.', 'can_buy' => true]);
-                });
+                Route::get('can-buy-token', \App\Http\Controllers\Singletons\CheckTokenEligibilityController::class);
             });
 
             Route::post('/identity/initiate-in-person', [UserController::class, 'initiateInPersonIdentity']);
@@ -238,13 +217,11 @@ Route::group([], function () {
     Route::post('/clients/init-password-reset', [UserController::class, 'forgotPassword']);
 
     Route::post('/clients/advanced-id-mid', [UserController::class, 'advancedSubscriptionMid']);
-    Route::post('/finalize-registration', [UserController::class, 'finalizeRegistration']);
 
     // PUBLIC FOREIGNER ENROLLMENT ROUTES (no NPI)
     Route::post('/foreigner/send-otp', [ForeignerEnrollmentController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
     Route::post('/foreigner/verify-otp', [ForeignerEnrollmentController::class, 'verifyOtp'])->middleware(['guest']);
-    Route::post('/foreigner/register/init', [ForeignerEnrollmentController::class, 'initRegistration'])->middleware(['guest', 'transaction']);
-    Route::post('/foreigner/register/finalize', [ForeignerEnrollmentController::class, 'finalizeRegistration'])->middleware(['guest']);
+    Route::post('/foreigner/enroll', [ForeignerEnrollmentController::class, 'submitEnrollment'])->middleware(['guest']);
 
     // ADMINS AUTHENTICATIONS PUBLICS ROUTES
     Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');

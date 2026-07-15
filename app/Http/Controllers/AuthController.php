@@ -22,7 +22,7 @@ class AuthController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/admin/login",
+     *      path="/api/v1/admin/login",
      *      operationId="adminLogin",
      *      tags={"Admin Auth"},
      *      summary="Admin/Agent Login (Step 1: Request OTP)",
@@ -53,7 +53,7 @@ class AuthController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/agents/{id}",
+     *      path="/api/v1/agents/{id}",
      *      operationId="updateAgent",
      *      tags={"Admin Auth"},
      *      summary="Update Agent Details",
@@ -97,7 +97,7 @@ class AuthController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/admins/logout",
+     *      path="/api/v1/admins/logout",
      *      operationId="adminLogout",
      *      tags={"Admin Auth"},
      *      summary="Admin Logout",
@@ -115,7 +115,7 @@ class AuthController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/agents/register",
+     *      path="/api/v1/agents/register",
      *      operationId="registerAgent",
      *      tags={"Admin Auth"},
      *      summary="Register New Agent",
@@ -159,7 +159,7 @@ class AuthController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/admins/verify-otp",
+     *      path="/api/v1/admins/verify-otp",
      *      operationId="adminVerifyOtp",
      *      tags={"Admin Auth"},
      *      summary="Admin/Agent Verify OTP (Step 2: Get Token)",

@@ -54,32 +54,6 @@ class StatsController extends Controller
                 return $subscription->userPackage ? $subscription->userPackage->prix : 0;
             });
 
-        // // Calculate package distribution by 'type'
-        // $userPackageDistribution = UserSubscription::join('user_packages', 'user_subscriptions.package_id', '=', 'user_packages.id')
-        //     ->select('user_packages.validity')
-        //     ->groupBy('user_packages.validity')
-        //     ->selectRaw('count(*) as count, user_packages.validity')
-        //     ->get()
-        //     ->map(function ($item) {
-        //         return [
-        //             'validity' => $item->validity,
-        //             'count' => $item->count,
-        //         ];
-        //     });
-
-        // // Calculate package distribution by 'type'
-        // $structurePackageDistribution = StructureSubscription::join('structure_packages', 'structure_subscriptions.structure_package_id', '=', 'structure_packages.id')
-        //     ->select('structure_packages.validity')
-        //     ->groupBy('structure_packages.validity')
-        //     ->selectRaw('count(*) as count, structure_packages.validity')
-        //     ->get()
-        //     ->map(function ($item) {
-        //         return [
-        //             'validity' => $item->validity,
-        //             'count' => $item->count,
-        //         ];
-        //     });
-
         // Calculate package distribution for user subscriptions by 'type' and 'validity'
         $userPackageDistribution = UserSubscription::join('user_packages', 'user_subscriptions.package_id', '=', 'user_packages.id')
             ->select('user_packages.validity')

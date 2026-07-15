@@ -1,180 +1,156 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Enrollment;
 
-use App\Jobs\AdvancedIdRequestJob;
 use App\Jobs\ForeignerFinalizedJob;
-use App\Jobs\ForeignerInitRegistrationJob;
 use App\Jobs\ForeignerOtpJob;
-use App\Jobs\PlanifiedEmailJob;
-use App\Jobs\ProcessStructureFilesJob;
 use App\Jobs\RegulaAnalysisJob;
-use App\Models\Identity;
-use App\Models\PendingRegistration;
-use App\Models\StructurePackage;
-use App\Models\User;
-use App\Models\UserSubscription;
+use App\Jobs\SendSmsJob;
+use App\Jobs\UploadEnrollmentFilesJob;
+use App\Models\EnrollmentRequest;
 use App\Services\ServiceResult;
-use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Throwable;
 
 class ForeignerEnrollmentService
 {
-    public function sendOtp(string $email): ServiceResult
+    public function sendOtp(?string $email = null, ?string $phonenumber = null): ServiceResult
     {
-        $email = strtolower(trim($email));
+        if ($email) {
+            $email = strtolower(trim($email));
+            $otp = (string) random_int(100000, 999999);
+            $ttl = 5;
+
+            Cache::put('foreigner_otp_'.$email, $otp, now()->addMinutes($ttl));
+            ForeignerOtpJob::dispatch($email, $otp, $ttl);
+
+            return ServiceResult::ok('OTP envoyé à votre adresse email.', ['email' => $email, 'channel' => 'email']);
+        }
+
+        $phone = $this->normalizePhone((string) $phonenumber);
         $otp = (string) random_int(100000, 999999);
         $ttl = 5;
 
-        Cache::put('foreigner_otp_'.$email, $otp, now()->addMinutes($ttl));
-        ForeignerOtpJob::dispatch($email, $otp, $ttl);
+        Cache::put('foreigner_otp_phone_'.$phone, $otp, now()->addMinutes($ttl));
+        SendSmsJob::dispatch(
+            $phone,
+            "Votre code OTP AED est : {$otp} (valide {$ttl} minutes)."
+        );
 
-        return ServiceResult::ok('OTP envoyé à votre adresse email.', ['email' => $email]);
+        return ServiceResult::ok('OTP envoyé à votre numéro de téléphone.', [
+            'phonenumber' => $phone,
+            'channel' => 'phone',
+        ]);
     }
 
-    public function verifyOtp(string $email, string $otp): ServiceResult
+    public function verifyOtp(?string $email = null, ?string $phonenumber = null, ?string $otp = null): ServiceResult
     {
-        $email = strtolower(trim($email));
-        $expected = Cache::get('foreigner_otp_'.$email);
+        if ($email) {
+            $email = strtolower(trim($email));
+            $expected = Cache::get('foreigner_otp_'.$email);
+
+            if (! $expected || $expected !== $otp) {
+                return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
+            }
+
+            Cache::put('foreigner_otp_valid_'.$email, true, now()->addMinutes(10));
+
+            return ServiceResult::ok('OTP email vérifié.', ['email' => $email, 'channel' => 'email']);
+        }
+
+        $phone = $this->normalizePhone((string) $phonenumber);
+        $expected = Cache::get('foreigner_otp_phone_'.$phone);
 
         if (! $expected || $expected !== $otp) {
             return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
         }
 
-        Cache::put('foreigner_otp_valid_'.$email, true, now()->addMinutes(10));
+        Cache::put('foreigner_otp_valid_phone_'.$phone, true, now()->addMinutes(10));
 
-        return ServiceResult::ok('OTP vérifié.', ['email' => $email]);
-    }
-
-    public function initRegistration(string $email, ?UploadedFile $profile = null): ServiceResult
-    {
-        $email = strtolower(trim($email));
-
-        if (! Cache::get('foreigner_otp_valid_'.$email)) {
-            return ServiceResult::fail("Veuillez d'abord vérifier votre OTP.", null, 400);
-        }
-
-        $profilePath = null;
-        if ($profile !== null) {
-            $profilePath = Storage::cloud()->put('profiles', $profile);
-        }
-
-        $token = Str::random(64);
-        $expiresAt = Carbon::now()->addHours(6);
-
-        PendingRegistration::create([
-            'npi' => '',
-            'registration_token' => $token,
-            'email' => $email,
-            'status' => 'PENDING',
-            'expires_at' => $expiresAt,
-            'profile_path' => $profilePath,
-            'user_data' => [
-                'is_foreigner' => true,
-                'form' => [],
-                'cached_data' => [],
-            ],
-        ]);
-
-        $link = rtrim(config('app.frontend_url'), '/').'/register/foreigner/'.$token;
-        ForeignerInitRegistrationJob::dispatch($email, $link);
-
-        return ServiceResult::ok('Inscription initialisée.', [
-            'registration_token' => $token,
-            'expires_at' => $expiresAt->toISOString(),
-            'link' => $link,
+        return ServiceResult::ok('OTP téléphone vérifié.', [
+            'phonenumber' => $phone,
+            'channel' => 'phone',
         ]);
     }
 
-    public function finalizeRegistration(Request $request, PendingRegistration $pending): ServiceResult
+    /**
+     * Single-step enrollment submission for physical foreigners.
+     * Stores the request data in enrollment_requests for agent review.
+     * Does NOT create User or Identity records — that happens on approval.
+     */
+    public function submitEnrollment(Request $request): ServiceResult
     {
-        // TODO: I will have to eventually remove non foreigner logic from this codebase cos this backend is exclusively for AED étranger
-        $isForeigner = $pending->user_data['is_foreigner'] ?? false;
-        if (! $isForeigner) {
-            return ServiceResult::fail('Flux non étranger non pris en charge ici.', null, 400);
+        $email = strtolower(trim($request->input('email')));
+        $phone = $this->normalizePhone((string) $request->input('phonenumber'));
+
+        if (! Cache::get('foreigner_otp_valid_'.$email)) {
+            return ServiceResult::fail("Veuillez d'abord vérifier l'OTP de votre adresse email.", null, 400);
         }
 
-        $email = $pending->email;
-        if (! Cache::get('foreigner_otp_valid_'.$email)) {
-            return ServiceResult::fail("Veuillez d'abord vérifier votre OTP.", null, 400);
+        if (! Cache::get('foreigner_otp_valid_phone_'.$phone)) {
+            return ServiceResult::fail("Veuillez d'abord vérifier l'OTP de votre numéro de téléphone.", null, 400);
         }
 
         $uploadedFiles = $this->uploadEnrollmentFiles($request);
 
-        $subscriptionValidation = $this->validateSubscription($request->input('transaction_id'));
-        if (! $subscriptionValidation['status']) {
-            return ServiceResult::fail(
-                $subscriptionValidation['message'],
-                $subscriptionValidation['data'],
-                500
-            );
-        }
-
         DB::beginTransaction();
         try {
-            $kyc = $request->input('kyc', []);
-            $user = User::create([
-                'npi' => null,
+            $enrollmentRequest = EnrollmentRequest::create([
                 'email' => $email,
-                'name' => $kyc['name'] ?? null,
-                'phonenumber' => $kyc['phonenumber'] ?? null,
-                'nationality' => $kyc['nationality'] ?? null,
-                'profile' => $pending->profile_path,
-            ]);
-
-            $identity = Identity::create([
-                'type' => 'ONLINE',
-                'proof' => json_encode([
-                    'selfiePath' => null, // Will be updated by UploadEnrollmentFilesJob
-                    'rectoPath' => null,
-                    'versoPath' => null,
-                    'liveness' => $request->input('liveness'),
-                    'similarity' => $request->input('similarity'),
-                    'exp_date' => $request->input('exp_date', ''),
-                    'birth_date' => $request->input('birth_date', ''),
-                    'document_type' => $kyc['document_type'] ?? null,
-                    'document_number' => $kyc['document_number'] ?? null,
-                    'nationality' => $kyc['nationality'] ?? null,
-                ]),
-                'level' => 'ADVANCED',
-                'user_id' => $user->id,
+                'phonenumber' => $phone,
+                'kyc_data' => [
+                    'name' => $request->input('name'),
+                    'first_name' => $request->input('first_name'),
+                    'sex' => $request->input('sex'),
+                    'date_of_birth' => $request->input('date_of_birth'),
+                    'place_of_birth' => $request->input('place_of_birth'),
+                    'nationality' => $request->input('nationality'),
+                    'country_of_residence' => $request->input('country_of_residence'),
+                    'address' => $request->input('address'),
+                    'document_type' => $request->input('document_type'),
+                    'document_number' => $request->input('document_number'),
+                ],
+                'documents' => $uploadedFiles,
+                'liveness' => $request->input('liveness'),
+                'similarity' => $request->input('similarity'),
                 'status' => 'PENDING',
+                'type' => 'PERSONNE_PHYSIQUE',
             ]);
-
-            $this->createSubscriptionRecord($subscriptionValidation['data'], $user->id);
-            $user->assignRole('client');
 
             Cache::forget('foreigner_otp_'.$email);
             Cache::forget('foreigner_otp_valid_'.$email);
-            $pending->update(['status' => 'COMPLETED']);
+            Cache::forget('foreigner_otp_phone_'.$phone);
+            Cache::forget('foreigner_otp_valid_phone_'.$phone);
 
             DB::commit();
 
-            $this->dispatchPostRegistrationJobs($user, $request, null, $uploadedFiles, $identity->id);
+            $this->dispatchPostSubmissionJobs($enrollmentRequest, $uploadedFiles);
 
-            return ServiceResult::ok('Inscription finalisée.', [
-                'user_id' => $user->id,
-                'phonenumber' => $user->phonenumber,
+            return ServiceResult::ok('Demande enregistrée avec succès.', [
+                'enrollment_request_id' => $enrollmentRequest->id,
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Registration failed: '.$e->getMessage(), [
+            Log::error('Enrollment submission failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'email' => $email,
             ]);
 
             $this->cleanupUploadedFiles($uploadedFiles);
 
-            return ServiceResult::fail('Erreur lors de la finalisation.', null, 500);
+            return ServiceResult::fail('Erreur lors de la soumission de la demande.', null, 500);
         }
+    }
+
+    public function normalizePhone(string $phonenumber): string
+    {
+        return preg_replace('/[^\d+]/', '', trim($phonenumber)) ?? '';
     }
 
     /**
@@ -184,103 +160,37 @@ class ForeignerEnrollmentService
     {
         $uploadedFiles = [];
 
-        if ($request->input('type') === 'ONLINE') {
-            if ($request->hasFile('selfie')) {
-                $uploadedFiles['selfie'] = $request->file('selfie')?->store('tmp/enrollments', 'local');
-            }
-            if ($request->hasFile('recto')) {
-                $uploadedFiles['recto'] = $request->file('recto')?->store('tmp/enrollments', 'local');
-            }
-            if ($request->hasFile('verso')) {
-                $uploadedFiles['verso'] = $request->file('verso')?->store('tmp/enrollments', 'local');
-            }
+        if ($request->hasFile('selfie')) {
+            $uploadedFiles['selfie'] = $request->file('selfie')?->store('tmp/enrollments', 'local');
+        }
+        if ($request->hasFile('recto')) {
+            $uploadedFiles['recto'] = $request->file('recto')?->store('tmp/enrollments', 'local');
+        }
+        if ($request->hasFile('verso')) {
+            $uploadedFiles['verso'] = $request->file('verso')?->store('tmp/enrollments', 'local');
+        }
+        if ($request->hasFile('profile')) {
+            $uploadedFiles['profile'] = $request->file('profile')?->store('tmp/enrollments', 'local');
         }
 
         return $uploadedFiles;
     }
 
     /**
-     * @return array{status: bool, message: string, data: array<string, mixed>|null}
-     */
-    private function validateSubscription(string $transactionId): array
-    {
-        try {
-            // $state = $this->kkiaPayment($transactionId); // Pour la prod
-            $state = collect([json_encode(['package' => 7, 'amount' => 5000])]);
-
-            $payload = json_decode($state[0], true);
-
-            if (StructurePackage::where('id', $payload['package'])
-                ->where('prix', (int) $payload['amount'])
-                ->count() != 1
-            ) {
-                return [
-                    'status' => false,
-                    'message' => 'Ooops tentative de fraude détectée!',
-                    'data' => [],
-                ];
-            }
-
-            return [
-                'status' => true,
-                'message' => 'Abonnement validé.',
-                'data' => $payload,
-            ];
-        } catch (Throwable $e) {
-            Log::error('Subscription validation failed: '.$e->getMessage());
-
-            return [
-                'status' => false,
-                'message' => "Échec de la validation de l'abonnement.",
-                'data' => null,
-            ];
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function createSubscriptionRecord(array $payload, string $userId): void
-    {
-        UserSubscription::where('user_id', $userId)
-            ->where('type', 'CITIZEN')
-            ->update(['current' => false]);
-
-        UserSubscription::create([
-            'user_id' => $userId,
-            'current' => true,
-            'status' => 'SENT',
-            'package_id' => $payload['package'],
-            'type' => 'CITIZEN',
-        ]);
-    }
-
-    /**
      * @param  array<string, string|null>  $uploadedFiles
      */
-    private function dispatchPostRegistrationJobs(User $user, Request $request, ?int $structureId, array $uploadedFiles, int $identityId): void
+    private function dispatchPostSubmissionJobs(EnrollmentRequest $enrollmentRequest, array $uploadedFiles): void
     {
-        $type = $request->input('type');
         $chain = [];
 
-        if ($type === 'ONLINE') {
-            $chain[] = new \App\Jobs\UploadEnrollmentFilesJob($identityId, $uploadedFiles);
-            $chain[] = new RegulaAnalysisJob($identityId);
+        if (! empty($uploadedFiles)) {
+            $chain[] = new UploadEnrollmentFilesJob($enrollmentRequest->id, $uploadedFiles);
+            $chain[] = new RegulaAnalysisJob($enrollmentRequest->id);
         }
 
-        $chain[] = new ForeignerFinalizedJob($user->email, $type);
+        $chain[] = new ForeignerFinalizedJob($enrollmentRequest->email, 'PERSONNE_PHYSIQUE');
 
-        if ($type === 'IN_PERSON') {
-            $chain[] = new PlanifiedEmailJob($user->email);
-        } else {
-            $chain[] = new AdvancedIdRequestJob($user->email);
-        }
-
-        \Illuminate\Support\Facades\Bus::chain($chain)->dispatch();
-
-        if ($structureId && $request->has('structure.attachements')) {
-            ProcessStructureFilesJob::dispatch($structureId, $request->input('structure.attachements'), $request->allFiles());
-        }
+        Bus::chain($chain)->dispatch();
     }
 
     /**

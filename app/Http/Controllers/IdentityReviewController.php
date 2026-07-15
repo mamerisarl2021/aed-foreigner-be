@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\IdentityReview\RejectIdentityRequest;
-use App\Http\Resources\IdentityResource;
+use App\Http\Resources\EnrollmentRequestResource;
+use App\Models\EnrollmentRequest;
 use App\Services\IdentityReview\IdentityReviewService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class IdentityReviewController extends BaseController
 {
@@ -16,58 +17,74 @@ class IdentityReviewController extends BaseController
         private readonly IdentityReviewService $identityReview,
     ) {}
 
-    public function index(Request $request): \Illuminate\Http\JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', EnrollmentRequest::class);
         $paginator = $this->identityReview->list($request);
-        $paginator->getCollection()->transform(fn ($item) => new IdentityResource($item));
-        
+        $paginator->getCollection()->transform(fn ($item) => new EnrollmentRequestResource($item));
+
         return $this->sendResponse(
             'Liste filtrée des demandes.',
             $paginator
         );
     }
 
-    public function show(int $id): \Illuminate\Http\JsonResponse
+    public function show(int $id): JsonResponse
     {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('view', $enrollment);
         $result = $this->identityReview->show($id);
         if ($result->success) {
-            return $this->sendResponse($result->message, new IdentityResource($result->data));
+            return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
         }
+
         return $this->sendError($result->message, $result->data ?? [], $result->code);
     }
 
-    public function claim(int $id): \Illuminate\Http\JsonResponse
+    public function claim(Request $request, int $id): JsonResponse
     {
-        $agentId = Auth::id();
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('claim', $enrollment);
+
+        $agentId = $request->user()?->id;
         if (! $agentId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->claim($id, $agentId));
+        return $this->respond($this->identityReview->claim($id, (int) $agentId));
     }
 
-    public function approve(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function approve(Request $request, int $id): JsonResponse
     {
-        $agentId = Auth::id();
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('approve', $enrollment);
+
+        $agentId = $request->user()?->id;
         if (! $agentId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->approve($id, $agentId));
+        return $this->respond($this->identityReview->approve($id, (int) $agentId));
     }
 
-    public function supervisorApprove(Request $request, int $id): \Illuminate\Http\JsonResponse
+    public function supervisorApprove(Request $request, int $id): JsonResponse
     {
-        $supervisorId = Auth::id();
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('supervisorApprove', $enrollment);
+
+        $supervisorId = $request->user()?->id;
         if (! $supervisorId) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->supervisorApprove($id, $supervisorId));
+        return $this->respond($this->identityReview->supervisorApprove($id, (int) $supervisorId));
     }
 
-    public function supervisorReject(RejectIdentityRequest $request, int $id): \Illuminate\Http\JsonResponse
+    public function supervisorReject(RejectIdentityRequest $request, int $id): JsonResponse
     {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('supervisorReject', $enrollment);
+
         return $this->respond($this->identityReview->reject(
             $id,
             $request->input('stage'),
@@ -77,8 +94,11 @@ class IdentityReviewController extends BaseController
         ));
     }
 
-    public function reject(RejectIdentityRequest $request, int $id): \Illuminate\Http\JsonResponse
+    public function reject(RejectIdentityRequest $request, int $id): JsonResponse
     {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('reject', $enrollment);
+
         return $this->respond($this->identityReview->reject(
             $id,
             $request->input('stage'),

@@ -34,7 +34,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/send-otp",
+     *      path="/api/v1/clients/send-otp",
      *      operationId="userSendOtp",
      *      tags={"User Auth"},
      *      summary="Send OTP to User (ANIP flow)",
@@ -62,7 +62,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/verify-otp",
+     *      path="/api/v1/clients/verify-otp",
      *      operationId="userVerifyOtp",
      *      tags={"User Auth"},
      *      summary="Verify User OTP",
@@ -93,7 +93,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/login",
+     *      path="/api/v1/clients/login",
      *      operationId="userLogin",
      *      tags={"User Auth"},
      *      summary="User Login",
@@ -120,7 +120,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/mobile/login",
+     *      path="/api/v1/mobile/login",
      *      operationId="userMobileLogin",
      *      tags={"User Auth"},
      *      summary="User Mobile Login",
@@ -147,7 +147,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="getUser",
      *      tags={"Users"},
      *      summary="Get User Details",
@@ -174,7 +174,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/users/search",
+     *      path="/api/v1/users/search",
      *      operationId="searchUsers",
      *      tags={"Users"},
      *      summary="Search Users",
@@ -228,7 +228,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="updateUser",
      *      tags={"Users"},
      *      summary="Update User Profile",
@@ -291,7 +291,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Delete(
-     *      path="/api/users/{id}",
+     *      path="/api/v1/users/{id}",
      *      operationId="deleteUser",
      *      tags={"Users"},
      *      summary="Delete User",
@@ -318,7 +318,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/users/update-status",
+     *      path="/api/v1/management/users/update-status",
      *      operationId="updateUserStatus",
      *      tags={"Management"},
      *      summary="Update User Status (Bulk)",
@@ -366,7 +366,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/management/users/identity-status",
+     *      path="/api/v1/management/users/identity-status",
      *      operationId="updateIdentityStatus",
      *      tags={"Management"},
      *      summary="Update Identity Status",
@@ -419,7 +419,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/identity/approve",
+     *      path="/api/v1/identity/approve",
      *      operationId="updateInPersonIdentityStatus",
      *      tags={"Management"},
      *      summary="Approve In-Person Identity",
@@ -456,7 +456,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/clients/set-password",
+     *      path="/api/v1/clients/set-password",
      *      operationId="setUserPassword",
      *      tags={"User Auth"},
      *      summary="Set User Password/Pin",
@@ -496,55 +496,10 @@ class UserController extends BaseController
         return $this->respond($this->registration->sendResetLink($npi, $type));
     }
 
-    /**
-     * @OA\Post(
-     *      path="/api/finalize-registration",
-     *      operationId="finalizeCitizenRegistration",
-     *      tags={"Registration"},
-     *      summary="Finalize Citizen Registration (ANIP flow)",
-     *      description="Finalizes registration for citizens using NPI.",
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\MediaType(
-     *              mediaType="multipart/form-data",
-     *
-     *              @OA\Schema(
-     *                  required={"registration_token", "transaction_id", "type", "level"},
-     *
-     *                  @OA\Property(property="registration_token", type="string"),
-     *                  @OA\Property(property="transaction_id", type="string"),
-     *                  @OA\Property(property="type", type="string", enum={"IN_PERSON", "ONLINE"}),
-     *                  @OA\Property(property="level", type="string", enum={"SIMPLE", "ADVANCED"}),
-     *                  @OA\Property(property="password", type="string", description="Required for non-foreigners"),
-     *                  @OA\Property(property="pin", type="string", description="Required for non-foreigners"),
-     *                  @OA\Property(property="selfie", type="string", format="binary"),
-     *                  @OA\Property(property="recto", type="string", format="binary"),
-     *                  @OA\Property(property="verso", type="string", format="binary"),
-     *                  @OA\Property(property="similarity", type="string"),
-     *                  @OA\Property(property="liveness", type="string")
-     *              )
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Registration success"),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
-    public function finalizeRegistration(FinalizeRegistrationRequest $request)
-    {
-        $pendingRegistration = $request->pendingRegistration();
-        if ($pendingRegistration === null) {
-            return $this->sendError('Données invalides.', null, 422);
-        }
-
-        return $this->respond($this->registration->finalizeRegistration($request, $pendingRegistration));
-    }
 
     /**
      * @OA\Get(
-     *      path="/api/invitations",
+     *      path="/api/v1/invitations",
      *      operationId="listInvitations",
      *      tags={"Users"},
      *      summary="List user invitations",
@@ -563,10 +518,10 @@ class UserController extends BaseController
      *      )
      * )
      */
-    public function listInvitations()
+    public function listInvitations(Request $request)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
             // Récupérer les invitations de l'utilisateur
             $invitations = StructureInvitation::with(['structure', 'inviter'])
@@ -600,7 +555,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{invitation}/accept",
+     *      path="/api/v1/invitations/{invitation}/accept",
      *      operationId="acceptInvitation",
      *      tags={"Users"},
      *      summary="Accept an invitation",
@@ -623,9 +578,9 @@ class UserController extends BaseController
      *      @OA\Response(response=400, description="Invitation expired or already processed")
      * )
      */
-    public function acceptInvitation($invitationId)
+    public function acceptInvitation(Request $request, $invitationId)
     {
-        $result = $this->registration->acceptInvitation((int) $invitationId, auth()->user());
+        $result = $this->registration->acceptInvitation((int) $invitationId, $request->user());
 
         if (! $result->success) {
             return $this->sendError($result->message, $result->data ?? [], $result->code);
@@ -636,7 +591,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{invitation}/reject",
+     *      path="/api/v1/invitations/{invitation}/reject",
      *      operationId="rejectInvitation",
      *      tags={"Users"},
      *      summary="Reject an invitation",
@@ -659,10 +614,10 @@ class UserController extends BaseController
      *      @OA\Response(response=400, description="Invitation expired or already processed")
      * )
      */
-    public function rejectInvitation($invitationId)
+    public function rejectInvitation(Request $request, $invitationId)
     {
         try {
-            $user = auth()->user();
+            $user = $request->user();
 
             $invitation = StructureInvitation::where('id', $invitationId)
                 ->where('user_id', $user->id)
@@ -691,7 +646,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Get(
-     *      path="/api/invitations/{token}/details",
+     *      path="/api/v1/invitations/{token}/details",
      *      operationId="getInvitationDetails",
      *      tags={"Users"},
      *      summary="Get invitation details by token",
@@ -754,7 +709,7 @@ class UserController extends BaseController
 
     /**
      * @OA\Post(
-     *      path="/api/invitations/{token}/respond",
+     *      path="/api/v1/invitations/{token}/respond",
      *      operationId="respondToInvitation",
      *      tags={"Users"},
      *      summary="Respond to invitation by token",
@@ -806,40 +761,40 @@ class UserController extends BaseController
         return $this->sendResponse($result->message, $result->data ?? []);
     }
 
-    /**
-     * @OA\Post(
-     *      path="/api/employees/create",
-     *      operationId="createEmployee",
-     *      tags={"Users"},
-     *      summary="Create a new employee user",
-     *      description="Creates a new employee user and sends invitation to join structure.",
-     *      security={{"sanctum":{}}},
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *              required={"email", "structure_id"},
-     *
-     *              @OA\Property(property="email", type="string", format="email"),
-     *              @OA\Property(property="structure_id", type="integer"),
-     *              @OA\Property(property="name", type="string"),
-     *              @OA\Property(property="phone", type="string"),
-     *              @OA\Property(property="role", type="string", enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}),
-     *              @OA\Property(property="message", type="string", max=500)
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Employee created and invitation sent"),
-     *      @OA\Response(response=403, description="Forbidden"),
-     *      @OA\Response(response=422, description="Validation error")
-     * )
-     */
+//    /**
+//     * @OA\Post(
+//     *      path="/api/v1/employees/create",
+//     *      operationId="createEmployee",
+//     *      tags={"Users"},
+//     *      summary="Create a new employee user",
+//     *      description="Creates a new employee user and sends invitation to join structure.",
+//     *      security={{"sanctum":{}}},
+//     *
+//     *      @OA\RequestBody(
+//     *          required=true,
+//     *
+//     *          @OA\JsonContent(
+//     *              required={"email", "structure_id"},
+//     *
+//     *              @OA\Property(property="email", type="string", format="email"),
+//     *              @OA\Property(property="structure_id", type="integer"),
+//     *              @OA\Property(property="name", type="string"),
+//     *              @OA\Property(property="phone", type="string"),
+//     *              @OA\Property(property="role", type="string", enum={"EMPLOYEE", "MANAGER_ASSISTANT", "VIEWER"}),
+//     *              @OA\Property(property="message", type="string", max=500)
+//     *          )
+//     *      ),
+//     *
+//     *      @OA\Response(response=200, description="Employee created and invitation sent"),
+//     *      @OA\Response(response=403, description="Forbidden"),
+//     *      @OA\Response(response=422, description="Validation error")
+//     * )
+//     */
     public function createEmployee(CreateEmployeeRequest $request)
     {
         return $this->respond($this->registration->createEmployee(
             $request->validated(),
-            auth()->user(),
+            $request->user(),
         ));
     }
 }
