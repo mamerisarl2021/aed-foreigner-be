@@ -277,7 +277,7 @@ Per the PDF: keep **demandes** and **identités validées** in distinct stores.
 
 | Stage | Storage |
 |-------|---------|
-| Demande en instruction | `enrollment_requests` (`PENDING`, `APPROVED_BY_AGENT`, `REJECTED`, …) |
+| Demande en instruction | `enrollment_requests` (`PENDING`, `VISIO_REQUESTED`, `APPROVED_BY_AGENT`, `RETURNED_TO_AGENT`, `REJECTED`, `APPROVED`, …) |
 | Identité définitivement approuvée | `users` + `identities` (created on supervisor approval) |
 
 Do not create `User` / `Identity` at submit time for personne physique.
@@ -457,16 +457,21 @@ Business rules:
 
 ### 13.2 Agent / supervisor review (implemented)
 
-Status machine for demandes:
+Status machine for demandes (personne physique):
 
 ```
-PENDING → APPROVED_BY_AGENT → APPROVED
-        ↘ REJECTED
+PENDING ⇄ VISIO_REQUESTED
+PENDING → APPROVED_BY_AGENT → APPROVED | REJECTED | RETURNED_TO_AGENT
+RETURNED_TO_AGENT → APPROVED_BY_AGENT | REJECTED
 ```
 
-- Agents (`tech_one` | `tech_two` | `tech_three`): claim, approve, reject (with stage + reasons).
-- Supervisor (`superviseur`): approve (creates user/identity, assigns foreigner NPI `F-…`, TrustedX register, finalization invite) or reject.
-- Authorization for these actions lives in `EnrollmentRequestPolicy` (see §9.3).
+- Agents (`tech_one` | `tech_two` | `tech_three`): claim, request/complete visio (workflow-only), approve (from `PENDING` or `RETURNED_TO_AGENT`), reject with catalog motifs.
+- Supervisor (`superviseur`): approve (creates user/identity, foreigner NPI `F-…`, TrustedX register, finalization invite), reject, or return to agent.
+- Reject motifs: `GET /management/enrollment-reject-motifs`; validation against active catalog codes.
+- Show attaches heuristic `similar_enrollments` vs approved identities / other demandes.
+- Manager stats: `GET /management/enrollment-stats` (superviseur/admin).
+- SLA: `enrollment:check-sla` hourly; updates `sla_alert_level` and notifies configured roles.
+- Authorization lives in `EnrollmentRequestPolicy` (see §9.3).
 
 ### 13.3 Finalization & authentication after approval (product)
 
@@ -477,14 +482,14 @@ Per PDF §§4–5, after supervisor validation the foreigner:
 
 This backend’s responsibility on approval is: persist enrolled identity, provision TrustedX as configured, issue finalization tokens, dispatch the welcome/finalization notification. The frontend init-account UI is out of band.
 
-### 13.4 Explicitly out of current API scope (PDF features not built yet)
+### 13.4 Explicitly out of current API scope
 
 Do not pretend these exist in code without implementing them:
 
-- Agent-requested **visio**
-- **SLA** alerts / manager enrollment dashboard
-- Systematic similarity vs already-approved identities UI/API (beyond stored Regula/`risk_score` fields)
+- Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
+- Kafka topic / object-storage hardening for local dev
 - Full **personne morale** parcours (async email link + SMS after submit, PSCEQ APIs, company account transfer, …)
+- Reopen of a rejected demande (applicant submits a **new** `POST /foreigner/enroll`)
 
 ### 13.5 Infrastructure integration
 

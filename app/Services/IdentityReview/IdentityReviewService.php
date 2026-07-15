@@ -11,6 +11,7 @@ use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
@@ -24,11 +25,21 @@ use Illuminate\Support\Str;
 
 class IdentityReviewService
 {
-    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
+    public function __construct(
+        private readonly TrustedXClientService $trustedXClient,
+        private readonly EnrollmentSimilarityService $similarityService,
+    ) {}
 
     public function list(Request $request): LengthAwarePaginator
     {
-        $allowedStatuses = ['PENDING', 'REJECTED', 'APPROVED', 'APPROVED_BY_AGENT'];
+        $allowedStatuses = [
+            'PENDING',
+            'VISIO_REQUESTED',
+            'APPROVED_BY_AGENT',
+            'RETURNED_TO_AGENT',
+            'REJECTED',
+            'APPROVED',
+        ];
         $allowedTypes = ['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'];
 
         $statusesParam = $request->input('status');
@@ -89,12 +100,15 @@ class IdentityReviewService
         $query->orderBy($orderBy, $orderDir);
 
         $perPage = (int) $request->input('per_page', 15);
+
         return $query->paginate($perPage);
     }
 
     public function show(int $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
+
         return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
 
@@ -120,8 +134,8 @@ class IdentityReviewService
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($enrollment->status !== 'PENDING') {
-            return ServiceResult::fail('Statut non PENDING.', null, 422);
+        if (! in_array($enrollment->status, ['PENDING', 'RETURNED_TO_AGENT'], true)) {
+            return ServiceResult::fail('Statut non éligible à l\'approbation agent (PENDING ou RETURNED_TO_AGENT).', null, 422);
         }
 
         DB::beginTransaction();
@@ -157,6 +171,97 @@ class IdentityReviewService
 
             return ServiceResult::fail("Erreur lors de l'approbation agent.", null, 500);
         }
+    }
+
+    public function requestVisio(int $id, ?string $notes): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if ($enrollment->status !== 'PENDING') {
+            return ServiceResult::fail('Statut non PENDING.', null, 422);
+        }
+
+        $enrollment->status = 'VISIO_REQUESTED';
+        $enrollment->visio_notes = $notes;
+        $enrollment->visio_requested_at = now();
+        $enrollment->save();
+
+        $recipientName = $enrollment->kyc_data['name'] ?? $enrollment->email;
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Demande de visioconférence — enrôlement AED',
+            template: NotificationTemplate::EnrollmentVisioRequested,
+            recipients: [
+                NotificationRecipient::email($enrollment->email, [
+                    'name' => $recipientName,
+                    'notes' => $notes,
+                ]),
+            ],
+            variables: [
+                'name' => $recipientName,
+                'notes' => $notes,
+            ],
+            type: 'ENROLLMENT_VISIO_REQUESTED',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+
+        return ServiceResult::ok('Visioconférence demandée.', $enrollment);
+    }
+
+    public function completeVisio(int $id): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if ($enrollment->status !== 'VISIO_REQUESTED') {
+            return ServiceResult::fail('Statut non VISIO_REQUESTED.', null, 422);
+        }
+
+        $enrollment->status = 'PENDING';
+        $enrollment->visio_completed_at = now();
+        $enrollment->save();
+
+        return ServiceResult::ok('Visioconférence clôturée, demande remise en PENDING.', $enrollment);
+    }
+
+    public function supervisorReturn(int $id, array $reasons, ?string $comments): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if ($enrollment->status !== 'APPROVED_BY_AGENT') {
+            return ServiceResult::fail('Statut non APPROVED_BY_AGENT.', null, 422);
+        }
+
+        $enrollment->status = 'RETURNED_TO_AGENT';
+        $enrollment->return_reasons = $reasons;
+        $enrollment->review_comments = $comments;
+        $enrollment->returned_at = now();
+        $enrollment->save();
+
+        $agent = $enrollment->assignedAgent;
+        if ($agent?->email) {
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: 'Demande renvoyée à l\'agent — enrôlement AED',
+                template: NotificationTemplate::EnrollmentReturnedToAgent,
+                recipients: [
+                    NotificationRecipient::email($agent->email, [
+                        'enrollment_id' => $enrollment->id,
+                        'applicant_email' => $enrollment->email,
+                        'reasons' => $reasons,
+                        'comments' => $comments,
+                    ]),
+                ],
+                variables: [
+                    'enrollment_id' => $enrollment->id,
+                    'applicant_email' => $enrollment->email,
+                    'reasons' => $reasons,
+                    'comments' => $comments,
+                ],
+                type: 'ENROLLMENT_RETURNED_TO_AGENT',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
+        }
+
+        return ServiceResult::ok('Demande renvoyée à l\'agent.', $enrollment);
     }
 
     public function supervisorApprove(int $id, int $supervisorId): ServiceResult
@@ -213,7 +318,7 @@ class IdentityReviewService
             ]);
 
             $payload = ['data' => ['npi' => $user->npi]];
-            $output = $this->trustedXClient->register($payload);
+            $this->trustedXClient->register($payload);
 
             $allToken = Str::random(60);
             $pinToken = Str::random(60);
@@ -232,7 +337,6 @@ class IdentityReviewService
                 ['token' => $allToken, 'created_at' => Carbon::now()]
             );
 
-            // Since it's AED Etranger, they need to finalize their account via a link (password/pin setup)
             $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/{$user->npi}";
             WelcomeUserJob::dispatch($user->email, $user, $link, true);
 
@@ -253,34 +357,40 @@ class IdentityReviewService
         }
     }
 
-    public function reject(int $id, string $stage, array $reasons, ?string $comments, string $requiredStatus): ServiceResult
+    /**
+     * @param  list<string>  $allowedStatuses
+     */
+    public function reject(int $id, string $stage, array $reasons, ?string $comments, array $allowedStatuses): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
-        if ($enrollment->status !== $requiredStatus) {
-            $message = $requiredStatus === 'PENDING'
-                ? 'Statut non PENDING.'
-                : 'Statut non APPROVED_BY_AGENT.';
-
-            return ServiceResult::fail($message, null, 422);
+        if (! in_array($enrollment->status, $allowedStatuses, true)) {
+            return ServiceResult::fail(
+                'Statut non éligible au rejet (attendu: '.implode('|', $allowedStatuses).').',
+                null,
+                422
+            );
         }
+
+        $isSupervisor = in_array('APPROVED_BY_AGENT', $allowedStatuses, true)
+            && ! in_array('PENDING', $allowedStatuses, true);
 
         DB::beginTransaction();
         try {
             $this->applyRejection($enrollment, $stage, $reasons, $comments);
 
-            $successMessage = $requiredStatus === 'PENDING'
-                ? 'Demande rejetée et notifiée.'
-                : 'Demande rejetée par le superviseur et notifiée.';
+            $successMessage = $isSupervisor
+                ? 'Demande rejetée par le superviseur et notifiée.'
+                : 'Demande rejetée et notifiée.';
 
             return ServiceResult::ok($successMessage, ['enrollment_id' => $enrollment->id]);
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Reject enrollment failed: '.$e->getMessage());
 
-            $errorMessage = $requiredStatus === 'PENDING'
-                ? 'Erreur lors du rejet.'
-                : 'Erreur lors du rejet superviseur.';
+            $errorMessage = $isSupervisor
+                ? 'Erreur lors du rejet superviseur.'
+                : 'Erreur lors du rejet.';
 
             return ServiceResult::fail($errorMessage, null, 500);
         }

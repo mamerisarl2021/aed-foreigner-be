@@ -29,12 +29,26 @@ class EnrollmentRequestResource extends JsonResource
             'analysis_details' => $this->analysis_details,
             'status' => $this->status,
             'type' => $this->type,
-            
+
             'assigned_agent_id' => $this->assigned_agent_id,
             'reject_stage' => $this->reject_stage,
             'reject_reasons' => $this->reject_reasons,
             'review_comments' => $this->review_comments,
-            
+
+            'visio_notes' => $this->visio_notes,
+            'visio_requested_at' => $this->visio_requested_at,
+            'visio_completed_at' => $this->visio_completed_at,
+            'returned_at' => $this->returned_at,
+            'return_reasons' => $this->return_reasons,
+            'sla_deadline_at' => $this->sla_deadline_at,
+            'sla_alert_level' => $this->sla_alert_level,
+
+            'similar_enrollments' => $this->when(
+                array_key_exists('similar_enrollments', $this->resource->getAttributes())
+                    || isset($this->resource->similar_enrollments),
+                $this->similar_enrollments ?? []
+            ),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 

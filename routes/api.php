@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CaseController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EncryptionController;
+use App\Http\Controllers\EnrollmentRejectMotifController;
+use App\Http\Controllers\EnrollmentStatsController;
 use App\Http\Controllers\ForeignerEnrollmentController;
 use App\Http\Controllers\IdentityReviewController;
 use App\Http\Controllers\MessageController;
@@ -112,14 +114,20 @@ Route::group([], function () {
             Route::get('revocations', [RevocationController::class, 'index']);
         });
 
+        Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index']);
+        Route::get('/management/enrollment-stats', [EnrollmentStatsController::class, 'index']);
+
         Route::prefix('management/identity-reviews')->group(function () {
             Route::get('/', [IdentityReviewController::class, 'index']);
             Route::get('/{id}', [IdentityReviewController::class, 'show']);
             Route::post('/{id}/claim', [IdentityReviewController::class, 'claim']);
             Route::post('/{id}/approve', [IdentityReviewController::class, 'approve']);
             Route::post('/{id}/reject', [IdentityReviewController::class, 'reject']);
+            Route::post('/{id}/visio/request', [IdentityReviewController::class, 'requestVisio']);
+            Route::post('/{id}/visio/complete', [IdentityReviewController::class, 'completeVisio']);
             Route::post('/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
             Route::post('/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
+            Route::post('/{id}/supervisor/return', [IdentityReviewController::class, 'supervisorReturn']);
         });
 
         Route::middleware('role:client')->group(function () {

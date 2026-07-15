@@ -121,6 +121,7 @@ class ForeignerEnrollmentService
                 'similarity' => $request->input('similarity'),
                 'status' => 'PENDING',
                 'type' => 'PERSONNE_PHYSIQUE',
+                'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
             ]);
 
             Cache::forget('foreigner_otp_'.$email);
