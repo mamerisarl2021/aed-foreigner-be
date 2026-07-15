@@ -132,6 +132,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $user = User::query()->where('email', $email)->firstOrFail();
         $this->assertSame('DOE', $user->name);
         $this->assertSame('JOHN', $user->first_name);
+        $this->assertSame('M', $user->sexe);
         $this->assertSame($phone, $user->phonenumber);
         $this->assertSame('FR', $user->nationality);
         $this->assertSame('ACTIVE', $user->status);
@@ -477,7 +478,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'phonenumber' => $phone,
             'name' => 'DOE',
             'first_name' => 'JOHN',
-            'sex' => 'M',
+            'sexe' => 'M',
             'date_of_birth' => '1990-01-15',
             'place_of_birth' => 'Paris',
             'nationality' => 'FR',

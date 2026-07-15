@@ -364,22 +364,23 @@
                 "tags": [
                     "Enrollment"
                 ],
-                "summary": "Send OTP to email",
-                "description": "Sends an OTP to the provided email address for verification.",
+                "summary": "Send OTP to email or phone",
+                "description": "Sends an OTP to the provided email address or phone number for verification. Provide either email or phonenumber.",
                 "operationId": "sendForeignerOtp",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "email"
-                                ],
                                 "properties": {
                                     "email": {
                                         "type": "string",
                                         "format": "email",
                                         "example": "user@example.com"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string",
+                                        "example": "+22990123456"
                                     }
                                 },
                                 "type": "object"
@@ -429,7 +430,7 @@
                     "Enrollment"
                 ],
                 "summary": "Verify OTP",
-                "description": "Verifies the OTP sent to the email.",
+                "description": "Verifies the OTP sent to the email or phone number. Provide either email or phonenumber with the otp.",
                 "operationId": "verifyForeignerOtp",
                 "requestBody": {
                     "required": true,
@@ -437,7 +438,6 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "email",
                                     "otp"
                                 ],
                                 "properties": {
@@ -445,6 +445,10 @@
                                         "type": "string",
                                         "format": "email",
                                         "example": "user@example.com"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string",
+                                        "example": "+22990123456"
                                     },
                                     "otp": {
                                         "type": "string",
@@ -501,7 +505,7 @@
                                     "phonenumber",
                                     "name",
                                     "first_name",
-                                    "sex",
+                                    "sexe",
                                     "date_of_birth",
                                     "place_of_birth",
                                     "nationality",
@@ -526,7 +530,7 @@
                                     "first_name": {
                                         "type": "string"
                                     },
-                                    "sex": {
+                                    "sexe": {
                                         "type": "string",
                                         "enum": [
                                             "M",

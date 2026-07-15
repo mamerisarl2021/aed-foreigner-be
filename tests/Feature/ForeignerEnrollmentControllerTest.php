@@ -188,7 +188,7 @@ class ForeignerEnrollmentControllerTest extends TestCase
             'phonenumber' => $phone,
             'name' => 'DOE',
             'first_name' => 'JOHN',
-            'sex' => 'M',
+            'sexe' => 'M',
             'date_of_birth' => '1990-01-15',
             'place_of_birth' => 'Paris',
             'nationality' => 'FR',

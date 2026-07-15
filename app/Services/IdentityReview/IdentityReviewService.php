@@ -281,6 +281,7 @@ class IdentityReviewService
                     'email' => $enrollment->email,
                     'name' => $enrollment->kyc_data['name'] ?? '',
                     'first_name' => $enrollment->kyc_data['first_name'] ?? '',
+                    'sexe' => $enrollment->kyc_data['sexe'] ?? $enrollment->kyc_data['sex'] ?? null,
                     'phonenumber' => $enrollment->phonenumber,
                     'nationality' => $enrollment->kyc_data['nationality'] ?? '',
                     'profile' => $enrollment->documents['profile'] ?? null,
