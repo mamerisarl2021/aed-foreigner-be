@@ -28,16 +28,8 @@ use Tests\TestCase;
 /**
  * End-to-end Personne Physique enrollment workflow for AED Étranger.
  *
- * Covers the implemented backend path from the official parcours:
- * OTP (email + phone) → submit demande → agent claim/approve|reject →
- * supervisor approve|reject → user/identity/NPI + finalization invitation.
- *
- * Explicitly NOT covered here (not implemented or out of HTTP API scope):
- * - Visio request by agent
- * - SLA alerts / manager dashboard
- * - Similarity scoring against already-approved identities (beyond stored Regula fields)
- * - Frontend finalization page (password / security questions) — only WelcomeUserJob + tokens
- * - Personne morale flow
+ * Covers: OTP → enroll → agent claim/visio/approve|reject → supervisor
+ * approve|reject|return → re-approve → similarity assist payload → stats.
  */
 class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 {
@@ -59,6 +51,8 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         foreach (['tech_one', 'tech_two', 'tech_three', 'superviseur', 'client', 'admin'] as $role) {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
+
+        $this->seed(\Database\Seeders\EnrollmentRejectMotifSeeder::class);
 
         $this->agent = User::factory()->create(['status' => 'ACTIVE']);
         $this->agent->assignRole('tech_one');
@@ -297,6 +291,161 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'stage' => 'KYC',
             'reasons' => ['insufficient_evidence'],
         ])->assertForbidden();
+    }
+
+    #[Test]
+    public function agent_can_request_and_complete_visio_cycle(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.visio@example.com', '+22995555000');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/visio/request"), [
+            'notes' => 'Vérification identité à clarifier',
+        ])->assertOk();
+
+        $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
+        $this->assertSame('VISIO_REQUESTED', $enrollment->status);
+        $this->assertSame('Vérification identité à clarifier', $enrollment->visio_notes);
+        $this->assertNotNull($enrollment->visio_requested_at);
+
+        Bus::assertDispatched(SendEmailNotificationJob::class);
+
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/visio/complete"))
+            ->assertOk();
+
+        $enrollment->refresh();
+        $this->assertSame('PENDING', $enrollment->status);
+        $this->assertNotNull($enrollment->visio_completed_at);
+    }
+
+    #[Test]
+    public function supervisor_return_allows_agent_re_approve_then_supervisor_approve(): void
+    {
+        $email = 'foreigner.return@example.com';
+        $enrollmentId = $this->submitVerifiedEnrollment($email, '+22996666000');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/return"), [
+            'reasons' => ['kyc_incomplete'],
+            'comments' => 'Compléter l\'adresse',
+        ])->assertOk();
+
+        $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
+        $this->assertSame('RETURNED_TO_AGENT', $enrollment->status);
+        $this->assertSame(['kyc_incomplete'], $enrollment->return_reasons);
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
+        $this->assertSame('APPROVED_BY_AGENT', $enrollment->fresh()->status);
+
+        $this->partialMock(TrustedXClientService::class, function ($mock) {
+            $mock->shouldReceive('register')->once()->andReturn([
+                'status' => true,
+                'has_user' => false,
+            ]);
+        });
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/approve"))
+            ->assertOk();
+
+        $this->assertSame('APPROVED', $enrollment->fresh()->status);
+        $this->assertNotNull(User::query()->where('email', $email)->first());
+    }
+
+    #[Test]
+    public function reject_with_invalid_motif_returns_422_and_valid_motif_succeeds(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.motif@example.com', '+22997777000');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/reject"), [
+            'stage' => 'KYC',
+            'reasons' => ['not_a_real_motif'],
+        ])->assertStatus(422);
+
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/reject"), [
+            'stage' => 'DOCUMENT',
+            'reasons' => ['doc_invalid'],
+        ])->assertOk();
+
+        $this->assertSame('REJECTED', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
+    }
+
+    #[Test]
+    public function show_includes_similar_enrollments_payload_shape(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.similar@example.com', '+22998888000');
+
+        Sanctum::actingAs($this->agent);
+        $response = $this->getJson($this->api("/management/identity-reviews/{$enrollmentId}"))
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'id',
+                    'status',
+                    'similar_enrollments',
+                    'visio_notes',
+                    'sla_deadline_at',
+                ],
+            ]);
+
+        $this->assertIsArray($response->json('data.similar_enrollments'));
+    }
+
+    #[Test]
+    public function policy_denies_visio_and_return_for_wrong_roles(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.policy.visio@return.com', '+22999999000');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/visio/request"), [
+            'notes' => 'nope',
+        ])->assertForbidden();
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
+
+        $otherAgent = User::factory()->create(['status' => 'ACTIVE']);
+        $otherAgent->assignRole('tech_two');
+        Sanctum::actingAs($otherAgent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/return"), [
+            'reasons' => ['other'],
+        ])->assertForbidden();
+    }
+
+    #[Test]
+    public function supervisor_can_read_enrollment_stats(): void
+    {
+        $this->submitVerifiedEnrollment('stats.one@example.com', '+22990001111');
+
+        Sanctum::actingAs($this->supervisor);
+        $this->getJson($this->api('/management/enrollment-stats'))
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'counts' => ['received', 'in_progress', 'approved', 'rejected', 'by_status'],
+                    'average_handling_seconds',
+                    'average_handling_hours',
+                    'reject_rate_by_motif',
+                ],
+            ]);
+
+        $client = User::factory()->create(['status' => 'ACTIVE']);
+        $client->assignRole('client');
+        Sanctum::actingAs($client);
+        $this->getJson($this->api('/management/enrollment-stats'))->assertForbidden();
     }
 
     private function submitVerifiedEnrollment(string $email, string $phone): int

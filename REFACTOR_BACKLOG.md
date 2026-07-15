@@ -3,7 +3,7 @@
 Tracked remediation items derived from the Laravel 12 best-practices audit (`guidelines.md`).  
 **Status key:** `todo` · `in-progress` · `blocked` · `done` · `deferred`
 
-**Last updated:** 2026-07-15 (personne physique enrollment: phone OTP, Regula on EnrollmentRequest, confirmation via ForeignerFinalized)
+**Last updated:** 2026-07-15 (physique gaps closed: visio/return/SLA/similarity/motifs/stats)
 
 ---
 
@@ -187,7 +187,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | Area | Test file | Status |
 |------|-----------|--------|
 | Foreigner enrollment (OTP + submit) | `ForeignerEnrollmentControllerTest` | Covered |
-| Personne physique E2E workflow | `PersonnePhysiqueEnrollmentWorkflowTest` | Covered (happy path + reject/claim/filter) |
+| Personne physique E2E workflow | `PersonnePhysiqueEnrollmentWorkflowTest` | Covered (happy path + visio/return/motifs/similarity/stats) |
 | Kafka notifications | `KafkaNotificationPublisherTest` | Minimal |
 | All other controllers (~27) | — | **Untested** |
 
@@ -269,6 +269,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-15 | Personne physique enrollment hardening: phone OTP (SMS), Regula/Upload jobs on `EnrollmentRequest`, submit confirmation via existing `ForeignerFinalized` template, feature tests rewritten for `/enroll`. |
 | 2026-07-15 | `guidelines.md` rewritten against PDF/`pics` SoT; §9.3 policies-first (P10-04 in-progress); obsolete ONLINE/finalize guidance removed. |
 | 2026-07-15 | P10-04 done for identity-review: removed nested `role:` middleware; policy-only auth; controller uses `$request->user()`. |
+| 2026-07-15 | Physique enrollment gaps closed: statuses `VISIO_REQUESTED`/`RETURNED_TO_AGENT`, reject motif catalog + API, visio/return workflow, similarity on show, SLA command + enrollment stats, tests/docs updated. |
 
 ---
 

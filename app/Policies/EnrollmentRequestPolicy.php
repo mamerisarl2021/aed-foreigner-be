@@ -51,6 +51,18 @@ class EnrollmentRequestPolicy
             && $enrollmentRequest->assigned_agent_id === $user->id;
     }
 
+    public function requestVisio(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        return $user->hasAnyRole(self::AGENT_ROLES)
+            && $enrollmentRequest->assigned_agent_id === $user->id;
+    }
+
+    public function completeVisio(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        return $user->hasAnyRole(self::AGENT_ROLES)
+            && $enrollmentRequest->assigned_agent_id === $user->id;
+    }
+
     public function supervisorApprove(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $user->hasRole('superviseur');
@@ -59,5 +71,15 @@ class EnrollmentRequestPolicy
     public function supervisorReject(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $user->hasRole('superviseur');
+    }
+
+    public function supervisorReturn(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        return $user->hasRole('superviseur');
+    }
+
+    public function viewEnrollmentStats(User $user): bool
+    {
+        return $user->hasAnyRole(['superviseur', 'admin']);
     }
 }

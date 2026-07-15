@@ -21,3 +21,4 @@ Artisan::command('inspire', function () {
 
 // Moves scheduling out of Console/Kernel: Artisan commands in app/Console/Commands/ are auto-discovered in Laravel 12 — no manual $this->load() needed.
 Schedule::command('invitations:cleanup')->daily();
+Schedule::command('enrollment:check-sla')->hourly();

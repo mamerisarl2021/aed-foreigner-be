@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\IdentityReview\RejectIdentityRequest;
+use App\Http\Requests\IdentityReview\RequestVisioEnrollmentRequest;
+use App\Http\Requests\IdentityReview\SupervisorReturnEnrollmentRequest;
 use App\Http\Resources\EnrollmentRequestResource;
 use App\Models\EnrollmentRequest;
 use App\Services\IdentityReview\IdentityReviewService;
@@ -67,6 +69,25 @@ class IdentityReviewController extends BaseController
         return $this->respond($this->identityReview->approve($id, (int) $agentId));
     }
 
+    public function requestVisio(RequestVisioEnrollmentRequest $request, int $id): JsonResponse
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('requestVisio', $enrollment);
+
+        return $this->respond($this->identityReview->requestVisio(
+            $id,
+            $request->input('notes')
+        ));
+    }
+
+    public function completeVisio(int $id): JsonResponse
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('completeVisio', $enrollment);
+
+        return $this->respond($this->identityReview->completeVisio($id));
+    }
+
     public function supervisorApprove(Request $request, int $id): JsonResponse
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
@@ -90,7 +111,19 @@ class IdentityReviewController extends BaseController
             $request->input('stage'),
             $request->input('reasons'),
             $request->input('comments'),
-            'APPROVED_BY_AGENT',
+            ['APPROVED_BY_AGENT'],
+        ));
+    }
+
+    public function supervisorReturn(SupervisorReturnEnrollmentRequest $request, int $id): JsonResponse
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('supervisorReturn', $enrollment);
+
+        return $this->respond($this->identityReview->supervisorReturn(
+            $id,
+            $request->input('reasons'),
+            $request->input('comments'),
         ));
     }
 
@@ -104,7 +137,7 @@ class IdentityReviewController extends BaseController
             $request->input('stage'),
             $request->input('reasons'),
             $request->input('comments'),
-            'PENDING',
+            ['PENDING', 'RETURNED_TO_AGENT'],
         ));
     }
 }
