@@ -264,6 +264,41 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $this->assertSame($pendingId, $search[0]['id']);
     }
 
+    #[Test]
+    public function policy_denies_client_access_to_identity_reviews(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('policy.client@example.com', '+22993333000');
+
+        $client = User::factory()->create(['status' => 'ACTIVE']);
+        $client->assignRole('client');
+        Sanctum::actingAs($client);
+
+        $this->getJson($this->api('/management/identity-reviews'))->assertForbidden();
+        $this->getJson($this->api("/management/identity-reviews/{$enrollmentId}"))->assertForbidden();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertForbidden();
+    }
+
+    #[Test]
+    public function policy_denies_supervisor_from_claiming_and_agent_from_supervisor_actions(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('policy.roles@example.com', '+22994444000');
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))
+            ->assertForbidden();
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
+
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/approve"))
+            ->assertForbidden();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/reject"), [
+            'stage' => 'KYC',
+            'reasons' => ['insufficient_evidence'],
+        ])->assertForbidden();
+    }
+
     private function submitVerifiedEnrollment(string $email, string $phone): int
     {
         $this->postJson($this->api('/foreigner/send-otp'), ['email' => $email])

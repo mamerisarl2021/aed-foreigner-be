@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\EnrollmentRequest;
@@ -13,11 +15,13 @@ class EnrollmentRequestPolicy
     /** @var list<string> */
     private const AGENT_ROLES = ['tech_one', 'tech_two', 'tech_three'];
 
-    public function before(User $user, $ability)
+    public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('admin')) {
             return true;
         }
+
+        return null;
     }
 
     public function viewAny(User $user): bool

@@ -30,7 +30,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | [P7](#p7-php-typing--static-analysis) | PHP typing & static analysis | 7 | 7 | Medium |
 | [P8](#p8-testing--ci) | Testing & CI | 8 | 0 | High |
 | [P9](#p9-routing--laravel-12-hygiene) | Routing & Laravel 12 hygiene | 5 | 5 | Low |
-| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 5 | Low |
+| [P10](#p10-naming--documentation-cleanup) | Naming & documentation cleanup | 6 | 6 | Low |
 
 **Total:** 82 items
 
@@ -212,7 +212,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P10-01 | `done` | Fix typo: `UserSubscribtion*` → `UserSubscription*` job class names | `app/Jobs/`, `app/Mail/` | Renamed 3 Jobs + 3 Mailables; updated all imports |
 | P10-02 | `done` | Remove large commented-out code blocks | `SignatureDocumentController`, `StatsController`, `StructureSubscriptionController` | |
 | P10-03 | `done` | Update OpenAPI `@OA` paths to `/api/v1/...` | All controllers with Swagger annotations | |
-| P10-04 | `in-progress` | Expand authorization beyond route middleware (policies) | `EnrollmentRequestPolicy` + remaining domains | Policies are SoT for resource actions (`guidelines.md` §9.3). Identity-review already uses `$this->authorize()`. Next: align/remove redundant `role:` groups on those routes; add policies for other management resources |
+| P10-04 | `done` | Expand authorization beyond route middleware (policies) | `EnrollmentRequestPolicy` | Identity-review routes use `auth:sanctum` only; all actions via `$this->authorize()`. Remaining management domains still use `role:` until migrated |
 | P10-05 | `done` | Replace `Auth::user()` / `auth()->user()` with `$request->user()` | See audit list (15+ locations) | As controllers are touched |
 | P10-06 | `done` | Delete unused stub Form Requests or implement them | `app/Http/Requests/` | Completed in P2-01/P2-08 |
 
@@ -268,6 +268,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-14 | P3-12, P9: Extracted route closures to `Singletons` invokables. Cleaned up dead providers and middleware. Route caching verified. |
 | 2026-07-15 | Personne physique enrollment hardening: phone OTP (SMS), Regula/Upload jobs on `EnrollmentRequest`, submit confirmation via existing `ForeignerFinalized` template, feature tests rewritten for `/enroll`. |
 | 2026-07-15 | `guidelines.md` rewritten against PDF/`pics` SoT; §9.3 policies-first (P10-04 in-progress); obsolete ONLINE/finalize guidance removed. |
+| 2026-07-15 | P10-04 done for identity-review: removed nested `role:` middleware; policy-only auth; controller uses `$request->user()`. |
 
 ---
 

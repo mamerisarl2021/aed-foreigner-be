@@ -105,28 +105,21 @@ Route::group([], function () {
             Route::post('/identity/approve-date', [UserController::class, 'approveIdentityDate']);
             Route::post('/identity/approve', [UserController::class, 'updateInPersonIdentityStatus']);
 
-            // Identity review list/view for agents & supervisors
-            Route::get('/management/identity-reviews', [IdentityReviewController::class, 'index']);
-            Route::get('/management/identity-reviews/{id}', [IdentityReviewController::class, 'show']);
-
-            // Agent actions
-            Route::middleware('role:tech_one|tech_two|tech_three')->group(function () {
-                Route::post('/management/identity-reviews/{id}/claim', [IdentityReviewController::class, 'claim']);
-                Route::post('/management/identity-reviews/{id}/approve', [IdentityReviewController::class, 'approve']);
-                Route::post('/management/identity-reviews/{id}/reject', [IdentityReviewController::class, 'reject']);
-            });
-
-            // Supervisor actions
-            Route::middleware('role:superviseur')->group(function () {
-                Route::post('/management/identity-reviews/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
-                Route::post('/management/identity-reviews/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
-            });
-
             Route::get('users', [UserController::class, 'index']);
 
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
 
             Route::get('revocations', [RevocationController::class, 'index']);
+        });
+
+        Route::prefix('management/identity-reviews')->group(function () {
+            Route::get('/', [IdentityReviewController::class, 'index']);
+            Route::get('/{id}', [IdentityReviewController::class, 'show']);
+            Route::post('/{id}/claim', [IdentityReviewController::class, 'claim']);
+            Route::post('/{id}/approve', [IdentityReviewController::class, 'approve']);
+            Route::post('/{id}/reject', [IdentityReviewController::class, 'reject']);
+            Route::post('/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
+            Route::post('/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
         });
 
         Route::middleware('role:client')->group(function () {
