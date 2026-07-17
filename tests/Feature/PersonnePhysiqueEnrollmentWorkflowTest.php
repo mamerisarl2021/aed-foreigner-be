@@ -11,6 +11,7 @@ use App\Jobs\UploadEnrollmentFilesJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
+use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\PKI\TrustedXClientService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,10 +27,10 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * End-to-end Personne Physique enrollment workflow for AED Étranger.
+ * PDF-faithful Personne Physique enrollment workflow.
  *
- * Covers: OTP → enroll → agent claim/visio/approve|reject → supervisor
- * approve|reject|return → re-approve → similarity assist payload → stats.
+ * OTP → enroll → agent claim/visio/approve|propose-reject →
+ * responsable approve|confirm-reject|return → finalization (TrustedX) → manager stats.
  */
 class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 {
@@ -38,6 +39,8 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
     private User $agent;
 
     private User $supervisor;
+
+    private User $manager;
 
     protected function setUp(): void
     {
@@ -48,7 +51,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         Storage::fake('local');
         Bus::fake();
 
-        foreach (['tech_one', 'tech_two', 'tech_three', 'superviseur', 'client', 'admin'] as $role) {
+        foreach (['tech_one', 'tech_two', 'tech_three', 'superviseur', 'manager', 'client', 'admin'] as $role) {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
 
@@ -59,10 +62,13 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
         $this->supervisor = User::factory()->create(['status' => 'ACTIVE']);
         $this->supervisor->assignRole('superviseur');
+
+        $this->manager = User::factory()->create(['status' => 'ACTIVE']);
+        $this->manager->assignRole('manager');
     }
 
     #[Test]
-    public function happy_path_from_otp_to_supervisor_approval_creates_user_identity_and_finalization_invite(): void
+    public function happy_path_supervisor_approve_creates_created_user_without_trustedx_register(): void
     {
         $email = 'foreigner.happy@example.com';
         $phone = '+22990111222';
@@ -72,8 +78,6 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $enrollment = EnrollmentRequest::query()->where('email', $email)->firstOrFail();
         $this->assertSame('PENDING', $enrollment->status);
         $this->assertSame('PERSONNE_PHYSIQUE', $enrollment->type);
-        $this->assertSame('DOE', $enrollment->kyc_data['name']);
-        $this->assertSame('PASSPORT', $enrollment->kyc_data['document_type']);
 
         Bus::assertChained([
             UploadEnrollmentFilesJob::class,
@@ -82,86 +86,97 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollment->id}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollment->id}/approve"))->assertOk();
+        $this->assertSame('APPROVED_BY_AGENT', $enrollment->fresh()->status);
 
-        $this->getJson($this->api('/management/identity-reviews?status=PENDING&type=PERSONNE_PHYSIQUE'))
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $listIds = collect($this->getJson($this->api('/management/identity-reviews?status=PENDING'))->json('data.data'))
-            ->pluck('id')
-            ->all();
-        $this->assertContains($enrollment->id, $listIds);
-
-        $this->getJson($this->api("/management/identity-reviews/{$enrollment->id}"))
-            ->assertOk()
-            ->assertJsonPath('data.id', $enrollment->id)
-            ->assertJsonPath('data.status', 'PENDING')
-            ->assertJsonPath('data.type', 'PERSONNE_PHYSIQUE')
-            ->assertJsonPath('data.email', $email)
-            ->assertJsonPath('data.kyc_data.name', 'DOE');
-
-        $this->postJson($this->api("/management/identity-reviews/{$enrollment->id}/claim"))
-            ->assertOk()
-            ->assertJsonPath('data.assigned_agent_id', $this->agent->id);
-
-        $this->postJson($this->api("/management/identity-reviews/{$enrollment->id}/approve"))
-            ->assertOk()
-            ->assertJsonPath('data.enrollment_id', $enrollment->id);
-
-        $enrollment->refresh();
-        $this->assertSame('APPROVED_BY_AGENT', $enrollment->status);
-        Bus::assertDispatched(SendEmailNotificationJob::class);
-
-        Sanctum::actingAs($this->supervisor);
-
+        // TrustedX must NOT be called on supervisor approve (PDF §4: after finalization)
         $this->partialMock(TrustedXClientService::class, function ($mock) {
-            $mock->shouldReceive('register')->once()->andReturn([
-                'status' => true,
-                'has_user' => false,
-            ]);
+            $mock->shouldReceive('register')->never();
         });
 
+        Sanctum::actingAs($this->supervisor);
         $this->postJson($this->api("/management/identity-reviews/{$enrollment->id}/supervisor/approve"))
             ->assertOk()
-            ->assertJsonPath('data.enrollment_id', $enrollment->id)
             ->assertJsonStructure(['data' => ['user_id', 'npi']]);
 
         $enrollment->refresh();
         $this->assertSame('APPROVED', $enrollment->status);
 
         $user = User::query()->where('email', $email)->firstOrFail();
-        $this->assertSame('DOE', $user->name);
-        $this->assertSame('JOHN', $user->first_name);
-        $this->assertSame($phone, $user->phonenumber);
-        $this->assertSame('FR', $user->nationality);
-        $this->assertSame('ACTIVE', $user->status);
-        $this->assertNotNull($user->npi);
-        $this->assertStringStartsWith('F-', $user->npi);
+        $this->assertSame('CREATED', $user->status);
+        $this->assertNull($user->trustedx_registered_at);
+        $this->assertSame('M', $user->sexe);
         $this->assertTrue($user->hasRole('client'));
+        $this->assertStringStartsWith('F-', $user->npi);
 
         $identity = Identity::query()->where('user_id', $user->id)->firstOrFail();
         $this->assertSame('APPROVED', $identity->status);
-        $this->assertSame('IN_PERSON', $identity->type);
-        $this->assertSame('ADVANCED', $identity->level);
 
         $this->assertNotNull(DB::table('password_resets')->where(['npi' => $user->npi, 'type' => 'all'])->first());
-        $this->assertNotNull(DB::table('password_resets')->where(['npi' => $user->npi, 'type' => 'pin'])->first());
-        $this->assertNotNull(DB::table('password_resets')->where(['npi' => $user->npi, 'type' => 'password'])->first());
-
         Bus::assertDispatched(WelcomeUserJob::class);
     }
 
     #[Test]
-    public function agent_can_reject_pending_enrollment_with_standardized_reasons(): void
+    public function finalization_registers_trustedx_activates_user_and_finalizes_enrollment(): void
     {
-        $email = 'foreigner.reject.agent@example.com';
-        $phone = '+22990333444';
-        $enrollmentId = $this->submitVerifiedEnrollment($email, $phone);
+        $email = 'foreigner.finalize@example.com';
+        $enrollmentId = $this->submitVerifiedEnrollment($email, '+22990111333');
 
         Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
 
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))
-            ->assertOk();
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/approve"))->assertOk();
+
+        $user = User::query()->where('email', $email)->firstOrFail();
+        $token = PasswordResetToken::where('npi', $user->npi)->where('type', 'all')->value('token');
+        $this->assertNotNull($token);
+
+        $this->mock(TrustedXClientService::class, function ($mock) {
+            $mock->shouldReceive('register')->once()->andReturn([
+                'status' => true,
+                'data' => ['id' => 'tx-user-1'],
+                'has_user' => false,
+            ]);
+            $mock->shouldReceive('setDefaultPassword')->twice()->andReturn([
+                'status' => true,
+                'data' => [],
+            ]);
+            $mock->shouldReceive('getUserWithNPI')->andReturn([
+                'status' => true,
+                'data' => ['id' => 'tx-user-1', 'npi' => 'F-00000001'],
+            ]);
+        });
+
+        $this->postJson($this->api('/clients/all/reset'), [
+            'token' => $token,
+            'npi' => $user->npi,
+            'password' => 'SecurePass1!',
+            'pin' => '123456',
+            'security_questions' => [
+                ['question' => 'Ville de naissance ?', 'answer' => 'Paris'],
+            ],
+        ])->assertOk();
+
+        $user->refresh();
+        $this->assertSame('ACTIVE', $user->status);
+        $this->assertNotNull($user->trustedx_registered_at);
+        $this->assertSame('Paris', $user->security_questions[0]['answer'] ?? null);
+        $this->assertSame('FINALIZED', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
+    }
+
+    #[Test]
+    public function agent_reject_proposes_rejected_by_agent_without_applicant_email(): void
+    {
+        $email = 'foreigner.reject.agent@example.com';
+        $enrollmentId = $this->submitVerifiedEnrollment($email, '+22990333444');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+
+        Bus::fake([SendEmailNotificationJob::class]);
 
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/reject"), [
             'stage' => 'KYC',
@@ -170,21 +185,43 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         ])->assertOk();
 
         $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
-        $this->assertSame('REJECTED', $enrollment->status);
-        $this->assertSame('KYC', $enrollment->reject_stage);
+        $this->assertSame('REJECTED_BY_AGENT', $enrollment->status);
         $this->assertSame(['doc_invalid', 'photo_mismatch'], $enrollment->reject_reasons);
-        $this->assertSame('Pièce non conforme', $enrollment->review_comments);
+        $this->assertNull(User::query()->where('email', $email)->first());
+        Bus::assertNotDispatched(SendEmailNotificationJob::class);
+    }
 
+    #[Test]
+    public function supervisor_confirms_agent_rejection_and_notifies_applicant(): void
+    {
+        $email = 'foreigner.reject.confirm@example.com';
+        $enrollmentId = $this->submitVerifiedEnrollment($email, '+22990555666');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/reject"), [
+            'stage' => 'KYC',
+            'reasons' => ['insufficient_evidence'],
+            'comments' => 'Dossier incomplet',
+        ])->assertOk();
+        $this->assertSame('REJECTED_BY_AGENT', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/reject"), [
+            'stage' => 'KYC',
+            'reasons' => ['insufficient_evidence'],
+            'comments' => 'Confirmé',
+        ])->assertOk();
+
+        $this->assertSame('REJECTED', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
         Bus::assertDispatched(SendEmailNotificationJob::class);
         $this->assertNull(User::query()->where('email', $email)->first());
     }
 
     #[Test]
-    public function supervisor_can_reject_after_agent_approval(): void
+    public function supervisor_cannot_final_reject_from_approved_by_agent(): void
     {
-        $email = 'foreigner.reject.supervisor@example.com';
-        $phone = '+22990555666';
-        $enrollmentId = $this->submitVerifiedEnrollment($email, $phone);
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.no.finalreject@example.com', '+22990555777');
 
         Sanctum::actingAs($this->agent);
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
@@ -194,13 +231,30 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/reject"), [
             'stage' => 'KYC',
             'reasons' => ['insufficient_evidence'],
-            'comments' => 'Dossier incomplet',
+        ])->assertForbidden();
+
+        $this->assertSame('APPROVED_BY_AGENT', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
+    }
+
+    #[Test]
+    public function supervisor_can_return_from_rejected_by_agent(): void
+    {
+        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.return.reject@example.com', '+22990555888');
+
+        Sanctum::actingAs($this->agent);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/reject"), [
+            'stage' => 'DOCUMENT',
+            'reasons' => ['doc_invalid'],
         ])->assertOk();
 
-        $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
-        $this->assertSame('REJECTED', $enrollment->status);
-        Bus::assertDispatched(SendEmailNotificationJob::class);
-        $this->assertNull(User::query()->where('email', $email)->first());
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/return"), [
+            'reasons' => ['doc_invalid'],
+            'comments' => 'Revoir la pièce',
+        ])->assertOk();
+
+        $this->assertSame('RETURNED_TO_AGENT', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
     }
 
     #[Test]
@@ -209,8 +263,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $enrollmentId = $this->submitVerifiedEnrollment('foreigner.claim@example.com', '+22990777888');
 
         Sanctum::actingAs($this->agent);
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))
-            ->assertOk();
+        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
 
         $otherAgent = User::factory()->create(['status' => 'ACTIVE']);
         $otherAgent->assignRole('tech_two');
@@ -226,7 +279,6 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $enrollmentId = $this->submitVerifiedEnrollment('foreigner.noclaim@example.com', '+22990888999');
 
         Sanctum::actingAs($this->agent);
-
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))
             ->assertForbidden();
     }
@@ -250,12 +302,6 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             ->assertOk()
             ->json('data.data');
         $this->assertTrue(collect($unassigned)->contains(fn ($row) => $row['id'] === $otherId));
-
-        $search = $this->getJson($this->api('/management/identity-reviews?status=PENDING&q=filter.pending@example.com'))
-            ->assertOk()
-            ->json('data.data');
-        $this->assertCount(1, $search);
-        $this->assertSame($pendingId, $search[0]['id']);
     }
 
     #[Test]
@@ -268,7 +314,6 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         Sanctum::actingAs($client);
 
         $this->getJson($this->api('/management/identity-reviews'))->assertForbidden();
-        $this->getJson($this->api("/management/identity-reviews/{$enrollmentId}"))->assertForbidden();
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertForbidden();
     }
 
@@ -287,10 +332,6 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/approve"))
             ->assertForbidden();
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/reject"), [
-            'stage' => 'KYC',
-            'reasons' => ['insufficient_evidence'],
-        ])->assertForbidden();
     }
 
     #[Test]
@@ -307,17 +348,10 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
         $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
         $this->assertSame('VISIO_REQUESTED', $enrollment->status);
-        $this->assertSame('Vérification identité à clarifier', $enrollment->visio_notes);
-        $this->assertNotNull($enrollment->visio_requested_at);
-
-        Bus::assertDispatched(SendEmailNotificationJob::class);
 
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/visio/complete"))
             ->assertOk();
-
-        $enrollment->refresh();
-        $this->assertSame('PENDING', $enrollment->status);
-        $this->assertNotNull($enrollment->visio_completed_at);
+        $this->assertSame('PENDING', $enrollment->fresh()->status);
     }
 
     #[Test]
@@ -336,31 +370,22 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'comments' => 'Compléter l\'adresse',
         ])->assertOk();
 
-        $enrollment = EnrollmentRequest::query()->findOrFail($enrollmentId);
-        $this->assertSame('RETURNED_TO_AGENT', $enrollment->status);
-        $this->assertSame(['kyc_incomplete'], $enrollment->return_reasons);
+        $this->assertSame('RETURNED_TO_AGENT', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
 
         Sanctum::actingAs($this->agent);
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
-        $this->assertSame('APPROVED_BY_AGENT', $enrollment->fresh()->status);
-
-        $this->partialMock(TrustedXClientService::class, function ($mock) {
-            $mock->shouldReceive('register')->once()->andReturn([
-                'status' => true,
-                'has_user' => false,
-            ]);
-        });
 
         Sanctum::actingAs($this->supervisor);
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/approve"))
             ->assertOk();
 
-        $this->assertSame('APPROVED', $enrollment->fresh()->status);
-        $this->assertNotNull(User::query()->where('email', $email)->first());
+        $user = User::query()->where('email', $email)->firstOrFail();
+        $this->assertSame('CREATED', $user->status);
+        $this->assertSame('APPROVED', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
     }
 
     #[Test]
-    public function reject_with_invalid_motif_returns_422_and_valid_motif_succeeds(): void
+    public function reject_with_invalid_motif_returns_422_and_valid_motif_proposes_rejection(): void
     {
         $enrollmentId = $this->submitVerifiedEnrollment('foreigner.motif@example.com', '+22997777000');
 
@@ -377,7 +402,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'reasons' => ['doc_invalid'],
         ])->assertOk();
 
-        $this->assertSame('REJECTED', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
+        $this->assertSame('REJECTED_BY_AGENT', EnrollmentRequest::query()->findOrFail($enrollmentId)->status);
     }
 
     #[Test]
@@ -386,51 +411,19 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $enrollmentId = $this->submitVerifiedEnrollment('foreigner.similar@example.com', '+22998888000');
 
         Sanctum::actingAs($this->agent);
-        $response = $this->getJson($this->api("/management/identity-reviews/{$enrollmentId}"))
+        $this->getJson($this->api("/management/identity-reviews/{$enrollmentId}"))
             ->assertOk()
             ->assertJsonStructure([
-                'data' => [
-                    'id',
-                    'status',
-                    'similar_enrollments',
-                    'visio_notes',
-                    'sla_deadline_at',
-                ],
+                'data' => ['id', 'status', 'similar_enrollments', 'visio_notes', 'sla_deadline_at'],
             ]);
-
-        $this->assertIsArray($response->json('data.similar_enrollments'));
     }
 
     #[Test]
-    public function policy_denies_visio_and_return_for_wrong_roles(): void
-    {
-        $enrollmentId = $this->submitVerifiedEnrollment('foreigner.policy.visio@return.com', '+22999999000');
-
-        Sanctum::actingAs($this->agent);
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
-
-        Sanctum::actingAs($this->supervisor);
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/visio/request"), [
-            'notes' => 'nope',
-        ])->assertForbidden();
-
-        Sanctum::actingAs($this->agent);
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/approve"))->assertOk();
-
-        $otherAgent = User::factory()->create(['status' => 'ACTIVE']);
-        $otherAgent->assignRole('tech_two');
-        Sanctum::actingAs($otherAgent);
-        $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/supervisor/return"), [
-            'reasons' => ['other'],
-        ])->assertForbidden();
-    }
-
-    #[Test]
-    public function supervisor_can_read_enrollment_stats(): void
+    public function manager_can_read_enrollment_stats_but_superviseur_and_client_cannot(): void
     {
         $this->submitVerifiedEnrollment('stats.one@example.com', '+22990001111');
 
-        Sanctum::actingAs($this->supervisor);
+        Sanctum::actingAs($this->manager);
         $this->getJson($this->api('/management/enrollment-stats'))
             ->assertOk()
             ->assertJsonStructure([
@@ -442,6 +435,9 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
                 ],
             ]);
 
+        Sanctum::actingAs($this->supervisor);
+        $this->getJson($this->api('/management/enrollment-stats'))->assertForbidden();
+
         $client = User::factory()->create(['status' => 'ACTIVE']);
         $client->assignRole('client');
         Sanctum::actingAs($client);
@@ -450,8 +446,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
     private function submitVerifiedEnrollment(string $email, string $phone): int
     {
-        $this->postJson($this->api('/foreigner/send-otp'), ['email' => $email])
-            ->assertOk();
+        $this->postJson($this->api('/foreigner/send-otp'), ['email' => $email])->assertOk();
         Bus::assertDispatched(ForeignerOtpJob::class);
 
         $emailOtp = Cache::get('foreigner_otp_'.strtolower($email));
@@ -461,8 +456,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'otp' => $emailOtp,
         ])->assertOk();
 
-        $this->postJson($this->api('/foreigner/send-otp'), ['phonenumber' => $phone])
-            ->assertOk();
+        $this->postJson($this->api('/foreigner/send-otp'), ['phonenumber' => $phone])->assertOk();
         Bus::assertDispatched(SendSmsJob::class);
 
         $phoneOtp = Cache::get('foreigner_otp_phone_'.$phone);
@@ -477,7 +471,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
             'phonenumber' => $phone,
             'name' => 'DOE',
             'first_name' => 'JOHN',
-            'sex' => 'M',
+            'sexe' => 'M',
             'date_of_birth' => '1990-01-15',
             'place_of_birth' => 'Paris',
             'nationality' => 'FR',

@@ -19,7 +19,16 @@ return new class extends Migration
             $table->json('documents')->nullable()->comment('Stores paths to selfie, recto, verso');
             $table->string('liveness')->nullable();
             $table->string('similarity')->nullable();
-            $table->enum('status', ['PENDING', 'VISIO_REQUESTED', 'APPROVED_BY_AGENT', 'RETURNED_TO_AGENT', 'APPROVED', 'REJECTED'])->default('PENDING');
+            $table->enum('status', [
+                'PENDING',
+                'VISIO_REQUESTED',
+                'APPROVED_BY_AGENT',
+                'REJECTED_BY_AGENT',
+                'RETURNED_TO_AGENT',
+                'APPROVED',
+                'FINALIZED',
+                'REJECTED',
+            ])->default('PENDING');
             $table->foreignId('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('reject_stage')->nullable();
             $table->json('reject_reasons')->nullable();

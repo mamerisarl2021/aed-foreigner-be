@@ -237,7 +237,7 @@ return [
         'rule' => 'règle',
         'rules' => 'règles',
         'second' => 'seconde',
-        'sex' => 'sexe',
+        'sexe' => 'sexe',
         'shipment' => 'expédition',
         'short_text' => 'texte court',
         'size' => 'taille',

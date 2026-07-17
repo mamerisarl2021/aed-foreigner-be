@@ -123,13 +123,13 @@ class ForeignerEnrollmentController extends BaseController
      *              mediaType="multipart/form-data",
      *
      *              @OA\Schema(
-     *                  required={"email", "phonenumber", "name", "first_name", "sex", "date_of_birth", "place_of_birth", "nationality", "country_of_residence", "address", "document_type", "document_number", "selfie", "recto"},
+     *                  required={"email", "phonenumber", "name", "first_name", "sexe", "date_of_birth", "place_of_birth", "nationality", "country_of_residence", "address", "document_type", "document_number", "selfie", "recto"},
      *
      *                  @OA\Property(property="email", type="string", format="email"),
      *                  @OA\Property(property="phonenumber", type="string"),
      *                  @OA\Property(property="name", type="string"),
      *                  @OA\Property(property="first_name", type="string"),
-     *                  @OA\Property(property="sex", type="string", enum={"M", "F"}),
+     *                  @OA\Property(property="sexe", type="string", enum={"M", "F"}),
      *                  @OA\Property(property="date_of_birth", type="string", format="date"),
      *                  @OA\Property(property="place_of_birth", type="string"),
      *                  @OA\Property(property="nationality", type="string"),

@@ -21,7 +21,7 @@ return new class extends Migration
 
         // MySQL enum alteration — expand allowed statuses (SQLite uses string; no MODIFY)
         if (Schema::getConnection()->getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE enrollment_requests MODIFY COLUMN status ENUM('PENDING','VISIO_REQUESTED','APPROVED_BY_AGENT','RETURNED_TO_AGENT','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING'");
+            DB::statement("ALTER TABLE enrollment_requests MODIFY COLUMN status ENUM('PENDING','VISIO_REQUESTED','APPROVED_BY_AGENT','REJECTED_BY_AGENT','RETURNED_TO_AGENT','APPROVED','FINALIZED','REJECTED') NOT NULL DEFAULT 'PENDING'");
         }
 
         Schema::create('enrollment_reject_motifs', function (Blueprint $table) {

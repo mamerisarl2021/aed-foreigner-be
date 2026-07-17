@@ -107,7 +107,7 @@ class ForeignerEnrollmentService
                 'kyc_data' => [
                     'name' => $request->input('name'),
                     'first_name' => $request->input('first_name'),
-                    'sex' => $request->input('sex'),
+                    'sexe' => $request->input('sexe'),
                     'date_of_birth' => $request->input('date_of_birth'),
                     'place_of_birth' => $request->input('place_of_birth'),
                     'nationality' => $request->input('nationality'),

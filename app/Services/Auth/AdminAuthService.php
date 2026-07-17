@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
 class AdminAuthService
 {
     /** @var list<string> */
-    private const AGENT_ROLES = ['superviseur', 'auditeur', 'admin', 'tech_one', 'tech_two', 'tech_three'];
+    private const AGENT_ROLES = ['superviseur', 'auditeur', 'admin', 'manager', 'tech_one', 'tech_two', 'tech_three'];
 
     public function issueOtpAfterLogin(User $user): ServiceResult
     {
@@ -153,7 +153,7 @@ class AdminAuthService
         try {
             $perPage = min((int) $request->get('perPage', 15), 100);
             $role = $request->get('role', null);
-            $allowedRoles = ['superviseur', 'auditeur', 'tech_one', 'tech_two', 'tech_three'];
+            $allowedRoles = ['superviseur', 'auditeur', 'manager', 'tech_one', 'tech_two', 'tech_three'];
 
             if ($role && in_array($role, $allowedRoles)) {
                 $agents = User::whereHas('roles', function ($query) use ($role) {
@@ -177,7 +177,7 @@ class AdminAuthService
     {
         try {
             $agent = User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['superviseur', 'auditeur', 'tech_one', 'tech_two', 'tech_three']);
+                $query->whereIn('name', ['superviseur', 'auditeur', 'manager', 'tech_one', 'tech_two', 'tech_three']);
             })->with('roles')->findOrFail($id);
 
             return ServiceResult::ok('Agent récupéré avec succès', $agent);
@@ -280,6 +280,7 @@ class AdminAuthService
             'LEVEL3' => $user->assignRole('tech_three'),
             'SUPERVISEUR' => $user->assignRole('superviseur'),
             'AUDITEUR' => $user->assignRole('auditeur'),
+            'MANAGER' => $user->assignRole('manager'),
             default => $user->assignRole('client'),
         };
     }

@@ -101,17 +101,19 @@ class IdentityReviewController extends BaseController
         return $this->respond($this->identityReview->supervisorApprove($id, (int) $supervisorId));
     }
 
+    /**
+     * Responsable confirms the agent's rejection proposal (PDF: Approbation du rejet).
+     */
     public function supervisorReject(RejectIdentityRequest $request, int $id): JsonResponse
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('supervisorReject', $enrollment);
 
-        return $this->respond($this->identityReview->reject(
+        return $this->respond($this->identityReview->supervisorApproveReject(
             $id,
             $request->input('stage'),
             $request->input('reasons'),
             $request->input('comments'),
-            ['APPROVED_BY_AGENT'],
         ));
     }
 
@@ -127,17 +129,19 @@ class IdentityReviewController extends BaseController
         ));
     }
 
+    /**
+     * Agent proposes rejection — transmitted to responsable (not final).
+     */
     public function reject(RejectIdentityRequest $request, int $id): JsonResponse
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('reject', $enrollment);
 
-        return $this->respond($this->identityReview->reject(
+        return $this->respond($this->identityReview->proposeReject(
             $id,
             $request->input('stage'),
             $request->input('reasons'),
             $request->input('comments'),
-            ['PENDING', 'RETURNED_TO_AGENT'],
         ));
     }
 }

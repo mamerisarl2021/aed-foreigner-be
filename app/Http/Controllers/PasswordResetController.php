@@ -6,6 +6,7 @@ use App\Jobs\SendLinkJob;
 use App\Jobs\SendSmsJob;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\Enrollment\ForeignerFinalizationService;
 use App\Services\PKI\TrustedXClientService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\Support\Str;
 
 class PasswordResetController extends BaseController
 {
-    public function __construct(private readonly TrustedXClientService $trustedXClient) {}
+    public function __construct(
+        private readonly TrustedXClientService $trustedXClient,
+        private readonly ForeignerFinalizationService $finalizationService,
+    ) {}
 
     public function sendResetLink(Request $request)
     {
@@ -104,43 +108,20 @@ class PasswordResetController extends BaseController
             'password' => 'required|string',
             'pin' => 'required|string',
             'npi' => 'required|string',
+            'security_questions' => ['sometimes', 'nullable', 'array'],
+            'security_questions.*.question' => ['required_with:security_questions', 'string'],
+            'security_questions.*.answer' => ['required_with:security_questions', 'string'],
         ]);
-        $tokenData = PasswordResetToken::where('token', $request->input('token'))->first();
 
-        if (! $tokenData) {
-            return response()->json(['message' => 'Le lien de mise à jour des identifiants est invalide'], 404);
-        }
+        $result = $this->finalizationService->finalize(
+            $request->input('token'),
+            $request->input('npi'),
+            $request->input('password'),
+            $request->input('pin'),
+            $request->input('security_questions'),
+        );
 
-        if (Carbon::parse($tokenData->created_at)->addMinutes(60)->isPast()) {
-            return response()->json(['message' => 'Le lien de mise à jour  des identifiants est expiré.'], 400);
-        }
-
-        $localUser = User::where('npi', $tokenData->npi)->first();
-
-        if ($localUser) {
-            $user = $this->trustedXClient->getUserWithNPI($request->input('npi'));
-            if ($user['status']) {
-                $passwordOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('password')], 'password');
-                $pinOutput = $this->trustedXClient->setDefaultPassword(['id' => $user['data']['id'], 'password' => $request->input('pin')], 'pin');
-                if ($passwordOutput['status'] && $pinOutput['status']) {
-                    $phoneNumber = User::whereNpi($request->input('npi'))->first()->phonenumber;
-                    // SendSmsJob::dispatch($phoneNumber, "Votre $type vient d'être modifié si vous n'êtes pas à l'origine de cette modification; nous vous prions de signaler cette opération et de procéder à la mise à jour de vos informations.");
-
-                    $final = $this->sendResponse(
-                        'Vos identifiants ont bien été mis à jour.',
-                        [...json_decode(json_encode($localUser->load('identities')), true), ...$user['data'], ...$passwordOutput['data']]
-                    );
-                } else {
-                    $final = $this->sendError($passwordOutput['message'].' '.$pinOutput['message'], null, 400);
-                }
-            } else {
-                $final = $this->sendError($user['message'], null, 400);
-            }
-
-            return $final;
-        }
-
-        return $this->sendError('Aucun utilisateur ne correspond à ce npi', null, 404);
+        return $this->respond($result);
     }
 
     public function resetSome(Request $request)

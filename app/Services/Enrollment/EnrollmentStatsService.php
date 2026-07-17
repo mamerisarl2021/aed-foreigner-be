@@ -25,13 +25,14 @@ class EnrollmentStatsService
             ($byStatus['PENDING'] ?? 0)
             + ($byStatus['VISIO_REQUESTED'] ?? 0)
             + ($byStatus['APPROVED_BY_AGENT'] ?? 0)
+            + ($byStatus['REJECTED_BY_AGENT'] ?? 0)
             + ($byStatus['RETURNED_TO_AGENT'] ?? 0)
         );
-        $approved = (int) ($byStatus['APPROVED'] ?? 0);
+        $approved = (int) (($byStatus['APPROVED'] ?? 0) + ($byStatus['FINALIZED'] ?? 0));
         $rejected = (int) ($byStatus['REJECTED'] ?? 0);
 
         $closed = EnrollmentRequest::query()
-            ->whereIn('status', ['APPROVED', 'REJECTED'])
+            ->whereIn('status', ['APPROVED', 'FINALIZED', 'REJECTED'])
             ->get(['created_at', 'updated_at']);
 
         $avgHandlingSeconds = $closed->isEmpty()

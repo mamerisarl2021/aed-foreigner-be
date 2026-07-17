@@ -19,6 +19,7 @@ class EnrollmentSlaService
         'PENDING',
         'VISIO_REQUESTED',
         'APPROVED_BY_AGENT',
+        'REJECTED_BY_AGENT',
         'RETURNED_TO_AGENT',
     ];
 

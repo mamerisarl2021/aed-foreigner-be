@@ -331,7 +331,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
-2. Policies **MUST** use the real Spatie role names used by AED agents: `tech_one`, `tech_two`, `tech_three`, `superviseur`, `admin` (and `client` where relevant). Do **not** invent parallel role names like a bare `agent` unless product renames roles everywhere.
+2. Policies **MUST** use the real Spatie role names used by AED agents: `tech_one`, `tech_two`, `tech_three`, `superviseur`, `manager`, `admin` (and `client` where relevant). Do **not** invent parallel role names like a bare `agent` unless product renames roles everywhere.
 3. Prefer expanding policies over adding more nested `role:` middleware groups.
 4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
 
@@ -455,32 +455,42 @@ Business rules:
 - After submit: queue cloud upload + Regula analysis; send confirmation using the existing foreigner finalized notification template (reuse, do not invent a parallel “advanced id request” mail for this path).
 - Guest endpoints; no Sanctum token required for OTP/enroll.
 
-### 13.2 Agent / supervisor review (implemented)
+### 13.2 Agent / supervisor / manager review (PDF-faithful)
 
 Status machine for demandes (personne physique):
 
 ```
 PENDING ⇄ VISIO_REQUESTED
-PENDING → APPROVED_BY_AGENT → APPROVED | REJECTED | RETURNED_TO_AGENT
-RETURNED_TO_AGENT → APPROVED_BY_AGENT | REJECTED
+PENDING | RETURNED_TO_AGENT → APPROVED_BY_AGENT | REJECTED_BY_AGENT
+APPROVED_BY_AGENT → APPROVED (responsable) | RETURNED_TO_AGENT
+REJECTED_BY_AGENT → REJECTED (responsable confirme) | RETURNED_TO_AGENT
+APPROVED → FINALIZED (demandeur finalise: password/PIN + TrustedX)
 ```
 
-- Agents (`tech_one` | `tech_two` | `tech_three`): claim, request/complete visio (workflow-only), approve (from `PENDING` or `RETURNED_TO_AGENT`), reject with catalog motifs.
-- Supervisor (`superviseur`): approve (creates user/identity, foreigner NPI `F-…`, TrustedX register, finalization invite), reject, or return to agent.
-- Reject motifs: `GET /management/enrollment-reject-motifs`; validation against active catalog codes.
-- Show attaches heuristic `similar_enrollments` vs approved identities / other demandes.
-- Manager stats: `GET /management/enrollment-stats` (superviseur/admin).
-- SLA: `enrollment:check-sla` hourly; updates `sla_alert_level` and notifies configured roles.
-- Authorization lives in `EnrollmentRequestPolicy` (see §9.3).
+Role mapping (PDF → Spatie):
 
-### 13.3 Finalization & authentication after approval (product)
+| PDF | Spatie role |
+|-----|-------------|
+| Agent de traitement | `tech_one` \| `tech_two` \| `tech_three` |
+| Responsable de validation | `superviseur` |
+| Manager (dashboard + SLA L3) | `manager` |
+| Platform admin | `admin` (not PDF manager) |
 
-Per PDF §§4–5, after supervisor validation the foreigner:
+- Agents: claim, request/complete visio (workflow-only), approve, **propose** reject (→ `REJECTED_BY_AGENT`, no applicant email yet).
+- Responsable (`superviseur`): approve validation (creates local `User` status `CREATED` + identity + NPI + finalization invite; **no TrustedX yet**), confirm agent reject (→ `REJECTED` + applicant email), or return to agent from either agent outcome.
+- Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
+- Reject motifs: `GET /management/enrollment-reject-motifs`.
+- Show attaches heuristic `similar_enrollments`.
+- SLA: `enrollment:check-sla` hourly.
+- Authorization: `EnrollmentRequestPolicy` (see §9.3).
 
-- Receives a secure finalization link (password / PIN / recovery questions on the frontend)
-- Authenticates later with unique ID + password + OTP (and optionally Mobile ID)
+### 13.3 Finalization & authentication after approval (PDF §§4–5)
 
-This backend’s responsibility on approval is: persist enrolled identity, provision TrustedX as configured, issue finalization tokens, dispatch the welcome/finalization notification. The frontend init-account UI is out of band.
+After responsable validation the foreigner:
+
+- Receives a secure finalization link (password / PIN / recovery questions)
+- Submits via `POST /clients/all/reset` → [`ForeignerFinalizationService`](app/Services/Enrollment/ForeignerFinalizationService.php): TrustedX `register`, set password/PIN, persist security questions, set user `ACTIVE`, enrollment `FINALIZED`
+- Authenticates later with unique ID + password + OTP (and optionally Mobile ID) — TrustedX/product scope
 
 ### 13.4 Explicitly out of current API scope
 
@@ -488,8 +498,9 @@ Do not pretend these exist in code without implementing them:
 
 - Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
 - Kafka topic / object-storage hardening for local dev
-- Full **personne morale** parcours (async email link + SMS after submit, PSCEQ APIs, company account transfer, …)
+- Full **personne morale** parcours
 - Reopen of a rejected demande (applicant submits a **new** `POST /foreigner/enroll`)
+- SLA thresholds admin UI (env/config only for now)
 
 ### 13.5 Infrastructure integration
 

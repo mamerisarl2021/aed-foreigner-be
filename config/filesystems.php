@@ -3,19 +3,17 @@
 return [
 
     /*
-    |--------------------------------------------------------------------------
-    | Default Filesystem Disk
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
-    */
+        |--------------------------------------------------------------------------
+        | Default Filesystem Disk
+        |--------------------------------------------------------------------------
+        |
+        | Here you may specify the default filesystem disk that should be used
+        | by the framework. The "local" disk, as well as a variety of cloud
+        | based disks are available to your application for file storage.
+        |
+        */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
-
-    'cloud' => env('FILESYSTEM_CLOUD', 's3'),
 
     /*
     |--------------------------------------------------------------------------
@@ -43,7 +41,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/') . '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -60,18 +58,6 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
-        ],
-
-        'minio' => [
-            'driver' => 's3',
-            'key' => env('MINIO_ACCESS_KEY_ID'),
-            'secret' => env('MINIO_SECRET_ACCESS_KEY'),
-            'region' => env('MINIO_DEFAULT_REGION'),
-            'bucket' => env('MINIO_BUCKET'),
-            'url' => env('MINIO_URL'),
-            'endpoint' => env('MINIO_ENDPOINT'),
-            'use_path_style_endpoint' => env('MINIO_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
         ],
 
     ],
