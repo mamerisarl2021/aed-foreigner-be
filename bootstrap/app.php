@@ -4,8 +4,6 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\ForceJsonResponse;
-use App\Http\Middleware\HasAdvancedIdentity;
-use App\Http\Middleware\HasInPersonAdvancedIdentity;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\TrimStrings;
@@ -85,8 +83,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'advanced.identity' => HasAdvancedIdentity::class,
-            'inperson.advanced.identity' => HasInPersonAdvancedIdentity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

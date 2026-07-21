@@ -169,13 +169,9 @@ class TrustedXClientService
                 'verify' => false,
             ])->withToken($access_token)->get("https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me");
 
-            $existingUser = User::with([
-                'cases',
-                'structures',
-                'userSubscriptions',
-                'identities',
-                'signatures',
-            ])->where('npi', $response['npi'])->first();
+            $existingUser = User::with(['identities' => function ($query) {
+                $query->select('user_id', 'type', 'level', 'status');
+            }])->where('npi', $response['npi'])->first();
 
             if (! $existingUser) {
                 return [

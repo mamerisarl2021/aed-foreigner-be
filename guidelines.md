@@ -331,7 +331,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
-2. Policies **MUST** use the real Spatie role names used by AED agents: `tech_one`, `tech_two`, `tech_three`, `superviseur`, `manager`, `admin` (and `client` where relevant). Do **not** invent parallel role names like a bare `agent` unless product renames roles everywhere.
+2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `auditeur`, `client`, and (placeholder) `demandeur_authentifie`.
 3. Prefer expanding policies over adding more nested `role:` middleware groups.
 4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
 
@@ -471,13 +471,18 @@ Role mapping (PDF → Spatie):
 
 | PDF | Spatie role |
 |-----|-------------|
-| Agent de traitement | `tech_one` \| `tech_two` \| `tech_three` |
-| Responsable de validation | `superviseur` |
+| Agent de traitement | `agent` |
+| Responsable de validation | `responsable_de_validation` |
 | Manager (dashboard + SLA L3) | `manager` |
-| Platform admin | `admin` (not PDF manager) |
+| Administrateur de la plateforme | `administrateur_plateforme` |
+| Étranger enrôlé / portail | `client` |
+| Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
+| Auditeur (compliance extension) | `auditeur` |
+
+Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
 
 - Agents: claim, request/complete visio (workflow-only), approve, **propose** reject (→ `REJECTED_BY_AGENT`, no applicant email yet).
-- Responsable (`superviseur`): approve validation (creates local `User` status `CREATED` + identity + NPI + finalization invite; **no TrustedX yet**), confirm agent reject (→ `REJECTED` + applicant email), or return to agent from either agent outcome.
+- Responsable (`responsable_de_validation`): approve validation (creates local `User` status `CREATED` + identity + NPI + finalization invite; **no TrustedX yet**), confirm agent reject (→ `REJECTED` + applicant email), or return to agent from either agent outcome.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
 - Reject motifs: `GET /management/enrollment-reject-motifs`.
 - Show attaches heuristic `similar_enrollments`.
@@ -512,7 +517,7 @@ Do not pretend these exist in code without implementing them:
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 
-Legacy citizen-oriented endpoints under `UserController` (old in-person identity paths, etc.) are **not** the AED Étranger enrollment source of truth; do not extend them for the foreigner parcours.
+Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here; personne morale enrollment will use `enrollment_requests` when implemented.
 
 ---
 
