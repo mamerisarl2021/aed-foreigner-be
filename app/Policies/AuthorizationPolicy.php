@@ -20,8 +20,8 @@ class AuthorizationPolicy
     // Role-Based Access Control (RBAC)
     public function before(User $user)
     {
-        if ($user->hasRole('admin')) {
-            return true; // Admin has full access
+        if ($user->hasRole(config('roles.administrateur_plateforme'))) {
+            return true; // Platform admin has full access
         }
     }
 

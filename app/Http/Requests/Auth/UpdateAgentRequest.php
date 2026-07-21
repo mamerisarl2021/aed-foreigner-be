@@ -17,7 +17,7 @@ class UpdateAgentRequest extends ApiFormRequest
 
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'role' => ['sometimes', 'string', 'in:LEVEL1,LEVEL2,LEVEL3,SUPERVISEUR,AUDITEUR'],
+            'role' => ['sometimes', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
             'phonenumber' => ['sometimes', 'string', 'max:15'],
             'npi' => ['sometimes', 'string', 'max:10', 'unique:users,npi,'.$userId],
             'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$userId],

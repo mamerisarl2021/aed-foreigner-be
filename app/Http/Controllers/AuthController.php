@@ -66,7 +66,7 @@ class AuthController extends BaseController
      *          @OA\JsonContent(
      *
      *              @OA\Property(property="name", type="string"),
-     *              @OA\Property(property="role", type="string", enum={"LEVEL1","LEVEL2","LEVEL3","SUPERVISEUR","AUDITEUR"}),
+     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"}),
      *              @OA\Property(property="phonenumber", type="string"),
      *              @OA\Property(property="email", type="string", format="email")
      *          )

@@ -15,7 +15,7 @@ class RegisterAgentRequest extends ApiFormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'role' => ['sometimes', 'string', 'in:LEVEL1,LEVEL2,LEVEL3,SUPERVISEUR,AUDITEUR'],
+            'role' => ['sometimes', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
             'phonenumber' => ['required', 'string', 'max:15'],
             'npi' => ['required', 'string', 'max:10', 'unique:users,npi'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],

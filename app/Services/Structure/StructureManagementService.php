@@ -85,7 +85,7 @@ class StructureManagementService
                 return ServiceResult::ok('Entreprise récupérée avec succès.', $structure);
             }
 
-            if ($user->hasAnyRole(['tech_one', 'tech_two', 'tech_three'])) {
+            if ($user->hasRole(config('roles.agent'))) {
                 return ServiceResult::ok('Entreprise récupérée avec succès.', $structure);
             }
 
@@ -453,7 +453,7 @@ class StructureManagementService
         try {
             $structure = Structure::findOrFail($structureId);
 
-            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
+            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole([config('roles.agent'), config('roles.responsable_de_validation')])) {
                 return ServiceResult::fail('Vous n\'êtes pas autorisé à ajouter des employés.', null, 403);
             }
 
@@ -543,7 +543,7 @@ class StructureManagementService
         try {
             $structure = Structure::findOrFail($structureId);
 
-            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole(['tech_one', 'tech_two', 'tech_three', 'superviseur'])) {
+            if ($structure->manager_id !== $manager->id && ! $manager->hasAnyRole([config('roles.agent'), config('roles.responsable_de_validation')])) {
                 return ServiceResult::fail('Vous n\'êtes pas autorisé à retirer des employés.', null, 403);
             }
 

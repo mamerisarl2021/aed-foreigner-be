@@ -33,11 +33,12 @@ class StatsController extends Controller
 
         // Récupérer les informations sur les rôles des utilisateurs
         $roles = [
-            'admin' => User::role('admin')->count(),
-            'client' => User::role('client')->count(),
-            'tech_one' => User::role('tech_one')->count(),
-            'tech_two' => User::role('tech_two')->count(),
-            'tech_three' => User::role('tech_three')->count(),
+            'administrateur_plateforme' => User::role(config('roles.administrateur_plateforme'))->count(),
+            'client' => User::role(config('roles.client'))->count(),
+            'agent' => User::role(config('roles.agent'))->count(),
+            'responsable_de_validation' => User::role(config('roles.responsable_de_validation'))->count(),
+            'manager' => User::role(config('roles.manager'))->count(),
+            'auditeur' => User::role(config('roles.auditeur'))->count(),
         ];
 
         // Récupérer les informations sur les abonnements en cours

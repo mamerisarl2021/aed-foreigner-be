@@ -12,16 +12,23 @@ class EnrollmentRejectMotifPolicy
 {
     use HandlesAuthorization;
 
-    /** @var list<string> */
-    private const REVIEWER_ROLES = ['tech_one', 'tech_two', 'tech_three', 'superviseur', 'admin'];
+    /** @return list<string> */
+    private static function reviewerRoles(): array
+    {
+        return [
+            config('roles.agent'),
+            config('roles.responsable_de_validation'),
+            config('roles.administrateur_plateforme'),
+        ];
+    }
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(self::REVIEWER_ROLES);
+        return $user->hasAnyRole(self::reviewerRoles());
     }
 
     public function view(User $user, EnrollmentRejectMotif $motif): bool
     {
-        return $user->hasAnyRole(self::REVIEWER_ROLES);
+        return $user->hasAnyRole(self::reviewerRoles());
     }
 }

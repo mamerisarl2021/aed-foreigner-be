@@ -57,14 +57,14 @@ Route::group([], function () {
         Route::apiResource('structure-subscriptions', StructureSubscriptionController::class);
         // Route::apiResource('structure-packages', StructurePackageController::class);
 
-        Route::middleware('role:admin|client|tech_one|tech_two|tech_three|superviseur')->group(function () {
+        Route::middleware('role:administrateur_plateforme|client|agent|responsable_de_validation')->group(function () {
             Route::post('users/{id}', [UserController::class, 'update']);
             Route::get('search/structures', [StructureController::class, 'search']);
             Route::get('packages', [UserSubscriptionController::class, 'packages']);
             Route::get('structures/{id}', [StructureController::class, 'show']);
         });
 
-        Route::middleware('role:admin')->group(function () {
+        Route::middleware('role:administrateur_plateforme')->group(function () {
             // AGENTS MANAGEMENT ROUTES
             Route::post('/agents/register', [AuthController::class, 'registerAgent']);
             Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
@@ -73,7 +73,7 @@ Route::group([], function () {
             Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
         });
 
-        Route::middleware('role:admin|tech_one|tech_two|tech_three|auditeur|superviseur')->group(function () {
+        Route::middleware('role:administrateur_plateforme|agent|auditeur|responsable_de_validation')->group(function () {
             // AGENTS MANAGEMENT ROUTES
             Route::get('/audits', [AuditLogController::class, 'index']);
             Route::get('/stats', [StatsController::class, 'index']);
@@ -92,7 +92,7 @@ Route::group([], function () {
             ]);
         });
 
-        Route::middleware('role:tech_one|tech_two|tech_three|superviseur')->group(function () {
+        Route::middleware('role:agent|responsable_de_validation')->group(function () {
             // MANAGEMENT ROUTES
             Route::post('/management/documents/update-status', [DocumentController::class, 'updateDocumentStatus']);
             Route::post('/management/structures/update-status', [StructureController::class, 'updateStructureStatus']);
@@ -199,7 +199,7 @@ Route::group([], function () {
             Route::post('/stamps/{id}', [StampController::class, 'update']);
         });
 
-        Route::middleware('role:client|tech_one|tech_two|tech_three|superviseur')->group(function () {
+        Route::middleware('role:client|agent|responsable_de_validation')->group(function () {
             Route::post('/management/structure-subscriptions/validate-employee-request', [StructureSubscriptionController::class, 'validateEmployeeRequest']);
 
             Route::get('signing-identities', [SigningIdentityController::class, 'getSigningIdentities']);

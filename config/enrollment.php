@@ -10,8 +10,8 @@ return [
             150 => 'level3',
         ],
         'notify_roles' => [
-            'level1' => ['tech_one', 'tech_two', 'tech_three'],
-            'level2' => ['superviseur'],
+            'level1' => ['agent'],
+            'level2' => ['responsable_de_validation'],
             'level3' => ['manager'],
         ],
     ],

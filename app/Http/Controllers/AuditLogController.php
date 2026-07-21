@@ -14,11 +14,11 @@ class AuditLogController extends BaseController
     public function auditLogs(Request $request)
     {
         $user = $request->user();
-        $agentRoles = ['tech_one', 'tech_two', 'tech_three'];
+        $agentRoles = [config('roles.agent')];
         $perPage = min((int) $request->get('perPage', 15), 100);
 
         // Check if the user has the 'agent' role
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole(config('roles.administrateur_plateforme'))) {
             // SuperAdmin peut voir tous les logs
             $logs = ActivityLog::paginate($perPage);
         } elseif ($user->hasAnyRole($agentRoles)) {

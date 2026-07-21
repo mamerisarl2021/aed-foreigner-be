@@ -1,5 +1,5 @@
 <p>Bonjour,</p>
-<p>La demande d'enrôlement #{{ $enrollment_id }} ({{ $applicant_email }}) vous a été renvoyée par le superviseur pour correction.</p>
+<p>La demande d'enrôlement #{{ $enrollment_id }} ({{ $applicant_email }}) vous a été renvoyée par le responsable de validation pour correction.</p>
 @if(!empty($reasons))
 <p>Motifs :</p>
 <ul>
