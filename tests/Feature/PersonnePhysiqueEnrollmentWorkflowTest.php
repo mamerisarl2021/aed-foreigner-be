@@ -51,17 +51,25 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         Storage::fake('local');
         Bus::fake();
 
-        foreach (['tech_one', 'tech_two', 'tech_three', 'superviseur', 'manager', 'client', 'admin'] as $role) {
+        foreach ([
+            'agent',
+            'responsable_de_validation',
+            'manager',
+            'administrateur_plateforme',
+            'client',
+            'demandeur_authentifie',
+            'auditeur',
+        ] as $role) {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
 
         $this->seed(\Database\Seeders\EnrollmentRejectMotifSeeder::class);
 
         $this->agent = User::factory()->create(['status' => 'ACTIVE']);
-        $this->agent->assignRole('tech_one');
+        $this->agent->assignRole('agent');
 
         $this->supervisor = User::factory()->create(['status' => 'ACTIVE']);
-        $this->supervisor->assignRole('superviseur');
+        $this->supervisor->assignRole('responsable_de_validation');
 
         $this->manager = User::factory()->create(['status' => 'ACTIVE']);
         $this->manager->assignRole('manager');
@@ -266,7 +274,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))->assertOk();
 
         $otherAgent = User::factory()->create(['status' => 'ACTIVE']);
-        $otherAgent->assignRole('tech_two');
+        $otherAgent->assignRole('agent');
         Sanctum::actingAs($otherAgent);
 
         $this->postJson($this->api("/management/identity-reviews/{$enrollmentId}/claim"))
@@ -419,7 +427,7 @@ class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
     }
 
     #[Test]
-    public function manager_can_read_enrollment_stats_but_superviseur_and_client_cannot(): void
+    public function manager_can_read_enrollment_stats_but_responsable_and_client_cannot(): void
     {
         $this->submitVerifiedEnrollment('stats.one@example.com', '+22990001111');
 

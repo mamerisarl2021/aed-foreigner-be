@@ -80,7 +80,9 @@ class IdentityReviewService
                 $uq->where('email', 'like', "%$q%")
                     ->orWhere('phonenumber', 'like', "%$q%")
                     ->orWhereJsonContains('kyc_data->name', $q)
-                    ->orWhereJsonContains('kyc_data->first_name', $q);
+                    ->orWhereJsonContains('kyc_data->first_name', $q)
+                    ->orWhereJsonContains('kyc_data->legal_name', $q)
+                    ->orWhereJsonContains('kyc_data->registration_number', $q);
             });
         }
 
@@ -272,6 +274,10 @@ class IdentityReviewService
             return ServiceResult::fail('Statut non APPROVED_BY_AGENT.', null, 422);
         }
 
+        if ($enrollment->isPersonneMorale()) {
+            return $this->supervisorApproveMorale($enrollment, $supervisorId);
+        }
+
         DB::beginTransaction();
         try {
             $user = User::where('email', $enrollment->email)->first();
@@ -442,5 +448,71 @@ class IdentityReviewService
 
             return ServiceResult::fail('Erreur lors de la confirmation du rejet.', null, 500);
         }
+    }
+
+    private function supervisorApproveMorale(EnrollmentRequest $enrollment, int $supervisorId): ServiceResult
+    {
+        $representative = User::find($enrollment->submitted_by_user_id);
+        if (! $representative) {
+            return ServiceResult::fail('Représentant introuvable.', null, 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            Identity::create([
+                'user_id' => $representative->id,
+                'type' => 'PERSONNE_MORALE',
+                'level' => 'ADVANCED',
+                'proof' => json_encode([
+                    'company' => $enrollment->kyc_data,
+                    'documents' => $enrollment->documents,
+                    'company_email' => $enrollment->email,
+                    'company_phone' => $enrollment->phonenumber,
+                    'enrollment_request_id' => $enrollment->id,
+                ]),
+                'status' => 'APPROVED',
+                'assigned_agent_id' => $supervisorId,
+            ]);
+
+            $legalName = (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
+
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: 'Votre demande personne morale a été approuvée',
+                template: NotificationTemplate::IdentityStepApproved,
+                recipients: [
+                    NotificationRecipient::email($enrollment->email, [
+                        'name' => $legalName,
+                    ]),
+                ],
+                variables: [
+                    'name' => $legalName,
+                ],
+                type: 'MORALE_STEP_APPROVED',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
+
+            $enrollment->status = 'APPROVED';
+            $enrollment->save();
+            DB::commit();
+
+            return ServiceResult::ok('Demande morale approuvée par le responsable.', [
+                'enrollment_id' => $enrollment->id,
+                'representative_user_id' => $representative->id,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Supervisor approve morale failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return ServiceResult::fail("Erreur lors de l'approbation morale.", null, 500);
+        }
+    }
+
+    private function applicantDisplayName(EnrollmentRequest $enrollment): string
+    {
+        if ($enrollment->isPersonneMorale()) {
+            return (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
+        }
+
+        return (string) ($enrollment->kyc_data['name'] ?? $enrollment->email);
     }
 }

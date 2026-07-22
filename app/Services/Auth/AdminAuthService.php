@@ -20,12 +20,24 @@ use Illuminate\Support\Str;
 
 class AdminAuthService
 {
-    /** @var list<string> */
-    private const AGENT_ROLES = ['superviseur', 'auditeur', 'admin', 'manager', 'tech_one', 'tech_two', 'tech_three'];
+    /** @return list<string> */
+    private static function staffRoles(): array
+    {
+        return config('roles.staff', []);
+    }
+
+    /** @return list<string> */
+    private static function listableStaffRoles(): array
+    {
+        return array_values(array_filter(
+            self::staffRoles(),
+            fn (string $role) => $role !== config('roles.administrateur_plateforme')
+        ));
+    }
 
     public function issueOtpAfterLogin(User $user): ServiceResult
     {
-        if (! $user->hasAnyRole(self::AGENT_ROLES)) {
+        if (! $user->hasAnyRole(self::staffRoles())) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
         }
 
@@ -38,7 +50,7 @@ class AdminAuthService
     {
         $user = User::where('email', $email)->first();
 
-        if (! $user || ! $user->hasAnyRole(self::AGENT_ROLES)) {
+        if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent.", null, 403);
         }
 
@@ -51,7 +63,7 @@ class AdminAuthService
     {
         $user = User::where('email', $email)->first();
 
-        if (! $user || ! $user->hasAnyRole(self::AGENT_ROLES)) {
+        if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent.", null, 403);
         }
 
@@ -153,9 +165,9 @@ class AdminAuthService
         try {
             $perPage = min((int) $request->get('perPage', 15), 100);
             $role = $request->get('role', null);
-            $allowedRoles = ['superviseur', 'auditeur', 'manager', 'tech_one', 'tech_two', 'tech_three'];
+            $allowedRoles = self::listableStaffRoles();
 
-            if ($role && in_array($role, $allowedRoles)) {
+            if ($role && in_array($role, $allowedRoles, true)) {
                 $agents = User::whereHas('roles', function ($query) use ($role) {
                     $query->where('name', $role);
                 })->with('roles')->paginate($perPage);
@@ -177,7 +189,7 @@ class AdminAuthService
     {
         try {
             $agent = User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['superviseur', 'auditeur', 'manager', 'tech_one', 'tech_two', 'tech_three']);
+                $query->whereIn('name', self::listableStaffRoles());
             })->with('roles')->findOrFail($id);
 
             return ServiceResult::ok('Agent récupéré avec succès', $agent);
@@ -224,7 +236,7 @@ class AdminAuthService
         try {
             $user = User::where('email', $email)->first();
 
-            if (! $user || ! $user->hasAnyRole(self::AGENT_ROLES)) {
+            if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
                 return ServiceResult::fail(
                     'Vous ne disposez d\'aucun des privilièges requis pour la mise à jour du mot de passe sur cette interface',
                     null,
@@ -274,15 +286,15 @@ class AdminAuthService
 
     private function assignRoleFromCode(User $user, ?string $role): void
     {
-        match ($role) {
-            'LEVEL1' => $user->assignRole('tech_one'),
-            'LEVEL2' => $user->assignRole('tech_two'),
-            'LEVEL3' => $user->assignRole('tech_three'),
-            'SUPERVISEUR' => $user->assignRole('superviseur'),
-            'AUDITEUR' => $user->assignRole('auditeur'),
-            'MANAGER' => $user->assignRole('manager'),
-            default => $user->assignRole('client'),
+        $slug = match ($role) {
+            'AGENT' => config('roles.agent'),
+            'RESPONSABLE_DE_VALIDATION' => config('roles.responsable_de_validation'),
+            'MANAGER' => config('roles.manager'),
+            'AUDITEUR' => config('roles.auditeur'),
+            default => config('roles.client'),
         };
+
+        $user->assignRole($slug);
     }
 
     /**

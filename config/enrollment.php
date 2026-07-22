@@ -10,13 +10,18 @@ return [
             150 => 'level3',
         ],
         'notify_roles' => [
-            'level1' => ['tech_one', 'tech_two', 'tech_three'],
-            'level2' => ['superviseur'],
+            'level1' => ['agent'],
+            'level2' => ['responsable_de_validation'],
             'level3' => ['manager'],
         ],
     ],
 
     'similarity' => [
         'max_results' => 5,
+    ],
+
+    'morale' => [
+        'email_verification_hours' => (int) env('ENROLLMENT_MORALE_EMAIL_VERIFICATION_HOURS', 24),
+        'phone_otp_ttl_minutes' => (int) env('ENROLLMENT_MORALE_PHONE_OTP_TTL_MINUTES', 5),
     ],
 ];

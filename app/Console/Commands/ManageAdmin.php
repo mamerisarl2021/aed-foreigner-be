@@ -74,8 +74,8 @@ class ManageAdmin extends Command
         ]);
 
         // Assign admin role
-        if (! $admin->hasRole('admin')) {
-            $admin->assignRole('admin');
+        if (! $admin->hasRole(config('roles.administrateur_plateforme'))) {
+            $admin->assignRole(config('roles.administrateur_plateforme'));
         }
 
         $this->info('Administrator created successfully.');

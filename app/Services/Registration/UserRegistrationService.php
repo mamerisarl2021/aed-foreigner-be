@@ -1,37 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Registration;
 
-use App\Jobs\AdvancedIdRequestJob;
-use App\Jobs\PlanifiedEmailJob;
 use App\Jobs\SendInitLinkJob;
 use App\Jobs\SendOTPJob;
-use App\Jobs\SendStructureInvitationEmail;
-use App\Jobs\WelcomeUserJob;
-use App\Models\Identity;
 use App\Models\OTP;
 use App\Models\PasswordResetToken;
-use App\Models\Structure;
-use App\Models\StructureInvitation;
 use App\Models\User;
-use App\Models\UserPackage;
-use App\Models\UserSubscription;
 use App\Services\ANIP\AnipSimulatorService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Kkiapay\Kkiapay;
-use Throwable;
 
 class UserRegistrationService
 {
@@ -165,166 +153,8 @@ class UserRegistrationService
         );
     }
 
-
-
     /**
-     * @param  array<string, mixed>  $identityPayload
-     * @param  array<string, mixed>  $userData
-     */
-    private function approveInPersonIdentityApproved(
-        array $identityPayload,
-        array $userData,
-        Request $request,
-    ): ServiceResult {
-        $output = $this->trustedXClient->register($userData);
-        Log::info('Output from register: ', $output);
-
-        if (! $output['status']) {
-            return ServiceResult::fail($output['message'], $output, 400);
-        }
-
-        $uploaded = $this->uploadIdentityFiles($request, forceOnline: true);
-
-        $expDate = $request->input('exp_date') ? Carbon::parse($request->input('exp_date'))->format('Y-m-d') : null;
-        $birthDate = $request->input('birth_date') ? Carbon::parse($request->input('birth_date'))->format('Y-m-d') : null;
-
-        $identity = Identity::findOrFail($identityPayload['id']);
-        $identity->update([
-            'proof' => json_encode([
-                'selfiePath' => $uploaded['selfie'],
-                'rectoPath' => $uploaded['recto'],
-                'versoPath' => $uploaded['verso'],
-                'exp_date' => $expDate,
-                'birth_date' => $birthDate,
-            ]),
-            'status' => $identityPayload['user_id'] == null ? 'PENDING' : $identityPayload['status'],
-        ]);
-
-        $email = optional(User::find($request->input('user_id')))->email;
-        $npi = optional(User::find($request->input('user_id')))->npi;
-        $targetUser = User::findOrFail($identityPayload['user_id']);
-
-        if (isset($output['has_user']) && $output['has_user'] === true) {
-            $allToken = Str::random(60);
-            PasswordResetToken::updateOrCreate(
-                ['npi' => $npi, 'type' => 'all'],
-                ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-            );
-            $link = config('app.frontend_url')."/init-account/all/$allToken/$npi";
-            WelcomeUserJob::dispatch($email, $targetUser, $link, true);
-        } else {
-            $allToken = Str::random(60);
-            $pinToken = Str::random(60);
-            $passwordToken = Str::random(60);
-
-            PasswordResetToken::updateOrCreate(
-                ['npi' => $npi, 'type' => 'pin'],
-                ['token' => $pinToken, 'created_at' => Carbon::now(), 'type' => 'pin']
-            );
-            PasswordResetToken::updateOrCreate(
-                ['npi' => $npi, 'type' => 'password'],
-                ['token' => $passwordToken, 'created_at' => Carbon::now(), 'type' => 'password']
-            );
-            PasswordResetToken::updateOrCreate(
-                ['npi' => $npi, 'type' => 'all'],
-                ['token' => $allToken, 'created_at' => Carbon::now(), 'type' => 'all']
-            );
-
-            $link = config('app.frontend_url')."/init-account/none/$pinToken/$passwordToken/$allToken/$npi";
-            WelcomeUserJob::dispatch($email, $targetUser, $link, true);
-        }
-
-        return ServiceResult::ok('Approved', null);
-    }
-
-    /**
-     * @return array{selfie: string|null, recto: string|null, verso: string|null}
-     */
-    private function uploadIdentityFiles(Request $request, bool $forceOnline = false): array
-    {
-        $paths = ['selfie' => null, 'recto' => null, 'verso' => null];
-
-        if ($forceOnline || $request->input('type') === 'ONLINE') {
-            if ($request->hasFile('selfie')) {
-                $paths['selfie'] = Storage::cloud()->put('selfies', $request->file('selfie'));
-            }
-            if ($request->hasFile('recto')) {
-                $paths['recto'] = Storage::cloud()->put('images', $request->file('recto'));
-            }
-            if ($request->hasFile('verso')) {
-                $paths['verso'] = Storage::cloud()->put('images', $request->file('verso'));
-            }
-        }
-
-        return $paths;
-    }
-
-    /**
-     * @return array{status: bool, message: string, data: mixed}
-     */
-    private function storeSubscription(string $transactionId, int $userId): array
-    {
-        try {
-            $state = $this->kkiaPayment($transactionId);
-            $payload = json_decode($state[0], true);
-
-            if (UserPackage::where('id', $payload['package'])
-                ->where('prix', (int) $payload['amount'])
-                ->count() != 1
-            ) {
-                Log::alert('Failed to create user subscription');
-
-                return [
-                    'status' => false,
-                    'message' => 'Ooops tentative de fraude détectée!',
-                    'data' => [],
-                ];
-            }
-
-            UserSubscription::where('user_id', $userId)
-                ->where('type', 'CITIZEN')
-                ->update(['current' => false]);
-
-            UserSubscription::create([
-                'user_id' => $userId,
-                'current' => true,
-                'status' => 'SENT',
-                'package_id' => $payload['package'],
-                'type' => 'CITIZEN',
-            ]);
-
-            return [
-                'status' => true,
-                'message' => 'Abonnement créé.',
-                'data' => $payload,
-            ];
-        } catch (Throwable $e) {
-            Log::error('Subscription storage failed: '.$e->getMessage());
-
-            return [
-                'status' => false,
-                'message' => "Échec de la création de l'abonnement.",
-                'data' => null,
-            ];
-        }
-    }
-
-    private function kkiaPayment(string $transId): Collection
-    {
-        $kkiapay = new Kkiapay(
-            config('kkiapay.public_key'),
-            config('kkiapay.private_key'),
-            config('kkiapay.secret'),
-            config('kkiapay.sandbox')
-        );
-
-        $payment = $kkiapay->verifyTransaction($transId);
-
-        return collect($payment->state);
-    }
-
-    /**
-     * Update user profile information.
+     * @param  array<string, mixed>  $updateData
      */
     public function updateUser(int $id, array $updateData, ?UploadedFile $profile): ServiceResult
     {
@@ -345,123 +175,12 @@ class UserRegistrationService
             $user->update($updateData);
             DB::commit();
 
-            return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load([
-                'cases',
-                'structures',
-                'userSubscriptions',
-                'identities',
-                'signatures',
-            ]));
+            return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load('identities'));
         } catch (Exception $e) {
             DB::rollBack();
             Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
 
             return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
-        }
-    }
-
-    /**
-     * Accept a structure invitation.
-     */
-    public function acceptInvitation(int $invitationId, User $user): ServiceResult
-    {
-        DB::beginTransaction();
-        try {
-            $invitation = StructureInvitation::where('id', $invitationId)
-                ->where('user_id', $user->id)
-                ->firstOrFail();
-
-            if ($invitation->status !== 'PENDING' || $invitation->expires_at <= Carbon::now()) {
-                DB::rollBack();
-
-                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
-            }
-
-            $invitation->accept();
-
-            $invitation->structure->employees()->attach($user->id, [
-                'role' => $invitation->role,
-                'status' => 'ACTIVE',
-                'joined_at' => Carbon::now(),
-                'invitation_message' => $invitation->message,
-            ]);
-
-            if ($user->status !== 'ACTIVE') {
-                $user->update(['status' => 'ACTIVE']);
-            }
-
-            DB::commit();
-
-            return ServiceResult::ok('Invitation acceptée avec succès.', [
-                'structure' => $invitation->structure->only(['id', 'name']),
-                'role' => $invitation->role,
-            ]);
-        } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-
-            return ServiceResult::fail('Invitation non trouvée.', null, 404);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de l\'acceptation de l\'invitation : '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible d\'accepter l\'invitation.', null, 500);
-        }
-    }
-
-    /**
-     * Respond to an invitation using a token.
-     */
-    public function respondToInvitation(string $token, string $action): ServiceResult
-    {
-        DB::beginTransaction();
-        try {
-            $invitation = StructureInvitation::with(['structure', 'user'])
-                ->where('token', $token)
-                ->firstOrFail();
-
-            if (! $invitation->isPending()) {
-                DB::rollBack();
-
-                return ServiceResult::fail('Cette invitation n\'est plus valide.', null, 400);
-            }
-
-            if ($action === 'accept') {
-                $invitation->accept();
-
-                $invitation->structure->employees()->attach($invitation->user_id, [
-                    'role' => $invitation->role,
-                    'status' => 'ACTIVE',
-                    'joined_at' => Carbon::now(),
-                    'invitation_message' => $invitation->message,
-                ]);
-
-                $user = User::find($invitation->user_id);
-                if ($user && $user->status !== 'ACTIVE') {
-                    $user->update(['status' => 'ACTIVE']);
-                }
-
-                $message = 'Invitation acceptée avec succès.';
-            } else {
-                $invitation->reject();
-                $message = 'Invitation refusée avec succès.';
-            }
-
-            DB::commit();
-
-            return ServiceResult::ok($message, [
-                'action' => $action,
-                'structure' => $invitation->structure->only(['id', 'name']),
-                'role' => $invitation->role,
-            ]);
-        } catch (ModelNotFoundException $e) {
-            DB::rollBack();
-
-            return ServiceResult::fail('Invitation non trouvée.', null, 404);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors du traitement de la réponse : '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de traiter votre réponse.', null, 500);
         }
     }
 }

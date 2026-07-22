@@ -24,6 +24,11 @@ class EnrollmentRequest extends Model
         'reject_reasons',
         'review_comments',
         'type',
+        'submitted_by_user_id',
+        'email_verification_token',
+        'email_verified_at',
+        'phone_verified_at',
+        'verification_deadline_at',
         'visio_notes',
         'visio_requested_at',
         'visio_completed_at',
@@ -41,6 +46,9 @@ class EnrollmentRequest extends Model
             'analysis_details' => 'array',
             'reject_reasons' => 'array',
             'return_reasons' => 'array',
+            'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'verification_deadline_at' => 'datetime',
             'visio_requested_at' => 'datetime',
             'visio_completed_at' => 'datetime',
             'returned_at' => 'datetime',
@@ -51,5 +59,20 @@ class EnrollmentRequest extends Model
     public function assignedAgent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_agent_id');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by_user_id');
+    }
+
+    public function isPersonneMorale(): bool
+    {
+        return $this->type === 'PERSONNE_MORALE';
+    }
+
+    public function isContactVerificationComplete(): bool
+    {
+        return $this->email_verified_at !== null && $this->phone_verified_at !== null;
     }
 }

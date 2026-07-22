@@ -20,6 +20,11 @@ class EnrollmentRejectMotifSeeder extends Seeder
             ['code' => 'duplicate_identity', 'label_fr' => 'Identité déjà enrôlée / suspicion de doublon', 'stage' => 'KYC'],
             ['code' => 'insufficient_evidence', 'label_fr' => 'Éléments de preuve insuffisants', 'stage' => 'OTHER'],
             ['code' => 'other', 'label_fr' => 'Autre motif (voir commentaires)', 'stage' => 'OTHER'],
+            ['code' => 'company_duplicate', 'label_fr' => 'Entreprise déjà enrôlée ou doublon', 'stage' => 'COMPANY'],
+            ['code' => 'company_data_inconsistent', 'label_fr' => 'Informations entreprise incohérentes', 'stage' => 'COMPANY'],
+            ['code' => 'company_docs_invalid', 'label_fr' => 'Pièces justificatives entreprise invalides', 'stage' => 'DOCUMENT'],
+            ['code' => 'representative_unauthorized', 'label_fr' => 'Mandataire non habilité / procuration manquante', 'stage' => 'REPRESENTATIVE'],
+            ['code' => 'trade_register_invalid', 'label_fr' => 'Extrait de registre de commerce invalide', 'stage' => 'DOCUMENT'],
         ];
 
         foreach ($motifs as $motif) {

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Enrollment;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class SubmitMoraleEnrollmentRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('submitMorale', \App\Models\EnrollmentRequest::class) ?? false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $isLegalRep = filter_var($this->input('is_legal_representative', true), FILTER_VALIDATE_BOOLEAN);
+
+        return [
+            'email' => ['required', 'email'],
+            'phonenumber' => ['required', 'string'],
+            'legal_name' => ['required', 'string', 'max:255'],
+            'legal_form' => ['nullable', 'string', 'max:255'],
+            'country_of_incorporation' => ['required', 'string', 'max:255'],
+            'registration_number' => ['required', 'string', 'max:100'],
+            'incorporation_date' => ['nullable', 'date'],
+            'headquarters_address' => ['required', 'string', 'max:500'],
+            'activity_sector' => ['required', 'string', 'max:255'],
+            'legal_representative_name' => ['required', 'string', 'max:255'],
+            'legal_representative_first_name' => ['required', 'string', 'max:255'],
+            'is_legal_representative' => ['required', 'boolean'],
+            'trade_register_extract' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'statutes' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'procuration' => [$isLegalRep ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+        ];
+    }
+}

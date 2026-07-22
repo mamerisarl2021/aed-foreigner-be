@@ -21,6 +21,6 @@ yarn-error.log
 .cursorignore
 .cursorrules
 .envforgeignore
-txdocs
+# txdocs
 .commands
-#implementation_plan.md
+.env.prod
