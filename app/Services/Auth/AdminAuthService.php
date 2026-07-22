@@ -135,9 +135,9 @@ class AdminAuthService
                 'email' => $input['email'],
                 'phonenumber' => $input['phonenumber'],
                 'npi' => $input['npi'],
-                'password' => Hash::make(''),
                 'status' => 'INACTIVE',
             ]);
+            $user->forceFill(['password' => ''])->save();
 
             $this->assignRoleFromCode($user, $input['role'] ?? null);
 

@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 
 class ManageAdmin extends Command
 {
@@ -48,9 +47,9 @@ class ManageAdmin extends Command
 
         // Handle action (create or update)
         if ($action === 'create') {
-            $this->createAdmin($name, $email, Hash::make($password));
+            $this->createAdmin($name, $email, $password);
         } elseif ($action === 'update') {
-            $this->updateAdmin($name, $email, Hash::make($password));
+            $this->updateAdmin($name, $email, $password);
         } else {
             $this->error('Invalid action. Use "create" or "update".');
         }
@@ -66,12 +65,11 @@ class ManageAdmin extends Command
             return;
         }
 
-        // Create new admin
         $admin = User::create([
             'name' => $name,
             'email' => $email,
-            'password' => $password,
         ]);
+        $admin->forceFill(['password' => $password])->save();
 
         // Assign admin role
         if (! $admin->hasRole(config('roles.administrateur_plateforme'))) {
@@ -91,13 +89,10 @@ class ManageAdmin extends Command
 
             return;
         }
-        $admin->password = $password;
-
-        // Update name and password
-        $admin->update([
+        $admin->forceFill([
             'name' => $name,
             'password' => $password,
-        ]);
+        ])->save();
         $this->info('Administrator updated successfully.');
     }
 }
