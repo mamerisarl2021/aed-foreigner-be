@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('enrollment_requests', function (Blueprint $table) {
-            $table->foreignId('submitted_by_user_id')->nullable()->after('type')->constrained('users')->nullOnDelete();
+            $table->foreignUuid('submitted_by_user_id')->nullable()->after('type')->constrained('users')->nullOnDelete();
             $table->string('email_verification_token', 64)->nullable()->after('submitted_by_user_id');
             $table->timestamp('email_verified_at')->nullable()->after('email_verification_token');
             $table->timestamp('phone_verified_at')->nullable()->after('email_verified_at');

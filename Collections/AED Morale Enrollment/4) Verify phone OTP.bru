@@ -1,0 +1,29 @@
+meta {
+  name: 4) Verify phone OTP
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/v1/morale/enrollments/{{morale_enrollment_id}}/verify-phone-otp
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{client_token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "otp": "{{morale_phone_otp}}"
+  }
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+}

@@ -11,6 +11,7 @@ use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Support\NpiAllocator;
 use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
@@ -64,7 +65,7 @@ class IdentityReviewService
         }
 
         if ($request->filled('agent_id')) {
-            $query->where('assigned_agent_id', (int) $request->input('agent_id'));
+            $query->where('assigned_agent_id', $request->input('agent_id'));
         }
 
         if ($request->filled('type')) {
@@ -114,7 +115,7 @@ class IdentityReviewService
         return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
 
-    public function claim(int $id, int $agentId): ServiceResult
+    public function claim(int $id, string $agentId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -132,7 +133,7 @@ class IdentityReviewService
         return ServiceResult::ok('Demande assignée.', $enrollment);
     }
 
-    public function approve(int $id, int $agentId): ServiceResult
+    public function approve(int $id, string $agentId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -266,7 +267,7 @@ class IdentityReviewService
         return ServiceResult::ok('Demande renvoyée à l\'agent.', $enrollment);
     }
 
-    public function supervisorApprove(int $id, int $supervisorId): ServiceResult
+    public function supervisorApprove(int $id, string $supervisorId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -296,7 +297,7 @@ class IdentityReviewService
             }
 
             if (! $user->npi) {
-                $user->npi = 'F-'.str_pad((string) $user->id, 8, '0', STR_PAD_LEFT);
+                $user->npi = NpiAllocator::nextForeignerNpi();
                 $user->save();
             }
 
@@ -450,7 +451,7 @@ class IdentityReviewService
         }
     }
 
-    private function supervisorApproveMorale(EnrollmentRequest $enrollment, int $supervisorId): ServiceResult
+    private function supervisorApproveMorale(EnrollmentRequest $enrollment, string $supervisorId): ServiceResult
     {
         $representative = User::find($enrollment->submitted_by_user_id);
         if (! $representative) {

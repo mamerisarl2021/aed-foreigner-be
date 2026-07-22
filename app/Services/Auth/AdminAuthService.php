@@ -185,7 +185,7 @@ class AdminAuthService
         }
     }
 
-    public function showAgent(int $id): ServiceResult
+    public function showAgent(string $id): ServiceResult
     {
         try {
             $agent = User::whereHas('roles', function ($query) {

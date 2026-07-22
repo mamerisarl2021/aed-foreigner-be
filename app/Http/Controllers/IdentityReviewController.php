@@ -53,7 +53,7 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->claim($id, (int) $agentId));
+        return $this->respond($this->identityReview->claim($id, $agentId));
     }
 
     public function approve(Request $request, int $id): JsonResponse
@@ -66,7 +66,7 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->approve($id, (int) $agentId));
+        return $this->respond($this->identityReview->approve($id, $agentId));
     }
 
     public function requestVisio(RequestVisioEnrollmentRequest $request, int $id): JsonResponse
@@ -98,7 +98,7 @@ class IdentityReviewController extends BaseController
             return $this->sendError('Non authentifié.', null, 401);
         }
 
-        return $this->respond($this->identityReview->supervisorApprove($id, (int) $supervisorId));
+        return $this->respond($this->identityReview->supervisorApprove($id, $supervisorId));
     }
 
     /**

@@ -114,7 +114,7 @@ class UserController extends BaseController
             ];
             $profile = $request->file('profile');
 
-            $result = $this->registration->updateUser((int) $id, $updateData, $profile);
+            $result = $this->registration->updateUser($id, $updateData, $profile);
 
             if (! $result->success) {
                 return $this->sendError($result->message, $result->data ?? [], $result->code);
