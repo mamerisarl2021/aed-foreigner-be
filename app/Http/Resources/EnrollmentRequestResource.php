@@ -29,6 +29,10 @@ class EnrollmentRequestResource extends JsonResource
             'analysis_details' => $this->analysis_details,
             'status' => $this->status,
             'type' => $this->type,
+            'submitted_by_user_id' => $this->submitted_by_user_id,
+            'email_verified_at' => $this->email_verified_at,
+            'phone_verified_at' => $this->phone_verified_at,
+            'verification_deadline_at' => $this->verification_deadline_at,
 
             'assigned_agent_id' => $this->assigned_agent_id,
             'reject_stage' => $this->reject_stage,
@@ -56,6 +60,9 @@ class EnrollmentRequestResource extends JsonResource
             'rectoUrl' => isset($docs['recto']) && $docs['recto'] ? Storage::cloud()->temporaryUrl($docs['recto'], Carbon::now()->addDays(3)) : '',
             'versoUrl' => isset($docs['verso']) && $docs['verso'] ? Storage::cloud()->temporaryUrl($docs['verso'], Carbon::now()->addDays(3)) : '',
             'profileUrl' => isset($docs['profile']) && $docs['profile'] ? Storage::cloud()->temporaryUrl($docs['profile'], Carbon::now()->addDays(3)) : '',
+            'tradeRegisterUrl' => isset($docs['trade_register_extract']) && $docs['trade_register_extract'] ? Storage::cloud()->temporaryUrl($docs['trade_register_extract'], Carbon::now()->addDays(3)) : '',
+            'statutesUrl' => isset($docs['statutes']) && $docs['statutes'] ? Storage::cloud()->temporaryUrl($docs['statutes'], Carbon::now()->addDays(3)) : '',
+            'procurationUrl' => isset($docs['procuration']) && $docs['procuration'] ? Storage::cloud()->temporaryUrl($docs['procuration'], Carbon::now()->addDays(3)) : '',
         ];
     }
 }

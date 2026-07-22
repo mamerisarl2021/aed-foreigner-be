@@ -7,6 +7,7 @@ use App\Http\Controllers\EnrollmentRejectMotifController;
 use App\Http\Controllers\EnrollmentStatsController;
 use App\Http\Controllers\ForeignerEnrollmentController;
 use App\Http\Controllers\IdentityReviewController;
+use App\Http\Controllers\PersonneMoraleEnrollmentController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\UserController;
@@ -59,7 +60,16 @@ Route::group([], function () {
             Route::post('/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
             Route::post('/{id}/supervisor/return', [IdentityReviewController::class, 'supervisorReturn']);
         });
+
+        Route::middleware('role:client')->prefix('morale')->group(function () {
+            Route::post('/enroll', [PersonneMoraleEnrollmentController::class, 'submit']);
+            Route::get('/enrollments/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
+            Route::post('/enrollments/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp']);
+            Route::post('/enrollments/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp']);
+        });
     });
+
+    Route::post('/morale/enrollments/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail']);
 
     Route::post('/clients/send-otp', [UserController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
     Route::post('/clients/verify-otp', [UserController::class, 'verifyOtp'])->middleware(['guest']);

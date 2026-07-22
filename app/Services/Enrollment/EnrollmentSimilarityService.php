@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\Models\EnrollmentRequest;
+use App\Models\Identity;
 use App\Models\User;
 
 class EnrollmentSimilarityService
@@ -14,6 +15,10 @@ class EnrollmentSimilarityService
      */
     public function findSimilar(EnrollmentRequest $enrollment): array
     {
+        if ($enrollment->isPersonneMorale()) {
+            return $this->findSimilarMorale($enrollment);
+        }
+
         $kyc = $enrollment->kyc_data ?? [];
         $name = strtoupper(trim((string) ($kyc['name'] ?? '')));
         $firstName = strtoupper(trim((string) ($kyc['first_name'] ?? '')));
@@ -118,6 +123,102 @@ class EnrollmentSimilarityService
                     'enrollment_request_id' => $other->id,
                     'status' => $other->status,
                     'email' => $other->email,
+                    'score' => min(100, $score),
+                    'matched_fields' => array_values(array_unique($matchedFields)),
+                ]);
+            }
+        }
+
+        return $matches
+            ->sortByDesc('score')
+            ->take($max)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function findSimilarMorale(EnrollmentRequest $enrollment): array
+    {
+        $kyc = $enrollment->kyc_data ?? [];
+        $legalName = strtoupper(trim((string) ($kyc['legal_name'] ?? '')));
+        $registrationNumber = strtoupper(trim((string) ($kyc['registration_number'] ?? '')));
+        $country = strtoupper(trim((string) ($kyc['country_of_incorporation'] ?? '')));
+        $max = (int) config('enrollment.similarity.max_results', 5);
+        $matches = collect();
+
+        $approvedIdentities = Identity::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('status', 'APPROVED')
+            ->with('user')
+            ->limit(200)
+            ->get();
+
+        foreach ($approvedIdentities as $identity) {
+            $proof = is_string($identity->proof)
+                ? (json_decode($identity->proof, true) ?: [])
+                : (array) $identity->proof;
+            $company = $proof['company'] ?? [];
+            $score = 0;
+            $matchedFields = [];
+
+            if ($registrationNumber !== '' && strtoupper(trim((string) ($company['registration_number'] ?? ''))) === $registrationNumber) {
+                $score += 50;
+                $matchedFields[] = 'registration_number';
+            }
+            if ($legalName !== '' && strtoupper(trim((string) ($company['legal_name'] ?? ''))) === $legalName) {
+                $score += 30;
+                $matchedFields[] = 'legal_name';
+            }
+            if ($country !== '' && strtoupper(trim((string) ($company['country_of_incorporation'] ?? ''))) === $country) {
+                $score += 20;
+                $matchedFields[] = 'country_of_incorporation';
+            }
+
+            if ($score >= 40) {
+                $matches->push([
+                    'type' => 'approved_company_identity',
+                    'user_id' => $identity->user_id,
+                    'identity_id' => $identity->id,
+                    'legal_name' => $company['legal_name'] ?? null,
+                    'score' => min(100, $score),
+                    'matched_fields' => array_values(array_unique($matchedFields)),
+                ]);
+            }
+        }
+
+        $otherDemandes = EnrollmentRequest::query()
+            ->where('id', '!=', $enrollment->id)
+            ->where('type', 'PERSONNE_MORALE')
+            ->whereIn('status', ['APPROVED', 'APPROVED_BY_AGENT', 'PENDING', 'AWAITING_CONTACT_VERIFICATION'])
+            ->limit(200)
+            ->get();
+
+        foreach ($otherDemandes as $other) {
+            $otherKyc = $other->kyc_data ?? [];
+            $score = 0;
+            $matchedFields = [];
+
+            if ($registrationNumber !== '' && strtoupper(trim((string) ($otherKyc['registration_number'] ?? ''))) === $registrationNumber) {
+                $score += 50;
+                $matchedFields[] = 'registration_number';
+            }
+            if ($legalName !== '' && strtoupper(trim((string) ($otherKyc['legal_name'] ?? ''))) === $legalName) {
+                $score += 30;
+                $matchedFields[] = 'legal_name';
+            }
+            if ($country !== '' && strtoupper(trim((string) ($otherKyc['country_of_incorporation'] ?? ''))) === $country) {
+                $score += 20;
+                $matchedFields[] = 'country_of_incorporation';
+            }
+
+            if ($score >= 40) {
+                $matches->push([
+                    'type' => 'enrollment_request',
+                    'enrollment_request_id' => $other->id,
+                    'status' => $other->status,
+                    'legal_name' => $otherKyc['legal_name'] ?? null,
                     'score' => min(100, $score),
                     'matched_fields' => array_values(array_unique($matchedFields)),
                 ]);

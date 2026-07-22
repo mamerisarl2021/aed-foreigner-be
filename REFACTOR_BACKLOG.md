@@ -273,6 +273,7 @@ P0  →  P1  →  P8 (CI skeleton)  →  P2  →  P3  →  P5  →  P6  →  P4 
 | 2026-07-15 | PDF fidelity: agent reject → `REJECTED_BY_AGENT` (responsable confirms); Spatie `manager` for stats/SLA L3; TrustedX register moved to finalization (`ForeignerFinalizationService`); user `CREATED` until finalize. |
 | 2026-07-21 | PDF-faithful Spatie role rename: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, `auditeur`, `demandeur_authentifie` (placeholder); legacy `tech_*`/`superviseur`/`admin` dropped; agent API codes `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. |
 | 2026-07-21 | Removed legacy Structure* B2B stack (structures, subscriptions, signatures, entity attachments, employee invitations) — backend scoped to AED Étranger enrollment + identity review. |
+| 2026-07-21 | Personne morale enrollment: authenticated `client` submit, async email/SMS verification gate, reuse identity-review stack, `PERSONNE_MORALE` Identity on responsable approve (PSCEQ deferred). |
 
 ---
 

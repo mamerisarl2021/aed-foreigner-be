@@ -19,4 +19,9 @@ return [
     'similarity' => [
         'max_results' => 5,
     ],
+
+    'morale' => [
+        'email_verification_hours' => (int) env('ENROLLMENT_MORALE_EMAIL_VERIFICATION_HOURS', 24),
+        'phone_otp_ttl_minutes' => (int) env('ENROLLMENT_MORALE_PHONE_OTP_TTL_MINUTES', 5),
+    ],
 ];

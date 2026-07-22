@@ -35,7 +35,7 @@ Two enrollment tracks exist in the product spec:
 | Track | Status in this backend |
 |-------|------------------------|
 | **Personne physique** | Implemented (OTP → `enrollment_requests` → agent → supervisor → finalization invite) |
-| **Personne morale** | Specified in the PDF; **not** the current implementation focus unless explicitly requested |
+| **Personne morale** | Implemented — authenticated `client` (physique finalisée) → verification gate → same review stack |
 
 ---
 
@@ -497,23 +497,66 @@ After responsable validation the foreigner:
 - Submits via `POST /clients/all/reset` → [`ForeignerFinalizationService`](app/Services/Enrollment/ForeignerFinalizationService.php): TrustedX `register`, set password/PIN, persist security questions, set user `ACTIVE`, enrollment `FINALIZED`
 - Authenticates later with unique ID + password + OTP (and optionally Mobile ID) — TrustedX/product scope
 
-### 13.4 Explicitly out of current API scope
+### 13.4 Personne morale enrollment (PDF §4)
+
+Prerequisites: demandeur is an **authenticated `client`** who already completed personne physique enrollment (`FINALIZED` demande or `ACTIVE` user with approved identity).
+
+Canonical HTTP flow:
+
+```
+POST /morale/enroll                              (auth:sanctum + client)
+GET  /morale/enrollments/{id}                    (owner only)
+POST /morale/enrollments/{id}/verify-email       (token from email link; guest OK)
+POST /morale/enrollments/{id}/send-phone-otp     (owner only)
+POST /morale/enrollments/{id}/verify-phone-otp   (owner only)
+```
+
+Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE`):
+
+| Field | PDF | Required |
+|-------|-----|----------|
+| `legal_name` | Raison sociale | yes |
+| `legal_form` | Forme juridique | no |
+| `country_of_incorporation` | Pays d'origine / immatriculation | yes |
+| `registration_number` | Numéro d'immatriculation légal | yes |
+| `incorporation_date` | Date de création | no |
+| `headquarters_address` | Adresse du siège social | yes |
+| `activity_sector` | Secteur d'activité | yes |
+| `legal_representative_name` | Nom du représentant légal | yes |
+| `legal_representative_first_name` | Prénoms du représentant légal | yes |
+| `is_legal_representative` | Demandeur = représentant légal | yes |
+
+Documents (`documents` JSON): `trade_register_extract` (required), `statutes` (optional), `procuration` (required when `is_legal_representative = false`).
+
+Contact: `email` / `phonenumber` on the row = **official company** email and phone. Verified asynchronously after submit (email link, then SMS OTP) before the demande enters the agent queue.
+
+Status machine (morale-specific gate):
+
+```
+AWAITING_CONTACT_VERIFICATION → PENDING → … (same as physique review)
+APPROVED → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsable approve)
+```
+
+On responsable approve: **do not** create a new `User`; create `Identity` with `type = PERSONNE_MORALE` linked to `submitted_by_user_id`. No TrustedX / PSCEQ in this phase.
+
+### 13.5 Explicitly out of current API scope
 
 Do not pretend these exist in code without implementing them:
 
 - Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
 - Kafka topic / object-storage hardening for local dev
-- Full **personne morale** parcours
-- Reopen of a rejected demande (applicant submits a **new** `POST /foreigner/enroll`)
+- **PSCEQ / professional certificate** acquisition for personne morale
+- Reopen of a rejected demande (applicant submits a **new** demande)
 - SLA thresholds admin UI (env/config only for now)
+- National company registry auto-check beyond duplicate detection on `registration_number` + `country_of_incorporation`
 
-### 13.5 Infrastructure integration
+### 13.6 Infrastructure integration
 
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
 
-### 13.6 Legacy code
+### 13.7 Legacy code
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 
