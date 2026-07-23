@@ -29,7 +29,7 @@ return new class extends Migration
                 'FINALIZED',
                 'REJECTED',
             ])->default('PENDING');
-            $table->foreignId('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('reject_stage')->nullable();
             $table->json('reject_reasons')->nullable();
             $table->text('review_comments')->nullable();

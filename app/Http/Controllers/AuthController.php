@@ -149,7 +149,7 @@ class AuthController extends BaseController
 
     public function showAgent($id): JsonResponse
     {
-        return $this->respond($this->adminAuth->showAgent((int) $id));
+        return $this->respond($this->adminAuth->showAgent($id));
     }
 
     public function sendOtp(SendAdminOtpRequest $request)

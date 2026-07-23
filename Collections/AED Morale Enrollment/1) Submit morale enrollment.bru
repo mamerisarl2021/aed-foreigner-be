@@ -1,0 +1,37 @@
+meta {
+  name: 1) Submit morale enrollment
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/v1/morale/enroll
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{client_token}}
+}
+
+body:multipart-form {
+  email: company@example.com
+  phonenumber: +22990123456
+  legal_name: ACME Foreign SARL
+  legal_form: SARL
+  country_of_incorporation: FR
+  registration_number: RC-FR-0001
+  headquarters_address: 1 rue Example, Paris
+  activity_sector: Services IT
+  legal_representative_name: DOE
+  legal_representative_first_name: JANE
+  is_legal_representative: true
+  trade_register_extract: @file()
+}
+
+script:post-response {
+  test('200', () => expect(res.getStatus()).to.equal(200));
+  if (res.getStatus() === 200) {
+    bru.setEnvVar('morale_enrollment_id', res.getBody().data.enrollment_request_id);
+  }
+}

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name')->nullable();
             $table->string('first_name')->nullable();
             $table->string('email')->unique();
@@ -26,7 +26,7 @@ return new class extends Migration
 
         Schema::create('identities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('type')->default('IN_PERSON');
             $table->string('level')->default('ADVANCED');
             $table->json('proof')->nullable();
@@ -38,7 +38,7 @@ return new class extends Migration
             $table->string('reject_stage')->nullable();
             $table->json('reject_reasons')->nullable();
             $table->text('review_comments')->nullable();
-            $table->foreignId('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('assigned_agent_id')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
         });
@@ -63,7 +63,7 @@ return new class extends Migration
 
         Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
-            $table->morphs('tokenable');
+            $table->uuidMorphs('tokenable');
             $table->string('name');
             $table->string('token', 64)->unique();
             $table->text('abilities')->nullable();

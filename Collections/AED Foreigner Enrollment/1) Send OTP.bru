@@ -5,25 +5,26 @@ meta {
 }
 
 post {
-  url: {{base_url}}/api/foreigner/send-otp
+  url: {{gateway_url}}/api/v1/otp/send
   body: json
-  auth: inherit
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
+auth:bearer {
+  token: {{keycloak_token}}
+}
+
 body:json {
   {
-    "email": "{{email}}"
+    "email": "{{email}}",
+    "phonenumber": "{{phonenumber}}"
   }
 }
 
 script:post-response {
   test('Status 200', () => expect(res.getStatus()).to.equal(200));
-  const json = res.getBody();
-  test('Structure OK', () => expect(json).to.have.property('data').that.has.property('email'));
-  // Conserver l'email utilisé (si modifié manuellement)
-  bru.setVar('email', bru.getVar('email'));
 }

@@ -1,27 +1,25 @@
 meta {
-  name: 4) Approve (agent) → statut APPROVED_BY_AGENT
+  name: 4) Agent instruction VALIDATION_AGENT
   type: http
   seq: 4
 }
 
-post {
-  url: {{base_url}}/api/management/identity-reviews/{{identity_id}}/approve
-  body: none
+patch {
+  url: {{gateway_url}}/api/v1/enrolements/{{demande_id}}/instruction
+  body: json
   auth: bearer
 }
 
 auth:bearer {
-  token: {{agent_token}}
+  token: {{staff_token}}
 }
 
-script:post-response {
-  test('200', () => expect(res.getStatus()).to.equal(200));
-  const json = res.getBody();
-  if (json && json.data && json.data.identity_id) {
-    bru.setVar('identity_id_supervised', json.data.identity_id);
+body:json {
+  {
+    "statut": "VALIDATION_AGENT"
   }
 }
 
-settings {
-  encodeUrl: true
+script:post-response {
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
 }

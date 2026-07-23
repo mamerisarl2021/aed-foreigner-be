@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -31,7 +32,7 @@ class EnrollmentRequestPolicy
 
     public function view(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        if ($enrollmentRequest->status === 'AWAITING_CONTACT_VERIFICATION') {
+        if ($enrollmentRequest->status === EnrollmentStatus::AwaitingContactVerification->value) {
             return $this->viewOwnMorale($user, $enrollmentRequest);
         }
 
@@ -49,56 +50,22 @@ class EnrollmentRequestPolicy
             && $enrollmentRequest->submitted_by_user_id === $user->id;
     }
 
-    public function claim(User $user, EnrollmentRequest $enrollmentRequest): bool
+    public function instruction(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
+            && $enrollmentRequest->status === EnrollmentStatus::EnAttente->value;
     }
 
-    public function approve(User $user, EnrollmentRequest $enrollmentRequest): bool
+    public function validation(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->assigned_agent_id === $user->id
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
-    }
+        if (! $user->hasRole(config('roles.responsable_de_validation'))) {
+            return false;
+        }
 
-    public function reject(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->assigned_agent_id === $user->id
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
-    }
-
-    public function requestVisio(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->assigned_agent_id === $user->id
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
-    }
-
-    public function completeVisio(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->assigned_agent_id === $user->id
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
-    }
-
-    public function supervisorApprove(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasRole(config('roles.responsable_de_validation'))
-            && $enrollmentRequest->status !== 'AWAITING_CONTACT_VERIFICATION';
-    }
-
-    public function supervisorReject(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasRole(config('roles.responsable_de_validation'))
-            && $enrollmentRequest->status === 'REJECTED_BY_AGENT';
-    }
-
-    public function supervisorReturn(User $user, EnrollmentRequest $enrollmentRequest): bool
-    {
-        return $user->hasRole(config('roles.responsable_de_validation'))
-            && in_array($enrollmentRequest->status, ['APPROVED_BY_AGENT', 'REJECTED_BY_AGENT'], true);
+        return in_array($enrollmentRequest->status, [
+            EnrollmentStatus::ValidationAgent->value,
+            EnrollmentStatus::RejetAgent->value,
+        ], true);
     }
 
     public function viewEnrollmentStats(User $user): bool

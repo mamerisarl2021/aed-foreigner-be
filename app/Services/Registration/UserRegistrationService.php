@@ -156,7 +156,7 @@ class UserRegistrationService
     /**
      * @param  array<string, mixed>  $updateData
      */
-    public function updateUser(int $id, array $updateData, ?UploadedFile $profile): ServiceResult
+    public function updateUser(string $id, array $updateData, ?UploadedFile $profile): ServiceResult
     {
         DB::beginTransaction();
         try {

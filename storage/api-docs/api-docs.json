@@ -12,149 +12,13 @@
         },
         "version": "1.0.0"
     },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Relative to APP_URL (API prefix /api/v1 on routes)"
+        }
+    ],
     "paths": {
-        "/api/v1/attachments/{id}": {
-            "get": {
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Get Attachment Details",
-                "operationId": "getAttachment",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/entities/attachments": {
-            "post": {
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Upload Attachment",
-                "operationId": "createAttachment",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "required": [
-                                    "name",
-                                    "structure_id",
-                                    "status",
-                                    "message"
-                                ],
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "structure_id": {
-                                        "type": "integer"
-                                    },
-                                    "status": {
-                                        "type": "string"
-                                    },
-                                    "message": {
-                                        "type": "string"
-                                    },
-                                    "files[]": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string",
-                                            "format": "binary"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Upload success"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/attachments/update-status": {
-            "post": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "Update Attachment Status (Bulk)",
-                "operationId": "updateAttachmentStatus",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "attachments"
-                                ],
-                                "properties": {
-                                    "attachments": {
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "status": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "SENT",
-                                                        "VALIDATED",
-                                                        "REJECTED"
-                                                    ]
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "nullable": true
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
         "/api/v1/admin/login": {
             "post": {
                 "tags": [
@@ -225,10 +89,9 @@
                                     "role": {
                                         "type": "string",
                                         "enum": [
-                                            "LEVEL1",
-                                            "LEVEL2",
-                                            "LEVEL3",
-                                            "SUPERVISEUR",
+                                            "AGENT",
+                                            "RESPONSABLE_DE_VALIDATION",
+                                            "MANAGER",
                                             "AUDITEUR"
                                         ]
                                     },
@@ -359,142 +222,14 @@
                 }
             }
         },
-        "/api/v1/foreigner/send-otp": {
+        "/api/v1/enrolements/etrangers": {
             "post": {
                 "tags": [
-                    "Enrollment"
+                    "Enrollment - Physique"
                 ],
-                "summary": "Send OTP to email or phone",
-                "description": "Sends an OTP to the provided email address or phone number for verification. Provide either email or phonenumber.",
-                "operationId": "sendForeignerOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email",
-                                        "example": "user@example.com"
-                                    },
-                                    "phonenumber": {
-                                        "type": "string",
-                                        "example": "+22990123456"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "OTP sent successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "OTP envoyé à votre adresse email."
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "email": {
-                                                    "type": "string",
-                                                    "example": "user@example.com"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation error"
-                    }
-                }
-            }
-        },
-        "/api/v1/foreigner/verify-otp": {
-            "post": {
-                "tags": [
-                    "Enrollment"
-                ],
-                "summary": "Verify OTP",
-                "description": "Verifies the OTP sent to the email or phone number. Provide either email or phonenumber with the otp.",
-                "operationId": "verifyForeignerOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "otp"
-                                ],
-                                "properties": {
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email",
-                                        "example": "user@example.com"
-                                    },
-                                    "phonenumber": {
-                                        "type": "string",
-                                        "example": "+22990123456"
-                                    },
-                                    "otp": {
-                                        "type": "string",
-                                        "example": "123456"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "OTP verified successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "OTP vérifié."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid OTP"
-                    }
-                }
-            }
-        },
-        "/api/v1/foreigner/enroll": {
-            "post": {
-                "tags": [
-                    "Enrollment"
-                ],
-                "summary": "Submit foreigner enrollment request",
-                "description": "Submits a complete enrollment request for a physical foreigner. All KYC data, identity documents, and liveness data are provided in a single step. The request is stored for agent review.",
-                "operationId": "submitForeignerEnrollment",
+                "summary": "Submit personne physique enrollment",
+                "description": "Diagram §2.4. Requires OTP + KYC gates. Returns 202 with statut EN_ATTENTE.",
+                "operationId": "enrollmentStoreEtranger",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -505,16 +240,7 @@
                                     "phonenumber",
                                     "name",
                                     "first_name",
-                                    "sexe",
-                                    "date_of_birth",
-                                    "place_of_birth",
-                                    "nationality",
-                                    "country_of_residence",
-                                    "address",
-                                    "document_type",
-                                    "document_number",
-                                    "selfie",
-                                    "recto"
+                                    "nationality"
                                 ],
                                 "properties": {
                                     "email": {
@@ -531,11 +257,7 @@
                                         "type": "string"
                                     },
                                     "sexe": {
-                                        "type": "string",
-                                        "enum": [
-                                            "M",
-                                            "F"
-                                        ]
+                                        "type": "string"
                                     },
                                     "date_of_birth": {
                                         "type": "string",
@@ -554,11 +276,7 @@
                                         "type": "string"
                                     },
                                     "document_type": {
-                                        "type": "string",
-                                        "enum": [
-                                            "PASSPORT",
-                                            "CNI_ECOWAS"
-                                        ]
+                                        "type": "string"
                                     },
                                     "document_number": {
                                         "type": "string"
@@ -578,12 +296,6 @@
                                     "profile": {
                                         "type": "string",
                                         "format": "binary"
-                                    },
-                                    "liveness": {
-                                        "type": "string"
-                                    },
-                                    "similarity": {
-                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -592,8 +304,8 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "Enrollment request submitted successfully",
+                    "202": {
+                        "description": "Demande acceptée",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -602,14 +314,14 @@
                                             "type": "boolean",
                                             "example": true
                                         },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Demande enregistrée avec succès."
-                                        },
                                         "data": {
                                             "properties": {
-                                                "enrollment_request_id": {
+                                                "demande_id": {
                                                     "type": "integer"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "EN_ATTENTE"
                                                 }
                                             },
                                             "type": "object"
@@ -621,363 +333,106 @@
                         }
                     },
                     "400": {
-                        "description": "OTP not verified"
+                        "description": "OTP or KYC not verified"
                     },
                     "422": {
                         "description": "Validation error"
-                    },
-                    "500": {
-                        "description": "Internal server error"
                     }
                 }
             }
         },
-        "/api/v1/signing-identities": {
+        "/api/v1/enrolements": {
             "get": {
                 "tags": [
-                    "Certificates"
+                    "Enrollment - Physique"
                 ],
-                "summary": "List Signing Identities",
-                "operationId": "getSigningIdentities",
+                "summary": "List enrollment requests",
+                "description": "Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).",
+                "operationId": "enrollmentList",
                 "parameters": [
                     {
-                        "name": "token",
+                        "name": "statut",
                         "in": "query",
-                        "required": true,
+                        "description": "Status filter (alias: status). Default EN_ATTENTE.",
+                        "schema": {
+                            "type": "string",
+                            "example": "EN_ATTENTE"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PERSONNE_PHYSIQUE",
+                                "PERSONNE_MORALE"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "id",
+                                "created_at"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successful operation"
+                        "description": "Paginated list"
                     },
                     "401": {
-                        "description": "Unauthorized"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/signing-identities/{identityId}": {
-            "get": {
-                "tags": [
-                    "Certificates"
-                ],
-                "summary": "Get Signing Identity Details",
-                "operationId": "getSigningIdentity",
-                "parameters": [
-                    {
-                        "name": "identityId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "token",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Certificates"
-                ],
-                "summary": "Delete Signing Identity",
-                "operationId": "deleteSigningIdentity",
-                "parameters": [
-                    {
-                        "name": "identityId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted successfully"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/signing-identities/{identityId}/status": {
-            "put": {
-                "tags": [
-                    "Certificates"
-                ],
-                "summary": "Update Signing Identity Status",
-                "operationId": "updateSigningIdentityStatus",
-                "parameters": [
-                    {
-                        "name": "identityId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "value",
-                                    "reason"
-                                ],
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "reason": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Success"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/signing-identities/provision": {
-            "post": {
-                "tags": [
-                    "Certificates"
-                ],
-                "summary": "Provision Certificate (Signature)",
-                "description": "Starts the certificate issuance process on TrustedX RAP.",
-                "operationId": "provisionSignature",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "code",
-                                    "type",
-                                    "subscription_id"
-                                ],
-                                "properties": {
-                                    "code": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "string",
-                                        "enum": [
-                                            "citizen",
-                                            "employee"
-                                        ]
-                                    },
-                                    "subscription_id": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Process finished or in progress"
-                    },
-                    "400": {
-                        "description": "Validation or Access error"
-                    },
-                    "403": {
-                        "description": "Forbidden (Manager approval or account inactive)"
-                    }
-                }
-            }
-        },
-        "/api/v1/structures": {
-            "get": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "List Structures",
-                "description": "Returns a paginated list of structures.",
-                "operationId": "getStructures",
-                "parameters": [
-                    {
-                        "name": "perPage",
-                        "in": "query",
-                        "description": "Items per page",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        },
-                                        "pagination": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/entities/mine": {
-            "get": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Get My Structures",
-                "description": "Returns a list of structures managed by the authenticated user.",
-                "operationId": "getMyStructures",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/structures/{id}": {
-            "get": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Get Structure Details",
-                "description": "Returns the details of a specific structure.",
-                "operationId": "getStructure",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "ID of the structure",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Unauthenticated"
                     },
                     "403": {
                         "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
                     }
                 },
                 "security": [
@@ -985,14 +440,49 @@
                         "sanctum": []
                     }
                 ]
-            },
-            "put": {
+            }
+        },
+        "/api/v1/enrolements/{id}": {
+            "get": {
                 "tags": [
-                    "Structures"
+                    "Enrollment - Physique"
                 ],
-                "summary": "Update Structure",
-                "description": "Updates a specific structure.",
-                "operationId": "updateStructure",
+                "summary": "Enrollment request detail",
+                "description": "Includes S3 document refs, KYC score, and similar_enrollments.",
+                "operationId": "enrollmentShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail demande"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/enrolements/{id}/instruction": {
+            "patch": {
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "summary": "Agent instruction (validate or reject)",
+                "description": "Diagram §3.1. From EN_ATTENTE → VALIDATION_AGENT or REJET_AGENT.",
+                "operationId": "enrollmentInstruction",
                 "parameters": [
                     {
                         "name": "id",
@@ -1008,11 +498,24 @@
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "statut"
+                                ],
                                 "properties": {
-                                    "name": {
-                                        "type": "string"
+                                    "statut": {
+                                        "type": "string",
+                                        "enum": [
+                                            "VALIDATION_AGENT",
+                                            "REJET_AGENT"
+                                        ]
                                     },
-                                    "status": {
+                                    "motif": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "commentaire": {
                                         "type": "string"
                                     }
                                 },
@@ -1023,10 +526,10 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Updated successfully"
+                        "description": "Instruction enregistrée"
                     },
-                    "500": {
-                        "description": "Internal Server Error"
+                    "422": {
+                        "description": "Statut non éligible"
                     }
                 },
                 "security": [
@@ -1034,14 +537,16 @@
                         "sanctum": []
                     }
                 ]
-            },
-            "delete": {
+            }
+        },
+        "/api/v1/enrolements/{id}/validation": {
+            "patch": {
                 "tags": [
-                    "Structures"
+                    "Enrollment - Physique"
                 ],
-                "summary": "Delete Structure",
-                "description": "Deletes a specific structure.",
-                "operationId": "deleteStructure",
+                "summary": "Responsable validation decision",
+                "description": "Diagram §3.2. APPROUVEE triggers TrustedX register + finalisation invite.",
+                "operationId": "enrollmentValidation",
                 "parameters": [
                     {
                         "name": "id",
@@ -1052,12 +557,38 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "decision"
+                                ],
+                                "properties": {
+                                    "decision": {
+                                        "type": "string",
+                                        "enum": [
+                                            "APPROUVEE",
+                                            "REJET_CONFIRME",
+                                            "RETOUR_AGENT"
+                                        ]
+                                    },
+                                    "commentaire": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Deleted successfully"
+                        "description": "Décision enregistrée"
                     },
-                    "500": {
-                        "description": "Internal Server Error"
+                    "422": {
+                        "description": "Statut non éligible"
                     }
                 },
                 "security": [
@@ -1067,63 +598,89 @@
                 ]
             }
         },
-        "/api/v1/clients/one-shot-link": {
+        "/api/v1/enrolements/finalisation": {
+            "get": {
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "summary": "Validate finalisation token and return UI payload",
+                "description": "Diagram §4 — open link from invitation email.",
+                "operationId": "enrollmentFinalisationShow",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Demande éligible à la finalisation"
+                    },
+                    "400": {
+                        "description": "Token expiré"
+                    },
+                    "404": {
+                        "description": "Token ou demande introuvable"
+                    }
+                }
+            }
+        },
+        "/api/v1/enrolements/{id}/finalisation": {
             "post": {
                 "tags": [
-                    "Structures"
+                    "Enrollment - Physique"
                 ],
-                "summary": "Create Structure (One Shot)",
-                "description": "Creates a structure and uploads its attachments in a single request.",
-                "operationId": "createStructureOneShot",
+                "summary": "Complete enrollment (password, PIN, security questions)",
+                "description": "Diagram §4. TrustedX identity must already exist (APPROUVEE). Sets statut ENROLEE.",
+                "operationId": "enrollmentFinalisationStore",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "demande_id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "required": [
-                                    "name",
-                                    "ifu"
+                                    "token",
+                                    "password",
+                                    "pin"
                                 ],
                                 "properties": {
-                                    "name": {
-                                        "description": "Name of the structure",
+                                    "token": {
                                         "type": "string"
                                     },
-                                    "ifu": {
-                                        "description": "IFU of the structure",
-                                        "type": "string"
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "minLength": 8
                                     },
-                                    "attachements": {
+                                    "pin": {
+                                        "type": "string",
+                                        "minLength": 4,
+                                        "example": "1234"
+                                    },
+                                    "security_questions": {
                                         "type": "array",
                                         "items": {
-                                            "required": [
-                                                "name",
-                                                "status",
-                                                "files"
-                                            ],
                                             "properties": {
-                                                "name": {
+                                                "question": {
                                                     "type": "string"
                                                 },
-                                                "status": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "SENT",
-                                                        "VALIDATED",
-                                                        "WAITING_MANAGER",
-                                                        "REJECTED"
-                                                    ]
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "nullable": true
-                                                },
-                                                "files[]": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string",
-                                                        "format": "binary"
-                                                    }
+                                                "answer": {
+                                                    "type": "string"
                                                 }
                                             },
                                             "type": "object"
@@ -1137,1102 +694,48 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Structure created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation Error or Attachment Failed"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/clients/link-entity": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Create Structure (Basic)",
-                "description": "Creates a structure without attachments.",
-                "operationId": "createStructure",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "name",
-                                    "ifu"
-                                ],
-                                "properties": {
-                                    "name": {
-                                        "type": "string",
-                                        "example": "Company LLC"
-                                    },
-                                    "ifu": {
-                                        "type": "string",
-                                        "example": "1234567890"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Structure created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/structures/update-status": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Update Structure Status (Bulk)",
-                "description": "Updates status for multiple structures.",
-                "operationId": "updateStructureStatus",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "structures"
-                                ],
-                                "properties": {
-                                    "structures": {
-                                        "type": "array",
-                                        "items": {
-                                            "required": [
-                                                "id",
-                                                "status"
-                                            ],
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "status": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "APPROVED",
-                                                        "REJECTED",
-                                                        "PENDING"
-                                                    ]
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated successfully"
-                    },
-                    "400": {
-                        "description": "Validation Error"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/structures/notify-admin": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Send OTP for Structure Admin",
-                "description": "Sends an OTP to the structure admin email.",
-                "operationId": "sendStructureOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "email",
-                                    "entity_id"
-                                ],
-                                "properties": {
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email"
-                                    },
-                                    "entity_id": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "OTP sent successfully"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/structures/verify-admin": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Verify OTP for Structure Admin",
-                "description": "Verifies the OTP and approves the structure.",
-                "operationId": "verifyStructureOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "email",
-                                    "otp",
-                                    "entity_id"
-                                ],
-                                "properties": {
-                                    "email": {
-                                        "type": "string",
-                                        "format": "email"
-                                    },
-                                    "otp": {
-                                        "type": "string"
-                                    },
-                                    "entity_id": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Verified successfully"
-                    },
-                    "403": {
-                        "description": "Invalid OTP"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/structures/{structure}/employees": {
-            "get": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "List employees of a structure",
-                "description": "Returns a list of employees associated with a structure.",
-                "operationId": "listEmployees",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Structure not found"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/structures/{structure}/invite-employee": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Invite an employee to join a structure",
-                "description": "Sends an invitation to a user to join the structure as an employee.",
-                "operationId": "inviteEmployee",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "user_identifier"
-                                ],
-                                "properties": {
-                                    "user_identifier": {
-                                        "description": "Email, NPI, or user ID",
-                                        "type": "string"
-                                    },
-                                    "role": {
-                                        "description": "Role in the structure",
-                                        "type": "string",
-                                        "default": "EMPLOYEE",
-                                        "enum": [
-                                            "EMPLOYEE",
-                                            "MANAGER_ASSISTANT",
-                                            "VIEWER"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Invitation sent successfully"
-                    },
-                    "400": {
-                        "description": "Invalid request"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "User or structure not found"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/structures/{structure}/add-employee": {
-            "post": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Add an employee directly to a structure",
-                "description": "Adds a user directly as an employee to the structure (bypass invitation).",
-                "operationId": "addEmployee",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "user_id"
-                                ],
-                                "properties": {
-                                    "user_id": {
-                                        "type": "integer"
-                                    },
-                                    "role": {
-                                        "type": "string",
-                                        "default": "EMPLOYEE",
-                                        "enum": [
-                                            "EMPLOYEE",
-                                            "MANAGER_ASSISTANT",
-                                            "VIEWER"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Employee added successfully"
-                    },
-                    "400": {
-                        "description": "Invalid request"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/structures/{structure}/employees/{user}": {
-            "put": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Update employee role in a structure",
-                "description": "Updates the role of an employee in the structure.",
-                "operationId": "updateEmployeeRole",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "user",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "role"
-                                ],
-                                "properties": {
-                                    "role": {
-                                        "type": "string",
-                                        "enum": [
-                                            "EMPLOYEE",
-                                            "MANAGER_ASSISTANT",
-                                            "VIEWER"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Role updated successfully"
-                    },
-                    "400": {
-                        "description": "Invalid request"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Employee not found"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Structures"
-                ],
-                "summary": "Remove an employee from a structure",
-                "description": "Removes an employee from the structure.",
-                "operationId": "removeEmployee",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "user",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Employee removed successfully"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Employee not found"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/structures/{structure}/force-add-employee": {
-            "post": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "Force add employee to structure (Agent only)",
-                "description": "Agents can forcefully add an employee to a structure.",
-                "operationId": "forceAddEmployee",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "user_id"
-                                ],
-                                "properties": {
-                                    "user_id": {
-                                        "type": "integer"
-                                    },
-                                    "role": {
-                                        "type": "string",
-                                        "default": "EMPLOYEE",
-                                        "enum": [
-                                            "EMPLOYEE",
-                                            "MANAGER_ASSISTANT",
-                                            "VIEWER"
-                                        ]
-                                    },
-                                    "reason": {
-                                        "description": "Reason for force adding",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Employee force added successfully"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/structures/{structure}/pending-invitations": {
-            "get": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "List pending invitations for a structure",
-                "description": "Returns a list of pending invitations for a structure (Agent only).",
-                "operationId": "listPendingInvitations",
-                "parameters": [
-                    {
-                        "name": "structure",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/clients/send-otp": {
-            "post": {
-                "tags": [
-                    "User Auth"
-                ],
-                "summary": "Send OTP to User (ANIP flow)",
-                "description": "Generates and sends an OTP to a citizen based on their NPI.",
-                "operationId": "userSendOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "npi"
-                                ],
-                                "properties": {
-                                    "npi": {
-                                        "type": "string",
-                                        "example": "1234567890"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "OTP sent successfully"
-                    },
-                    "404": {
-                        "description": "NPI not found"
+                        "description": "Enrôlement finalisé (ENROLEE)"
                     },
                     "422": {
-                        "description": "Validation error"
+                        "description": "Demande non éligible"
                     }
                 }
             }
         },
-        "/api/v1/clients/verify-otp": {
+        "/api/v1/kyc/verify": {
             "post": {
                 "tags": [
-                    "User Auth"
+                    "Enrollment - KYC"
                 ],
-                "summary": "Verify User OTP",
-                "description": "Verifies the OTP sent to the citizen.",
-                "operationId": "userVerifyOtp",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "npi",
-                                    "otp"
-                                ],
-                                "properties": {
-                                    "npi": {
-                                        "type": "string"
-                                    },
-                                    "otp": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "OTP verified"
-                    },
-                    "400": {
-                        "description": "Invalid or expired OTP"
-                    }
-                }
-            }
-        },
-        "/api/v1/clients/login": {
-            "post": {
-                "tags": [
-                    "User Auth"
-                ],
-                "summary": "User Login",
-                "description": "Login via TrustedX authorization code.",
-                "operationId": "userLogin",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "code"
-                                ],
-                                "properties": {
-                                    "code": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Logged in successfully"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    }
-                }
-            }
-        },
-        "/api/v1/mobile/login": {
-            "post": {
-                "tags": [
-                    "User Auth"
-                ],
-                "summary": "User Mobile Login",
-                "description": "Mobile login via TrustedX authorization code.",
-                "operationId": "userMobileLogin",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "code"
-                                ],
-                                "properties": {
-                                    "code": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Logged in successfully"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    }
-                }
-            }
-        },
-        "/api/v1/users/{id}": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get User Details",
-                "operationId": "getUser",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    },
-                    "404": {
-                        "description": "User not found"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Update User Profile",
-                "operationId": "updateUser",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "properties": {
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "profile": {
-                                        "type": "string",
-                                        "format": "binary"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Profile updated successfully"
-                    },
-                    "422": {
-                        "description": "Validation error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            },
-            "delete": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Delete User",
-                "operationId": "deleteUser",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Deleted successfully"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/users/search": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Search Users",
-                "operationId": "searchUsers",
-                "parameters": [
-                    {
-                        "name": "query",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful operation"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/users/update-status": {
-            "post": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "Update User Status (Bulk)",
-                "operationId": "updateUserStatus",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "users"
-                                ],
-                                "properties": {
-                                    "users": {
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "status": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "ACTIVE",
-                                                        "INACTIVE"
-                                                    ]
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Statut mis à jour"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/management/users/identity-status": {
-            "post": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "Update Identity Status",
-                "operationId": "updateIdentityStatus",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "id",
-                                    "status"
-                                ],
-                                "properties": {
-                                    "id": {
-                                        "type": "integer"
-                                    },
-                                    "status": {
-                                        "type": "string",
-                                        "enum": [
-                                            "APPROVED",
-                                            "WAITING_MANAGER",
-                                            "REJECTED",
-                                            "PENDING"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Statut de l'identité mis à jour"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/identity/approve": {
-            "post": {
-                "tags": [
-                    "Management"
-                ],
-                "summary": "Approve In-Person Identity",
-                "operationId": "updateInPersonIdentityStatus",
+                "summary": "Sync KYC / liveness verification",
+                "description": "Diagram §2.3. Requires both OTP channels verified. Stores KYC session in cache for submit.",
+                "operationId": "enrollmentKycVerify",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "id",
-                                    "status"
+                                    "email",
+                                    "phonenumber"
                                 ],
                                 "properties": {
-                                    "id": {
-                                        "type": "integer"
-                                    },
-                                    "status": {
+                                    "email": {
                                         "type": "string",
-                                        "enum": [
-                                            "APPROVED",
-                                            "WAITING_MANAGER",
-                                            "REJECTED",
-                                            "PENDING"
-                                        ]
+                                        "format": "email"
                                     },
-                                    "user_id": {
-                                        "type": "integer"
+                                    "phonenumber": {
+                                        "type": "string"
+                                    },
+                                    "liveness": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 0.95
+                                    },
+                                    "similarity": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 0.88
                                     },
                                     "selfie": {
                                         "type": "string",
@@ -2245,12 +748,6 @@
                                     "verso": {
                                         "type": "string",
                                         "format": "binary"
-                                    },
-                                    "exp_date": {
-                                        "type": "string"
-                                    },
-                                    "birth_date": {
-                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -2260,46 +757,83 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Identité mise à jour"
+                        "description": "KYC valide"
+                    },
+                    "400": {
+                        "description": "OTP non vérifié ou KYC échoué"
+                    },
+                    "422": {
+                        "description": "Validation error"
                     }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
+                }
             }
         },
-        "/api/v1/clients/set-password": {
+        "/api/v1/otp/send": {
             "post": {
                 "tags": [
-                    "User Auth"
+                    "Enrollment - OTP"
                 ],
-                "summary": "Set User Password/Pin",
-                "operationId": "setUserPassword",
+                "summary": "Send OTP to email and/or phone",
+                "description": "Diagram §2.2. Publishes otp.send event and delivers via notify.email / notify.sms. Call once with both email and phonenumber, then verify each channel separately.",
+                "operationId": "enrollmentOtpSend",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "etranger@example.com"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string",
+                                        "example": "+22990123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP en cours d'envoi"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/otp/verify": {
+            "post": {
+                "tags": [
+                    "Enrollment - OTP"
+                ],
+                "summary": "Verify OTP for one channel (email or phone)",
+                "description": "Call twice (email, then phonenumber) before POST /kyc/verify. Both channels must be verified.",
+                "operationId": "enrollmentOtpVerify",
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "password",
-                                    "npi",
-                                    "type"
+                                    "otp"
                                 ],
                                 "properties": {
-                                    "password": {
-                                        "type": "string"
-                                    },
-                                    "npi": {
-                                        "type": "string"
-                                    },
-                                    "type": {
+                                    "email": {
                                         "type": "string",
-                                        "enum": [
-                                            "password",
-                                            "pin"
-                                        ]
+                                        "format": "email"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string"
+                                    },
+                                    "otp": {
+                                        "type": "string",
+                                        "example": "123456"
                                     }
                                 },
                                 "type": "object"
@@ -2309,41 +843,106 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Mot de passe mis à jour"
+                        "description": "OTP valide"
+                    },
+                    "400": {
+                        "description": "OTP invalide ou expiré"
                     }
                 }
             }
         },
-        "/api/v1/invitations": {
-            "get": {
+        "/api/v1/enrolements/morales": {
+            "post": {
                 "tags": [
-                    "Users"
+                    "Enrollment - Morale"
                 ],
-                "summary": "List user invitations",
-                "description": "Returns a list of invitations for the authenticated user.",
-                "operationId": "listInvitations",
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
+                "summary": "Submit personne morale enrollment",
+                "description": "Requires authenticated client with finalized physique enrollment. Initial statut AWAITING_CONTACT_VERIFICATION.",
+                "operationId": "enrollmentMoraleSubmit",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "phonenumber",
+                                    "legal_name",
+                                    "country_of_incorporation",
+                                    "registration_number",
+                                    "headquarters_address",
+                                    "activity_sector",
+                                    "legal_representative_name",
+                                    "legal_representative_first_name",
+                                    "is_legal_representative",
+                                    "trade_register_extract"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
                                     },
-                                    "type": "object"
-                                }
+                                    "phonenumber": {
+                                        "type": "string"
+                                    },
+                                    "legal_name": {
+                                        "type": "string"
+                                    },
+                                    "legal_form": {
+                                        "type": "string"
+                                    },
+                                    "country_of_incorporation": {
+                                        "type": "string"
+                                    },
+                                    "registration_number": {
+                                        "type": "string"
+                                    },
+                                    "incorporation_date": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "headquarters_address": {
+                                        "type": "string"
+                                    },
+                                    "activity_sector": {
+                                        "type": "string"
+                                    },
+                                    "legal_representative_name": {
+                                        "type": "string"
+                                    },
+                                    "legal_representative_first_name": {
+                                        "type": "string"
+                                    },
+                                    "is_legal_representative": {
+                                        "type": "boolean"
+                                    },
+                                    "trade_register_extract": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "statutes": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "procuration": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
                             }
                         }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Demande enregistrée"
+                    },
+                    "403": {
+                        "description": "Prerequisites not met"
+                    },
+                    "409": {
+                        "description": "Duplicate open request or company"
                     }
                 },
                 "security": [
@@ -2353,17 +952,16 @@
                 ]
             }
         },
-        "/api/v1/invitations/{invitation}/accept": {
-            "post": {
+        "/api/v1/enrolements/morales/{id}": {
+            "get": {
                 "tags": [
-                    "Users"
+                    "Enrollment - Morale"
                 ],
-                "summary": "Accept an invitation",
-                "description": "Accepts a structure invitation.",
-                "operationId": "acceptInvitation",
+                "summary": "Morale enrollment detail (owner only)",
+                "operationId": "enrollmentMoraleShow",
                 "parameters": [
                     {
-                        "name": "invitation",
+                        "name": "id",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -2373,13 +971,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Invitation accepted"
+                        "description": "Detail demande morale"
                     },
-                    "404": {
-                        "description": "Invitation not found"
-                    },
-                    "400": {
-                        "description": "Invitation expired or already processed"
+                    "403": {
+                        "description": "Not owner"
                     }
                 },
                 "security": [
@@ -2389,85 +984,20 @@
                 ]
             }
         },
-        "/api/v1/invitations/{invitation}/reject": {
+        "/api/v1/enrolements/morales/{id}/verify-email": {
             "post": {
                 "tags": [
-                    "Users"
+                    "Enrollment - Morale"
                 ],
-                "summary": "Reject an invitation",
-                "description": "Rejects a structure invitation.",
-                "operationId": "rejectInvitation",
+                "summary": "Verify company email (public token link)",
+                "operationId": "enrollmentMoraleVerifyEmail",
                 "parameters": [
                     {
-                        "name": "invitation",
+                        "name": "id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Invitation rejected"
-                    },
-                    "404": {
-                        "description": "Invitation not found"
-                    },
-                    "400": {
-                        "description": "Invitation expired or already processed"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/invitations/{token}/details": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get invitation details by token",
-                "description": "Returns invitation details using the invitation token (public route).",
-                "operationId": "getInvitationDetails",
-                "parameters": [
-                    {
-                        "name": "token",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Invitation details retrieved"
-                    },
-                    "404": {
-                        "description": "Invitation not found or expired"
-                    }
-                }
-            }
-        },
-        "/api/v1/invitations/{token}/respond": {
-            "post": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Respond to invitation by token",
-                "description": "Accepts or rejects an invitation using the token (public route).",
-                "operationId": "respondToInvitation",
-                "parameters": [
-                    {
-                        "name": "token",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 ],
@@ -2477,16 +1007,11 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "action"
+                                    "token"
                                 ],
                                 "properties": {
-                                    "action": {
-                                        "type": "string",
-                                        "enum": [
-                                            "accept",
-                                            "reject"
-                                        ],
-                                        "example": "accept"
+                                    "token": {
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -2496,50 +1021,119 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Response processed"
-                    },
-                    "404": {
-                        "description": "Invitation not found"
-                    },
-                    "400": {
-                        "description": "Invalid action or invitation expired"
+                        "description": "Email vérifié; may promote to EN_ATTENTE if phone also verified"
                     }
                 }
+            }
+        },
+        "/api/v1/enrolements/morales/{id}/send-phone-otp": {
+            "post": {
+                "tags": [
+                    "Enrollment - Morale"
+                ],
+                "summary": "Send SMS OTP for company phone verification",
+                "operationId": "enrollmentMoraleSendPhoneOtp",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OTP SMS envoyé"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/enrolements/morales/{id}/verify-phone-otp": {
+            "post": {
+                "tags": [
+                    "Enrollment - Morale"
+                ],
+                "summary": "Verify company phone OTP",
+                "operationId": "enrollmentMoraleVerifyPhoneOtp",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "otp"
+                                ],
+                                "properties": {
+                                    "otp": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Téléphone vérifié; may promote to EN_ATTENTE"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctum": {
+                "type": "http",
+                "description": "Staff token from POST /api/v1/admins/verify-otp. Prefix: Bearer {token}",
+                "bearerFormat": "Sanctum",
+                "scheme": "bearer"
             }
         }
     },
     "tags": [
         {
-            "name": "Attachments",
-            "description": "Attachments"
+            "name": "Enrollment - OTP",
+            "description": "Diagram §2.2 — OTP send/verify"
         },
         {
-            "name": "Management",
-            "description": "Management"
+            "name": "Enrollment - KYC",
+            "description": "Diagram §2.3 — sync KYC/liveness"
+        },
+        {
+            "name": "Enrollment - Physique",
+            "description": "Diagram §2.4 — submit + review + finalisation"
+        },
+        {
+            "name": "Enrollment - Morale",
+            "description": "Personne morale enrollment"
         },
         {
             "name": "Admin Auth",
             "description": "Admin Auth"
-        },
-        {
-            "name": "Enrollment",
-            "description": "Enrollment"
-        },
-        {
-            "name": "Certificates",
-            "description": "Certificates"
-        },
-        {
-            "name": "Structures",
-            "description": "Structures"
-        },
-        {
-            "name": "User Auth",
-            "description": "User Auth"
-        },
-        {
-            "name": "Users",
-            "description": "Users"
         }
     ]
 }

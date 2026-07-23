@@ -15,7 +15,7 @@ class UpdateUserStatusRequest extends ApiFormRequest
     {
         return [
             'users' => 'required|array',
-            'users.*.id' => 'required|integer|exists:users,id',
+            'users.*.id' => 'required|uuid|exists:users,id',
             'users.*.status' => 'required|in:ACTIVE,INACTIVE',
         ];
     }
