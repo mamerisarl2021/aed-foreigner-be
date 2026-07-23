@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
 use App\Http\Resources\EnrollmentRequestResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\ForeignerEnrollmentService;
@@ -161,11 +162,36 @@ final class EnrollmentController extends BaseController
 
     /**
      * @OA\Patch(
+     *      path="/api/v1/enrolements/{id}/prise-en-charge",
+     *      operationId="enrollmentPriseEnCharge",
+     *      tags={"Enrollment - Physique"},
+     *      summary="Agent self-assign (prise en charge)",
+     *      description="Agent only. EN_ATTENTE and unassigned requests only.",
+     *      security={{"sanctum":{}}},
+     *
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
+     *      @OA\Response(response=200, description="Demande prise en charge"),
+     *      @OA\Response(response=422, description="Already assigned or wrong status")
+     * )
+     */
+    public function priseEnCharge(int $id): JsonResponse
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('claim', $enrollment);
+
+        $result = $this->reviewService->claim($id, (string) auth()->id());
+
+        return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+    }
+
+    /**
+     * @OA\Patch(
      *      path="/api/v1/enrolements/{id}/instruction",
      *      operationId="enrollmentInstruction",
      *      tags={"Enrollment - Physique"},
      *      summary="Agent instruction (validate or reject)",
-     *      description="Diagram §3.1. From EN_ATTENTE → VALIDATION_AGENT or REJET_AGENT.",
+     *      description="Diagram §3.1. From EN_ATTENTE → VALIDATION_AGENT or REJET_AGENT. Agent must have prise en charge first.",
      *      security={{"sanctum":{}}},
      *
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
@@ -186,16 +212,10 @@ final class EnrollmentController extends BaseController
      *      @OA\Response(response=422, description="Statut non éligible")
      * )
      */
-    public function instruction(Request $request, int $id): JsonResponse
+    public function instruction(InstructionEnrollmentRequest $request, int $id): JsonResponse
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('instruction', $enrollment);
-
-        $request->validate([
-            'statut' => 'required|in:VALIDATION_AGENT,REJET_AGENT',
-            'motif' => 'nullable|array',
-            'commentaire' => 'nullable|string',
-        ]);
 
         return $this->respond($this->reviewService->instruction(
             $id,

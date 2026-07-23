@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Auth\ChangeStaffPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterAgentRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
-use App\Http\Requests\Auth\SendAdminOtpRequest;
 use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
 use App\Http\Requests\Auth\UpdateAgentRequest;
-use App\Http\Requests\Auth\VerifyAdminOtpRequest;
 use App\Models\User;
 use App\Services\Auth\AdminAuthService;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +24,7 @@ class AuthController extends BaseController
      *      path="/api/v1/admin/login",
      *      operationId="adminLogin",
      *      tags={"Admin Auth"},
-     *      summary="Admin/Agent Login (Step 1: Request OTP)",
+     *      summary="Admin/Agent Login (returns Sanctum token)",
      *
      *      @OA\RequestBody(
      *          required=true,
@@ -38,8 +37,8 @@ class AuthController extends BaseController
      *          )
      *      ),
      *
-     *      @OA\Response(response=200, description="OTP sent to email"),
-     *      @OA\Response(response=403, description="Forbidden (Not an agent)")
+     *      @OA\Response(response=200, description="Login successful with access_token"),
+     *      @OA\Response(response=403, description="Forbidden (Not an agent or inactive account)")
      * )
      */
     public function loginAdmin(LoginRequest $request): JsonResponse
@@ -48,7 +47,39 @@ class AuthController extends BaseController
 
         $user = User::where('email', $request->user()->email)->first();
 
-        return $this->respond($this->adminAuth->issueOtpAfterLogin($user));
+        return $this->respond($this->adminAuth->loginDirect($user));
+    }
+
+    /**
+     * @OA\Post(
+     *      path="/api/v1/admin/password/change",
+     *      operationId="adminChangePassword",
+     *      tags={"Admin Auth"},
+     *      summary="Change staff password (authenticated)",
+     *      security={{"sanctum":{}}},
+     *
+     *      @OA\RequestBody(
+     *          required=true,
+     *
+     *          @OA\JsonContent(
+     *              required={"current_password", "password", "password_confirmation"},
+     *
+     *              @OA\Property(property="current_password", type="string", format="password"),
+     *              @OA\Property(property="password", type="string", format="password"),
+     *              @OA\Property(property="password_confirmation", type="string", format="password")
+     *          )
+     *      ),
+     *
+     *      @OA\Response(response=200, description="Password updated"),
+     *      @OA\Response(response=400, description="Current password incorrect")
+     * )
+     */
+    public function changePassword(ChangeStaffPasswordRequest $request): JsonResponse
+    {
+        return $this->respond($this->adminAuth->changePassword(
+            $request->user(),
+            $request->validated(),
+        ));
     }
 
     /**
@@ -66,6 +97,7 @@ class AuthController extends BaseController
      *          @OA\JsonContent(
      *
      *              @OA\Property(property="name", type="string"),
+     *              @OA\Property(property="first_name", type="string"),
      *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"}),
      *              @OA\Property(property="phonenumber", type="string"),
      *              @OA\Property(property="email", type="string", format="email")
@@ -124,12 +156,12 @@ class AuthController extends BaseController
      *          required=true,
      *
      *          @OA\JsonContent(
-     *              required={"name", "phonenumber", "npi", "email"},
+     *              required={"name", "first_name", "phonenumber", "email", "role"},
      *
-     *              @OA\Property(property="name", type="string"),
-     *              @OA\Property(property="role", type="string"),
+     *              @OA\Property(property="name", type="string", description="Nom"),
+     *              @OA\Property(property="first_name", type="string", description="Prénoms"),
+     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER"}),
      *              @OA\Property(property="phonenumber", type="string"),
-     *              @OA\Property(property="npi", type="string"),
      *              @OA\Property(property="email", type="string", format="email")
      *          )
      *      ),
@@ -150,41 +182,6 @@ class AuthController extends BaseController
     public function showAgent($id): JsonResponse
     {
         return $this->respond($this->adminAuth->showAgent($id));
-    }
-
-    public function sendOtp(SendAdminOtpRequest $request)
-    {
-        return $this->respond($this->adminAuth->sendOtp($request->input('email')));
-    }
-
-    /**
-     * @OA\Post(
-     *      path="/api/v1/admins/verify-otp",
-     *      operationId="adminVerifyOtp",
-     *      tags={"Admin Auth"},
-     *      summary="Admin/Agent Verify OTP (Step 2: Get Token)",
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *              required={"email", "otp"},
-     *
-     *              @OA\Property(property="email", type="string", format="email"),
-     *              @OA\Property(property="otp", type="string")
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Token obtained"),
-     *      @OA\Response(response=403, description="Forbidden or Invalid OTP")
-     * )
-     */
-    public function verifyOtp(VerifyAdminOtpRequest $request)
-    {
-        return $this->respond($this->adminAuth->verifyOtp(
-            $request->input('email'),
-            $request->input('otp'),
-        ));
     }
 
     public function resetPassword(ResetPasswordRequest $request)

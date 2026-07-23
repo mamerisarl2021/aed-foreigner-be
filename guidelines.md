@@ -472,9 +472,20 @@ Staff routes:
 ```
 GET   /enrolements?statut=EN_ATTENTE
 GET   /enrolements/{id}
-PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, motif? }
+PATCH /enrolements/{id}/prise-en-charge   (agent self-assign)
+PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, motif?, commentaire? }
 PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire? }
 ```
+
+Staff auth:
+
+```
+POST /admin/login              { email, password } → access_token + must_change_password
+POST /admin/password/change    { current_password, password, password_confirmation }  (auth)
+POST /agents/register          { name, first_name, email, phonenumber, role }  (admin)
+```
+
+Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`.
 
 Role mapping (PDF → Spatie):
 
@@ -488,12 +499,13 @@ Role mapping (PDF → Spatie):
 | Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
 | Auditeur (compliance extension) | `auditeur` |
 
-Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
+Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
 
-- No claim, visio, or assignment ownership — any agent acts on `EN_ATTENTE`.
+- **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE`. No assign-to-other-agent.
+- **Instruction:** agent must be the assigned agent; `REJET_AGENT` requires validated `motif[]` + optional `commentaire`; sets `reject_stage=AGENT`.
 - Responsable `APPROUVEE`: local User + NPI + Identity + **TrustedX register** + finalisation invite.
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
-- Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`.
+- Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`, clears `assigned_agent_id`.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
 - Reject motifs: `GET /management/enrollment-reject-motifs`.
 - Show attaches heuristic `similar_enrollments`.

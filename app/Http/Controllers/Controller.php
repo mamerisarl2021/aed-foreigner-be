@@ -32,7 +32,7 @@ use Illuminate\Routing\Controller as BaseController;
  *      type="http",
  *      scheme="bearer",
  *      bearerFormat="Sanctum",
- *      description="Staff token from POST /api/v1/admins/verify-otp. Prefix: Bearer {token}"
+ *      description="Staff token from POST /api/v1/admin/login. Prefix: Bearer {token}"
  * )
  *
  * @OA\Tag(name="Enrollment - OTP", description="Diagram §2.2 — OTP send/verify")

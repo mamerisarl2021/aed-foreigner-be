@@ -89,15 +89,40 @@ class IdentityReviewService
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->paginate((int) $request->input('per_page', 15));
+        return $query->with('assignedAgent')->paginate((int) $request->input('per_page', 15));
     }
 
     public function show(int $id): ServiceResult
     {
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::with('assignedAgent')->findOrFail($id);
         $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
 
         return ServiceResult::ok('Détail de la demande.', $enrollment);
+    }
+
+    public function claim(int $id, string $agentId): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if ($enrollment->status !== EnrollmentStatus::EnAttente->value) {
+            return ServiceResult::fail('Seules les demandes EN_ATTENTE peuvent être prises en charge.', null, 422);
+        }
+
+        if ($enrollment->assigned_agent_id !== null) {
+            return ServiceResult::fail('Cette demande est déjà assignée à un agent.', null, 422);
+        }
+
+        $enrollment->assigned_agent_id = $agentId;
+        $enrollment->save();
+        $enrollment->load('assignedAgent');
+
+        $this->events->publish('agent_assigned', [
+            'demande_id' => $enrollment->id,
+            'assigned_agent_id' => $agentId,
+            'statut' => $enrollment->status,
+        ]);
+
+        return ServiceResult::ok('Demande prise en charge.', $enrollment);
     }
 
     public function instruction(int $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
@@ -175,6 +200,7 @@ class IdentityReviewService
     {
         $enrollment->reject_reasons = $motif;
         $enrollment->review_comments = $comments;
+        $enrollment->reject_stage = 'AGENT';
         $enrollment->status = EnrollmentStatus::RejetAgent->value;
         $enrollment->save();
 
@@ -378,6 +404,7 @@ class IdentityReviewService
         }
 
         $enrollment->status = EnrollmentStatus::EnAttente->value;
+        $enrollment->assigned_agent_id = null;
         $enrollment->review_comments = $commentaire;
         $enrollment->returned_at = now();
         $enrollment->save();

@@ -63,6 +63,7 @@ Route::group([], function () {
 
         Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/enrolements', [EnrollmentController::class, 'index']);
+            Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge']);
             Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction']);
             Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation']);
             Route::get('/enrolements/{id}', [EnrollmentController::class, 'show']);
@@ -86,12 +87,11 @@ Route::group([], function () {
     Route::post('/clients/password/reset', [PasswordResetController::class, 'resetPassword']);
     Route::post('/clients/some/reset', [PasswordResetController::class, 'resetSome']);
 
-    Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');
-    Route::post('/admins/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/admins/logout', [AuthController::class, 'logoutAdmin'])->middleware('auth');
     Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
     Route::post('/admin/password/link', [AuthController::class, 'sendPasswordResetLink']);
     Route::post('/admin/password/reset', [AuthController::class, 'resetPassword']);
+    Route::post('/admin/password/change', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
 
     Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
     Route::get('users/search', [UserController::class, 'search']);

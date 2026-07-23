@@ -52,8 +52,25 @@ class EnrollmentRequestPolicy
 
     public function instruction(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        return $user->hasAnyRole(self::AGENT_ROLES)
-            && $enrollmentRequest->status === EnrollmentStatus::EnAttente->value;
+        if (! $user->hasAnyRole(self::AGENT_ROLES)) {
+            return false;
+        }
+
+        if ($enrollmentRequest->status !== EnrollmentStatus::EnAttente->value) {
+            return false;
+        }
+
+        return $enrollmentRequest->assigned_agent_id === $user->id;
+    }
+
+    public function claim(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        if (! $user->hasAnyRole(self::AGENT_ROLES)) {
+            return false;
+        }
+
+        return $enrollmentRequest->status === EnrollmentStatus::EnAttente->value
+            && $enrollmentRequest->assigned_agent_id === null;
     }
 
     public function validation(User $user, EnrollmentRequest $enrollmentRequest): bool
