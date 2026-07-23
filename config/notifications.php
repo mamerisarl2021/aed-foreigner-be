@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'driver' => env('NOTIFICATION_DRIVER', 'kafka'),
+
     'platform' => env('NOTIFICATION_PLATFORM', 'PORTAL'),
 
     'topics' => [

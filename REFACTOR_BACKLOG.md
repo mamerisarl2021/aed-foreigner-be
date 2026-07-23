@@ -42,7 +42,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 |----|--------|------|----------------------|-------|
 | P0-01 | `done` | Add `cache` table migration **or** default `CACHE_STORE=file` for fresh installs | `.env`, `.env.example` | Workaround: `CACHE_STORE=file` in env (no cache table migration needed locally) |
 | P0-02 | `done` | Add `sessions` table migration **or** default `SESSION_DRIVER=file` if DB sessions unused | `.env`, `.env.example` | Workaround: `SESSION_DRIVER=file` in env |
-| P0-03 | `todo` | Remove hardcoded subscription validation (`package => 7`) from production path | `ForeignerEnrollmentController::validateSubscription()` | **Deferred** until Kkiapay flow is defined for foreigner packages; `$transactionId` currently ignored |
+| P0-03 | `removed` | Hardcoded subscription validation (`package => 7`) | — | Legacy Structure/subscription stack removed 2026-07-21; no payment step in current foreigner enrollment |
 | P0-04 | `done` | Fix swapped `CLIENT_ID` / `CLIENT_SECRET` in `AttachmentTrait` constructor | `app/Traits/AttachmentTrait.php` | Now uses `TX_CLIENT_ID` / `TX_CLIENT_SECRET` correctly |
 | P0-05 | `done` | Align `.env.example` with Laravel 12 (`CACHE_STORE`, not legacy `CACHE_DRIVER`) | `.env.example` | `CACHE_STORE=file`, `SESSION_DRIVER=file` added |
 | P0-06 | `done` | Document required env vars in `.env.schema` | `.env.schema` | Grouped by domain; P0 cache/session/DB notes; legacy direct-usage list for P1 |
@@ -150,7 +150,7 @@ Tracked remediation items derived from the Laravel 12 best-practices audit (`gui
 | P6-02 | `done` | Move sync revocation HTTP to queued job | `RevocationController` → `ProcessRevocationJob` | PKI POST + DELETE + notification now runs in background |
 | P6-03 | `done` | Queue or background file uploads for heavy enrollment assets | `ForeignerEnrollmentController::uploadFilesAsync` | Misleading name; runs inline |
 | P6-04 | `done` | Introduce `Bus::chain()` for multi-step enrollment/signing flows | Enrollment, signature finalize | No chains used today |
-| P6-05 | `todo` | Restore real Kkiapay verification in `validateSubscription` | `ForeignerEnrollmentController` | Depends on P0-03 |
+| P6-05 | `removed` | Kkiapay verification in enrollment | — | Depends on product-defined foreigner payment flow; old `validateSubscription` removed with Structure* stack |
 | P6-06 | `done` | Ensure notification paths go through Kafka (fix provider bindings) | `bootstrap/providers.php` | Fixed namespace references; `KafkaNotificationPublisherTest` now passes |
 
 ---

@@ -12,6 +12,14 @@ use Tests\TestCase;
 
 final class KafkaNotificationPublisherTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['notifications.driver' => 'kafka']);
+        $this->app->forgetInstance(NotificationPublisherInterface::class);
+    }
+
     public function test_it_publishes_email_notifications_to_kafka(): void
     {
         Kafka::fake();
