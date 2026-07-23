@@ -53,9 +53,9 @@ final class OtpService
             $otp = (string) random_int(100000, 999999);
             Cache::put($this->phoneKey($phone), $otp, now()->addMinutes(self::TTL_MINUTES));
             SendSmsNotificationJob::dispatch(new SmsNotificationData(
-                subject: 'OTP AED',
+                subject: "Votre code OTP AED est : {$otp} (valide ".self::TTL_MINUTES.' minutes).',
                 recipients: [NotificationRecipient::phone($phone, ['otp' => $otp])],
-                variables: ['otp' => $otp, 'message' => "Votre code OTP AED est : {$otp} (valide ".self::TTL_MINUTES.' minutes).'],
+                type: 'OTP_SEND',
                 platform: NotificationPlatform::from(config('notifications.platform')),
             ));
             $channels[] = 'sms';
