@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\User;
@@ -86,7 +87,11 @@ class EnrollmentSimilarityService
 
         $otherDemandes = EnrollmentRequest::query()
             ->where('id', '!=', $enrollment->id)
-            ->whereIn('status', ['APPROVED', 'APPROVED_BY_AGENT', 'PENDING'])
+            ->whereIn('status', [
+                EnrollmentStatus::Approuvee->value,
+                EnrollmentStatus::ValidationAgent->value,
+                EnrollmentStatus::EnAttente->value,
+            ])
             ->where('type', 'PERSONNE_PHYSIQUE')
             ->limit(200)
             ->get();
@@ -191,7 +196,12 @@ class EnrollmentSimilarityService
         $otherDemandes = EnrollmentRequest::query()
             ->where('id', '!=', $enrollment->id)
             ->where('type', 'PERSONNE_MORALE')
-            ->whereIn('status', ['APPROVED', 'APPROVED_BY_AGENT', 'PENDING', 'AWAITING_CONTACT_VERIFICATION'])
+            ->whereIn('status', [
+                EnrollmentStatus::Approuvee->value,
+                EnrollmentStatus::ValidationAgent->value,
+                EnrollmentStatus::EnAttente->value,
+                EnrollmentStatus::AwaitingContactVerification->value,
+            ])
             ->limit(200)
             ->get();
 

@@ -15,7 +15,7 @@ class BaseController extends Controller
     protected function respond(ServiceResult $result): JsonResponse
     {
         if ($result->success) {
-            return $this->sendResponse($result->message, $result->data);
+            return $this->sendResponse($result->message, $result->data, $result->code);
         }
 
         return $this->sendError($result->message, $result->data, $result->code);
@@ -30,7 +30,7 @@ class BaseController extends Controller
         return $this->sendError($result->message, $result->data, $result->code);
     }
 
-    public function sendResponse(string $message, $data = null): JsonResponse
+    public function sendResponse(string $message, $data = null, int $code = 200): JsonResponse
     {
         $response = [
             'success' => true,
@@ -38,7 +38,7 @@ class BaseController extends Controller
             'message' => $message,
         ];
 
-        return response()->json($response, 200);
+        return response()->json($response, $code);
     }
 
     public function sendPaginatedResponse(string $message, $data = null): JsonResponse

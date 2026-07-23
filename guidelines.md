@@ -437,34 +437,43 @@ Check new PHP dependencies for known vulnerabilities before adoption.
 
 ## 13. Project-specific rules (AED Étranger)
 
-### 13.1 Personne physique enrollment (implemented)
+### 13.1 Personne physique enrollment (diagram §2)
 
 Canonical HTTP flow:
 
 ```
-POST /foreigner/send-otp     { email } | { phonenumber }
-POST /foreigner/verify-otp   { email|phonenumber, otp }
-POST /foreigner/enroll       multipart KYC + documents (+ liveness/similarity)
+POST /otp/send              { email, phonenumber }
+POST /otp/verify            { email|phonenumber, otp }
+POST /kyc/verify            multipart liveness + documents (sync Regula/KYC tier)
+POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, statut: EN_ATTENTE }
 ```
 
 Business rules:
 
 - Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
-- Submit creates an `enrollment_requests` row with `type = PERSONNE_PHYSIQUE` and `status = PENDING`.
+- Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE`.
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation using the existing foreigner finalized notification template (reuse, do not invent a parallel “advanced id request” mail for this path).
 - Guest endpoints; no Sanctum token required for OTP/enroll.
 
-### 13.2 Agent / supervisor / manager review (PDF-faithful)
+### 13.2 Agent / responsable review (diagram §§3.1–3.2)
 
-Status machine for demandes (personne physique):
+Status machine:
 
 ```
-PENDING ⇄ VISIO_REQUESTED
-PENDING | RETURNED_TO_AGENT → APPROVED_BY_AGENT | REJECTED_BY_AGENT
-APPROVED_BY_AGENT → APPROVED (responsable) | RETURNED_TO_AGENT
-REJECTED_BY_AGENT → REJECTED (responsable confirme) | RETURNED_TO_AGENT
-APPROVED → FINALIZED (demandeur finalise: password/PIN + TrustedX)
+EN_ATTENTE → VALIDATION_AGENT | REJET_AGENT        (PATCH .../instruction)
+VALIDATION_AGENT → APPROUVEE | EN_ATTENTE          (PATCH .../validation)
+REJET_AGENT → REJETEE | EN_ATTENTE                 (PATCH .../validation)
+APPROUVEE → ENROLEE                                (POST .../finalisation)
+```
+
+Staff routes:
+
+```
+GET   /enrolements?statut=EN_ATTENTE
+GET   /enrolements/{id}
+PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, motif? }
+PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire? }
 ```
 
 Role mapping (PDF → Spatie):
@@ -481,35 +490,41 @@ Role mapping (PDF → Spatie):
 
 Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
 
-- Agents: claim, request/complete visio (workflow-only), approve, **propose** reject (→ `REJECTED_BY_AGENT`, no applicant email yet).
-- Responsable (`responsable_de_validation`): approve validation (creates local `User` status `CREATED` + identity + NPI + finalization invite; **no TrustedX yet**), confirm agent reject (→ `REJECTED` + applicant email), or return to agent from either agent outcome.
+- No claim, visio, or assignment ownership — any agent acts on `EN_ATTENTE`.
+- Responsable `APPROUVEE`: local User + NPI + Identity + **TrustedX register** + finalisation invite.
+- Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
+- Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
 - Reject motifs: `GET /management/enrollment-reject-motifs`.
 - Show attaches heuristic `similar_enrollments`.
 - SLA: `enrollment:check-sla` hourly.
 - Authorization: `EnrollmentRequestPolicy` (see §9.3).
 
-### 13.3 Finalization & authentication after approval (PDF §§4–5)
+### 13.3 Finalization (diagram §4)
 
-After responsable validation the foreigner:
+```
+GET  /enrolements/finalisation?token=
+POST /enrolements/{id}/finalisation  { token, password, pin, security_questions? }
+```
 
-- Receives a secure finalization link (password / PIN / recovery questions)
-- Submits via `POST /clients/all/reset` → [`ForeignerFinalizationService`](app/Services/Enrollment/ForeignerFinalizationService.php): TrustedX `register`, set password/PIN, persist security questions, set user `ACTIVE`, enrollment `FINALIZED`
-- Authenticates later with unique ID + password + OTP (and optionally Mobile ID) — TrustedX/product scope
+- TrustedX identity already registered at responsable `APPROUVEE`; finalisation is **update-only** (password/PIN/questions).
+- Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
 
 ### 13.4 Personne morale enrollment (PDF §4)
 
-Prerequisites: demandeur is an **authenticated `client`** who already completed personne physique enrollment (`FINALIZED` demande or `ACTIVE` user with approved identity).
+Prerequisites: authenticated `client` with finalized physique enrollment (`ENROLEE`).
 
 Canonical HTTP flow:
 
 ```
-POST /morale/enroll                              (auth:sanctum + client)
-GET  /morale/enrollments/{id}                    (owner only)
-POST /morale/enrollments/{id}/verify-email       (token from email link; guest OK)
-POST /morale/enrollments/{id}/send-phone-otp     (owner only)
-POST /morale/enrollments/{id}/verify-phone-otp   (owner only)
+POST /enrolements/morales                              (auth:sanctum + client)
+GET  /enrolements/morales/{id}                         (owner only)
+POST /enrolements/morales/{id}/verify-email            (token from email link)
+POST /enrolements/morales/{id}/send-phone-otp            (owner only)
+POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 ```
+
+After contact verified → `EN_ATTENTE`; same instruction/validation contract as physique.
 
 Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE`):
 
@@ -533,8 +548,8 @@ Contact: `email` / `phonenumber` on the row = **official company** email and pho
 Status machine (morale-specific gate):
 
 ```
-AWAITING_CONTACT_VERIFICATION → PENDING → … (same as physique review)
-APPROVED → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsable approve)
+AWAITING_CONTACT_VERIFICATION → EN_ATTENTE → … (same as physique review)
+APPROUVEE → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsable approve)
 ```
 
 On responsable approve: **do not** create a new `User`; create `Identity` with `type = PERSONNE_MORALE` linked to `submitted_by_user_id`. No TrustedX / PSCEQ in this phase.

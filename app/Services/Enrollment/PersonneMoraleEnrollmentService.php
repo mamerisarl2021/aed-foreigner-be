@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\EnrollmentStatus;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\MoraleEmailVerificationJob;
 use App\Jobs\SendSmsJob;
@@ -24,18 +25,16 @@ class PersonneMoraleEnrollmentService
     /** @var list<string> */
     private const OPEN_MORALE_STATUSES = [
         'AWAITING_CONTACT_VERIFICATION',
-        'PENDING',
-        'VISIO_REQUESTED',
-        'APPROVED_BY_AGENT',
-        'REJECTED_BY_AGENT',
-        'RETURNED_TO_AGENT',
-        'APPROVED',
+        EnrollmentStatus::EnAttente->value,
+        EnrollmentStatus::ValidationAgent->value,
+        EnrollmentStatus::RejetAgent->value,
+        EnrollmentStatus::Approuvee->value,
     ];
 
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
-        'APPROVED',
-        'FINALIZED',
+        EnrollmentStatus::Approuvee->value,
+        EnrollmentStatus::Enrolee->value,
     ];
 
     public function submit(User $user, Request $request): ServiceResult
@@ -246,7 +245,7 @@ class PersonneMoraleEnrollmentService
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_PHYSIQUE')
             ->where('email', $user->email)
-            ->where('status', 'FINALIZED')
+            ->where('status', EnrollmentStatus::Enrolee->value)
             ->exists();
     }
 
@@ -332,7 +331,7 @@ class PersonneMoraleEnrollmentService
             return;
         }
 
-        $enrollment->status = 'PENDING';
+        $enrollment->status = EnrollmentStatus::EnAttente->value;
         $enrollment->sla_deadline_at = now()->addHours((int) config('enrollment.sla.max_hours', 72));
         $enrollment->save();
     }

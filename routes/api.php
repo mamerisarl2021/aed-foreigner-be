@@ -3,12 +3,16 @@
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EncryptionController;
+use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentRejectMotifController;
 use App\Http\Controllers\EnrollmentStatsController;
-use App\Http\Controllers\ForeignerEnrollmentController;
-use App\Http\Controllers\IdentityReviewController;
-use App\Http\Controllers\PersonneMoraleEnrollmentController;
+use App\Http\Controllers\FinalisationController;
+use App\Http\Controllers\KycController;
+use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\PersonneMoraleEnrollmentController;
+use App\Http\Controllers\Singletons\HealthCheckController;
+use App\Http\Controllers\Singletons\UserProfileController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -18,9 +22,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::group([], function () {
-    Route::get('/health', \App\Http\Controllers\Singletons\HealthCheckController::class);
+    Route::get('/health', HealthCheckController::class);
 
-    Route::middleware(['auth:sanctum'])->get('/me', \App\Http\Controllers\Singletons\UserProfileController::class);
+    Route::middleware(['auth:sanctum'])->get('/me', UserProfileController::class);
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::middleware('role:administrateur_plateforme|client|agent|responsable_de_validation')->group(function () {
@@ -47,29 +51,32 @@ Route::group([], function () {
 
         Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index']);
         Route::get('/management/enrollment-stats', [EnrollmentStatsController::class, 'index']);
+    });
 
-        Route::prefix('management/identity-reviews')->group(function () {
-            Route::get('/', [IdentityReviewController::class, 'index']);
-            Route::get('/{id}', [IdentityReviewController::class, 'show']);
-            Route::post('/{id}/claim', [IdentityReviewController::class, 'claim']);
-            Route::post('/{id}/approve', [IdentityReviewController::class, 'approve']);
-            Route::post('/{id}/reject', [IdentityReviewController::class, 'reject']);
-            Route::post('/{id}/visio/request', [IdentityReviewController::class, 'requestVisio']);
-            Route::post('/{id}/visio/complete', [IdentityReviewController::class, 'completeVisio']);
-            Route::post('/{id}/supervisor/approve', [IdentityReviewController::class, 'supervisorApprove']);
-            Route::post('/{id}/supervisor/reject', [IdentityReviewController::class, 'supervisorReject']);
-            Route::post('/{id}/supervisor/return', [IdentityReviewController::class, 'supervisorReturn']);
-        });
+    Route::middleware(['keycloak'])->group(function () {
+        Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction']);
+        Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest']);
+        Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
+        Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
+        Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
+        Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store']);
 
-        Route::middleware('role:client')->prefix('morale')->group(function () {
-            Route::post('/enroll', [PersonneMoraleEnrollmentController::class, 'submit']);
-            Route::get('/enrollments/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
-            Route::post('/enrollments/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp']);
-            Route::post('/enrollments/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp']);
+        Route::middleware(['auth:sanctum'])->group(function () {
+            Route::get('/enrolements', [EnrollmentController::class, 'index']);
+            Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction']);
+            Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation']);
+            Route::get('/enrolements/{id}', [EnrollmentController::class, 'show']);
+
+            Route::prefix('enrolements/morales')->middleware('role:client')->group(function () {
+                Route::post('/', [PersonneMoraleEnrollmentController::class, 'submit']);
+                Route::get('/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
+                Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp']);
+                Route::post('/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp']);
+            });
         });
     });
 
-    Route::post('/morale/enrollments/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail']);
+    Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail']);
 
     Route::post('/clients/send-otp', [UserController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
     Route::post('/clients/verify-otp', [UserController::class, 'verifyOtp'])->middleware(['guest']);
@@ -77,12 +84,7 @@ Route::group([], function () {
     Route::post('/mobile/login', [UserController::class, 'loginMobile']);
     Route::post('/clients/password/link', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/clients/password/reset', [PasswordResetController::class, 'resetPassword']);
-    Route::post('/clients/all/reset', [PasswordResetController::class, 'resetAll']);
     Route::post('/clients/some/reset', [PasswordResetController::class, 'resetSome']);
-
-    Route::post('/foreigner/send-otp', [ForeignerEnrollmentController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
-    Route::post('/foreigner/verify-otp', [ForeignerEnrollmentController::class, 'verifyOtp'])->middleware(['guest']);
-    Route::post('/foreigner/enroll', [ForeignerEnrollmentController::class, 'submitEnrollment'])->middleware(['guest']);
 
     Route::post('/admins/send-otp', [AuthController::class, 'sendOtp'])->middleware('guest');
     Route::post('/admins/verify-otp', [AuthController::class, 'verifyOtp']);

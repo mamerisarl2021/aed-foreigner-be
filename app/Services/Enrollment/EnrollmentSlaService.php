@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
@@ -16,11 +17,9 @@ use Illuminate\Support\Facades\Log;
 class EnrollmentSlaService
 {
     private const OPEN_STATUSES = [
-        'PENDING',
-        'VISIO_REQUESTED',
-        'APPROVED_BY_AGENT',
-        'REJECTED_BY_AGENT',
-        'RETURNED_TO_AGENT',
+        EnrollmentStatus::EnAttente->value,
+        EnrollmentStatus::ValidationAgent->value,
+        EnrollmentStatus::RejetAgent->value,
     ];
 
     /**

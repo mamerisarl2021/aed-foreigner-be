@@ -5,27 +5,26 @@ meta {
 }
 
 post {
-  url: {{base_url}}/api/foreigner/verify-otp
+  url: {{gateway_url}}/api/v1/otp/verify
   body: json
-  auth: inherit
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
+auth:bearer {
+  token: {{keycloak_token}}
+}
+
 body:json {
   {
     "email": "{{email}}",
-    "otp": "{{otp}}"
+    "otp": "{{otp_email}}"
   }
 }
 
 script:post-response {
   test('Status 200', () => expect(res.getStatus()).to.equal(200));
-  test('Email confirmé', () => res.getBody().data.email);
-}
-
-settings {
-  encodeUrl: true
 }

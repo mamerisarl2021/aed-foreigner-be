@@ -6,7 +6,6 @@ use App\Jobs\SendLinkJob;
 use App\Jobs\SendSmsJob;
 use App\Models\PasswordResetToken;
 use App\Models\User;
-use App\Services\Enrollment\ForeignerFinalizationService;
 use App\Services\PKI\TrustedXClientService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,7 +15,6 @@ class PasswordResetController extends BaseController
 {
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
-        private readonly ForeignerFinalizationService $finalizationService,
     ) {}
 
     public function sendResetLink(Request $request)
@@ -99,29 +97,6 @@ class PasswordResetController extends BaseController
         }
 
         return $this->sendError('Aucun utilisateur ne correspond à ce npi', null, 404);
-    }
-
-    public function resetAll(Request $request)
-    {
-        $request->validate([
-            'token' => 'required|string',
-            'password' => 'required|string',
-            'pin' => 'required|string',
-            'npi' => 'required|string',
-            'security_questions' => ['sometimes', 'nullable', 'array'],
-            'security_questions.*.question' => ['required_with:security_questions', 'string'],
-            'security_questions.*.answer' => ['required_with:security_questions', 'string'],
-        ]);
-
-        $result = $this->finalizationService->finalize(
-            $request->input('token'),
-            $request->input('npi'),
-            $request->input('password'),
-            $request->input('pin'),
-            $request->input('security_questions'),
-        );
-
-        return $this->respond($result);
     }
 
     public function resetSome(Request $request)

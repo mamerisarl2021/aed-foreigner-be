@@ -1,23 +1,25 @@
 meta {
-  name: 6) Supervisor Approve → statut APPROVED + Welcome
+  name: 6) Responsable validation APPROUVEE
   type: http
   seq: 6
 }
 
-post {
-  url: {{base_url}}/api/management/identity-reviews/{{identity_id_supervised}}/supervisor/approve
-  body: none
+patch {
+  url: {{gateway_url}}/api/v1/enrolements/{{demande_id}}/validation
+  body: json
   auth: bearer
 }
 
 auth:bearer {
-  token: {{supervisor_token}}
+  token: {{staff_token}}
+}
+
+body:json {
+  {
+    "decision": "APPROUVEE"
+  }
 }
 
 script:post-response {
-  test('200', () => expect(res.getStatus()).to.equal(200));
-}
-
-settings {
-  encodeUrl: true
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
 }

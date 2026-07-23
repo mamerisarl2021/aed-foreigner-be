@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Contracts\EnrollmentEventPublisherInterface;
+use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\PasswordResetToken;
 use App\Models\User;
@@ -14,85 +16,85 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class ForeignerFinalizationService
+final class ForeignerFinalizationService
 {
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
+        private readonly EnrollmentEventPublisherInterface $events,
     ) {}
 
-    /**
-     * PDF §4: after supervisor approval invite, foreigner sets password/PIN (+ optional security questions),
-     * then TrustedX enrollment is triggered.
-     *
-     * @param  array<string, mixed>|null  $securityQuestions
-     */
-    public function finalize(string $token, string $npi, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
+    public function showByToken(string $token): ServiceResult
     {
-        $tokenData = PasswordResetToken::where('token', $token)->first();
-
+        $tokenData = PasswordResetToken::where('token', $token)->where('type', 'finalisation')->first();
         if (! $tokenData) {
-            return ServiceResult::fail('Le lien de mise à jour des identifiants est invalide', null, 404);
+            return ServiceResult::fail('Lien de finalisation invalide.', null, 404);
         }
 
         if (Carbon::parse($tokenData->created_at)->addMinutes(60)->isPast()) {
-            return ServiceResult::fail('Le lien de mise à jour des identifiants est expiré.', null, 400);
+            return ServiceResult::fail('Lien de finalisation expiré.', null, 400);
         }
 
-        if ($tokenData->npi !== $npi) {
-            return ServiceResult::fail('Le NPI ne correspond pas au lien fourni.', null, 400);
+        $user = User::where('npi', $tokenData->npi)->first();
+        if (! $user) {
+            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
         }
 
-        $localUser = User::where('npi', $npi)->first();
+        $enrollment = EnrollmentRequest::query()
+            ->where('email', $user->email)
+            ->where('status', EnrollmentStatus::Approuvee->value)
+            ->latest('id')
+            ->first();
+
+        if (! $enrollment) {
+            return ServiceResult::fail('Aucune demande en attente de finalisation.', null, 404);
+        }
+
+        return ServiceResult::ok('Demande éligible à la finalisation.', [
+            'demande_id' => $enrollment->id,
+            'statut' => $enrollment->status,
+            'npi' => $user->npi,
+            'email' => $user->email,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $securityQuestions
+     */
+    public function finalize(int $demandeId, string $token, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
+    {
+        $tokenData = PasswordResetToken::where('token', $token)->where('type', 'finalisation')->first();
+        if (! $tokenData) {
+            return ServiceResult::fail('Lien de finalisation invalide.', null, 404);
+        }
+
+        if (Carbon::parse($tokenData->created_at)->addMinutes(60)->isPast()) {
+            return ServiceResult::fail('Lien de finalisation expiré.', null, 400);
+        }
+
+        $localUser = User::where('npi', $tokenData->npi)->first();
         if (! $localUser) {
-            return ServiceResult::fail('Aucun utilisateur ne correspond à ce npi', null, 404);
+            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
+        }
+
+        $enrollment = EnrollmentRequest::findOrFail($demandeId);
+        if ($enrollment->email !== $localUser->email || $enrollment->status !== EnrollmentStatus::Approuvee->value) {
+            return ServiceResult::fail('Demande non éligible à la finalisation.', null, 422);
+        }
+
+        if ($localUser->trustedx_registered_at === null) {
+            return ServiceResult::fail('Identité TrustedX non enregistrée. Contactez le support.', null, 422);
         }
 
         DB::beginTransaction();
         try {
-            $trustedXUserId = null;
+            $lookup = $this->trustedXClient->getUserWithNPI($localUser->npi);
+            if (! ($lookup['status'] ?? false)) {
+                DB::rollBack();
 
-            if ($localUser->trustedx_registered_at === null) {
-                $registerResult = $this->trustedXClient->register(['data' => ['npi' => $npi]]);
-                if (! ($registerResult['status'] ?? false)) {
-                    DB::rollBack();
-
-                    return ServiceResult::fail(
-                        $registerResult['message'] ?? 'Échec de l\'enrôlement TrustedX.',
-                        null,
-                        400
-                    );
-                }
-
-                $trustedXUserId = $registerResult['data']['id'] ?? null;
-                if (! $trustedXUserId) {
-                    $lookup = $this->trustedXClient->getUserWithNPI($npi);
-                    if (! ($lookup['status'] ?? false)) {
-                        DB::rollBack();
-
-                        return ServiceResult::fail(
-                            $lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.',
-                            null,
-                            400
-                        );
-                    }
-                    $trustedXUserId = $lookup['data']['id'] ?? null;
-                }
-
-                $localUser->trustedx_registered_at = now();
-            } else {
-                $lookup = $this->trustedXClient->getUserWithNPI($npi);
-                if (! ($lookup['status'] ?? false)) {
-                    DB::rollBack();
-
-                    return ServiceResult::fail(
-                        $lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.',
-                        null,
-                        400
-                    );
-                }
-                $trustedXUserId = $lookup['data']['id'] ?? null;
+                return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
             }
 
+            $trustedXUserId = $lookup['data']['id'] ?? null;
             if (! $trustedXUserId) {
                 DB::rollBack();
 
@@ -111,15 +113,7 @@ class ForeignerFinalizationService
             if (! ($passwordOutput['status'] ?? false) || ! ($pinOutput['status'] ?? false)) {
                 DB::rollBack();
 
-                $message = trim(
-                    ($passwordOutput['message'] ?? '').' '.($pinOutput['message'] ?? '')
-                );
-
-                return ServiceResult::fail(
-                    $message !== '' ? $message : 'Échec de la définition du mot de passe / PIN.',
-                    null,
-                    400
-                );
+                return ServiceResult::fail('Échec de la définition du mot de passe / PIN.', null, 400);
             }
 
             if ($securityQuestions !== null) {
@@ -129,22 +123,23 @@ class ForeignerFinalizationService
             $localUser->status = 'ACTIVE';
             $localUser->save();
 
-            EnrollmentRequest::query()
-                ->where('email', $localUser->email)
-                ->where('status', 'APPROVED')
-                ->update(['status' => 'FINALIZED']);
+            $enrollment->status = EnrollmentStatus::Enrolee->value;
+            $enrollment->save();
 
             PasswordResetToken::where('token', $token)->delete();
 
+            $this->events->publish('completed', [
+                'demande_id' => $enrollment->id,
+                'npi' => $localUser->npi,
+                'statut' => $enrollment->status,
+            ]);
+
             DB::commit();
 
-            $lookup = $this->trustedXClient->getUserWithNPI($npi);
-            $txData = ($lookup['status'] ?? false) ? ($lookup['data'] ?? []) : [];
-
-            return ServiceResult::ok('Vos identifiants ont bien été mis à jour. Enrôlement finalisé.', [
-                ...json_decode(json_encode($localUser->load('identities')), true),
-                ...$txData,
-                ...($passwordOutput['data'] ?? []),
+            return ServiceResult::ok('Enrôlement finalisé.', [
+                'demande_id' => $enrollment->id,
+                'statut' => $enrollment->status,
+                'npi' => $localUser->npi,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
