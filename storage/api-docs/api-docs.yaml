@@ -17,7 +17,7 @@ paths:
     post:
       tags:
         - 'Admin Auth'
-      summary: 'Admin/Agent Login (Step 1: Request OTP)'
+      summary: 'Admin/Agent Login (returns Sanctum token)'
       operationId: adminLogin
       requestBody:
         required: true
@@ -37,9 +37,43 @@ paths:
               type: object
       responses:
         200:
-          description: 'OTP sent to email'
+          description: 'Login successful with access_token'
         403:
-          description: 'Forbidden (Not an agent)'
+          description: 'Forbidden (Not an agent or inactive account)'
+  /api/v1/admin/password/change:
+    post:
+      tags:
+        - 'Admin Auth'
+      summary: 'Change staff password (authenticated)'
+      operationId: adminChangePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - current_password
+                - password
+                - password_confirmation
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                password:
+                  type: string
+                  format: password
+                password_confirmation:
+                  type: string
+                  format: password
+              type: object
+      responses:
+        200:
+          description: 'Password updated'
+        400:
+          description: 'Current password incorrect'
+      security:
+        -
+          sanctum: []
   '/api/v1/agents/{id}':
     post:
       tags:
@@ -60,6 +94,8 @@ paths:
             schema:
               properties:
                 name:
+                  type: string
+                first_name:
                   type: string
                 role:
                   type: string
@@ -102,17 +138,24 @@ paths:
             schema:
               required:
                 - name
+                - first_name
                 - phonenumber
-                - npi
                 - email
+                - role
               properties:
                 name:
+                  description: Nom
+                  type: string
+                first_name:
+                  description: Prénoms
                   type: string
                 role:
                   type: string
+                  enum:
+                    - AGENT
+                    - RESPONSABLE_DE_VALIDATION
+                    - MANAGER
                 phonenumber:
-                  type: string
-                npi:
                   type: string
                 email:
                   type: string
@@ -121,32 +164,6 @@ paths:
       responses:
         200:
           description: 'Agent registered'
-  /api/v1/admins/verify-otp:
-    post:
-      tags:
-        - 'Admin Auth'
-      summary: 'Admin/Agent Verify OTP (Step 2: Get Token)'
-      operationId: adminVerifyOtp
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              required:
-                - email
-                - otp
-              properties:
-                email:
-                  type: string
-                  format: email
-                otp:
-                  type: string
-              type: object
-      responses:
-        200:
-          description: 'Token obtained'
-        403:
-          description: 'Forbidden or Invalid OTP'
   /api/v1/enrolements/etrangers:
     post:
       tags:
@@ -322,12 +339,34 @@ paths:
       security:
         -
           sanctum: []
+  '/api/v1/enrolements/{id}/prise-en-charge':
+    patch:
+      tags:
+        - 'Enrollment - Physique'
+      summary: 'Agent self-assign (prise en charge)'
+      description: 'Agent only. EN_ATTENTE and unassigned requests only.'
+      operationId: enrollmentPriseEnCharge
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 'Demande prise en charge'
+        422:
+          description: 'Already assigned or wrong status'
+      security:
+        -
+          sanctum: []
   '/api/v1/enrolements/{id}/instruction':
     patch:
       tags:
         - 'Enrollment - Physique'
       summary: 'Agent instruction (validate or reject)'
-      description: 'Diagram §3.1. From EN_ATTENTE → VALIDATION_AGENT or REJET_AGENT.'
+      description: 'Diagram §3.1. From EN_ATTENTE → VALIDATION_AGENT or REJET_AGENT. Agent must have prise en charge first.'
       operationId: enrollmentInstruction
       parameters:
         -
@@ -748,7 +787,7 @@ components:
   securitySchemes:
     sanctum:
       type: http
-      description: 'Staff token from POST /api/v1/admins/verify-otp. Prefix: Bearer {token}'
+      description: 'Staff token from POST /api/v1/admin/login. Prefix: Bearer {token}'
       bearerFormat: Sanctum
       scheme: bearer
 tags:

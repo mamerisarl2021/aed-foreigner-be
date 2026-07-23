@@ -1,29 +1,25 @@
 meta {
-  name: 2) Claim (agent)
+  name: 2) Prise en charge (agent)
   type: http
   seq: 2
 }
 
-post {
-  url: {{base_url}}/api/management/identity-reviews/{{identity_id}}/claim
+patch {
+  url: {{gateway_url}}/api/v1/enrolements/{{demande_id}}/prise-en-charge
   body: none
   auth: bearer
 }
 
 auth:bearer {
-  token: {{agent_token}}
+  token: {{staff_token}}
 }
 
 script:pre-request {
-  if (!bru.getVar('identity_id')) {
+  if (!bru.getVar('demande_id')) {
     bru.setNextRequest(null);
   }
 }
 
 script:post-response {
-  test('200', () => expect(res.getStatus()).to.equal(200));
-}
-
-settings {
-  encodeUrl: true
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
 }

@@ -3,12 +3,9 @@
 namespace App\Services\Auth;
 
 use App\Jobs\ResetPasswordJob;
-use App\Jobs\SendOTPJob;
 use App\Jobs\WelcomeAgentJob;
-use App\Models\OTP;
 use App\Models\User;
 use App\Services\ServiceResult;
-use Carbon\Carbon;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -35,66 +32,12 @@ class AdminAuthService
         ));
     }
 
-    public function issueOtpAfterLogin(User $user): ServiceResult
-    {
-        if (! $user->hasAnyRole(self::staffRoles())) {
-            return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
-        }
-
-        $this->storeAndDispatchOtp($user->email);
-
-        return ServiceResult::ok('OTP envoyé avec succès.', []);
-    }
-
-    public function sendOtp(string $email): ServiceResult
-    {
-        $user = User::where('email', $email)->first();
-
-        if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
-            return ServiceResult::fail("L'email fourni n'appartient pas à un agent.", null, 403);
-        }
-
-        $this->storeAndDispatchOtp($email);
-
-        return ServiceResult::ok('OTP envoyé avec succès.', []);
-    }
-
-    public function verifyOtp(string $email, string $otp): ServiceResult
-    {
-        $user = User::where('email', $email)->first();
-
-        if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
-            return ServiceResult::fail("L'email fourni n'appartient pas à un agent.", null, 403);
-        }
-
-        $existingOTP = OTP::where('email', $email)
-            ->where('otp', $otp)
-            ->where('valid_until', '>=', Carbon::now())
-            ->first();
-
-        if (! $existingOTP) {
-            return ServiceResult::fail('OTP invalide ou expiré.', null, 403);
-        }
-
-        $existingOTP->delete();
-
-        $token = $user->createToken($user->email.'-'.now())->plainTextToken;
-
-        return ServiceResult::ok(
-            "Bienvenue sur la plateforme d'enregistrement déléguée! Vous nous avez manqué!",
-            [
-                'user' => $user,
-                'roles' => $user->getRoleNames(),
-                'access_token' => $token,
-            ]
-        );
-    }
-
     public function updateAgent(User $user, array $input): ServiceResult
     {
         try {
             $user->update([
                 'name' => $input['name'] ?? $user->name,
+                'first_name' => $input['first_name'] ?? $user->first_name,
                 'email' => $input['email'] ?? $user->email,
                 'phonenumber' => $input['phonenumber'] ?? $user->phonenumber,
                 'npi' => $input['npi'] ?? $user->npi,
@@ -130,27 +73,21 @@ class AdminAuthService
     public function registerAgent(array $input): ServiceResult
     {
         try {
+            $defaultPassword = Str::password(12);
+
             $user = User::create([
                 'name' => $input['name'],
+                'first_name' => $input['first_name'],
                 'email' => $input['email'],
                 'phonenumber' => $input['phonenumber'],
-                'npi' => $input['npi'],
-                'status' => 'INACTIVE',
+                'status' => 'ACTIVE',
+                'must_change_password' => true,
             ]);
-            $user->forceFill(['password' => ''])->save();
+            $user->forceFill(['password' => Hash::make($defaultPassword)])->save();
 
-            $this->assignRoleFromCode($user, $input['role'] ?? null);
+            $this->assignRoleFromCode($user, $input['role']);
 
-            $token = Str::random(60);
-
-            DB::table('password_reset_tokens')->insert([
-                'email' => $user->email,
-                'token' => Hash::make($token),
-                'created_at' => now(),
-            ]);
-
-            $resetLink = config('app.frontend_url').'/backoffice/agent/init-password?token='.$token.'&email='.urlencode($user->email);
-            WelcomeAgentJob::dispatch($user, $resetLink);
+            WelcomeAgentJob::dispatch($user, $defaultPassword);
 
             return ServiceResult::ok('Agent enregistré avec succès', $user);
         } catch (Exception $e) {
@@ -158,6 +95,49 @@ class AdminAuthService
 
             return ServiceResult::fail('Impossible de créer le compte agent reessayer.', null, 500);
         }
+    }
+
+    public function loginDirect(User $user): ServiceResult
+    {
+        if (! $user->hasAnyRole(self::staffRoles())) {
+            return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
+        }
+
+        if ($user->status !== 'ACTIVE') {
+            return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
+        }
+
+        if (empty($user->password)) {
+            return ServiceResult::fail('Mot de passe non défini. Contactez un administrateur.', null, 403);
+        }
+
+        $token = $user->createToken($user->email.'-'.now())->plainTextToken;
+
+        return ServiceResult::ok(
+            "Bienvenue sur la plateforme d'enregistrement déléguée!",
+            [
+                'user' => $user,
+                'roles' => $user->getRoleNames(),
+                'access_token' => $token,
+                'must_change_password' => (bool) $user->must_change_password,
+            ]
+        );
+    }
+
+    /**
+     * @param  array{current_password: string, password: string}  $validatedData
+     */
+    public function changePassword(User $user, array $validatedData): ServiceResult
+    {
+        if (! Hash::check($validatedData['current_password'], $user->password)) {
+            return ServiceResult::fail('Mot de passe actuel incorrect.', null, 400);
+        }
+
+        $user->password = Hash::make($validatedData['password']);
+        $user->must_change_password = false;
+        $user->save();
+
+        return ServiceResult::ok('Mot de passe mis à jour avec succès.', []);
     }
 
     public function listAgents(Request $request): ServiceResult
@@ -221,6 +201,7 @@ class AdminAuthService
             $user = User::where('email', $validatedData['email'])->first();
             $user->password = Hash::make($validatedData['password']);
             $user->status = 'ACTIVE';
+            $user->must_change_password = false;
             $user->save();
 
             DB::table('password_reset_tokens')->where('email', $validatedData['email'])->delete();
@@ -263,25 +244,6 @@ class AdminAuthService
 
             return ServiceResult::fail('Impossible d\'envoyer le lien de réinitialisation, réessayer.', null, 400);
         }
-    }
-
-    private function storeAndDispatchOtp(string $email): void
-    {
-        $otp = implode('', array_map(fn () => (string) mt_rand(0, 9), range(1, 6)));
-        $validUntil = Carbon::now()->addMinutes(5);
-
-        $existingOTP = OTP::where('email', $email)->first();
-        if ($existingOTP) {
-            $existingOTP->update(['otp' => $otp, 'valid_until' => $validUntil]);
-        } else {
-            OTP::create([
-                'email' => $email,
-                'otp' => $otp,
-                'valid_until' => $validUntil,
-            ]);
-        }
-
-        SendOTPJob::dispatch($email, $otp);
     }
 
     private function assignRoleFromCode(User $user, ?string $role): void

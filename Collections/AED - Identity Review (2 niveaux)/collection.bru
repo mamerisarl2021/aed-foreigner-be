@@ -7,13 +7,12 @@ auth {
 }
 
 vars:pre-request {
-  base_url: http://localhost
-  agent_token: 
+  gateway_url: http://127.0.0.1:8000
+  staff_token: 
   supervisor_token: 
-  identity_id: 
-  identity_id_supervised: 
+  demande_id: 
 }
 
 docs {
-  Parcours d’examen d’identités: liste, détail, claim, approbation agent, approbation/rejet superviseur.
+  Parcours d'examen d'identités: liste, détail, prise en charge, instruction agent, validation responsable.
 }

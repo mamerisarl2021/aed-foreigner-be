@@ -27,6 +27,7 @@ class User extends Authenticatable implements Auditable
         'profile',
         'email',
         'status',
+        'must_change_password',
         'npi',
         'trustedx_registered_at',
         'security_questions',
@@ -46,6 +47,7 @@ class User extends Authenticatable implements Auditable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
             'trustedx_registered_at' => 'datetime',
             'security_questions' => 'array',
         ];

@@ -16,21 +16,32 @@ final class WelcomeAgentJob implements ShouldQueue
 
     public function __construct(
         public readonly mixed $user,
-        public readonly string $link,
+        public readonly string $defaultPassword,
     ) {}
 
     public function handle(): void
     {
+        $loginUrl = config('app.frontend_url').'/backoffice/login';
+
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
             subject: 'Ajout d\'un compte agent',
             template: NotificationTemplate::AgentAddedToAed,
             recipients: [
-                NotificationRecipient::email($this->user, [
-                    'user' => $this->user,
-                    'link' => $this->link,
+                NotificationRecipient::email($this->user->email, [
+                    'nom' => $this->user->name,
+                    'prenom' => $this->user->first_name,
+                    'email' => $this->user->email,
+                    'default_password' => $this->defaultPassword,
+                    'login_url' => $loginUrl,
                 ]),
             ],
-            variables: ['link' => $this->link],
+            variables: [
+                'nom' => $this->user->name,
+                'prenom' => $this->user->first_name,
+                'email' => $this->user->email,
+                'default_password' => $this->defaultPassword,
+                'login_url' => $loginUrl,
+            ],
             type: 'WELCOME_AGENT',
             platform: NotificationPlatform::from(config('notifications.platform')),
         ));
