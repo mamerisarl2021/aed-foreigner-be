@@ -2,14 +2,20 @@
 
 namespace App\Services\Auth;
 
+use App\Enums\ActivityLogAction;
+use App\Http\Resources\StaffUserDetailResource;
+use App\Http\Resources\StaffUserListResource;
 use App\Jobs\ResetPasswordJob;
 use App\Jobs\WelcomeAgentJob;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\StaffRoleMapper;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -17,19 +23,14 @@ use Illuminate\Support\Str;
 
 class AdminAuthService
 {
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /** @return list<string> */
     private static function staffRoles(): array
     {
         return config('roles.staff', []);
-    }
-
-    /** @return list<string> */
-    private static function listableStaffRoles(): array
-    {
-        return array_values(array_filter(
-            self::staffRoles(),
-            fn (string $role) => $role !== config('roles.administrateur_plateforme')
-        ));
     }
 
     public function updateAgent(User $user, array $input): ServiceResult
@@ -48,7 +49,9 @@ class AdminAuthService
                 $this->assignRoleFromCode($user, $input['role']);
             }
 
-            return ServiceResult::ok('Agent mis à jour avec succès.', $user);
+            $user->load('roles');
+
+            return ServiceResult::ok('Agent mis à jour avec succès.', (new StaffUserDetailResource($user))->resolve());
         } catch (Exception $e) {
             Log::error('Failed to update agent: '.$e->getMessage());
 
@@ -86,10 +89,24 @@ class AdminAuthService
             $user->forceFill(['password' => Hash::make($defaultPassword)])->save();
 
             $this->assignRoleFromCode($user, $input['role']);
+            $user->load('roles');
 
             WelcomeAgentJob::dispatch($user, $defaultPassword);
 
-            return ServiceResult::ok('Agent enregistré avec succès', $user);
+            $actorId = Auth::id();
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurCree,
+                sprintf(
+                    '%s a créé le compte utilisateur %s %s (%s).',
+                    ActivityLogService::actorLabel(Auth::user()),
+                    $user->first_name,
+                    $user->name,
+                    $user->email
+                ),
+                is_string($actorId) ? $actorId : null,
+            );
+
+            return ServiceResult::ok('Agent enregistré avec succès', (new StaffUserDetailResource($user))->resolve());
         } catch (Exception $e) {
             Log::error('Failed to register agent: '.$e->getMessage());
 
@@ -111,12 +128,15 @@ class AdminAuthService
             return ServiceResult::fail('Mot de passe non défini. Contactez un administrateur.', null, 403);
         }
 
+        $user->last_login_at = now();
+        $user->save();
+
         $token = $user->createToken($user->email.'-'.now())->plainTextToken;
 
         return ServiceResult::ok(
             "Bienvenue sur la plateforme d'enregistrement déléguée!",
             [
-                'user' => $user,
+                'user' => (new StaffUserDetailResource($user))->resolve(),
                 'roles' => $user->getRoleNames(),
                 'access_token' => $token,
                 'must_change_password' => (bool) $user->must_change_password,
@@ -143,19 +163,38 @@ class AdminAuthService
     public function listAgents(Request $request): ServiceResult
     {
         try {
-            $perPage = min((int) $request->get('perPage', 15), 100);
-            $role = $request->get('role', null);
-            $allowedRoles = self::listableStaffRoles();
+            $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
+            $roleFilter = StaffRoleMapper::slugFromCode($request->input('role'));
+            $allowedRoles = StaffRoleMapper::listableSlugs();
 
-            if ($role && in_array($role, $allowedRoles, true)) {
-                $agents = User::whereHas('roles', function ($query) use ($role) {
-                    $query->where('name', $role);
-                })->with('roles')->paginate($perPage);
-            } else {
-                $agents = User::whereHas('roles', function ($query) use ($allowedRoles) {
-                    $query->whereIn('name', $allowedRoles);
-                })->with('roles')->paginate($perPage);
+            $query = User::query()->whereHas('roles', function ($sub) use ($roleFilter, $allowedRoles) {
+                if ($roleFilter) {
+                    $sub->where('name', $roleFilter);
+                } else {
+                    $sub->whereIn('name', $allowedRoles);
+                }
+            })->with('roles');
+
+            if ($request->filled('q')) {
+                $q = $request->input('q');
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('first_name', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%");
+                });
             }
+
+            $orderBy = $request->input('order_by', 'created_at');
+            if (! in_array($orderBy, ['created_at', 'name', 'email', 'last_login_at'], true)) {
+                $orderBy = 'created_at';
+            }
+            $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($orderBy, $orderDir);
+
+            $agents = $query->paginate($perPage);
+            $agents->getCollection()->transform(
+                fn (User $user) => (new StaffUserListResource($user))->resolve()
+            );
 
             return ServiceResult::ok('Liste des agents.', $this->flattenPagination($agents));
         } catch (Exception $e) {
@@ -169,10 +208,10 @@ class AdminAuthService
     {
         try {
             $agent = User::whereHas('roles', function ($query) {
-                $query->whereIn('name', self::listableStaffRoles());
+                $query->whereIn('name', StaffRoleMapper::listableSlugs());
             })->with('roles')->findOrFail($id);
 
-            return ServiceResult::ok('Agent récupéré avec succès', $agent);
+            return ServiceResult::ok('Agent récupéré avec succès', (new StaffUserDetailResource($agent))->resolve());
         } catch (ModelNotFoundException $e) {
             Log::error('Agent not found: '.$e->getMessage());
 
@@ -248,14 +287,7 @@ class AdminAuthService
 
     private function assignRoleFromCode(User $user, ?string $role): void
     {
-        $slug = match ($role) {
-            'AGENT' => config('roles.agent'),
-            'RESPONSABLE_DE_VALIDATION' => config('roles.responsable_de_validation'),
-            'MANAGER' => config('roles.manager'),
-            'AUDITEUR' => config('roles.auditeur'),
-            default => config('roles.client'),
-        };
-
+        $slug = StaffRoleMapper::slugFromCode($role) ?? config('roles.client');
         $user->assignRole($slug);
     }
 

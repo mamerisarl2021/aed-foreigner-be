@@ -13,6 +13,93 @@ servers:
     url: /
     description: 'Relative to APP_URL (API prefix /api/v1 on routes)'
 paths:
+  /api/v1/admin/activity-logs:
+    get:
+      tags:
+        - Admin
+      summary: 'List business activity logs (journaux)'
+      operationId: adminActivityLogs
+      parameters:
+        -
+          name: q
+          in: query
+          schema:
+            type: string
+        -
+          name: action
+          in: query
+          schema:
+            type: string
+        -
+          name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        200:
+          description: 'Paginated activity logs'
+      security:
+        -
+          sanctum: []
+  /api/v1/admin/enrolled-persons:
+    get:
+      tags:
+        - Admin
+      summary: 'List enrolled persons (read-only)'
+      operationId: adminEnrolledPersons
+      parameters:
+        -
+          name: q
+          in: query
+          schema:
+            type: string
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        200:
+          description: 'Paginated enrolled persons'
+      security:
+        -
+          sanctum: []
+  '/api/v1/admin/enrolled-persons/{id}':
+    get:
+      tags:
+        - Admin
+      summary: 'Enrolled person detail (read-only)'
+      operationId: adminEnrolledPersonShow
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Detail
+        404:
+          description: 'Not found'
+      security:
+        -
+          sanctum: []
   /api/v1/admin/login:
     post:
       tags:
@@ -155,6 +242,7 @@ paths:
                     - AGENT
                     - RESPONSABLE_DE_VALIDATION
                     - MANAGER
+                    - AUDITEUR
                 phonenumber:
                   type: string
                 email:
@@ -164,6 +252,40 @@ paths:
       responses:
         200:
           description: 'Agent registered'
+  /api/v1/agents:
+    get:
+      tags:
+        - Admin
+      summary: 'List staff users (admin)'
+      operationId: listAgents
+      parameters:
+        -
+          name: q
+          in: query
+          schema:
+            type: string
+        -
+          name: role
+          in: query
+          schema:
+            type: string
+            enum:
+              - AGENT
+              - RESPONSABLE_DE_VALIDATION
+              - MANAGER
+              - AUDITEUR
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        200:
+          description: 'Staff list'
+      security:
+        -
+          sanctum: []
   /api/v1/enrolements/etrangers:
     post:
       tags:
@@ -830,6 +952,9 @@ tags:
   -
     name: 'Enrollment - Morale'
     description: 'Personne morale enrollment'
+  -
+    name: Admin
+    description: Admin
   -
     name: 'Admin Auth'
     description: 'Admin Auth'

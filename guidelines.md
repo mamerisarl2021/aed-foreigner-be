@@ -95,7 +95,7 @@ Move logic to:
 
 ### 4.2 Form Requests for validation
 
-**Never** validate inside controller methods with inline `Validator::make()` for new code.
+**Never** validate inside controller methods with inline `Validator::make()`.
 
 ```bash
 php artisan make:request Enrollment/SubmitEnrollmentRequest
@@ -107,7 +107,7 @@ Form Requests **MUST** include:
 - Custom messages when defaults are unclear
 - `authorize(): bool` when access depends on input or role (guest enrollment requests typically `return true` and rely on OTP gates in the service)
 
-Existing controllers with inline validation should be migrated when touched.
+No inline validation in controllers.
 
 ### 4.3 Service classes for business logic
 
@@ -510,7 +510,7 @@ Role mapping (PDF → Spatie):
 | Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
 | Auditeur (compliance extension) | `auditeur` |
 
-Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
+Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
 
 - **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE`. No assign-to-other-agent.
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `VALIDATION_AGENT` or `REJET_AGENT`. No assign-to-other.
@@ -583,7 +583,29 @@ APPROUVEE → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsa
 
 On responsable approve: **do not** create a new `User`; create `Identity` with `type = PERSONNE_MORALE` linked to `submitted_by_user_id`. No TrustedX / PSCEQ in this phase.
 
-### 13.5 Explicitly out of current API scope
+### 13.5 Espace administrateur (backoffice)
+
+Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, not `POST /agents/register`).
+
+```
+POST /admin/login
+GET  /agents? q, role, per_page          → StaffUserListResource
+GET  /agents/{id}                        → StaffUserDetailResource
+POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER|AUDITEUR)
+POST /agents/{id}                        → update staff
+DELETE /agents/{id}                      → delete staff
+GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier (action, description, date)
+GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
+GET  /admin/enrolled-persons/{id}                          → détail read-only
+GET  /audits                                               → journal OwenIt (compliance / auditeur)
+```
+
+- Login sets `users.last_login_at`.
+- Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
+- **Journaux** (`activity_logs`): business actions (demande, validation agent/responsable, création utilisateur, finalisation). Distinct from `GET /audits` (model CRUD audit trail).
+- **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
+
+### 13.6 Explicitly out of current API scope
 
 Do not pretend these exist in code without implementing them:
 
@@ -594,13 +616,13 @@ Do not pretend these exist in code without implementing them:
 - SLA thresholds admin UI (env/config only for now)
 - National company registry auto-check beyond duplicate detection on `registration_number` + `country_of_incorporation`
 
-### 13.6 Infrastructure integration
+### 13.7 Infrastructure integration
 
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
 
-### 13.7 Legacy code
+### 13.8 Legacy code
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 

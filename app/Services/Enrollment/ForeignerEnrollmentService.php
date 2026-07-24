@@ -6,6 +6,7 @@ namespace App\Services\Enrollment;
 
 use App\Contracts\EnrollmentEventPublisherInterface;
 use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
@@ -13,6 +14,7 @@ use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use Illuminate\Http\Request;
@@ -27,6 +29,7 @@ final class ForeignerEnrollmentService
         private readonly OtpService $otpService,
         private readonly KycVerificationService $kycVerification,
         private readonly EnrollmentEventPublisherInterface $events,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function submitEnrollment(Request $request): ServiceResult
@@ -83,6 +86,17 @@ final class ForeignerEnrollmentService
                 'statut' => $enrollmentRequest->status,
                 'email' => $email,
             ]);
+
+            $this->activityLog->record(
+                ActivityLogAction::DemandeIdentite,
+                sprintf(
+                    '%s %s a initié une demande d\'identité.',
+                    $request->input('first_name'),
+                    $request->input('name')
+                ),
+                null,
+                $enrollmentRequest->id,
+            );
 
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
                 subject: 'Confirmation de soumission — enrôlement AED',
