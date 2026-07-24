@@ -20,6 +20,8 @@ class EnrollmentRequest extends Model
         'analysis_details',
         'status',
         'assigned_agent_id',
+        'assigned_responsable_id',
+        'agent_decided_at',
         'reject_stage',
         'reject_reasons',
         'review_comments',
@@ -52,6 +54,7 @@ class EnrollmentRequest extends Model
             'visio_requested_at' => 'datetime',
             'visio_completed_at' => 'datetime',
             'returned_at' => 'datetime',
+            'agent_decided_at' => 'datetime',
             'sla_deadline_at' => 'datetime',
         ];
     }
@@ -59,6 +62,11 @@ class EnrollmentRequest extends Model
     public function assignedAgent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_agent_id');
+    }
+
+    public function assignedResponsable(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_responsable_id');
     }
 
     public function submittedBy(): BelongsTo

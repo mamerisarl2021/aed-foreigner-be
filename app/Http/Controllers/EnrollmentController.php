@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
-use App\Http\Resources\EnrollmentRequestResource;
+use App\Http\Requests\Enrollment\ValidationEnrollmentRequest;
+use App\Http\Resources\EnrollmentDecisionDetailResource;
+use App\Http\Resources\EnrollmentDecisionListResource;
+use App\Http\Resources\EnrollmentRequestAgentDetailResource;
+use App\Http\Resources\EnrollmentRequestListResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\ForeignerEnrollmentService;
 use App\Services\IdentityReview\IdentityReviewService;
@@ -103,7 +107,7 @@ final class EnrollmentController extends BaseController
      *      operationId="enrollmentList",
      *      tags={"Enrollment - Physique"},
      *      summary="List enrollment requests",
-     *      description="Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).",
+     *      description="Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT). Default EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.",
      *      security={{"sanctum":{}}},
      *
      *      @OA\Parameter(
@@ -131,7 +135,11 @@ final class EnrollmentController extends BaseController
     {
         $this->authorize('viewAny', EnrollmentRequest::class);
         $paginator = $this->reviewService->list($request);
-        $paginator->getCollection()->transform(fn ($item) => new EnrollmentRequestResource($item));
+        $user = $request->user();
+        $resourceClass = $user && $user->hasRole(config('roles.responsable_de_validation'))
+            ? EnrollmentDecisionListResource::class
+            : EnrollmentRequestListResource::class;
+        $paginator->getCollection()->transform(fn ($item) => new $resourceClass($item));
 
         return $this->sendResponse('Liste des demandes.', $paginator);
     }
@@ -141,8 +149,8 @@ final class EnrollmentController extends BaseController
      *      path="/api/v1/enrolements/{id}",
      *      operationId="enrollmentShow",
      *      tags={"Enrollment - Physique"},
-     *      summary="Enrollment request detail",
-     *      description="Includes S3 document refs, KYC score, and similar_enrollments.",
+     *      summary="Enrollment request detail (agent / responsable backoffice)",
+     *      description="Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource with decision_agent block. Same route for physique and morale.",
      *      security={{"sanctum":{}}},
      *
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
@@ -156,8 +164,12 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('view', $enrollment);
         $result = $this->reviewService->show($id);
+        $user = auth()->user();
+        $resource = $user && $user->hasRole(config('roles.responsable_de_validation'))
+            ? new EnrollmentDecisionDetailResource($result->data)
+            : new EnrollmentRequestAgentDetailResource($result->data);
 
-        return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+        return $this->sendResponse($result->message, $resource);
     }
 
     /**
@@ -182,7 +194,32 @@ final class EnrollmentController extends BaseController
 
         $result = $this->reviewService->claim($id, (string) auth()->id());
 
-        return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+        return $this->sendResponse($result->message, new EnrollmentRequestAgentDetailResource($result->data));
+    }
+
+    /**
+     * @OA\Patch(
+     *      path="/api/v1/enrolements/{id}/prise-en-charge-validation",
+     *      operationId="enrollmentPriseEnChargeValidation",
+     *      tags={"Enrollment - Physique"},
+     *      summary="Responsable self-assign (prise en charge décision)",
+     *      description="Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.",
+     *      security={{"sanctum":{}}},
+     *
+     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
+     *      @OA\Response(response=200, description="Décision prise en charge"),
+     *      @OA\Response(response=422, description="Already assigned or wrong status")
+     * )
+     */
+    public function priseEnChargeValidation(int $id): JsonResponse
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('claimValidation', $enrollment);
+
+        $result = $this->reviewService->claimValidation($id, (string) auth()->id());
+
+        return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($result->data));
     }
 
     /**
@@ -231,7 +268,7 @@ final class EnrollmentController extends BaseController
      *      operationId="enrollmentValidation",
      *      tags={"Enrollment - Physique"},
      *      summary="Responsable validation decision",
-     *      description="Diagram §3.2. APPROUVEE triggers TrustedX register + finalisation invite.",
+     *      description="Diagram §3.2. Requires prise en charge validation first. VALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.",
      *      security={{"sanctum":{}}},
      *
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
@@ -243,7 +280,14 @@ final class EnrollmentController extends BaseController
      *              required={"decision"},
      *
      *              @OA\Property(property="decision", type="string", enum={"APPROUVEE", "REJET_CONFIRME", "RETOUR_AGENT"}),
-     *              @OA\Property(property="commentaire", type="string")
+     *              @OA\Property(property="commentaire", type="string"),
+     *              @OA\Property(
+     *                  property="motif",
+     *                  type="array",
+     *                  description="Required when decision is RETOUR_AGENT",
+     *
+     *                  @OA\Items(type="string")
+     *              )
      *          )
      *      ),
      *
@@ -251,21 +295,25 @@ final class EnrollmentController extends BaseController
      *      @OA\Response(response=422, description="Statut non éligible")
      * )
      */
-    public function validation(Request $request, int $id): JsonResponse
+    public function validation(ValidationEnrollmentRequest $request, int $id): JsonResponse
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('validation', $enrollment);
 
-        $request->validate([
-            'decision' => 'required|in:APPROUVEE,REJET_CONFIRME,RETOUR_AGENT',
-            'commentaire' => 'nullable|string',
-        ]);
-
-        return $this->respond($this->reviewService->validation(
+        $result = $this->reviewService->validation(
             $id,
             $request->input('decision'),
             $request->input('commentaire'),
             (string) $request->user()?->id,
-        ));
+            $request->input('motif'),
+        );
+
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
+
+        return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($enrollment));
     }
 }

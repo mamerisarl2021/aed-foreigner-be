@@ -99,6 +99,8 @@ class PersonneMoraleEnrollmentService
 
             DB::commit();
 
+            $this->assignDemandeurAuthentifieRole($user);
+
             $this->dispatchPostSubmissionJobs($enrollment, $uploadedFiles, $verificationToken);
 
             return ServiceResult::ok('Demande enregistrée. Veuillez vérifier l\'email officiel et le téléphone de l\'entreprise.', [
@@ -316,6 +318,15 @@ class PersonneMoraleEnrollmentService
 
         if ($chain !== []) {
             Bus::chain($chain)->dispatch();
+        }
+    }
+
+    private function assignDemandeurAuthentifieRole(User $user): void
+    {
+        $role = config('roles.demandeur_authentifie');
+
+        if (! $user->hasRole($role)) {
+            $user->assignRole($role);
         }
     }
 

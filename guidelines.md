@@ -5,9 +5,7 @@ This document defines the practices we **strictly follow** when building and mai
 **Product source of truth** (business rules for enrollment):
 
 - [`txdocs/Parcours d’enrolement des étrangers – vf.pdf`](./txdocs/Parcours%20d’enrolement%20des%20étrangers%20–%20vf.pdf)
-- [`pics/`](./pics/) UI reference screens for the same parcours
 
-When code, backlog notes, or older guideline sections conflict with that PDF/`pics` set, **follow the PDF/`pics`**. Engineering practices below still apply.
 
 Engineering sources consolidated from:
 
@@ -470,12 +468,25 @@ APPROUVEE → ENROLEE                                (POST .../finalisation)
 Staff routes:
 
 ```
-GET   /enrolements?statut=EN_ATTENTE
+GET   /enrolements?statut=EN_ATTENTE                              (agent default)
+GET   /enrolements?statut=VALIDATION_AGENT|REJET_AGENT            (responsable default when statut omitted)
 GET   /enrolements/{id}
-PATCH /enrolements/{id}/prise-en-charge   (agent self-assign)
+PATCH /enrolements/{id}/prise-en-charge                           (agent self-assign)
+PATCH /enrolements/{id}/prise-en-charge-validation                (responsable self-assign)
 PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, motif?, commentaire? }
-PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire? }
+PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire?, motif? }
 ```
+
+Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, responsable.
+
+Responsable detail includes `decision_agent` (Approuvé/Rejeté, agent, date, motifs, description), `peut_prendre_en_charge`, `peut_valider`.
+
+Decision mapping (responsable buttons):
+
+| Current status | Approuver | Rejeter la décision |
+|----------------|-----------|---------------------|
+| `VALIDATION_AGENT` | `APPROUVEE` | `RETOUR_AGENT` (+ motif[], commentaire?) |
+| `REJET_AGENT` | `REJET_CONFIRME` | `RETOUR_AGENT` (+ motif[], commentaire?) |
 
 Staff auth:
 
@@ -502,7 +513,9 @@ Role mapping (PDF → Spatie):
 Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
 
 - **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE`. No assign-to-other-agent.
-- **Instruction:** agent must be the assigned agent; `REJET_AGENT` requires validated `motif[]` + optional `commentaire`; sets `reject_stage=AGENT`.
+- **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `VALIDATION_AGENT` or `REJET_AGENT`. No assign-to-other.
+- **Instruction:** agent must be the assigned agent; `REJET_AGENT` requires validated `motif[]` + optional `commentaire`; sets `reject_stage=AGENT` and `agent_decided_at`.
+- **Validation:** responsable must be the assigned responsable; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id` and `assigned_responsable_id`.
 - Responsable `APPROUVEE`: local User + NPI + Identity + **TrustedX register** + finalisation invite.
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`, clears `assigned_agent_id`.
@@ -537,6 +550,10 @@ POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 ```
 
 After contact verified → `EN_ATTENTE`; same instruction/validation contract as physique.
+
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié). Detail returns `informations_entreprise` + `pieces_jointes`. Client tracking uses `GET /enrolements/morales/{id}` only.
+
+On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
 
 Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE`):
 

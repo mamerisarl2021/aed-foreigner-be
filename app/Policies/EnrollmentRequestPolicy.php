@@ -73,7 +73,7 @@ class EnrollmentRequestPolicy
             && $enrollmentRequest->assigned_agent_id === null;
     }
 
-    public function validation(User $user, EnrollmentRequest $enrollmentRequest): bool
+    public function claimValidation(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         if (! $user->hasRole(config('roles.responsable_de_validation'))) {
             return false;
@@ -82,7 +82,23 @@ class EnrollmentRequestPolicy
         return in_array($enrollmentRequest->status, [
             EnrollmentStatus::ValidationAgent->value,
             EnrollmentStatus::RejetAgent->value,
-        ], true);
+        ], true) && $enrollmentRequest->assigned_responsable_id === null;
+    }
+
+    public function validation(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        if (! $user->hasRole(config('roles.responsable_de_validation'))) {
+            return false;
+        }
+
+        if (! in_array($enrollmentRequest->status, [
+            EnrollmentStatus::ValidationAgent->value,
+            EnrollmentStatus::RejetAgent->value,
+        ], true)) {
+            return false;
+        }
+
+        return (string) $enrollmentRequest->assigned_responsable_id === (string) $user->id;
     }
 
     public function viewEnrollmentStats(User $user): bool

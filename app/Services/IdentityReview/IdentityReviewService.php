@@ -43,7 +43,15 @@ class IdentityReviewService
 
         $statutParam = $request->input('statut', $request->input('status'));
         if (is_null($statutParam)) {
-            $statuses = [EnrollmentStatus::EnAttente->value];
+            $user = $request->user();
+            if ($user && $user->hasRole(config('roles.responsable_de_validation'))) {
+                $statuses = [
+                    EnrollmentStatus::ValidationAgent->value,
+                    EnrollmentStatus::RejetAgent->value,
+                ];
+            } else {
+                $statuses = [EnrollmentStatus::EnAttente->value];
+            }
         } else {
             $statuses = is_array($statutParam)
                 ? $statutParam
@@ -71,7 +79,11 @@ class IdentityReviewService
                     ->orWhereJsonContains('kyc_data->name', $q)
                     ->orWhereJsonContains('kyc_data->first_name', $q)
                     ->orWhereJsonContains('kyc_data->legal_name', $q)
-                    ->orWhereJsonContains('kyc_data->registration_number', $q);
+                    ->orWhereJsonContains('kyc_data->registration_number', $q)
+                    ->orWhereHas('submittedBy', function ($sub) use ($q) {
+                        $sub->where('name', 'like', "%$q%")
+                            ->orWhere('first_name', 'like', "%$q%");
+                    });
             });
         }
 
@@ -89,12 +101,12 @@ class IdentityReviewService
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->with('assignedAgent')->paginate((int) $request->input('per_page', 15));
+        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate((int) $request->input('per_page', 15));
     }
 
     public function show(int $id): ServiceResult
     {
-        $enrollment = EnrollmentRequest::with('assignedAgent')->findOrFail($id);
+        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
         $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
 
         return ServiceResult::ok('Détail de la demande.', $enrollment);
@@ -114,7 +126,7 @@ class IdentityReviewService
 
         $enrollment->assigned_agent_id = $agentId;
         $enrollment->save();
-        $enrollment->load('assignedAgent');
+        $enrollment->load('assignedAgent', 'submittedBy');
 
         $this->events->publish('agent_assigned', [
             'demande_id' => $enrollment->id,
@@ -123,6 +135,34 @@ class IdentityReviewService
         ]);
 
         return ServiceResult::ok('Demande prise en charge.', $enrollment);
+    }
+
+    public function claimValidation(int $id, string $responsableId): ServiceResult
+    {
+        $enrollment = EnrollmentRequest::findOrFail($id);
+
+        if (! in_array($enrollment->status, [
+            EnrollmentStatus::ValidationAgent->value,
+            EnrollmentStatus::RejetAgent->value,
+        ], true)) {
+            return ServiceResult::fail('Seules les demandes en attente de validation responsable peuvent être prises en charge.', null, 422);
+        }
+
+        if ($enrollment->assigned_responsable_id !== null) {
+            return ServiceResult::fail('Cette décision est déjà assignée à un responsable.', null, 422);
+        }
+
+        $enrollment->assigned_responsable_id = $responsableId;
+        $enrollment->save();
+        $enrollment->load(['assignedAgent', 'assignedResponsable', 'submittedBy']);
+
+        $this->events->publish('responsable_assigned', [
+            'demande_id' => $enrollment->id,
+            'assigned_responsable_id' => $responsableId,
+            'statut' => $enrollment->status,
+        ]);
+
+        return ServiceResult::ok('Décision prise en charge.', $enrollment);
     }
 
     public function instruction(int $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
@@ -144,12 +184,12 @@ class IdentityReviewService
         return ServiceResult::fail('Statut d\'instruction invalide.', null, 422);
     }
 
-    public function validation(int $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null): ServiceResult
+    public function validation(int $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
     {
         return match ($decision) {
             'APPROUVEE' => $this->supervisorApprove($id, (string) $supervisorId),
             'REJET_CONFIRME' => $this->supervisorConfirmReject($id),
-            'RETOUR_AGENT' => $this->supervisorReturnToAgent($id, $commentaire),
+            'RETOUR_AGENT' => $this->supervisorReturnToAgent($id, $commentaire, $motif),
             default => ServiceResult::fail('Décision de validation invalide.', null, 422),
         };
     }
@@ -159,6 +199,7 @@ class IdentityReviewService
         DB::beginTransaction();
         try {
             $enrollment->status = EnrollmentStatus::ValidationAgent->value;
+            $enrollment->agent_decided_at = now();
             $enrollment->save();
 
             $this->events->publish('status_changed', [
@@ -202,6 +243,7 @@ class IdentityReviewService
         $enrollment->review_comments = $comments;
         $enrollment->reject_stage = 'AGENT';
         $enrollment->status = EnrollmentStatus::RejetAgent->value;
+        $enrollment->agent_decided_at = now();
         $enrollment->save();
 
         $this->events->publish('status_changed', [
@@ -392,7 +434,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorReturnToAgent(int $id, ?string $commentaire): ServiceResult
+    public function supervisorReturnToAgent(int $id, ?string $commentaire, ?array $motif = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -405,8 +447,15 @@ class IdentityReviewService
 
         $enrollment->status = EnrollmentStatus::EnAttente->value;
         $enrollment->assigned_agent_id = null;
+        $enrollment->assigned_responsable_id = null;
         $enrollment->review_comments = $commentaire;
         $enrollment->returned_at = now();
+
+        if ($motif !== null) {
+            $enrollment->return_reasons = $motif;
+            $enrollment->reject_stage = 'RESPONSABLE';
+        }
+
         $enrollment->save();
 
         $this->events->publish('status_changed', [
@@ -440,6 +489,12 @@ class IdentityReviewService
                     'company_email' => $enrollment->email,
                     'company_phone' => $enrollment->phonenumber,
                     'enrollment_request_id' => $enrollment->id,
+                    'company_manager' => [
+                        'user_id' => $representative->id,
+                        'nom' => $representative->name,
+                        'prenom' => $representative->first_name,
+                        'email' => $representative->email,
+                    ],
                 ]),
                 'status' => 'APPROVED',
                 'assigned_agent_id' => $supervisorId,

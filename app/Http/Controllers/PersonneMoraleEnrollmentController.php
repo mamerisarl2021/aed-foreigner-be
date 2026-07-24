@@ -7,7 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Enrollment\SubmitMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\VerifyMoraleEmailRequest;
 use App\Http\Requests\Enrollment\VerifyMoralePhoneOtpRequest;
-use App\Http\Resources\EnrollmentRequestResource;
+use App\Http\Resources\MoraleEnrollmentOwnerResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
 use Illuminate\Http\JsonResponse;
@@ -99,7 +99,7 @@ class PersonneMoraleEnrollmentController extends BaseController
 
         $result = $this->moraleEnrollment->show($user, $id);
         if ($result->success) {
-            return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+            return $this->sendResponse($result->message, new MoraleEnrollmentOwnerResource($result->data));
         }
 
         return $this->sendError($result->message, $result->data ?? [], $result->code);
