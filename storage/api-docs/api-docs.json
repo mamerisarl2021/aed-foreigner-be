@@ -469,8 +469,8 @@
                 "tags": [
                     "Enrollment - Physique"
                 ],
-                "summary": "Enrollment request detail",
-                "description": "Includes S3 document refs, KYC score, and similar_enrollments.",
+                "summary": "Enrollment request detail (agent backoffice)",
+                "description": "Use for both personne physique and personne morale agent detail views. Morale list demandeur = submitted_by user (demandeur authentifié).",
                 "operationId": "enrollmentShow",
                 "parameters": [
                     {

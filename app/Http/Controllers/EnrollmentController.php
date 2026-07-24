@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
-use App\Http\Resources\EnrollmentRequestResource;
+use App\Http\Resources\EnrollmentRequestAgentDetailResource;
+use App\Http\Resources\EnrollmentRequestListResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\ForeignerEnrollmentService;
 use App\Services\IdentityReview\IdentityReviewService;
@@ -131,7 +132,7 @@ final class EnrollmentController extends BaseController
     {
         $this->authorize('viewAny', EnrollmentRequest::class);
         $paginator = $this->reviewService->list($request);
-        $paginator->getCollection()->transform(fn ($item) => new EnrollmentRequestResource($item));
+        $paginator->getCollection()->transform(fn ($item) => new EnrollmentRequestListResource($item));
 
         return $this->sendResponse('Liste des demandes.', $paginator);
     }
@@ -141,8 +142,8 @@ final class EnrollmentController extends BaseController
      *      path="/api/v1/enrolements/{id}",
      *      operationId="enrollmentShow",
      *      tags={"Enrollment - Physique"},
-     *      summary="Enrollment request detail",
-     *      description="Includes S3 document refs, KYC score, and similar_enrollments.",
+     *      summary="Enrollment request detail (agent backoffice)",
+     *      description="Use for both personne physique and personne morale agent detail views. Morale list demandeur = submitted_by user (demandeur authentifié).",
      *      security={{"sanctum":{}}},
      *
      *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
@@ -157,7 +158,7 @@ final class EnrollmentController extends BaseController
         $this->authorize('view', $enrollment);
         $result = $this->reviewService->show($id);
 
-        return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+        return $this->sendResponse($result->message, new EnrollmentRequestAgentDetailResource($result->data));
     }
 
     /**
@@ -182,7 +183,7 @@ final class EnrollmentController extends BaseController
 
         $result = $this->reviewService->claim($id, (string) auth()->id());
 
-        return $this->sendResponse($result->message, new EnrollmentRequestResource($result->data));
+        return $this->sendResponse($result->message, new EnrollmentRequestAgentDetailResource($result->data));
     }
 
     /**

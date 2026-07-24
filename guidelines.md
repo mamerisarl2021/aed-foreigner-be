@@ -538,6 +538,10 @@ POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 
 After contact verified → `EN_ATTENTE`; same instruction/validation contract as physique.
 
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié). Detail returns `informations_entreprise` + `pieces_jointes`. Client tracking uses `GET /enrolements/morales/{id}` only.
+
+On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
+
 Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE`):
 
 | Field | PDF | Required |
