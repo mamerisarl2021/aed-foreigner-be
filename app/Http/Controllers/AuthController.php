@@ -160,7 +160,7 @@ class AuthController extends BaseController
      *
      *              @OA\Property(property="name", type="string", description="Nom"),
      *              @OA\Property(property="first_name", type="string", description="Prénoms"),
-     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER"}),
+     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"}),
      *              @OA\Property(property="phonenumber", type="string"),
      *              @OA\Property(property="email", type="string", format="email")
      *          )
@@ -174,6 +174,21 @@ class AuthController extends BaseController
         return $this->respond($this->adminAuth->registerAgent($request->all()));
     }
 
+    /**
+     * @OA\Get(
+     *      path="/api/v1/agents",
+     *      operationId="listAgents",
+     *      tags={"Admin"},
+     *      summary="List staff users (admin)",
+     *      security={{"sanctum":{}}},
+     *
+     *      @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
+     *      @OA\Parameter(name="role", in="query", @OA\Schema(type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"})),
+     *      @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
+     *
+     *      @OA\Response(response=200, description="Staff list")
+     * )
+     */
     public function listAgents(Request $request): JsonResponse
     {
         return $this->respondPaginated($this->adminAuth->listAgents($request));

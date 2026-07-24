@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\Contracts\EnrollmentEventPublisherInterface;
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use Carbon\Carbon;
@@ -21,6 +23,7 @@ final class ForeignerFinalizationService
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
         private readonly EnrollmentEventPublisherInterface $events,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function showByToken(string $token): ServiceResult
@@ -133,6 +136,17 @@ final class ForeignerFinalizationService
                 'npi' => $localUser->npi,
                 'statut' => $enrollment->status,
             ]);
+
+            $this->activityLog->record(
+                ActivityLogAction::EnrolementFinalise,
+                sprintf(
+                    '%s %s a finalisé son enrôlement.',
+                    $localUser->first_name,
+                    $localUser->name
+                ),
+                $localUser->id,
+                $enrollment->id,
+            );
 
             DB::commit();
 

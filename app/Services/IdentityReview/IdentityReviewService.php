@@ -6,6 +6,7 @@ namespace App\Services\IdentityReview;
 
 use App\Contracts\EnrollmentEventPublisherInterface;
 use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
@@ -16,6 +17,7 @@ use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\Enrollment\EnrollmentSimilarityService;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
@@ -34,6 +36,7 @@ class IdentityReviewService
         private readonly EnrollmentSimilarityService $similarityService,
         private readonly TrustedXClientService $trustedXClient,
         private readonly EnrollmentEventPublisherInterface $events,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function list(Request $request): LengthAwarePaginator
@@ -188,8 +191,8 @@ class IdentityReviewService
     {
         return match ($decision) {
             'APPROUVEE' => $this->supervisorApprove($id, (string) $supervisorId),
-            'REJET_CONFIRME' => $this->supervisorConfirmReject($id),
-            'RETOUR_AGENT' => $this->supervisorReturnToAgent($id, $commentaire, $motif),
+            'REJET_CONFIRME' => $this->supervisorConfirmReject($id, $supervisorId),
+            'RETOUR_AGENT' => $this->supervisorReturnToAgent($id, $commentaire, $motif, $supervisorId),
             default => ServiceResult::fail('Décision de validation invalide.', null, 422),
         };
     }
@@ -201,6 +204,18 @@ class IdentityReviewService
             $enrollment->status = EnrollmentStatus::ValidationAgent->value;
             $enrollment->agent_decided_at = now();
             $enrollment->save();
+            $enrollment->load('assignedAgent');
+
+            $this->activityLog->record(
+                ActivityLogAction::ValidationAgent,
+                sprintf(
+                    '%s a validé la demande n°%d.',
+                    ActivityLogService::actorLabel($enrollment->assignedAgent),
+                    $enrollment->id
+                ),
+                $enrollment->assigned_agent_id,
+                $enrollment->id,
+            );
 
             $this->events->publish('status_changed', [
                 'demande_id' => $enrollment->id,
@@ -245,6 +260,18 @@ class IdentityReviewService
         $enrollment->status = EnrollmentStatus::RejetAgent->value;
         $enrollment->agent_decided_at = now();
         $enrollment->save();
+        $enrollment->load('assignedAgent');
+
+        $this->activityLog->record(
+            ActivityLogAction::RejetAgent,
+            sprintf(
+                '%s a rejeté la demande n°%d.',
+                ActivityLogService::actorLabel($agent),
+                $enrollment->id
+            ),
+            $enrollment->assigned_agent_id,
+            $enrollment->id,
+        );
 
         $this->events->publish('status_changed', [
             'demande_id' => $enrollment->id,
@@ -343,6 +370,13 @@ class IdentityReviewService
             $enrollment->status = EnrollmentStatus::Approuvee->value;
             $enrollment->save();
 
+            $this->activityLog->record(
+                ActivityLogAction::ValidationResponsable,
+                sprintf('La demande n°%d a été approuvée par le responsable.', $enrollment->id),
+                $supervisorId,
+                $enrollment->id,
+            );
+
             $this->events->publish('approved', [
                 'demande_id' => $enrollment->id,
                 'npi' => $user->npi,
@@ -383,7 +417,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorConfirmReject(int $id): ServiceResult
+    public function supervisorConfirmReject(int $id, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -395,6 +429,13 @@ class IdentityReviewService
         try {
             $enrollment->status = EnrollmentStatus::Rejetee->value;
             $enrollment->save();
+
+            $this->activityLog->record(
+                ActivityLogAction::RejetConfirme,
+                sprintf('Le rejet de la demande n°%d a été confirmé par le responsable.', $enrollment->id),
+                $supervisorId,
+                $enrollment->id,
+            );
 
             $this->events->publish('rejected', [
                 'demande_id' => $enrollment->id,
@@ -434,7 +475,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorReturnToAgent(int $id, ?string $commentaire, ?array $motif = null): ServiceResult
+    public function supervisorReturnToAgent(int $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -457,6 +498,13 @@ class IdentityReviewService
         }
 
         $enrollment->save();
+
+        $this->activityLog->record(
+            ActivityLogAction::RetourAgent,
+            sprintf('La demande n°%d a été renvoyée à l\'agent par le responsable.', $enrollment->id),
+            $supervisorId,
+            $enrollment->id,
+        );
 
         $this->events->publish('status_changed', [
             'demande_id' => $enrollment->id,
@@ -513,6 +561,13 @@ class IdentityReviewService
 
             $enrollment->status = EnrollmentStatus::Approuvee->value;
             $enrollment->save();
+
+            $this->activityLog->record(
+                ActivityLogAction::ValidationResponsable,
+                sprintf('La demande morale n°%d a été approuvée par le responsable.', $enrollment->id),
+                $supervisorId,
+                $enrollment->id,
+            );
 
             $this->events->publish('approved', [
                 'demande_id' => $enrollment->id,

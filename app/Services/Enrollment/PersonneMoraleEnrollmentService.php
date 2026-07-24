@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\MoraleEmailVerificationJob;
@@ -11,6 +12,7 @@ use App\Jobs\SendSmsJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -22,6 +24,10 @@ use Illuminate\Support\Str;
 
 class PersonneMoraleEnrollmentService
 {
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /** @var list<string> */
     private const OPEN_MORALE_STATUSES = [
         'AWAITING_CONTACT_VERIFICATION',
@@ -102,6 +108,14 @@ class PersonneMoraleEnrollmentService
             $this->assignDemandeurAuthentifieRole($user);
 
             $this->dispatchPostSubmissionJobs($enrollment, $uploadedFiles, $verificationToken);
+
+            $legalName = (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
+            $this->activityLog->record(
+                ActivityLogAction::DemandeIdentiteMorale,
+                sprintf('%s a initié une demande d\'identité morale pour %s.', ActivityLogService::actorLabel($user), $legalName),
+                $user->id,
+                $enrollment->id,
+            );
 
             return ServiceResult::ok('Demande enregistrée. Veuillez vérifier l\'email officiel et le téléphone de l\'entreprise.', [
                 'enrollment_request_id' => $enrollment->id,

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AdminActivityLogController;
+use App\Http\Controllers\AdminEnrolledPersonController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EncryptionController;
@@ -37,6 +39,9 @@ Route::group([], function () {
             Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
             Route::get('/agents', [AuthController::class, 'listAgents']);
             Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
+            Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
+            Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
+            Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
         });
 
         Route::middleware('role:administrateur_plateforme|agent|auditeur|responsable_de_validation')->group(function () {
