@@ -369,7 +369,7 @@
                     "Enrollment - Physique"
                 ],
                 "summary": "List enrollment requests",
-                "description": "Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).",
+                "description": "Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT). Default EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.",
                 "operationId": "enrollmentList",
                 "parameters": [
                     {
@@ -469,8 +469,8 @@
                 "tags": [
                     "Enrollment - Physique"
                 ],
-                "summary": "Enrollment request detail (agent backoffice)",
-                "description": "Use for both personne physique and personne morale agent detail views. Morale list demandeur = submitted_by user (demandeur authentifié).",
+                "summary": "Enrollment request detail (agent / responsable backoffice)",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource with decision_agent block. Same route for physique and morale.",
                 "operationId": "enrollmentShow",
                 "parameters": [
                     {
@@ -518,6 +518,39 @@
                 "responses": {
                     "200": {
                         "description": "Demande prise en charge"
+                    },
+                    "422": {
+                        "description": "Already assigned or wrong status"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/enrolements/{id}/prise-en-charge-validation": {
+            "patch": {
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "summary": "Responsable self-assign (prise en charge décision)",
+                "description": "Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.",
+                "operationId": "enrollmentPriseEnChargeValidation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Décision prise en charge"
                     },
                     "422": {
                         "description": "Already assigned or wrong status"
@@ -600,7 +633,7 @@
                     "Enrollment - Physique"
                 ],
                 "summary": "Responsable validation decision",
-                "description": "Diagram §3.2. APPROUVEE triggers TrustedX register + finalisation invite.",
+                "description": "Diagram §3.2. Requires prise en charge validation first. VALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.",
                 "operationId": "enrollmentValidation",
                 "parameters": [
                     {
@@ -631,6 +664,13 @@
                                     },
                                     "commentaire": {
                                         "type": "string"
+                                    },
+                                    "motif": {
+                                        "description": "Required when decision is RETOUR_AGENT",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
                                     }
                                 },
                                 "type": "object"

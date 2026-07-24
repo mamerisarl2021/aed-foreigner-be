@@ -1,0 +1,27 @@
+meta {
+  name: 14) Validation RETOUR_AGENT (responsable)
+  type: http
+  seq: 14
+}
+
+patch {
+  url: {{gateway_url}}/api/v1/enrolements/{{demande_id}}/validation
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{supervisor_token}}
+}
+
+body:json {
+  {
+    "decision": "RETOUR_AGENT",
+    "motif": ["kyc_incomplete"],
+    "commentaire": "Merci de revoir le dossier avec l'agent."
+  }
+}
+
+script:post-response {
+  test('Status 200', () => expect(res.getStatus()).to.equal(200));
+}

@@ -64,6 +64,7 @@ Route::group([], function () {
         Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/enrolements', [EnrollmentController::class, 'index']);
             Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge']);
+            Route::patch('/enrolements/{id}/prise-en-charge-validation', [EnrollmentController::class, 'priseEnChargeValidation']);
             Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction']);
             Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation']);
             Route::get('/enrolements/{id}', [EnrollmentController::class, 'show']);
