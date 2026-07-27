@@ -26,22 +26,24 @@ use Illuminate\Support\Facades\Storage;
 final class ForeignerEnrollmentService
 {
     public function __construct(
-        private readonly OtpService $otpService,
-        private readonly KycVerificationService $kycVerification,
+        private readonly OtpService                        $otpService,
+        private readonly KycVerificationService            $kycVerification,
         private readonly EnrollmentEventPublisherInterface $events,
-        private readonly ActivityLogService $activityLog,
-    ) {}
+        private readonly ActivityLogService                $activityLog,
+    )
+    {
+    }
 
     public function submitEnrollment(Request $request): ServiceResult
     {
         $email = strtolower(trim($request->input('email')));
-        $phone = $this->otpService->normalizePhone((string) $request->input('phonenumber'));
+        $phone = $this->otpService->normalizePhone((string)$request->input('phonenumber'));
 
-        if (! $this->otpService->bothChannelsVerified($email, $phone)) {
+        if (!$this->otpService->bothChannelsVerified($email, $phone)) {
             return ServiceResult::fail("Veuillez d'abord vérifier l'OTP email et téléphone.", null, 400);
         }
 
-        if (! $this->kycVerification->isVerified($email, $phone)) {
+        if (!$this->kycVerification->isVerified($email, $phone)) {
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
@@ -72,7 +74,7 @@ final class ForeignerEnrollmentService
                 'analysis_details' => $kycSession['analysis_details'] ?? null,
                 'status' => EnrollmentStatus::EnAttente->value,
                 'type' => 'PERSONNE_PHYSIQUE',
-                'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
+                'sla_deadline_at' => now()->addHours((int)config('enrollment.sla.max_hours', 72)),
             ]);
 
             $this->otpService->clearVerificationFlags($email, $phone);
@@ -113,7 +115,7 @@ final class ForeignerEnrollmentService
             ], 202);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Enrollment submission failed: '.$e->getMessage(), [
+            Log::error('Enrollment submission failed: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'email' => $email,
             ]);
@@ -140,7 +142,7 @@ final class ForeignerEnrollmentService
     }
 
     /**
-     * @param  array<string, string|null>  $uploadedFiles
+     * @param array<string, string|null> $uploadedFiles
      */
     private function dispatchPostSubmissionJobs(EnrollmentRequest $enrollmentRequest, array $uploadedFiles): void
     {
@@ -157,7 +159,7 @@ final class ForeignerEnrollmentService
     }
 
     /**
-     * @param  array<string, string|null>  $uploadedFiles
+     * @param array<string, string|null> $uploadedFiles
      */
     private function cleanupUploadedFiles(array $uploadedFiles): void
     {

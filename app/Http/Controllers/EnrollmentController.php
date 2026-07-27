@@ -21,8 +21,10 @@ final class EnrollmentController extends BaseController
 {
     public function __construct(
         private readonly ForeignerEnrollmentService $foreignerEnrollment,
-        private readonly IdentityReviewService $reviewService,
-    ) {}
+        private readonly IdentityReviewService      $reviewService,
+    )
+    {
+    }
 
     /**
      * @OA\Post(
@@ -88,12 +90,12 @@ final class EnrollmentController extends BaseController
             'phonenumber' => 'required|string',
             'name' => 'required|string',
             'first_name' => 'required|string',
-            'sexe' => 'nullable|string',
-            'date_of_birth' => 'nullable|date',
-            'place_of_birth' => 'nullable|string',
+            'sexe' => 'required|string',
+            'date_of_birth' => 'required|date',
+            'place_of_birth' => 'required|string',
             'nationality' => 'required|string',
-            'country_of_residence' => 'nullable|string',
-            'address' => 'nullable|string',
+            'country_of_residence' => 'required|string',
+            'address' => 'required|string',
             'document_type' => 'nullable|string',
             'document_number' => 'nullable|string',
         ]);
@@ -139,7 +141,7 @@ final class EnrollmentController extends BaseController
         $resourceClass = $user && $user->hasRole(config('roles.responsable_de_validation'))
             ? EnrollmentDecisionListResource::class
             : EnrollmentRequestListResource::class;
-        $paginator->getCollection()->transform(fn ($item) => new $resourceClass($item));
+        $paginator->getCollection()->transform(fn($item) => new $resourceClass($item));
 
         return $this->sendResponse('Liste des demandes.', $paginator);
     }
@@ -192,7 +194,7 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claim', $enrollment);
 
-        $result = $this->reviewService->claim($id, (string) auth()->id());
+        $result = $this->reviewService->claim($id, (string)auth()->id());
 
         return $this->sendResponse($result->message, new EnrollmentRequestAgentDetailResource($result->data));
     }
@@ -217,7 +219,7 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claimValidation', $enrollment);
 
-        $result = $this->reviewService->claimValidation($id, (string) auth()->id());
+        $result = $this->reviewService->claimValidation($id, (string)auth()->id());
 
         return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($result->data));
     }
@@ -304,11 +306,11 @@ final class EnrollmentController extends BaseController
             $id,
             $request->input('decision'),
             $request->input('commentaire'),
-            (string) $request->user()?->id,
+            (string)$request->user()?->id,
             $request->input('motif'),
         );
 
-        if (! $result->success) {
+        if (!$result->success) {
             return $this->respond($result);
         }
 
