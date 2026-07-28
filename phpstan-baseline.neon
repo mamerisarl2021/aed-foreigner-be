@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Method App\\Console\\Commands\\CleanupExpiredInvitations\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/CleanupExpiredInvitations.php
-
-		-
 			message: '#^Method App\\Console\\Commands\\GenerateKeyPair\:\:deleteDirectory\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -139,6 +133,12 @@ parameters:
 			path: app/Contracts/ConsulClientInterface.php
 
 		-
+			message: '#^Method App\\Contracts\\EnrollmentEventPublisherInterface\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Contracts/EnrollmentEventPublisherInterface.php
+
+		-
 			message: '#^Method App\\DataTransferObjects\\EmailNotificationData\:\:__construct\(\) has parameter \$recipients with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -199,130 +199,10 @@ parameters:
 			path: app/Exceptions/TransactionException.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:logAction\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:updateAttachmentStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\BaseController\:\:sendResponse\(\) invoked with 3 parameters, 1\-2 required\.$#'
-			identifier: arguments.count
-			count: 2
-			path: app/Http/Controllers/AttachmentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuditLogController\:\:auditLogs\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AuditLogController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuditLogController\:\:certificateAudit\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AuditLogController.php
-
-		-
 			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Auth/VerifyEmailController.php
-
-		-
-			message: '#^Call to an undefined method App\\Models\\User\:\:token\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:deleteAgent\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:resetPassword\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:sendOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:showAgent\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:updateAgent\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/AuthController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AuthController\:\:verifyOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AuthController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\BaseController\:\:sendPaginatedResponse\(\) has parameter \$data with no type specified\.$#'
@@ -341,174 +221,6 @@ parameters:
 			identifier: missingType.property
 			count: 1
 			path: app/Http/Controllers/BaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CaseController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/CaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:deleteDirectory\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:deleteDirectory\(\) has parameter \$folderTemporary with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:getEncFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:getKey\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeEncFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeEncFile\(\) has parameter \$fileName with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeEncFile\(\) has parameter \$filePath with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeEncFile\(\) has parameter \$folder with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeFile\(\) has parameter \$fileName with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeFile\(\) has parameter \$filePath with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:storeFile\(\) has parameter \$folder with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\DocumentController\:\:updateDocumentStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/DocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:decryptAndDisplay\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:deleteDirectory\(\) has no return type specified\.$#'
@@ -583,928 +295,10 @@ parameters:
 			path: app/Http/Controllers/EncryptionController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\IdRequestController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/IdRequestController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\IdRequestController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/IdRequestController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\IdRequestController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/IdRequestController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:getCollection\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/IdentityReviewController.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Controllers\\MessageController\:\:sendError\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Controllers\\MessageController\:\:sendPaginatedResponse\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\MessageController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/MessageController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PasswordResetController\:\:resetAll\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PasswordResetController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PasswordResetController\:\:resetPassword\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PasswordResetController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PasswordResetController\:\:resetSome\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PasswordResetController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PasswordResetController\:\:sendResetLink\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PasswordResetController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:findSignIdentityGroupByIdentityId\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:findSignIdentityGroupByIdentityId\(\) has parameter \$responseData with no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Requests\\Auth\\ChangeStaffPasswordRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:getSignIdentitiesGroupByUserId\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:getSignIdentitiesGroupByUserId\(\) has parameter \$userId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:mine\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:updateMultipleStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RevocationController\:\:updateStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Revocation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/RevocationController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:destroy\(\) has parameter \$signature_document with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:indexMobile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:signatureCallback\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:simpleStore\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SignatureDocumentController\:\:verify\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Relation ''document'' is not found in App\\Models\\Signature model\.$#'
-			identifier: larastan.relationExistence
-			count: 6
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Relation ''signatures'' is not found in App\\Models\\SignatureDocument model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\SignatureDocument model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/SignatureDocumentController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SigningIdentityController\:\:deleteSigningIdentity\(\) has parameter \$identityId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/SigningIdentityController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SigningIdentityController\:\:getSigningIdentity\(\) has parameter \$identityId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/SigningIdentityController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\SigningIdentityController\:\:updateSigningIdentityStatus\(\) has parameter \$identityId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/SigningIdentityController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:deleteFileSpecificFolder\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StampController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\StampController\:\:\$stampRelationship has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Http/Controllers/StampController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$structurePackage\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$validity\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$count\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$userPackage\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$validity\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StatsController\:\:getStructureSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StatsController\:\:getUserSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StatsController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StructureSubscription\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserSubscription\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''structure'' is not found in App\\Models\\StructureSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''structure'' is not found in App\\Models\\UserSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''structurePackage'' is not found in App\\Models\\StructureSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''structurePackage'' is not found in App\\Models\\UserSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\UserSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Relation ''userPackage'' is not found in App\\Models\\UserSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\StructureSubscription\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserSubscription\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: method.unresolvableReturnType
-			count: 2
-			path: app/Http/Controllers/StatsController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:addEmployee\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:addEmployee\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:forceAddEmployee\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:forceAddEmployee\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:inviteEmployee\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:inviteEmployee\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:listEmployees\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:listEmployees\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:listPendingInvitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:listPendingInvitations\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:mine\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:oneShotAttach\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:oneShotStore\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:removeEmployee\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:removeEmployee\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:removeEmployee\(\) has parameter \$userId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:sendOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:updateEmployeeRole\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:updateEmployeeRole\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:updateEmployeeRole\(\) has parameter \$userId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:updateStructureStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureController\:\:verifyOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:calculateRemainingIdentities\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:calculateRemainingIdentities\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:kkiaPayement\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StructureSubscriptionController\:\:validateEmployeeRequest\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Http/Controllers/StructureSubscriptionController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureInvitation\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$npi\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:acceptInvitation\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:acceptInvitation\(\) has parameter \$invitationId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:createEmployee\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:finalizeRegistration\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:getInvitationDetails\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:getInvitationDetails\(\) has parameter \$token with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:listInvitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:login\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:loginMobile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:rejectInvitation\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:rejectInvitation\(\) has parameter \$invitationId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:respondToInvitation\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:respondToInvitation\(\) has parameter \$token with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:search\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:searchPost\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:sendOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:sendResetLink\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:setPassword\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:update\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:updateIdentityStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:updateInPersonIdentityStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:updateUserStatus\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserController\:\:verifyOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Relation ''inviter'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Relation ''structure'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/UserController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:destroy\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:index\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:packages\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:show\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:store\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\UserSubscriptionController\:\:updateMultipleStatuses\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
-
-		-
-			message: '#^Relation ''structure'' is not found in App\\Models\\UserSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/UserSubscriptionController.php
+			path: app/Http/Requests/Auth/ChangeStaffPasswordRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\Auth\\LoginRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -1525,12 +319,6 @@ parameters:
 			path: app/Http/Requests/Auth/ResetPasswordRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Auth\\SendAdminOtpRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/SendAdminOtpRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\Auth\\SendPasswordResetLinkRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1543,22 +331,16 @@ parameters:
 			path: app/Http/Requests/Auth/UpdateAgentRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Auth\\VerifyAdminOtpRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Requests\\Enrollment\\InstructionEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Requests/Auth/VerifyAdminOtpRequest.php
+			path: app/Http/Requests/Enrollment/InstructionEnrollmentRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Foreigner\\FinalizeRegistrationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Requests\\Enrollment\\ValidationEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Requests/Foreigner/FinalizeRegistrationRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Foreigner\\InitRegistrationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Foreigner/InitRegistrationRequest.php
+			path: app/Http/Requests/Enrollment/ValidationEnrollmentRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\Foreigner\\SendOtpRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -1579,58 +361,16 @@ parameters:
 			path: app/Http/Requests/IdentityReview/RejectIdentityRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Management\\StoreStructureSubscriptionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Requests\\IdentityReview\\RequestVisioEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Requests/Management/StoreStructureSubscriptionRequest.php
+			path: app/Http/Requests/IdentityReview/RequestVisioEnrollmentRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Management\\UpdateAttachmentStatusRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Http\\Requests\\IdentityReview\\SupervisorReturnEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: app/Http/Requests/Management/UpdateAttachmentStatusRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Management\\UpdateStructureStatusRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Management/UpdateStructureStatusRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Management\\ValidateEmployeeSubscriptionRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Management/ValidateEmployeeSubscriptionRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\User\\ApproveInPersonIdentityRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/User/ApproveInPersonIdentityRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\User\\CreateEmployeeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/User/CreateEmployeeRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\User\\FinalizeRegistrationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/User/FinalizeRegistrationRequest.php
-
-		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: app/Http/Requests/User/FinalizeRegistrationRequest.php
-
-		-
-			message: '#^Offset ''is_foreigner'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Requests/User/FinalizeRegistrationRequest.php
+			path: app/Http/Requests/IdentityReview/SupervisorReturnEnrollmentRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\User\\LoginWithCodeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -1645,12 +385,6 @@ parameters:
 			path: app/Http/Requests/User/SendOtpRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\User\\UpdateIdentityStatusRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/User/UpdateIdentityStatusRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\User\\UpdateUserStatusRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1663,112 +397,538 @@ parameters:
 			path: app/Http/Requests/User/VerifyOtpRequest.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$analysis_details\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\ActivityLogListResource\:\:\$action_code\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/ActivityLogListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$assigned_agent_id\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\ActivityLogListResource\:\:\$created_at\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/ActivityLogListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$created_at\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\ActivityLogListResource\:\:\$description\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/ActivityLogListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$date\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\ActivityLogListResource\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/ActivityLogListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$id\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$email\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$level\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$enrolled_at\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$proof\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$enrollment_id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$rectoUrl\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$first_name\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$reject_reasons\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$reject_stage\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$review_comments\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$nationality\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$risk_score\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$npi\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$selfieUrl\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonDetailResource\:\:\$phonenumber\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$status\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$email\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$type\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$first_name\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$updated_at\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$user_id\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$last_login_at\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\IdentityResource\:\:\$versoUrl\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Http/Resources/IdentityResource.php
+			path: app/Http/Resources/EnrolledPersonListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrolledPersonListResource\:\:\$npi\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrolledPersonListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assignedAgent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assignedResponsable\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assigned_responsable_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$documents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$phonenumber\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$reject_reasons\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$reject_stage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$review_comments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$submittedBy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:isPersonneMorale\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:relationLoaded\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<array\{code\: string, label\: string\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>label_fr" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$assignedAgent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$assignedResponsable\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionListResource\:\:relationLoaded\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentDecisionListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRejectMotifResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRejectMotifResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRejectMotifResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$label_fr\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRejectMotifResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$stage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRejectMotifResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$assignedAgent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$assigned_agent_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$documents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$phonenumber\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$submittedBy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:isPersonneMorale\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:relationLoaded\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$assignedAgent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$submittedBy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestListResource\:\:isPersonneMorale\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestListResource\:\:relationLoaded\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Resources/EnrollmentRequestListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$email_verified_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$phone_verified_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$verification_deadline_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$last_login_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$must_change_password\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$phonenumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserDetailResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserListResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserListResource\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserListResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserListResource\:\:\$last_login_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserListResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserListResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/StaffUserListResource.php
 
 		-
 			message: '#^Method App\\Jobs\\Notifications\\SendEmailNotificationJob\:\:backoff\(\) return type has no value type specified in iterable type array\.$#'
@@ -1783,178 +943,16 @@ parameters:
 			path: app/Jobs/Notifications/SendSmsNotificationJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Revocation\:\:\$user\.$#'
-			identifier: property.notFound
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$documents \(string\|null\) does not accept array\<string, string\|null\>\.$#'
+			identifier: assign.propertyType
 			count: 1
-			path: app/Jobs/ProcessRevocationJob.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\Revocation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ProcessRevocationJob.php
-
-		-
-			message: '#^Method App\\Jobs\\ProcessStructureFilesJob\:\:__construct\(\) has parameter \$attachmentsData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Method App\\Jobs\\ProcessStructureFilesJob\:\:__construct\(\) has parameter \$files with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Method App\\Jobs\\ProcessStructureFilesJob\:\:processAttachmentFiles\(\) has parameter \$files with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Method App\\Jobs\\ProcessStructureFilesJob\:\:processAttachmentFiles\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Property App\\Jobs\\ProcessStructureFilesJob\:\:\$attachmentsData type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Property App\\Jobs\\ProcessStructureFilesJob\:\:\$files type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Property App\\Jobs\\ProcessStructureFilesJob\:\:\$timeout has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Property App\\Jobs\\ProcessStructureFilesJob\:\:\$tries has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Variable \$uploadedFiles on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 1
-			path: app/Jobs/ProcessStructureFilesJob.php
-
-		-
-			message: '#^Property App\\Jobs\\RegulaAnalysisJob\:\:\$identityId has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/RegulaAnalysisJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureInvitation\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/SendStructureInvitationEmail.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureInvitation\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/SendStructureInvitationEmail.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdMid\:\:__construct\(\) has parameter \$email with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdMid\:\:__construct\(\) has parameter \$link with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdMid\:\:__construct\(\) has parameter \$name with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdMid\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Property App\\Mail\\AdvancedIdMid\:\:\$email has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Property App\\Mail\\AdvancedIdMid\:\:\$link has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Property App\\Mail\\AdvancedIdMid\:\:\$name has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/AdvancedIdMid.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdRequest\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/AdvancedIdRequest.php
-
-		-
-			message: '#^Method App\\Mail\\AdvancedIdRequest\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/AdvancedIdRequest.php
-
-		-
-			message: '#^Property App\\Mail\\AdvancedIdRequest\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/AdvancedIdRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Signature\:\:\$document\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/DocumentSignedMail.php
-
-		-
-			message: '#^Property App\\Mail\\DocumentSignedMail\:\:\$documentTitle has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/DocumentSignedMail.php
-
-		-
-			message: '#^Property App\\Mail\\DocumentSignedMail\:\:\$signature has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/DocumentSignedMail.php
+			path: app/Jobs/UploadEnrollmentFilesJob.php
 
 		-
 			message: '#^Method App\\Mail\\ForeignerFinalized\:\:build\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
 			path: app/Mail/ForeignerFinalized.php
-
-		-
-			message: '#^Method App\\Mail\\ForeignerInitRegistration\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/ForeignerInitRegistration.php
 
 		-
 			message: '#^Method App\\Mail\\ForeignerOtp\:\:build\(\) has no return type specified\.$#'
@@ -1979,72 +977,6 @@ parameters:
 			identifier: missingType.return
 			count: 1
 			path: app/Mail/IdentityStepApproved.php
-
-		-
-			message: '#^Method App\\Mail\\NotifyAdmin\:\:__construct\(\) has parameter \$code with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/NotifyAdmin.php
-
-		-
-			message: '#^Method App\\Mail\\NotifyAdmin\:\:__construct\(\) has parameter \$email with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/NotifyAdmin.php
-
-		-
-			message: '#^Method App\\Mail\\NotifyAdmin\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/NotifyAdmin.php
-
-		-
-			message: '#^Property App\\Mail\\NotifyAdmin\:\:\$code has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/NotifyAdmin.php
-
-		-
-			message: '#^Property App\\Mail\\NotifyAdmin\:\:\$email has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/NotifyAdmin.php
-
-		-
-			message: '#^Method App\\Mail\\PlanifiedEmail\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/PlanifiedEmail.php
-
-		-
-			message: '#^Method App\\Mail\\PlanifiedEmail\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/PlanifiedEmail.php
-
-		-
-			message: '#^Property App\\Mail\\PlanifiedEmail\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/PlanifiedEmail.php
-
-		-
-			message: '#^Method App\\Mail\\RescheduledAppointmentMail\:\:__construct\(\) has parameter \$data with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/RescheduledAppointmentMail.php
-
-		-
-			message: '#^Method App\\Mail\\RescheduledAppointmentMail\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/RescheduledAppointmentMail.php
-
-		-
-			message: '#^Property App\\Mail\\RescheduledAppointmentMail\:\:\$data has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/RescheduledAppointmentMail.php
 
 		-
 			message: '#^Method App\\Mail\\ResetPassword\:\:__construct\(\) has parameter \$link with no type specified\.$#'
@@ -2075,42 +1007,6 @@ parameters:
 			identifier: missingType.property
 			count: 1
 			path: app/Mail/ResetPassword.php
-
-		-
-			message: '#^Method App\\Mail\\RevocatedEmail\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/RevocatedEmail.php
-
-		-
-			message: '#^Method App\\Mail\\RevocatedEmail\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/RevocatedEmail.php
-
-		-
-			message: '#^Property App\\Mail\\RevocatedEmail\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/RevocatedEmail.php
-
-		-
-			message: '#^Method App\\Mail\\ScheduledAppointmentMail\:\:__construct\(\) has parameter \$data with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/ScheduledAppointmentMail.php
-
-		-
-			message: '#^Method App\\Mail\\ScheduledAppointmentMail\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/ScheduledAppointmentMail.php
-
-		-
-			message: '#^Property App\\Mail\\ScheduledAppointmentMail\:\:\$data has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/ScheduledAppointmentMail.php
 
 		-
 			message: '#^Method App\\Mail\\SendInitLink\:\:__construct\(\) has parameter \$code with no type specified\.$#'
@@ -2215,162 +1111,6 @@ parameters:
 			path: app/Mail/SendOTP.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Signature\:\:\$document\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/SignatureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\SignatureInvitationMail\:\:\$documentTitle has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/SignatureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\SignatureInvitationMail\:\:\$signature has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/SignatureInvitationMail.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Signature\:\:\$document\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/SignatureRejectedMail.php
-
-		-
-			message: '#^Property App\\Mail\\SignatureRejectedMail\:\:\$documentTitle has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/SignatureRejectedMail.php
-
-		-
-			message: '#^Property App\\Mail\\SignatureRejectedMail\:\:\$signature has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/SignatureRejectedMail.php
-
-		-
-			message: '#^Method App\\Mail\\StructureInvitationMail\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/StructureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\StructureInvitationMail\:\:\$acceptUrl has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/StructureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\StructureInvitationMail\:\:\$invitation has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/StructureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\StructureInvitationMail\:\:\$rejectUrl has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/StructureInvitationMail.php
-
-		-
-			message: '#^Property App\\Mail\\StructureInvitationMail\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/StructureInvitationMail.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionCreated\:\:__construct\(\) has parameter \$processId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionCreated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionCreated\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionCreated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionCreated\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/UserSubscriptionCreated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionCreated\:\:\$processId has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionCreated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionCreated\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionCreated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionInitiated\:\:__construct\(\) has parameter \$processId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionInitiated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionInitiated\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionInitiated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionInitiated\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/UserSubscriptionInitiated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionInitiated\:\:\$processId has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionInitiated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionInitiated\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionInitiated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionValidated\:\:__construct\(\) has parameter \$processId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionValidated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionValidated\:\:__construct\(\) has parameter \$user with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Mail/UserSubscriptionValidated.php
-
-		-
-			message: '#^Method App\\Mail\\UserSubscriptionValidated\:\:build\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Mail/UserSubscriptionValidated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionValidated\:\:\$processId has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionValidated.php
-
-		-
-			message: '#^Property App\\Mail\\UserSubscriptionValidated\:\:\$user has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Mail/UserSubscriptionValidated.php
-
-		-
 			message: '#^Method App\\Mail\\WelcomeAgent\:\:__construct\(\) has parameter \$link with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
@@ -2443,64 +1183,46 @@ parameters:
 			path: app/Mail/WelcomeUser.php
 
 		-
-			message: '#^Class App\\Models\\Attachment uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			message: '#^Method App\\Models\\ActivityLog\:\:actor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Models/Attachment.php
+			path: app/Models/ActivityLog.php
 
 		-
-			message: '#^Method App\\Models\\Attachment\:\:documents\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Attachment.php
-
-		-
-			message: '#^Method App\\Models\\Attachment\:\:structure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Attachment.php
-
-		-
-			message: '#^Method App\\Models\\Cases\:\:messages\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Cases.php
-
-		-
-			message: '#^Method App\\Models\\Cases\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Cases.php
-
-		-
-			message: '#^Class App\\Models\\Document uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			message: '#^Method App\\Models\\ActivityLog\:\:enrollmentRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Models/Document.php
+			path: app/Models/ActivityLog.php
 
 		-
-			message: '#^Method App\\Models\\Document\:\:attachment\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Document.php
-
-		-
-			message: '#^Method App\\Models\\Document\:\:getLinkAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Document.php
-
-		-
-			message: '#^Class App\\Models\\IdRequest uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			message: '#^Method App\\Models\\EnrollmentRejectMotif\:\:scopeActive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Models/IdRequest.php
+			path: app/Models/EnrollmentRejectMotif.php
 
 		-
-			message: '#^Method App\\Models\\IdRequest\:\:structure\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			message: '#^Method App\\Models\\EnrollmentRejectMotif\:\:scopeActive\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
 			identifier: missingType.generics
 			count: 1
-			path: app/Models/IdRequest.php
+			path: app/Models/EnrollmentRejectMotif.php
+
+		-
+			message: '#^Method App\\Models\\EnrollmentRequest\:\:assignedAgent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EnrollmentRequest.php
+
+		-
+			message: '#^Method App\\Models\\EnrollmentRequest\:\:assignedResponsable\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EnrollmentRequest.php
+
+		-
+			message: '#^Method App\\Models\\EnrollmentRequest\:\:submittedBy\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/EnrollmentRequest.php
 
 		-
 			message: '#^Class App\\Models\\Identity uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
@@ -2509,46 +1231,10 @@ parameters:
 			path: app/Models/Identity.php
 
 		-
-			message: '#^Method App\\Models\\Identity\:\:getRectoUrlAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Identity.php
-
-		-
-			message: '#^Method App\\Models\\Identity\:\:getSelfieUrlAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Identity.php
-
-		-
-			message: '#^Method App\\Models\\Identity\:\:getVersoUrlAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Identity.php
-
-		-
 			message: '#^Method App\\Models\\Identity\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/Identity.php
-
-		-
-			message: '#^Class App\\Models\\Message uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Message.php
-
-		-
-			message: '#^Method App\\Models\\Message\:\:case\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Message.php
-
-		-
-			message: '#^Method App\\Models\\Message\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Message.php
 
 		-
 			message: '#^Class App\\Models\\OTP uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
@@ -2569,440 +1255,20 @@ parameters:
 			path: app/Models/PasswordResetToken.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Revocation\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Class App\\Models\\Revocation uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Method App\\Models\\Revocation\:\:getUserdataAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Method App\\Models\\Revocation\:\:scopeForUser\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Method App\\Models\\Revocation\:\:scopeForUser\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Method App\\Models\\Revocation\:\:structure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Method App\\Models\\Revocation\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Revocation.php
-
-		-
-			message: '#^Class App\\Models\\Signature uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:document\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeReceived\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeReceived\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeSent\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeSent\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeSigned\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:scopeSigned\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Method App\\Models\\Signature\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Signature.php
-
-		-
-			message: '#^Class App\\Models\\SignatureDocument uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/SignatureDocument.php
-
-		-
-			message: '#^Method App\\Models\\SignatureDocument\:\:canBeDeletedBy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/SignatureDocument.php
-
-		-
-			message: '#^Method App\\Models\\SignatureDocument\:\:getLinkAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/SignatureDocument.php
-
-		-
-			message: '#^Method App\\Models\\SignatureDocument\:\:signatures\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/SignatureDocument.php
-
-		-
-			message: '#^Method App\\Models\\SignatureDocument\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/SignatureDocument.php
-
-		-
-			message: '#^Class App\\Models\\Stamp uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Stamp.php
-
-		-
-			message: '#^Method App\\Models\\Stamp\:\:getLinkAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Stamp.php
-
-		-
-			message: '#^Method App\\Models\\Stamp\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Stamp.php
-
-		-
-			message: '#^Class App\\Models\\Structure uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:activeEmployees\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:attachments\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:employees\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:invitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:manager\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:pendingInvitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:structureSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Method App\\Models\\Structure\:\:userSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Structure.php
-
-		-
-			message: '#^Class App\\Models\\StructureInvitation uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:accept\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:inviter\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:isAccepted\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:isExpired\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:isPending\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:isRejected\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:markAsExpired\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:reject\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeAccepted\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeAccepted\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeExpired\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeExpired\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopePending\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopePending\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeRejected\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:scopeRejected\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:structure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Method App\\Models\\StructureInvitation\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureInvitation.php
-
-		-
-			message: '#^Class App\\Models\\StructurePackage uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/StructurePackage.php
-
-		-
-			message: '#^Method App\\Models\\StructurePackage\:\:structureSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructurePackage.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$structurePackage\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Class App\\Models\\StructureSubscription uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Method App\\Models\\StructureSubscription\:\:getPackageAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Method App\\Models\\StructureSubscription\:\:getPackagedataAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Method App\\Models\\StructureSubscription\:\:getStructuredataAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Method App\\Models\\StructureSubscription\:\:structure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
-			message: '#^Method App\\Models\\StructureSubscription\:\:structurePackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/StructureSubscription.php
-
-		-
 			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Models/User.php
 
 		-
-			message: '#^Method App\\Models\\User\:\:activeStructures\(\) has no return type specified\.$#'
-			identifier: missingType.return
+			message: '#^Method App\\Models\\User\:\:identities\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/User.php
 
 		-
-			message: '#^Method App\\Models\\User\:\:cases\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:getLinkAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:identities\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:invitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:pendingInvitations\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:signatures\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:structures\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:structuresUsers\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Method App\\Models\\User\:\:userSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\User\:\:\$appends is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$appends\.$#'
+			identifier: property.phpDocType
 			count: 1
 			path: app/Models/User.php
 
@@ -3019,346 +1285,40 @@ parameters:
 			path: app/Models/User.php
 
 		-
-			message: '#^Class App\\Models\\UserPackage uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/UserPackage.php
-
-		-
-			message: '#^Method App\\Models\\UserPackage\:\:userSubscriptions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserPackage.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$structurePackage\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$userPackage\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Class App\\Models\\UserSubscription uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:getPackageAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:getStructuredataAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:getUserdataAttribute\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:scopeForUser\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:scopeForUser\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:structure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:structurePackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:user\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Method App\\Models\\UserSubscription\:\:userPackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/UserSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Attachment\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Message\:\:\$case\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureSubscription\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:before\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteAttachment\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteCase\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteIdRequest\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteIdentity\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteMessage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteStructure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteStructurePackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteStructureSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteUserPackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:deleteUserSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:ownsResource\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:ownsResource\(\) has parameter \$resource with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateAttachment\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateCase\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateIdRequest\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateIdentity\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateMessage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateStructure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateStructurePackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateStructureSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateUserPackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:updateUserSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewAttachment\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewCase\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewIdRequest\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewIdentity\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewMessage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewOtp\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewStructure\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewStructurePackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewStructureSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewUserPackage\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Method App\\Policies\\AuthorizationPolicy\:\:viewUserSubscription\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/AuthorizationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Structure\:\:\$user_id\.$#'
-			identifier: property.notFound
+			message: '#^Call to function in_array\(\) with arguments ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'', array\{''VALIDATION_AGENT'', ''REJET_AGENT''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
 			count: 2
-			path: app/Policies/StructurePolicy.php
+			path: app/Policies/EnrollmentRequestPolicy.php
 
 		-
-			message: '#^Method App\\Policies\\StructurePolicy\:\:delete\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Policies/StructurePolicy.php
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 2
+			path: app/Policies/EnrollmentRequestPolicy.php
 
 		-
-			message: '#^Method App\\Policies\\StructurePolicy\:\:view\(\) has no return type specified\.$#'
-			identifier: missingType.return
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
 			count: 1
-			path: app/Policies/StructurePolicy.php
+			path: app/Policies/EnrollmentRequestPolicy.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''AWAITING_CONTACT…'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Policies/EnrollmentRequestPolicy.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Policies/EnrollmentRequestPolicy.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Policies/EnrollmentRequestPolicy.php
 
 		-
 			message: '#^Method App\\Rules\\UniqueTypePerUser\:\:__construct\(\) has parameter \$level with no type specified\.$#'
@@ -3391,79 +1351,25 @@ parameters:
 			path: app/Rules/UniqueTypePerUser.php
 
 		-
-			message: '#^Method App\\Services\\ADService\:\:createOrganizationalUnitInLDAP\(\) has no return type specified\.$#'
-			identifier: missingType.return
+			message: '#^Method App\\Services\\ActivityLog\\ActivityLogService\:\:list\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
 			count: 1
-			path: app/Services/ADService.php
+			path: app/Services/ActivityLog/ActivityLogService.php
 
 		-
-			message: '#^Method App\\Services\\ADService\:\:createOrganizationalUnitInLDAP\(\) has parameter \$ouData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$enrollment_kyc\.$#'
+			identifier: property.notFound
 			count: 1
-			path: app/Services/ADService.php
+			path: app/Services/Admin/EnrolledPersonService.php
 
 		-
-			message: '#^Method App\\Services\\ADService\:\:createUserInLDAP\(\) has no return type specified\.$#'
-			identifier: missingType.return
+			message: '#^Method App\\Services\\Admin\\EnrolledPersonService\:\:list\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
 			count: 1
-			path: app/Services/ADService.php
+			path: app/Services/Admin/EnrolledPersonService.php
 
 		-
-			message: '#^Method App\\Services\\ADService\:\:createUserInLDAP\(\) has parameter \$userData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ADService.php
-
-		-
-			message: '#^Method App\\Services\\ADService\:\:deleteOrganizationalUnitInLDAP\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/ADService.php
-
-		-
-			message: '#^Method App\\Services\\ADService\:\:updateUserAttributesInLDAP\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/ADService.php
-
-		-
-			message: '#^Method App\\Services\\ADService\:\:updateUserAttributesInLDAP\(\) has parameter \$userData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/ADService.php
-
-		-
-			message: '#^Method App\\Services\\ANIP\\AnipSimulatorService\:\:getUserData\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/ANIP/AnipSimulatorService.php
-
-		-
-			message: '#^Property App\\Services\\ANIP\\AnipSimulatorService\:\:\$ANIP_BASE_URL has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/ANIP/AnipSimulatorService.php
-
-		-
-			message: '#^Property App\\Services\\ANIP\\AnipSimulatorService\:\:\$ANIP_BASE_URL is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/ANIP/AnipSimulatorService.php
-
-		-
-			message: '#^Relation ''documents'' is not found in App\\Models\\Attachment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/AttachmentUploadService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:toArray\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Auth/AdminAuthService.php
-
-		-
-			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:flattenPagination\(\) has parameter \$paginator with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
+			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:flattenPagination\(\) has parameter \$paginator with generic class Illuminate\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/Auth/AdminAuthService.php
@@ -3493,93 +1399,315 @@ parameters:
 			path: app/Services/Consul/ConsulClient.php
 
 		-
-			message: '#^Method App\\Services\\Enrollment\\ForeignerEnrollmentService\:\:cleanupUploadedFiles\(\) is unused\.$#'
-			identifier: method.unused
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$proof\.$#'
+			identifier: property.notFound
 			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
 
 		-
-			message: '#^Method App\\Services\\Enrollment\\ForeignerEnrollmentService\:\:createSubscriptionRecord\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
-
-		-
-			message: '#^Method App\\Services\\Enrollment\\ForeignerEnrollmentService\:\:dispatchPostRegistrationJobs\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
-
-		-
-			message: '#^Method App\\Services\\Enrollment\\ForeignerEnrollmentService\:\:uploadEnrollmentFiles\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
-
-		-
-			message: '#^Method App\\Services\\Enrollment\\ForeignerEnrollmentService\:\:validateSubscription\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
-
-		-
-			message: '#^Negated boolean expression is always true\.$#'
-			identifier: booleanNot.alwaysTrue
-			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
-
-		-
-			message: '#^Offset ''is_foreigner'' on string on left side of \?\? does not exist\.$#'
+			message: '#^Offset ''country_of…'' on array\{\}\|string on left side of \?\? does not exist\.$#'
 			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''date_of_birth'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''document_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''first_name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''legal_name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 3
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''nationality'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Offset ''registration_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
 			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '''' and '''' will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between '''' and \*NEVER\* will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+
+		-
+			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$activityLog is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
+
+		-
+			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$events is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
+
+		-
+			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$trustedXClient is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''APPROUVEE'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
 
 		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
 			count: 1
-			path: app/Services/Enrollment/ForeignerEnrollmentService.php
+			path: app/Services/Enrollment/ForeignerFinalizationService.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Services/IdentityReview/IdentityReviewService.php
+			message: '#^Method App\\Services\\Enrollment\\KafkaEnrollmentEventPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Enrollment/KafkaEnrollmentEventPublisher.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/IdentityReview/IdentityReviewService.php
+			message: '#^Method App\\Services\\Enrollment\\LogEnrollmentEventPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Enrollment/LogEnrollmentEventPublisher.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$npi\.$#'
-			identifier: property.notFound
+			message: '#^Method App\\Services\\Enrollment\\NullEnrollmentEventPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Enrollment/NullEnrollmentEventPublisher.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Offset ''country_of…'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Offset ''legal_name'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Offset ''registration_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$email_verified_at \(string\|null\) does not accept Illuminate\\Support\\Carbon\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$phone_verified_at \(string\|null\) does not accept Illuminate\\Support\\Carbon\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''AWAITING_CONTACT…'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array\{App\\Jobs\\ForeignerFinalizedJob\}\|array\{App\\Jobs\\UploadEnrollmentFilesJob, App\\Jobs\\ForeignerFinalizedJob\} and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'', array\{''VALIDATION_AGENT'', ''REJET_AGENT''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
 			count: 2
 			path: app/Services/IdentityReview/IdentityReviewService.php
 
 		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:applyRejection\(\) has parameter \$reasons with no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:agentReject\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:agentValidate\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:instruction\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/IdentityReview/IdentityReviewService.php
 
 		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:list\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:list\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/IdentityReview/IdentityReviewService.php
 
 		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:reject\(\) has parameter \$reasons with no value type specified in iterable type array\.$#'
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:supervisorApproveMorale\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:supervisorReturnToAgent\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/IdentityReview/IdentityReviewService.php
 
 		-
-			message: '#^Relation ''attachments'' is not found in App\\Models\\Structure model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:validation\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Offset ''legal_name'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
 			count: 2
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Offset ''name'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Services\\ActivityLog\\ActivityLogService\:\:actorLabel\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$agent_decided_at \(string\|null\) does not accept Illuminate\\Support\\Carbon\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$reject_reasons \(string\|null\) does not accept list\<string\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''APPROUVEE''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''REJET_AGENT''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''VALIDATION_AGENT''\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Property App\\Services\\IdentityReview\\IdentityReviewService\:\:\$trustedXClient is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''REJET_AGENT'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''VALIDATION_AGENT'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/IdentityReview/IdentityReviewService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 6
 			path: app/Services/IdentityReview/IdentityReviewService.php
 
 		-
@@ -3763,144 +1891,6 @@ parameters:
 			path: app/Services/PKI/TrustedXClientService.php
 
 		-
-			message: '#^Relation ''cases'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Relation ''identities'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Relation ''signatures'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Relation ''structures'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Relation ''userSubscriptions'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureInvitation\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Method App\\Services\\Registration\\UserRegistrationService\:\:approveInPersonIdentity\(\) has parameter \$identityPayload with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Method App\\Services\\Registration\\UserRegistrationService\:\:kkiaPayment\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Method App\\Services\\Registration\\UserRegistrationService\:\:updateUser\(\) has parameter \$updateData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''cached_data'' does not exist on string\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''document_number'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''document_type'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''first_name'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''form'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''is_foreigner'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''name'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''nationality'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Offset ''phonenumber'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Relation ''structure'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/Registration/UserRegistrationService.php
-
-		-
 			message: '#^Method App\\Services\\RegulaService\:\:analyzeIdentity\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3917,282 +1907,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/RegulaService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Signature\:\:\$document\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Signature\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SignatureDocument\:\:\$signatures\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SignatureDocument\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:createSignatureProcess\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:createSignatureProcessWithLocation\(\) has parameter \$signatureDetails with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:createSignatureProcessWithLocation\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:getSignedDocument\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:getSignedDocumentWithTimestamp\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:handleResponse\(\) has parameter \$response with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:handleResponse\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:initWithPosition\(\) has parameter \$preferences with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:obtainedDocumentInformation\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Method App\\Services\\SignatureService\:\:storeMultiple\(\) has parameter \$users with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Parameter \#2 \$data of method Illuminate\\Http\\Client\\PendingRequest\<false\>\:\:post\(\) expects array\<int\<0, max\>\|string, mixed\>\|Illuminate\\Contracts\\Support\\Arrayable\<string, mixed\>\|JsonSerializable, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/SignatureService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Http\\Client\\Response\:\:getBody\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:createIssuanceProcess\(\) has parameter \$userData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:createIssuanceProcess\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:deleteIssuanceProcess\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:getAccessToken\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:getAdminAccessToken\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:getCertData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Method App\\Services\\SigningIdentityService\:\:getUserData\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Parameter \#1 \$json of function json_decode expects string, Psr\\Http\\Message\\StreamInterface given\.$#'
-			identifier: argument.type
-			count: 6
-			path: app/Services/SigningIdentityService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StructureInvitation\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:toArray\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Method App\\Services\\Structure\\StructureManagementService\:\:flattenPagination\(\) has parameter \$paginator with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Relation ''attachments'' is not found in App\\Models\\Structure model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Relation ''inviter'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Relation ''manager'' is not found in App\\Models\\Structure model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Relation ''user'' is not found in App\\Models\\StructureInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Structure/StructureManagementService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\UserSubscription\>\:\:\$structure\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\UserSubscription\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\UserSubscription\>\:\:\$user\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:calculateRemainingIdentities\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:calculateRemainingIdentities\(\) has parameter \$structureId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:calculateRemainingIdentities\(\) has parameter \$type with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:calculateTotalIdentities\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:calculateTotalIdentities\(\) has parameter \$packageIds with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:kkiaPayement\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:store\(\) has parameter \$validatedData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Method App\\Services\\UserSubscriptionService\:\:updateMultipleStatuses\(\) has parameter \$subscriptions with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Offset int does not exist on array\{\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Relation ''structurePackage'' is not found in App\\Models\\StructureSubscription model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Unable to resolve the template type TKey in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/UserSubscriptionService.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function collect$#'
-			identifier: argument.templateType
-			count: 1
-			path: app/Services/UserSubscriptionService.php
 
 		-
 			message: '#^Method App\\Support\\NotificationRecipient\:\:email\(\) has parameter \$personalVariables with no value type specified in iterable type array\.$#'
@@ -4219,7 +1933,7 @@ parameters:
 			path: app/Support/NotificationRecipient.php
 
 		-
-			message: '#^Trait App\\Traits\\AttachmentTrait is used zero times and is not analysed\.$#'
+			message: '#^Trait App\\Traits\\AuditTrait is used zero times and is not analysed\.$#'
 			identifier: trait.unused
 			count: 1
-			path: app/Traits/AttachmentTrait.php
+			path: app/Traits/AuditTrait.php

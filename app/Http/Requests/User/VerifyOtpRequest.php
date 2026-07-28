@@ -9,8 +9,8 @@ class VerifyOtpRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'npi' => 'required|string',
-            'otp' => 'required|string',
+            'npi' => 'required|string|max:50',
+            'otp' => 'required|string|size:6',
         ];
     }
 }

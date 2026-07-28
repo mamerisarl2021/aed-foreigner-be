@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('enrollment_requests', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('email');
             $table->string('phonenumber')->nullable();
             $table->json('kyc_data')->comment('Stores name, dob, nationality, etc.');

@@ -9,7 +9,7 @@ class SendOtpRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'npi' => 'required|unique:users',
+            'npi' => 'required|string|max:50|unique:users',
         ];
     }
 }

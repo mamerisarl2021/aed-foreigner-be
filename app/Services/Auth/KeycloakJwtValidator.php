@@ -11,9 +11,10 @@ use RuntimeException;
 final class KeycloakJwtValidator
 {
     /**
+     * @param  string  $configPrefix  Config key holding jwks_uri / issuer / audience
      * @return array<string, mixed>
      */
-    public function validate(string $jwt): array
+    public function validate(string $jwt, string $configPrefix = 'consul.keycloak'): array
     {
         $parts = explode('.', $jwt);
         if (count($parts) !== 3) {
@@ -33,7 +34,7 @@ final class KeycloakJwtValidator
             throw new RuntimeException('JWT sans kid.');
         }
 
-        $publicKey = $this->resolvePublicKey($kid);
+        $publicKey = $this->resolvePublicKey($kid, $configPrefix);
         $signed = $headerB64.'.'.$payloadB64;
         $signature = $this->base64UrlDecode($signatureB64);
 
@@ -47,12 +48,12 @@ final class KeycloakJwtValidator
             throw new RuntimeException('JWT expiré.');
         }
 
-        $issuer = config('consul.keycloak.issuer');
+        $issuer = config($configPrefix.'.issuer');
         if ($issuer && isset($payload['iss']) && $payload['iss'] !== $issuer) {
             throw new RuntimeException('Émetteur JWT invalide.');
         }
 
-        $audience = config('consul.keycloak.audience');
+        $audience = config($configPrefix.'.audience');
         if ($audience) {
             $aud = $payload['aud'] ?? null;
             $audiences = is_array($aud) ? $aud : [$aud];
@@ -64,14 +65,17 @@ final class KeycloakJwtValidator
         return $payload;
     }
 
-    private function resolvePublicKey(string $kid): \OpenSSLAsymmetricKey
+    private function resolvePublicKey(string $kid, string $configPrefix): \OpenSSLAsymmetricKey
     {
-        $jwksUri = config('consul.keycloak.jwks_uri');
+        $jwksUri = config($configPrefix.'.jwks_uri');
         if (! is_string($jwksUri) || $jwksUri === '') {
-            throw new RuntimeException('KC_INFRA_JWKS non configuré.');
+            throw new RuntimeException('JWKS non configuré pour '.$configPrefix.'.');
         }
 
-        $jwks = Cache::remember('keycloak.jwks', now()->addHour(), function () use ($jwksUri): array {
+        // Cache per URI so infra and staff realms never share stale keys.
+        $cacheKey = 'keycloak.jwks.'.sha1($jwksUri);
+
+        $jwks = Cache::remember($cacheKey, now()->addHour(), function () use ($jwksUri): array {
             $response = Http::get($jwksUri);
             $response->throw();
 
@@ -92,7 +96,7 @@ final class KeycloakJwtValidator
             return $publicKey;
         }
 
-        Cache::forget('keycloak.jwks');
+        Cache::forget($cacheKey);
         throw new RuntimeException('Clé JWKS introuvable.');
     }
 

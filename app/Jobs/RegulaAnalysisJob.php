@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\EnrollmentRequest;
-use App\Services\RegulaService;
+use App\Services\Regula\RegulaService;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,7 +19,7 @@ class RegulaAnalysisJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly int $enrollmentRequestId,
+        public readonly string $enrollmentRequestId,
     ) {}
 
     public function handle(RegulaService $regulaService): void

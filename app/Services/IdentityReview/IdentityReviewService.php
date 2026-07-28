@@ -16,16 +16,16 @@ use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
-use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\ActivityLog\ActivityLogService;
+use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use App\Support\NpiAllocator;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -97,17 +97,20 @@ class IdentityReviewService
             $query->whereDate('created_at', '<=', Carbon::parse($request->input('to'))->toDateString());
         }
 
-        $orderBy = $request->input('order_by', 'id');
+        // UUID PKs are not sequential, so created_at is the meaningful default sort.
+        $orderBy = $request->input('order_by', 'created_at');
         if (! in_array($orderBy, ['id', 'created_at'], true)) {
-            $orderBy = 'id';
+            $orderBy = 'created_at';
         }
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate((int) $request->input('per_page', 15));
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
+
+        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate($perPage);
     }
 
-    public function show(int $id): ServiceResult
+    public function show(string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
         $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
@@ -115,7 +118,7 @@ class IdentityReviewService
         return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
 
-    public function claim(int $id, string $agentId): ServiceResult
+    public function claim(string $id, string $agentId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -140,7 +143,7 @@ class IdentityReviewService
         return ServiceResult::ok('Demande prise en charge.', $enrollment);
     }
 
-    public function claimValidation(int $id, string $responsableId): ServiceResult
+    public function claimValidation(string $id, string $responsableId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -168,7 +171,7 @@ class IdentityReviewService
         return ServiceResult::ok('Décision prise en charge.', $enrollment);
     }
 
-    public function instruction(int $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
+    public function instruction(string $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -187,7 +190,7 @@ class IdentityReviewService
         return ServiceResult::fail('Statut d\'instruction invalide.', null, 422);
     }
 
-    public function validation(int $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
+    public function validation(string $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
     {
         return match ($decision) {
             'APPROUVEE' => $this->supervisorApprove($id, (string) $supervisorId),
@@ -266,7 +269,7 @@ class IdentityReviewService
             ActivityLogAction::RejetAgent,
             sprintf(
                 '%s a rejeté la demande n°%d.',
-                ActivityLogService::actorLabel($agent),
+                ActivityLogService::actorLabel($enrollment->assignedAgent),
                 $enrollment->id
             ),
             $enrollment->assigned_agent_id,
@@ -285,7 +288,7 @@ class IdentityReviewService
         ]);
     }
 
-    public function supervisorApprove(int $id, string $supervisorId): ServiceResult
+    public function supervisorApprove(string $id, string $supervisorId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -361,7 +364,7 @@ class IdentityReviewService
             $finalisationToken = Str::random(60);
             PasswordResetToken::updateOrCreate(
                 ['npi' => $user->npi, 'type' => 'finalisation'],
-                ['token' => $finalisationToken, 'created_at' => Carbon::now()]
+                ['token' => hash('sha256', $finalisationToken), 'created_at' => Carbon::now()]
             );
 
             $link = config('app.frontend_url').'/enrolements/finalisation?token='.$finalisationToken;
@@ -417,7 +420,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorConfirmReject(int $id, ?string $supervisorId = null): ServiceResult
+    public function supervisorConfirmReject(string $id, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -475,7 +478,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorReturnToAgent(int $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
+    public function supervisorReturnToAgent(string $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 

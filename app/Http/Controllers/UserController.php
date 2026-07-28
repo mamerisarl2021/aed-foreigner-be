@@ -1,32 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\LoginWithCodeRequest;
+use App\Http\Requests\User\SearchUsersByEmailRequest;
+use App\Http\Requests\User\SearchUsersRequest;
 use App\Http\Requests\User\SendOtpRequest;
+use App\Http\Requests\User\SetClientPasswordRequest;
+use App\Http\Requests\User\UpdateUserProfileRequest;
 use App\Http\Requests\User\UpdateUserStatusRequest;
 use App\Http\Requests\User\VerifyOtpRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
-use Exception;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use App\Services\Users\UserService;
+use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
 
+#[Group('Client Auth')]
 class UserController extends BaseController
 {
     public function __construct(
         private readonly UserRegistrationService $registration,
+        private readonly UserService $users,
     ) {}
 
-    public function sendOtp(SendOtpRequest $request)
+    /**
+     * Send login OTP to a citizen (NPI lookup via ANIP)
+     */
+    public function sendOtp(SendOtpRequest $request): JsonResponse
     {
         return $this->respond($this->registration->sendOtp($request->input('npi')));
     }
 
-    public function verifyOtp(VerifyOtpRequest $request)
+    /**
+     * Verify a citizen login OTP
+     */
+    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
         return $this->respond($this->registration->verifyOtp(
             $request->input('npi'),
@@ -34,145 +46,121 @@ class UserController extends BaseController
         ));
     }
 
-    public function login(LoginWithCodeRequest $request)
+    /**
+     * Client login (TrustedX authorization code)
+     */
+    public function login(LoginWithCodeRequest $request): JsonResponse
     {
         return $this->respond($this->registration->login($request->input('code')));
     }
 
-    public function loginMobile(LoginWithCodeRequest $request)
+    /**
+     * Client mobile login (TrustedX authorization code)
+     */
+    public function loginMobile(LoginWithCodeRequest $request): JsonResponse
     {
         return $this->respond($this->registration->loginMobile($request->input('code')));
     }
 
-    public function show($id)
+    /**
+     * User detail
+     */
+    public function show(string $id): JsonResponse
     {
-        try {
-            $user = User::findOrFail($id);
+        $user = User::findOrFail($id);
+        $this->authorize('view', $user);
 
-            return $this->sendResponse('Utilisateur récupéré.', $user);
-        } catch (Exception $e) {
-            Log::error('Fetching user failed: '.$e->getMessage());
-
-            return $this->sendError('Fetching user failed.', null, 500);
-        }
+        return $this->sendResponse('Utilisateur récupéré.', new UserResource($user));
     }
 
-    public function search(Request $request)
+    /**
+     * Search users by email, name or NPI (staff only)
+     *
+     * Defaults: limit=10 (max 100).
+     */
+    public function search(SearchUsersRequest $request): JsonResponse
     {
-        try {
-            $query = $request->input('query');
-            $limit = (int) $request->get('limit', 10);
+        $this->authorize('search', User::class);
 
-            $users = User::where(function ($q) use ($query) {
-                $q->where('email', 'LIKE', "%$query%")
-                    ->orWhere('name', 'LIKE', "%$query%")
-                    ->orWhere('npi', 'LIKE', "%$query%");
-            })
-                ->where('id', '!=', auth()->id())
-                ->limit($limit)
-                ->get();
+        $result = $this->users->search(
+            (string) $request->input('query'),
+            (int) $request->input('limit', 10),
+            (string) $request->user()?->id,
+        );
 
-            return $this->sendResponse('Résultats de recherche.', $users);
-        } catch (Exception $e) {
-            Log::error('Searching users failed: '.$e->getMessage());
-
-            return $this->sendError('Searching users failed.', null, 500);
+        if (! $result->success) {
+            return $this->respond($result);
         }
+
+        return $this->sendResponse($result->message, UserResource::collection($result->data));
     }
 
-    public function searchPost(Request $request)
+    /**
+     * Search users by email (staff only)
+     *
+     * Defaults: limit=10 (max 100).
+     */
+    public function searchPost(SearchUsersByEmailRequest $request): JsonResponse
     {
-        try {
-            $query = $request->input('email');
+        $this->authorize('search', User::class);
 
-            $users = User::where('email', 'LIKE', "%$query%")
-                ->where('id', '!=', auth()->id())
-                ->get();
+        $result = $this->users->searchByEmail(
+            (string) $request->input('email'),
+            (int) $request->input('limit', 10),
+            (string) $request->user()?->id,
+        );
 
-            return $this->sendResponse('Résultats de recherche.', $users);
-        } catch (Exception $e) {
-            Log::error('Searching users failed: '.$e->getMessage());
-
-            return $this->sendError('Searching users failed.', null, 500);
+        if (! $result->success) {
+            return $this->respond($result);
         }
+
+        return $this->sendResponse($result->message, UserResource::collection($result->data));
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Update own profile (email, profile photo)
+     */
+    public function update(UpdateUserProfileRequest $request, string $id): JsonResponse
     {
-        try {
-            $request->validate([
-                'profile' => 'nullable|mimes:png,jpeg,jpg|max:2048',
-                'email' => [
-                    'required',
-                    'email',
-                    Rule::unique('users')->ignore($id),
-                ],
-            ]);
+        $target = User::findOrFail($id);
+        $this->authorize('update', $target);
 
-            $updateData = [
-                'email' => $request->input('email'),
-            ];
-            $profile = $request->file('profile');
+        $result = $this->registration->updateUser(
+            $id,
+            ['email' => $request->input('email')],
+            $request->file('profile'),
+        );
 
-            $result = $this->registration->updateUser($id, $updateData, $profile);
-
-            if (! $result->success) {
-                return $this->sendError($result->message, $result->data ?? [], $result->code);
-            }
-
-            return $this->sendResponse($result->message, $result->data ?? []);
-        } catch (ValidationException $e) {
-            Log::warning("Erreur de validation lors de la mise à jour de l'utilisateur : ", $e->errors());
-
-            return $this->sendError('Erreur de validation.', $e->errors(), 422);
-        } catch (Exception $e) {
-            Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
-
-            return $this->sendError('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
-        }
+        return $this->respond($result);
     }
 
-    public function destroy($id)
+    /**
+     * Delete a user (admin only)
+     */
+    public function destroy(string $id): JsonResponse
     {
-        try {
-            $user = User::findOrFail($id);
-            $user->delete();
+        $target = User::findOrFail($id);
+        $this->authorize('delete', $target);
 
-            return $this->sendResponse('User deleted successfully.', []);
-        } catch (Exception $e) {
-            Log::error('Deleting user failed: '.$e->getMessage());
-
-            return $this->sendError('Deleting user failed.', null, 500);
-        }
+        return $this->respond($this->users->destroy($id));
     }
 
-    public function updateUserStatus(UpdateUserStatusRequest $request)
+    /**
+     * Bulk update user statuses (staff)
+     */
+    public function updateUserStatus(UpdateUserStatusRequest $request): JsonResponse
     {
-        $users = $request->input('users');
+        $this->authorize('updateStatus', User::class);
 
-        try {
-            DB::transaction(function () use ($users) {
-                foreach ($users as $userData) {
-                    $user = User::findOrFail($userData['id']);
-                    $user->update(['status' => $userData['status']]);
-                }
-            });
-
-            return $this->sendResponse("Le statut de l'utilisateur à bien été mis à jour", $users);
-        } catch (Exception $e) {
-            Log::error('Failed to update user statuses: '.$e->getMessage());
-
-            return $this->sendError('Failed to update user statuses.', null, 500);
-        }
+        return $this->respond($this->users->updateStatuses($request->input('users')));
     }
 
-    public function setPassword(Request $request)
+    /**
+     * Set a client TrustedX password or PIN (admin only)
+     */
+    public function setPassword(SetClientPasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'password' => 'required|string',
-            'npi' => 'required|string',
-            'type' => 'required|string|in:password,pin',
-        ]);
+        $this->authorize('setClientPassword', User::class);
 
         return $this->respond($this->registration->setPassword(
             $request->input('npi'),
@@ -181,7 +169,10 @@ class UserController extends BaseController
         ));
     }
 
-    public function sendResetLink(string $npi, string $type)
+    /**
+     * Send a client reset link by NPI (path parameters)
+     */
+    public function sendResetLink(string $npi, string $type): JsonResponse
     {
         return $this->respond($this->registration->sendResetLink($npi, $type));
     }

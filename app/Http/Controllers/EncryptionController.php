@@ -1,31 +1,49 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Traits\EncryptionTrait;
+use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 
+#[Group('Admin')]
 class EncryptionController extends Controller
 {
     use EncryptionTrait;
 
-    public function decryptAndDisplay(string $filename)
+    /**
+     * Decrypt and display an encrypted enrollment document
+     *
+     * Staff only (viewAudits gate). `filename` is the stored encrypted file name;
+     * the decrypted content is returned inline with its detected MIME type.
+     * 404 when the file does not exist.
+     */
+    public function decryptAndDisplay(string $filename): Response
     {
-        // Continue with file processing if the token is valid
+        Gate::authorize('viewAudits');
+
+        $filename = basename($filename);
+        if ($filename === '' || str_contains($filename, '..')) {
+            abort(404);
+        }
+
+        if (! Storage::exists("public/docs/{$filename}")) {
+            abort(404);
+        }
 
         $base64EncodedContent = $this->getEncFile($filename, 'docs');
-        // Decode the base64 content
         $fileContent = base64_decode($base64EncodedContent);
 
-        // Use finfo to get file information
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $fileType = $finfo->buffer($fileContent);
 
-        // Set the appropriate headers based on the detected file type
-        $headers = [
+        return response()->make($fileContent, 200, [
             'Content-Type' => $fileType,
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
-        ];
-
-        return response()->make($fileContent, 200, $headers);
+        ]);
     }
 }

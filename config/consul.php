@@ -21,7 +21,8 @@ return [
     'service_id_file' => storage_path('app/consul-service-id.json'),
 
     'keycloak' => [
-        'enabled' => env('KEYCLOAK_ENABLED', false),
+        // Fail closed: the gateway token check is on unless explicitly disabled (local dev).
+        'enabled' => env('KEYCLOAK_ENABLED', true),
         'token_uri' => env('KC_INFRA_TOKEN_URI'),
         'jwks_uri' => env('KC_INFRA_JWKS'),
         'issuer' => env('KC_INFRA_ISSUER'),

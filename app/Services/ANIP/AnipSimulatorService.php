@@ -8,17 +8,23 @@ use Illuminate\Support\Facades\Log;
 
 class AnipSimulatorService
 {
-    private $ANIP_BASE_URL;
+    private string $baseUrl;
 
     public function __construct()
     {
-        $this->ANIP_BASE_URL = config('trustedx.anip_base_url');
+        $this->baseUrl = rtrim((string) config('trustedx.anip_base_url'), '/');
     }
 
-    public function getUserData(string $npi)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getUserData(string $npi): array
     {
         try {
-            $response = Http::withBasicAuth('admin', 'supersecret')->get("https://local-simulator.qcdigitalhub.com/api/user/{$npi}");
+            $response = Http::withBasicAuth(
+                (string) config('trustedx.anip_username'),
+                (string) config('trustedx.anip_password'),
+            )->get("{$this->baseUrl}/api/user/{$npi}");
 
             if ($response->successful()) {
                 return [
@@ -28,16 +34,16 @@ class AnipSimulatorService
                         'role' => 'CLIENT',
                     ],
                 ];
-            } else {
-                return [
-                    'status' => false,
-                    'message' => 'Ce NPI ne correspond à aucun utilisateur.',
-                ];
             }
+
+            return [
+                'status' => false,
+                'message' => 'Ce NPI ne correspond à aucun utilisateur.',
+            ];
         } catch (ClientException $e) {
             Log::error($e->getMessage(), $e->getTrace());
 
-            return ['error' => $e->getMessage()];
+            return ['status' => false, 'message' => 'Service ANIP indisponible.'];
         }
     }
 }

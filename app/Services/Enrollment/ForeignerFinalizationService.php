@@ -28,7 +28,7 @@ final class ForeignerFinalizationService
 
     public function showByToken(string $token): ServiceResult
     {
-        $tokenData = PasswordResetToken::where('token', $token)->where('type', 'finalisation')->first();
+        $tokenData = PasswordResetToken::where('token', hash('sha256', $token))->where('type', 'finalisation')->first();
         if (! $tokenData) {
             return ServiceResult::fail('Lien de finalisation invalide.', null, 404);
         }
@@ -63,9 +63,9 @@ final class ForeignerFinalizationService
     /**
      * @param  array<string, mixed>|null  $securityQuestions
      */
-    public function finalize(int $demandeId, string $token, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
+    public function finalize(string $demandeId, string $token, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
     {
-        $tokenData = PasswordResetToken::where('token', $token)->where('type', 'finalisation')->first();
+        $tokenData = PasswordResetToken::where('token', hash('sha256', $token))->where('type', 'finalisation')->first();
         if (! $tokenData) {
             return ServiceResult::fail('Lien de finalisation invalide.', null, 404);
         }
@@ -129,7 +129,7 @@ final class ForeignerFinalizationService
             $enrollment->status = EnrollmentStatus::Enrolee->value;
             $enrollment->save();
 
-            PasswordResetToken::where('token', $token)->delete();
+            PasswordResetToken::where('token', hash('sha256', $token))->delete();
 
             $this->events->publish('completed', [
                 'demande_id' => $enrollment->id,

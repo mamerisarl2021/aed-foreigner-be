@@ -21,7 +21,7 @@ class InstructionEnrollmentRequest extends ApiFormRequest
 
         $rules = [
             'statut' => ['required', 'string', Rule::in(['VALIDATION_AGENT', 'REJET_AGENT'])],
-            'commentaire' => ['nullable', 'string'],
+            'commentaire' => ['nullable', 'string', 'max:1000'],
         ];
 
         if ($this->input('statut') === 'REJET_AGENT') {

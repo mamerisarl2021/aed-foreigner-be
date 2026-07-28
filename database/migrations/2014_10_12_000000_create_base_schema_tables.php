@@ -25,7 +25,7 @@ return new class extends Migration
         });
 
         Schema::create('identities', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('type')->default('IN_PERSON');
             $table->string('level')->default('ADVANCED');
@@ -34,7 +34,7 @@ return new class extends Migration
             $table->date('date')->nullable();
             $table->string('risk_score')->nullable();
             $table->json('analysis_details')->nullable();
-            
+
             $table->string('reject_stage')->nullable();
             $table->json('reject_reasons')->nullable();
             $table->text('review_comments')->nullable();

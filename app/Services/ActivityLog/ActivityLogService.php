@@ -8,8 +8,8 @@ use App\Enums\ActivityLogAction;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class ActivityLogService
 {
@@ -20,7 +20,7 @@ final class ActivityLogService
         ActivityLogAction $action,
         string $description,
         ?string $actorUserId = null,
-        ?int $enrollmentRequestId = null,
+        ?string $enrollmentRequestId = null,
         ?array $metadata = null,
     ): void {
         ActivityLog::create([

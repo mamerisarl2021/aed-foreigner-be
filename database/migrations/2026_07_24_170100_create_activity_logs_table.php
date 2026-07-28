@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('activity_logs', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('action_code');
             $table->text('description');
             $table->foreignUuid('actor_user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('enrollment_request_id')->nullable()->constrained('enrollment_requests')->nullOnDelete();
+            $table->foreignUuid('enrollment_request_id')->nullable()->constrained('enrollment_requests')->nullOnDelete();
             $table->json('metadata')->nullable();
             $table->timestamp('created_at')->useCurrent();
 

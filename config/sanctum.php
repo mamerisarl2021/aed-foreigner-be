@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\EncryptCookies;
-use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 
 return [
 
@@ -48,7 +48,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 720),
 
     /*
     |--------------------------------------------------------------------------
@@ -62,7 +62,7 @@ return [
     */
 
     'middleware' => [
-        'verify_csrf_token' => VerifyCsrfToken::class,
+        'verify_csrf_token' => ValidateCsrfToken::class,
         'encrypt_cookies' => EncryptCookies::class,
     ],
 

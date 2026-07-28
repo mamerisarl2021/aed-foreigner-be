@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
-use App\Services\RegulaService;
+use App\Services\Regula\RegulaService;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;

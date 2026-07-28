@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\ChangeStaffPasswordRequest;
+use App\Http\Requests\Auth\KeycloakLoginRequest;
+use App\Http\Requests\Auth\ListAgentsRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterAgentRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
@@ -10,9 +14,11 @@ use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
 use App\Http\Requests\Auth\UpdateAgentRequest;
 use App\Models\User;
 use App\Services\Auth\AdminAuthService;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+#[Group('Admin Auth')]
 class AuthController extends BaseController
 {
     public function __construct(
@@ -20,29 +26,16 @@ class AuthController extends BaseController
     ) {}
 
     /**
-     * @OA\Post(
-     *      path="/api/v1/admin/login",
-     *      operationId="adminLogin",
-     *      tags={"Admin Auth"},
-     *      summary="Admin/Agent Login (returns Sanctum token)",
+     * Admin/Agent login (returns Sanctum token)
      *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *              required={"email", "password"},
-     *
-     *              @OA\Property(property="email", type="string", format="email"),
-     *              @OA\Property(property="password", type="string", format="password")
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Login successful with access_token"),
-     *      @OA\Response(response=403, description="Forbidden (Not an agent or inactive account)")
-     * )
+     * Disabled (403) when STAFF_KEYCLOAK_ENABLED=true — use POST /admin/login/keycloak instead.
      */
     public function loginAdmin(LoginRequest $request): JsonResponse
     {
+        if (AdminAuthService::staffKeycloakEnabled()) {
+            return $this->sendError('Authentification via Keycloak requise.', null, 403);
+        }
+
         $request->authenticate();
 
         $user = User::where('email', $request->user()->email)->first();
@@ -51,31 +44,27 @@ class AuthController extends BaseController
     }
 
     /**
-     * @OA\Post(
-     *      path="/api/v1/admin/password/change",
-     *      operationId="adminChangePassword",
-     *      tags={"Admin Auth"},
-     *      summary="Change staff password (authenticated)",
-     *      security={{"sanctum":{}}},
+     * Admin/Agent login via Keycloak token exchange (returns Sanctum token)
      *
-     *      @OA\RequestBody(
-     *          required=true,
+     * Exchange a Keycloak access token (obtained by the frontend through OIDC login)
+     * for a Sanctum token. Only available when STAFF_KEYCLOAK_ENABLED=true.
+     */
+    public function loginAdminKeycloak(KeycloakLoginRequest $request): JsonResponse
+    {
+        return $this->respond($this->adminAuth->loginWithKeycloak($request->input('access_token')));
+    }
+
+    /**
+     * Change staff password (authenticated)
      *
-     *          @OA\JsonContent(
-     *              required={"current_password", "password", "password_confirmation"},
-     *
-     *              @OA\Property(property="current_password", type="string", format="password"),
-     *              @OA\Property(property="password", type="string", format="password"),
-     *              @OA\Property(property="password_confirmation", type="string", format="password")
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Password updated"),
-     *      @OA\Response(response=400, description="Current password incorrect")
-     * )
+     * Disabled (403) when STAFF_KEYCLOAK_ENABLED=true — passwords are managed in Keycloak.
      */
     public function changePassword(ChangeStaffPasswordRequest $request): JsonResponse
     {
+        if (AdminAuthService::staffKeycloakEnabled()) {
+            return $this->sendError('Les mots de passe sont gérés via Keycloak.', null, 403);
+        }
+
         return $this->respond($this->adminAuth->changePassword(
             $request->user(),
             $request->validated(),
@@ -83,42 +72,27 @@ class AuthController extends BaseController
     }
 
     /**
-     * @OA\Post(
-     *      path="/api/v1/agents/{id}",
-     *      operationId="updateAgent",
-     *      tags={"Admin Auth"},
-     *      summary="Update Agent Details",
-     *
-     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *
-     *              @OA\Property(property="name", type="string"),
-     *              @OA\Property(property="first_name", type="string"),
-     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"}),
-     *              @OA\Property(property="phonenumber", type="string"),
-     *              @OA\Property(property="email", type="string", format="email")
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Agent updated")
-     * )
+     * Update staff user details (admin only)
      */
-    public function updateAgent(UpdateAgentRequest $request, $id): JsonResponse
+    public function updateAgent(UpdateAgentRequest $request, string $id): JsonResponse
     {
+        $this->authorize('manageStaff', User::class);
+
         $user = User::find($id);
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->updateAgent($user, $request->all()));
+        return $this->respond($this->adminAuth->updateAgent($user, $request->validated()));
     }
 
-    public function deleteAgent($id): JsonResponse
+    /**
+     * Delete a staff user (admin only)
+     */
+    public function deleteAgent(string $id): JsonResponse
     {
+        $this->authorize('manageStaff', User::class);
+
         $user = User::find($id);
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
@@ -128,84 +102,72 @@ class AuthController extends BaseController
     }
 
     /**
-     * @OA\Post(
-     *      path="/api/v1/admins/logout",
-     *      operationId="adminLogout",
-     *      tags={"Admin Auth"},
-     *      summary="Admin Logout",
-     *      security={{"sanctum":{}}},
-     *
-     *      @OA\Response(response=200, description="Logged out")
-     * )
+     * Admin logout (revokes current token)
      */
     public function logoutAdmin(Request $request): JsonResponse
     {
-        $request->user()->token()->revoke();
+        $request->user()->currentAccessToken()->delete();
 
         return $this->sendResponse('Déconnexion réussie.', []);
     }
 
     /**
-     * @OA\Post(
-     *      path="/api/v1/agents/register",
-     *      operationId="registerAgent",
-     *      tags={"Admin Auth"},
-     *      summary="Register New Agent",
-     *
-     *      @OA\RequestBody(
-     *          required=true,
-     *
-     *          @OA\JsonContent(
-     *              required={"name", "first_name", "phonenumber", "email", "role"},
-     *
-     *              @OA\Property(property="name", type="string", description="Nom"),
-     *              @OA\Property(property="first_name", type="string", description="Prénoms"),
-     *              @OA\Property(property="role", type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"}),
-     *              @OA\Property(property="phonenumber", type="string"),
-     *              @OA\Property(property="email", type="string", format="email")
-     *          )
-     *      ),
-     *
-     *      @OA\Response(response=200, description="Agent registered")
-     * )
+     * Register a new staff user (admin only)
      */
     public function registerAgent(RegisterAgentRequest $request): JsonResponse
     {
-        return $this->respond($this->adminAuth->registerAgent($request->all()));
+        $this->authorize('manageStaff', User::class);
+
+        return $this->respond($this->adminAuth->registerAgent($request->validated(), $request->user()));
     }
 
     /**
-     * @OA\Get(
-     *      path="/api/v1/agents",
-     *      operationId="listAgents",
-     *      tags={"Admin"},
-     *      summary="List staff users (admin)",
-     *      security={{"sanctum":{}}},
+     * List staff users (admin only)
      *
-     *      @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
-     *      @OA\Parameter(name="role", in="query", @OA\Schema(type="string", enum={"AGENT","RESPONSABLE_DE_VALIDATION","MANAGER","AUDITEUR"})),
-     *      @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
-     *
-     *      @OA\Response(response=200, description="Staff list")
-     * )
+     * Optional role filter. Defaults: per_page=15 (max 100).
      */
-    public function listAgents(Request $request): JsonResponse
+    public function listAgents(ListAgentsRequest $request): JsonResponse
     {
+        $this->authorize('manageStaff', User::class);
+
         return $this->respondPaginated($this->adminAuth->listAgents($request));
     }
 
-    public function showAgent($id): JsonResponse
+    /**
+     * Staff user detail (admin only)
+     */
+    public function showAgent(string $id): JsonResponse
     {
+        $this->authorize('manageStaff', User::class);
+
         return $this->respond($this->adminAuth->showAgent($id));
     }
 
-    public function resetPassword(ResetPasswordRequest $request)
+    /**
+     * Reset staff password using an emailed token
+     *
+     * Disabled (403) when STAFF_KEYCLOAK_ENABLED=true — passwords are managed in Keycloak.
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
+        if (AdminAuthService::staffKeycloakEnabled()) {
+            return $this->sendError('Les mots de passe sont gérés via Keycloak.', null, 403);
+        }
+
         return $this->respond($this->adminAuth->resetPassword($request->validated()));
     }
 
+    /**
+     * Send staff password reset link
+     *
+     * Disabled (403) when STAFF_KEYCLOAK_ENABLED=true — passwords are managed in Keycloak.
+     */
     public function sendPasswordResetLink(SendPasswordResetLinkRequest $request): JsonResponse
     {
+        if (AdminAuthService::staffKeycloakEnabled()) {
+            return $this->sendError('Les mots de passe sont gérés via Keycloak.', null, 403);
+        }
+
         return $this->respond($this->adminAuth->sendPasswordResetLink($request->input('email')));
     }
 }

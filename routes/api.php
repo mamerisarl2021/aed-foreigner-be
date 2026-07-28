@@ -42,16 +42,19 @@ Route::group([], function () {
             Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
             Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
             Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
+            Route::post('/clients/set-password', [UserController::class, 'setPassword']);
         });
 
         Route::middleware('role:administrateur_plateforme|agent|auditeur|responsable_de_validation')->group(function () {
             Route::get('/audits', [AuditLogController::class, 'index']);
             Route::get('/stats', [StatsController::class, 'index']);
+            Route::get('/users/search', [UserController::class, 'search']);
+            Route::post('/users-email/search', [UserController::class, 'searchPost']);
+            Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
         });
 
         Route::middleware('role:agent|responsable_de_validation')->group(function () {
             Route::post('/management/users/update-status', [UserController::class, 'updateUserStatus']);
-            Route::post('/clients/set-password', [UserController::class, 'setPassword']);
         });
 
         Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index']);
@@ -59,12 +62,12 @@ Route::group([], function () {
     });
 
     Route::middleware(['keycloak'])->group(function () {
-        Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction']);
-        Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest']);
+        Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction', 'throttle:otp-send']);
+        Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest', 'throttle:otp-verify']);
         Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
-        Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store']);
+        Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store'])->middleware(['throttle:password-reset']);
 
         Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/enrolements', [EnrollmentController::class, 'index']);
@@ -77,29 +80,26 @@ Route::group([], function () {
             Route::prefix('enrolements/morales')->middleware('role:client')->group(function () {
                 Route::post('/', [PersonneMoraleEnrollmentController::class, 'submit']);
                 Route::get('/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
-                Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp']);
-                Route::post('/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp']);
+                Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp'])->middleware('throttle:otp-send');
+                Route::post('/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp'])->middleware('throttle:otp-verify');
             });
         });
     });
 
-    Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail']);
+    Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail'])->middleware('throttle:otp-verify');
 
-    Route::post('/clients/send-otp', [UserController::class, 'sendOtp'])->middleware(['guest', 'transaction']);
-    Route::post('/clients/verify-otp', [UserController::class, 'verifyOtp'])->middleware(['guest']);
-    Route::post('/clients/login', [UserController::class, 'login']);
-    Route::post('/mobile/login', [UserController::class, 'loginMobile']);
-    Route::post('/clients/password/link', [PasswordResetController::class, 'sendResetLink']);
-    Route::post('/clients/password/reset', [PasswordResetController::class, 'resetPassword']);
-    Route::post('/clients/some/reset', [PasswordResetController::class, 'resetSome']);
+    Route::post('/clients/send-otp', [UserController::class, 'sendOtp'])->middleware(['guest', 'transaction', 'throttle:otp-send']);
+    Route::post('/clients/verify-otp', [UserController::class, 'verifyOtp'])->middleware(['guest', 'throttle:otp-verify']);
+    Route::post('/clients/login', [UserController::class, 'login'])->middleware('throttle:auth-login');
+    Route::post('/mobile/login', [UserController::class, 'loginMobile'])->middleware('throttle:auth-login');
+    Route::post('/clients/password/link', [PasswordResetController::class, 'sendResetLink'])->middleware('throttle:password-reset');
+    Route::post('/clients/password/reset', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:password-reset');
+    Route::post('/clients/some/reset', [PasswordResetController::class, 'resetSome'])->middleware('throttle:password-reset');
 
-    Route::post('/admins/logout', [AuthController::class, 'logoutAdmin'])->middleware('auth');
-    Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
-    Route::post('/admin/password/link', [AuthController::class, 'sendPasswordResetLink']);
-    Route::post('/admin/password/reset', [AuthController::class, 'resetPassword']);
+    Route::post('/admins/logout', [AuthController::class, 'logoutAdmin'])->middleware('auth:sanctum');
+    Route::post('/admin/login', [AuthController::class, 'loginAdmin'])->middleware('throttle:auth-login');
+    Route::post('/admin/login/keycloak', [AuthController::class, 'loginAdminKeycloak'])->middleware('throttle:auth-login');
+    Route::post('/admin/password/link', [AuthController::class, 'sendPasswordResetLink'])->middleware('throttle:password-reset');
+    Route::post('/admin/password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:password-reset');
     Route::post('/admin/password/change', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
-
-    Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
-    Route::get('users/search', [UserController::class, 'search']);
-    Route::post('users-email/search', [UserController::class, 'searchPost']);
 });

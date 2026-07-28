@@ -11,7 +11,7 @@ class VerifyOtpRequest extends ApiFormRequest
         return [
             'email' => 'required_without:phonenumber|nullable|email',
             'phonenumber' => 'required_without:email|nullable|string|min:8|max:20',
-            'otp' => 'required|string',
+            'otp' => 'required|string|size:6',
         ];
     }
 

@@ -38,4 +38,12 @@ return [
         ],
     ],
 
+    'regula' => [
+        // Real document-analysis service by default; set REGULA_MOCK=true for local dev.
+        'mock' => (bool) env('REGULA_MOCK', false),
+        'url' => env('REGULA_URL'),
+        'api_key' => env('REGULA_API_KEY'),
+        'timeout' => (int) env('REGULA_TIMEOUT', 30),
+    ],
+
 ];

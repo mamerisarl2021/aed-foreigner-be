@@ -134,7 +134,7 @@ class PersonneMoraleEnrollmentService
         }
     }
 
-    public function show(User $user, int $id): ServiceResult
+    public function show(User $user, string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -145,7 +145,7 @@ class PersonneMoraleEnrollmentService
         return ServiceResult::ok('Détail de la demande morale.', $enrollment);
     }
 
-    public function verifyEmail(int $id, string $token): ServiceResult
+    public function verifyEmail(string $id, string $token): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -184,7 +184,7 @@ class PersonneMoraleEnrollmentService
         ]);
     }
 
-    public function sendPhoneOtp(User $user, int $id): ServiceResult
+    public function sendPhoneOtp(User $user, string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -206,7 +206,8 @@ class PersonneMoraleEnrollmentService
         $otp = (string) random_int(100000, 999999);
         $ttl = max(1, (int) config('enrollment.morale.phone_otp_ttl_minutes', 5));
 
-        Cache::put("morale_otp_phone_{$enrollment->id}", $otp, now()->addMinutes($ttl));
+        Cache::put("morale_otp_phone_{$enrollment->id}", hash('sha256', $otp), now()->addMinutes($ttl));
+        Cache::forget("morale_otp_phone_attempts_{$enrollment->id}");
         SendSmsJob::dispatch(
             $enrollment->phonenumber,
             "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes)."
@@ -218,7 +219,7 @@ class PersonneMoraleEnrollmentService
         ]);
     }
 
-    public function verifyPhoneOtp(User $user, int $id, string $otp): ServiceResult
+    public function verifyPhoneOtp(User $user, string $id, string $otp): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -230,12 +231,21 @@ class PersonneMoraleEnrollmentService
             return ServiceResult::fail('Veuillez d\'abord vérifier l\'email officiel de l\'entreprise.', null, 422);
         }
 
+        $attemptsKey = "morale_otp_phone_attempts_{$enrollment->id}";
+        if ((int) Cache::get($attemptsKey, 0) >= 5) {
+            return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+        }
+
         $expected = Cache::get("morale_otp_phone_{$enrollment->id}");
-        if (! $expected || $expected !== $otp) {
+        if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
+            Cache::add($attemptsKey, 0, 300);
+            Cache::increment($attemptsKey);
+
             return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
         }
 
         Cache::forget("morale_otp_phone_{$enrollment->id}");
+        Cache::forget($attemptsKey);
         $enrollment->phone_verified_at = now();
         $enrollment->save();
 
