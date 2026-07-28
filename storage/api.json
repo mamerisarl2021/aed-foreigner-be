@@ -13,6 +13,9 @@
     ],
     "tags": [
         {
+            "name": "Infrastructure"
+        },
+        {
             "name": "Client Auth"
         },
         {
@@ -43,7 +46,7 @@
         "/v1/admin/activity-logs": {
             "get": {
                 "operationId": "adminActivityLog.index",
-                "description": "Optional filters: q, action, from, to, per_page.",
+                "description": "Optional filters: q, action, from, to, per_page.\nDefaults: per_page=15 (max 100), sorted by created_at desc.",
                 "summary": "List business activity logs (journaux)",
                 "tags": [
                     "Admin"
@@ -52,6 +55,7 @@
                     {
                         "name": "q",
                         "in": "query",
+                        "description": "Recherche sur la description ou le code d'action.",
                         "schema": {
                             "type": [
                                 "string",
@@ -68,7 +72,18 @@
                                 "string",
                                 "null"
                             ],
-                            "maxLength": 100
+                            "enum": [
+                                "DEMANDE_IDENTITE",
+                                "DEMANDE_IDENTITE_MORALE",
+                                "VALIDATION_AGENT",
+                                "REJET_AGENT",
+                                "VALIDATION_RESPONSABLE",
+                                "REJET_CONFIRME",
+                                "RETOUR_AGENT",
+                                "ENROLEMENT_FINALISE",
+                                "UTILISATEUR_CREE",
+                                null
+                            ]
                         }
                     },
                     {
@@ -96,6 +111,7 @@
                     {
                         "name": "per_page",
                         "in": "query",
+                        "description": "D\u00e9faut: 15. Maximum: 100.",
                         "schema": {
                             "type": [
                                 "integer",
@@ -262,6 +278,7 @@
         "/v1/admin/enrolled-persons": {
             "get": {
                 "operationId": "adminEnrolledPerson.index",
+                "description": "Defaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.",
                 "summary": "List enrolled persons (read-only)",
                 "tags": [
                     "Admin"
@@ -270,6 +287,7 @@
                     {
                         "name": "q",
                         "in": "query",
+                        "description": "Recherche sur nom, pr\u00e9nom, email ou NPI.",
                         "schema": {
                             "type": [
                                 "string",
@@ -281,6 +299,7 @@
                     {
                         "name": "per_page",
                         "in": "query",
+                        "description": "D\u00e9faut: 15. Maximum: 100.",
                         "schema": {
                             "type": [
                                 "integer",
@@ -288,6 +307,39 @@
                             ],
                             "minimum": 1,
                             "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "D\u00e9faut: enrolled_at.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "enrolled_at",
+                                "name",
+                                "email",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "D\u00e9faut: desc.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "asc",
+                                "desc",
+                                null
+                            ]
                         }
                     }
                 ],
@@ -512,7 +564,7 @@
         "/v1/audits": {
             "get": {
                 "operationId": "auditLog.index",
-                "description": "Optional filters: event, user_id, auditable_type, auditable_id, ip_address, date range.",
+                "description": "Optional filters: event, user_id, auditable_type, auditable_id, ip_address, date range.\nDefaults: per_page=15 (max 100), sorted by created_at desc.",
                 "summary": "List technical audit logs (model change history)",
                 "tags": [
                     "Admin"
@@ -789,9 +841,65 @@
                 }
             }
         },
+        "/v1/decrypt/token/file/{filename}": {
+            "get": {
+                "operationId": "encryption.decryptAndDisplay",
+                "description": "Staff only (viewAudits gate). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.",
+                "summary": "Decrypt and display an encrypted enrollment document",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "filename",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Content-Disposition": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/management/enrollment-reject-motifs": {
             "get": {
                 "operationId": "enrollmentRejectMotif.index",
+                "description": "Defaults: active_only=true. Optional stage filter\n(KYC, DOCUMENT, BIOMETRY, COMPANY, REPRESENTATIVE, OTHER).",
                 "summary": "List enrollment reject motifs",
                 "tags": [
                     "Admin"
@@ -800,6 +908,7 @@
                     {
                         "name": "active_only",
                         "in": "query",
+                        "description": "D\u00e9faut: true (seuls les motifs actifs sont retourn\u00e9s).",
                         "schema": {
                             "type": [
                                 "boolean",
@@ -815,7 +924,15 @@
                                 "string",
                                 "null"
                             ],
-                            "maxLength": 50
+                            "enum": [
+                                "KYC",
+                                "DOCUMENT",
+                                "BIOMETRY",
+                                "COMPANY",
+                                "REPRESENTATIVE",
+                                "OTHER",
+                                null
+                            ]
                         }
                     }
                 ],
@@ -1205,6 +1322,7 @@
         "/v1/agents": {
             "get": {
                 "operationId": "auth.listAgents",
+                "description": "Optional role filter. Defaults: per_page=15 (max 100).",
                 "summary": "List staff users (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1752,7 +1870,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/UpdateUserProfileRequest"
                             }
@@ -1825,6 +1943,7 @@
         "/v1/users/search": {
             "get": {
                 "operationId": "user.search",
+                "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email, name or NPI (staff only)",
                 "tags": [
                     "Client Auth"
@@ -1908,6 +2027,7 @@
         "/v1/users-email/search": {
             "post": {
                 "operationId": "user.searchPost",
+                "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email (staff only)",
                 "tags": [
                     "Client Auth"
@@ -2351,7 +2471,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2415,7 +2535,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2453,7 +2573,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2504,7 +2624,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2657,7 +2777,8 @@
                         "in": "query",
                         "required": true,
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "maxLength": 100
                         }
                     }
                 ],
@@ -2693,7 +2814,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2728,7 +2849,7 @@
         "/v1/enrolements": {
             "get": {
                 "operationId": "enrollment.index",
-                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).\nDefault EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.",
+                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).\nDefault EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List enrollment requests",
                 "tags": [
                     "Enrollment - Physique"
@@ -2737,21 +2858,25 @@
                     {
                         "name": "statut",
                         "in": "query",
+                        "description": "Statut(s) \u00e0 filtrer: EN_ATTENTE, VALIDATION_AGENT, REJET_AGENT, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: EN_ATTENTE (agent) ou VALIDATION_AGENT|REJET_AGENT (responsable).",
                         "schema": {
                             "type": [
                                 "string",
                                 "null"
-                            ]
+                            ],
+                            "pattern": "^(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE))*$"
                         }
                     },
                     {
                         "name": "status",
                         "in": "query",
+                        "description": "Alias anglais de \"statut\". M\u00eames valeurs.",
                         "schema": {
                             "type": [
                                 "string",
                                 "null"
-                            ]
+                            ],
+                            "pattern": "^(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE))*$"
                         }
                     },
                     {
@@ -2807,6 +2932,7 @@
                     {
                         "name": "per_page",
                         "in": "query",
+                        "description": "D\u00e9faut: 15. Maximum: 100.",
                         "schema": {
                             "type": [
                                 "integer",
@@ -2819,14 +2945,15 @@
                     {
                         "name": "order_by",
                         "in": "query",
+                        "description": "D\u00e9faut: created_at.",
                         "schema": {
                             "type": [
                                 "string",
                                 "null"
                             ],
                             "enum": [
-                                "id",
                                 "created_at",
+                                "id",
                                 null
                             ]
                         }
@@ -2834,6 +2961,7 @@
                     {
                         "name": "order_dir",
                         "in": "query",
+                        "description": "D\u00e9faut: desc.",
                         "schema": {
                             "type": [
                                 "string",
@@ -3014,7 +3142,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -3073,7 +3201,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -3132,7 +3260,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -3183,7 +3311,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -3282,7 +3410,7 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -3330,65 +3458,13 @@
                 }
             }
         },
-        "/v1/decrypt/token/file/{filename}": {
-            "get": {
-                "operationId": "encryption.decryptAndDisplay",
-                "summary": "Decrypt and display an encrypted enrollment document (staff only)",
-                "tags": [
-                    "Encryption"
-                ],
-                "parameters": [
-                    {
-                        "name": "filename",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "object"
-                                        }
-                                    ]
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Content-Disposition": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/v1/health": {
             "get": {
                 "operationId": "singletons.healthCheck",
+                "description": "Public. Returns `{\"status\": \"UP\"}` (200) when the database is reachable,\n`{\"status\": \"DOWN\"}` (503) otherwise. Used by Consul and load balancers.",
+                "summary": "Service health check",
                 "tags": [
-                    "HealthCheck"
+                    "Infrastructure"
                 ],
                 "responses": {
                     "200": {
@@ -3529,7 +3605,9 @@
                         "maxLength": 20
                     },
                     "otp": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 6
                     }
                 },
                 "required": [
@@ -4765,7 +4843,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 1000
                     },
                     "motif": {
                         "type": [
@@ -4922,21 +5001,24 @@
                 "type": "object",
                 "properties": {
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "password": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     },
                     "pin": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "minLength": 4
+                        "minLength": 4,
+                        "maxLength": 12
                     },
                     "npi": {
                         "type": "string",
@@ -4953,11 +5035,13 @@
                 "type": "object",
                 "properties": {
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "password": {
                         "type": "string",
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     },
                     "npi": {
                         "type": "string",
@@ -4983,19 +5067,23 @@
                 "type": "object",
                 "properties": {
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "email": {
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "password": {
                         "type": "string",
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     },
                     "password_confirmation": {
                         "type": "string",
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     }
                 },
                 "required": [
@@ -5011,6 +5099,7 @@
                 "properties": {
                     "email": {
                         "type": "string",
+                        "format": "email",
                         "maxLength": 255
                     },
                     "limit": {
@@ -5052,7 +5141,8 @@
                 "type": "object",
                 "properties": {
                     "npi": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 50
                     }
                 },
                 "required": [
@@ -5103,15 +5193,18 @@
                 "type": "object",
                 "properties": {
                     "token": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "password": {
                         "type": "string",
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     },
                     "pin": {
                         "type": "string",
-                        "minLength": 4
+                        "minLength": 4,
+                        "maxLength": 12
                     },
                     "security_questions": {
                         "type": [
@@ -5122,10 +5215,12 @@
                             "type": "object",
                             "properties": {
                                 "question": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 },
                                 "answer": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "maxLength": 255
                                 }
                             }
                         }
@@ -5143,10 +5238,13 @@
                 "properties": {
                     "email": {
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "phonenumber": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 20
                     },
                     "name": {
                         "type": "string",
@@ -5260,10 +5358,13 @@
                 "properties": {
                     "email": {
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "phonenumber": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 20
                     },
                     "legal_name": {
                         "type": "string",
@@ -5394,7 +5495,9 @@
                             "string",
                             "null"
                         ],
-                        "maxLength": 2048
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 2048 kilobytes."
                     },
                     "email": {
                         "type": "string",
@@ -5652,7 +5755,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 1000
                     },
                     "motif": {
                         "type": [
@@ -5691,16 +5795,20 @@
                 "properties": {
                     "email": {
                         "type": "string",
-                        "format": "email"
+                        "format": "email",
+                        "maxLength": 255
                     },
                     "phonenumber": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 20
                     },
                     "liveness": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 50
                     },
                     "similarity": {
                         "type": [
@@ -5774,10 +5882,13 @@
                 "type": "object",
                 "properties": {
                     "npi": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 50
                     },
                     "otp": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 6
                     }
                 },
                 "required": [
