@@ -24,3 +24,4 @@ yarn-error.log
 # txdocs
 .commands
 .env.prod
+notes
