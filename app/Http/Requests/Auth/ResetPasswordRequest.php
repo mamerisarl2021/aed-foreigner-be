@@ -9,9 +9,9 @@ class ResetPasswordRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|confirmed|min:8',
+            'token' => 'required|string|max:100',
+            'email' => 'required|email|max:255',
+            'password' => 'required|confirmed|min:8|max:255',
         ];
     }
 }

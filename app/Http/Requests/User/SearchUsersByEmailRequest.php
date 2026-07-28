@@ -14,7 +14,7 @@ class SearchUsersByEmailRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }

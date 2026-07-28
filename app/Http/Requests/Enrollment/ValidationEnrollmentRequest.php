@@ -21,7 +21,7 @@ class ValidationEnrollmentRequest extends ApiFormRequest
 
         $rules = [
             'decision' => ['required', 'string', Rule::in(['APPROUVEE', 'REJET_CONFIRME', 'RETOUR_AGENT'])],
-            'commentaire' => ['nullable', 'string'],
+            'commentaire' => ['nullable', 'string', 'max:1000'],
         ];
 
         if ($this->input('decision') === 'RETOUR_AGENT') {

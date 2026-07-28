@@ -20,7 +20,7 @@ final class ActivityLogService
         ActivityLogAction $action,
         string $description,
         ?string $actorUserId = null,
-        ?int $enrollmentRequestId = null,
+        ?string $enrollmentRequestId = null,
         ?array $metadata = null,
     ): void {
         ActivityLog::create([

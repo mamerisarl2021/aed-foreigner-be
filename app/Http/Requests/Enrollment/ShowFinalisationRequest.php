@@ -14,7 +14,7 @@ class ShowFinalisationRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string'],
+            'token' => ['required', 'string', 'max:100'],
         ];
     }
 

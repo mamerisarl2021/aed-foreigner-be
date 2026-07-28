@@ -19,7 +19,7 @@ class RegulaAnalysisJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly int $enrollmentRequestId,
+        public readonly string $enrollmentRequestId,
     ) {}
 
     public function handle(RegulaService $regulaService): void

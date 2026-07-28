@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ use OwenIt\Auditing\Contracts\Auditable;
 class Identity extends Model implements Auditable
 {
     use HasFactory;
+    use HasUuids;
     use \OwenIt\Auditing\Auditable;
 
     protected $fillable = [

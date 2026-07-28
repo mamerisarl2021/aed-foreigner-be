@@ -63,7 +63,7 @@ final class ForeignerFinalizationService
     /**
      * @param  array<string, mixed>|null  $securityQuestions
      */
-    public function finalize(int $demandeId, string $token, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
+    public function finalize(string $demandeId, string $token, string $password, string $pin, ?array $securityQuestions = null): ServiceResult
     {
         $tokenData = PasswordResetToken::where('token', hash('sha256', $token))->where('type', 'finalisation')->first();
         if (! $tokenData) {

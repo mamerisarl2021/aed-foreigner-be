@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Traits\EncryptionTrait;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
+#[Group('Admin')]
 class EncryptionController extends Controller
 {
     use EncryptionTrait;
 
     /**
-     * Decrypt and display an encrypted enrollment document (staff only)
+     * Decrypt and display an encrypted enrollment document
+     *
+     * Staff only (viewAudits gate). `filename` is the stored encrypted file name;
+     * the decrypted content is returned inline with its detected MIME type.
+     * 404 when the file does not exist.
      */
     public function decryptAndDisplay(string $filename): Response
     {

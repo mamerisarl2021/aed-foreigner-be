@@ -134,7 +134,7 @@ class PersonneMoraleEnrollmentService
         }
     }
 
-    public function show(User $user, int $id): ServiceResult
+    public function show(User $user, string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -145,7 +145,7 @@ class PersonneMoraleEnrollmentService
         return ServiceResult::ok('Détail de la demande morale.', $enrollment);
     }
 
-    public function verifyEmail(int $id, string $token): ServiceResult
+    public function verifyEmail(string $id, string $token): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -184,7 +184,7 @@ class PersonneMoraleEnrollmentService
         ]);
     }
 
-    public function sendPhoneOtp(User $user, int $id): ServiceResult
+    public function sendPhoneOtp(User $user, string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -219,7 +219,7 @@ class PersonneMoraleEnrollmentService
         ]);
     }
 
-    public function verifyPhoneOtp(User $user, int $id, string $otp): ServiceResult
+    public function verifyPhoneOtp(User $user, string $id, string $otp): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 

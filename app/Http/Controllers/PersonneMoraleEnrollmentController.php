@@ -42,7 +42,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Morale enrollment detail (owner only)
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
         if (! $user) {
@@ -65,7 +65,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * May promote the request to EN_ATTENTE if the phone is also verified.
      */
-    public function verifyEmail(VerifyMoraleEmailRequest $request, int $id): JsonResponse
+    public function verifyEmail(VerifyMoraleEmailRequest $request, string $id): JsonResponse
     {
         return $this->respond($this->moraleEnrollment->verifyEmail($id, $request->input('token')));
     }
@@ -73,7 +73,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Send SMS OTP for company phone verification
      */
-    public function sendPhoneOtp(Request $request, int $id): JsonResponse
+    public function sendPhoneOtp(Request $request, string $id): JsonResponse
     {
         $user = $request->user();
         if (! $user) {
@@ -91,7 +91,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * May promote the request to EN_ATTENTE once both channels are verified.
      */
-    public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request, int $id): JsonResponse
+    public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request, string $id): JsonResponse
     {
         $user = $request->user();
         if (! $user) {

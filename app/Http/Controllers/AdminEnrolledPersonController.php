@@ -21,6 +21,8 @@ final class AdminEnrolledPersonController extends BaseController
 
     /**
      * List enrolled persons (read-only)
+     *
+     * Defaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.
      */
     public function index(ListEnrolledPersonsRequest $request): JsonResponse
     {

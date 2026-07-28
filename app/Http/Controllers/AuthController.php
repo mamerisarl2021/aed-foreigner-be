@@ -123,6 +123,8 @@ class AuthController extends BaseController
 
     /**
      * List staff users (admin only)
+     *
+     * Optional role filter. Defaults: per_page=15 (max 100).
      */
     public function listAgents(ListAgentsRequest $request): JsonResponse
     {

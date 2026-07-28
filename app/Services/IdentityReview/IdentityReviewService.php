@@ -97,9 +97,10 @@ class IdentityReviewService
             $query->whereDate('created_at', '<=', Carbon::parse($request->input('to'))->toDateString());
         }
 
-        $orderBy = $request->input('order_by', 'id');
+        // UUID PKs are not sequential, so created_at is the meaningful default sort.
+        $orderBy = $request->input('order_by', 'created_at');
         if (! in_array($orderBy, ['id', 'created_at'], true)) {
-            $orderBy = 'id';
+            $orderBy = 'created_at';
         }
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($orderBy, $orderDir);
@@ -109,7 +110,7 @@ class IdentityReviewService
         return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate($perPage);
     }
 
-    public function show(int $id): ServiceResult
+    public function show(string $id): ServiceResult
     {
         $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
         $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
@@ -117,7 +118,7 @@ class IdentityReviewService
         return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
 
-    public function claim(int $id, string $agentId): ServiceResult
+    public function claim(string $id, string $agentId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -142,7 +143,7 @@ class IdentityReviewService
         return ServiceResult::ok('Demande prise en charge.', $enrollment);
     }
 
-    public function claimValidation(int $id, string $responsableId): ServiceResult
+    public function claimValidation(string $id, string $responsableId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -170,7 +171,7 @@ class IdentityReviewService
         return ServiceResult::ok('Décision prise en charge.', $enrollment);
     }
 
-    public function instruction(int $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
+    public function instruction(string $id, string $statut, ?array $motif = null, ?string $comments = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -189,7 +190,7 @@ class IdentityReviewService
         return ServiceResult::fail('Statut d\'instruction invalide.', null, 422);
     }
 
-    public function validation(int $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
+    public function validation(string $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
     {
         return match ($decision) {
             'APPROUVEE' => $this->supervisorApprove($id, (string) $supervisorId),
@@ -287,7 +288,7 @@ class IdentityReviewService
         ]);
     }
 
-    public function supervisorApprove(int $id, string $supervisorId): ServiceResult
+    public function supervisorApprove(string $id, string $supervisorId): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -419,7 +420,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorConfirmReject(int $id, ?string $supervisorId = null): ServiceResult
+    public function supervisorConfirmReject(string $id, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 
@@ -477,7 +478,7 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorReturnToAgent(int $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
+    public function supervisorReturnToAgent(string $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
     {
         $enrollment = EnrollmentRequest::findOrFail($id);
 

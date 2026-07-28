@@ -22,6 +22,7 @@ final class AdminActivityLogController extends BaseController
      * List business activity logs (journaux)
      *
      * Optional filters: q, action, from, to, per_page.
+     * Defaults: per_page=15 (max 100), sorted by created_at desc.
      */
     public function index(ListActivityLogsRequest $request): JsonResponse
     {

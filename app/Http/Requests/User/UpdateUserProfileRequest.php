@@ -15,7 +15,7 @@ class UpdateUserProfileRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'profile' => ['nullable', 'mimes:png,jpeg,jpg', 'max:2048'],
+            'profile' => ['nullable', 'file', 'mimes:png,jpeg,jpg', 'max:2048'],
             'email' => [
                 'required',
                 'email',

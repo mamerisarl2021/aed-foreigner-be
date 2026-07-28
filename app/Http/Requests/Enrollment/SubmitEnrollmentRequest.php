@@ -19,8 +19,8 @@ class SubmitEnrollmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
-            'phonenumber' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:255'],
+            'phonenumber' => ['required', 'string', 'min:8', 'max:20'],
             'name' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],
             'sexe' => ['required', 'string', 'in:M,F'],

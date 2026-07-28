@@ -14,9 +14,9 @@ class VerifyKycRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
-            'phonenumber' => ['required', 'string'],
-            'liveness' => ['nullable'],
+            'email' => ['required', 'email', 'max:255'],
+            'phonenumber' => ['required', 'string', 'min:8', 'max:20'],
+            'liveness' => ['nullable', 'string', 'max:50'],
             'similarity' => ['nullable', 'numeric'],
             'selfie' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'recto' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],

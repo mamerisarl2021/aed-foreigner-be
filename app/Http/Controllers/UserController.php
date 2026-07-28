@@ -75,6 +75,8 @@ class UserController extends BaseController
 
     /**
      * Search users by email, name or NPI (staff only)
+     *
+     * Defaults: limit=10 (max 100).
      */
     public function search(SearchUsersRequest $request): JsonResponse
     {
@@ -95,6 +97,8 @@ class UserController extends BaseController
 
     /**
      * Search users by email (staff only)
+     *
+     * Defaults: limit=10 (max 100).
      */
     public function searchPost(SearchUsersByEmailRequest $request): JsonResponse
     {

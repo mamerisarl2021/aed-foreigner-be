@@ -22,8 +22,8 @@ class SubmitMoraleEnrollmentRequest extends FormRequest
         $isLegalRep = filter_var($this->input('is_legal_representative', true), FILTER_VALIDATE_BOOLEAN);
 
         return [
-            'email' => ['required', 'email'],
-            'phonenumber' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:255'],
+            'phonenumber' => ['required', 'string', 'min:8', 'max:20'],
             'legal_name' => ['required', 'string', 'max:255'],
             'legal_form' => ['nullable', 'string', 'max:255'],
             'country_of_incorporation' => ['required', 'string', 'max:255'],

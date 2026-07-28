@@ -32,7 +32,7 @@ final class FinalisationController extends BaseController
      *
      * Diagram §4. TrustedX identity must already exist (APPROUVEE). Sets statut ENROLEE.
      */
-    public function store(StoreFinalisationRequest $request, int $id): JsonResponse
+    public function store(StoreFinalisationRequest $request, string $id): JsonResponse
     {
         return $this->respond($this->finalizationService->finalize(
             $id,

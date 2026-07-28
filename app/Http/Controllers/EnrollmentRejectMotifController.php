@@ -15,6 +15,9 @@ class EnrollmentRejectMotifController extends BaseController
 {
     /**
      * List enrollment reject motifs
+     *
+     * Defaults: active_only=true. Optional stage filter
+     * (KYC, DOCUMENT, BIOMETRY, COMPANY, REPRESENTATIVE, OTHER).
      */
     public function index(ListRejectMotifsRequest $request): JsonResponse
     {

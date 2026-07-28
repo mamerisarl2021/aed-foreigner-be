@@ -14,12 +14,12 @@ class StoreFinalisationRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8'],
-            'pin' => ['required', 'string', 'min:4'],
+            'token' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'pin' => ['required', 'string', 'min:4', 'max:12'],
             'security_questions' => ['nullable', 'array'],
-            'security_questions.*.question' => ['required_with:security_questions', 'string'],
-            'security_questions.*.answer' => ['required_with:security_questions', 'string'],
+            'security_questions.*.question' => ['required_with:security_questions', 'string', 'max:255'],
+            'security_questions.*.answer' => ['required_with:security_questions', 'string', 'max:255'],
         ];
     }
 

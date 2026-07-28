@@ -25,7 +25,7 @@ return new class extends Migration
         }
 
         Schema::create('enrollment_reject_motifs', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('code')->unique();
             $table->string('label_fr');
             $table->string('stage'); // KYC|DOCUMENT|BIOMETRY|OTHER

@@ -14,8 +14,8 @@ class ResetClientPasswordRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8'],
+            'token' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
             'npi' => ['required', 'string', 'max:50'],
             'type' => ['required', 'string', 'in:password,pin'],
         ];

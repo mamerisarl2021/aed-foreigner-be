@@ -20,7 +20,7 @@ class UploadEnrollmentFilesJob implements ShouldQueue
      * @param  array<string, string|null>  $localPaths
      */
     public function __construct(
-        public readonly int $enrollmentRequestId,
+        public readonly string $enrollmentRequestId,
         public readonly array $localPaths,
     ) {}
 
