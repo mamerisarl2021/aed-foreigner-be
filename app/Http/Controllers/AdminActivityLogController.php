@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\ListActivityLogsRequest;
 use App\Http\Resources\ActivityLogListResource;
 use App\Models\ActivityLog;
 use App\Services\ActivityLog\ActivityLogService;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use OpenApi\Annotations as OA;
 
+#[Group('Admin')]
 final class AdminActivityLogController extends BaseController
 {
     public function __construct(
@@ -18,23 +19,11 @@ final class AdminActivityLogController extends BaseController
     ) {}
 
     /**
-     * @OA\Get(
-     *      path="/api/v1/admin/activity-logs",
-     *      operationId="adminActivityLogs",
-     *      tags={"Admin"},
-     *      summary="List business activity logs (journaux)",
-     *      security={{"sanctum":{}}},
+     * List business activity logs (journaux)
      *
-     *      @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
-     *      @OA\Parameter(name="action", in="query", @OA\Schema(type="string")),
-     *      @OA\Parameter(name="from", in="query", @OA\Schema(type="string", format="date")),
-     *      @OA\Parameter(name="to", in="query", @OA\Schema(type="string", format="date")),
-     *      @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
-     *
-     *      @OA\Response(response=200, description="Paginated activity logs")
-     * )
+     * Optional filters: q, action, from, to, per_page.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListActivityLogsRequest $request): JsonResponse
     {
         $this->authorize('viewAny', ActivityLog::class);
 

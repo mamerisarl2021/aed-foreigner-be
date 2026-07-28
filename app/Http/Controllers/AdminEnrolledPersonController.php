@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\ListEnrolledPersonsRequest;
 use App\Http\Resources\EnrolledPersonDetailResource;
 use App\Http\Resources\EnrolledPersonListResource;
 use App\Services\Admin\EnrolledPersonService;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use OpenApi\Annotations as OA;
 
+#[Group('Admin')]
 final class AdminEnrolledPersonController extends BaseController
 {
     public function __construct(
@@ -19,20 +20,9 @@ final class AdminEnrolledPersonController extends BaseController
     ) {}
 
     /**
-     * @OA\Get(
-     *      path="/api/v1/admin/enrolled-persons",
-     *      operationId="adminEnrolledPersons",
-     *      tags={"Admin"},
-     *      summary="List enrolled persons (read-only)",
-     *      security={{"sanctum":{}}},
-     *
-     *      @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
-     *      @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
-     *
-     *      @OA\Response(response=200, description="Paginated enrolled persons")
-     * )
+     * List enrolled persons (read-only)
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListEnrolledPersonsRequest $request): JsonResponse
     {
         Gate::authorize('viewAnyEnrolledPerson');
 
@@ -43,18 +33,7 @@ final class AdminEnrolledPersonController extends BaseController
     }
 
     /**
-     * @OA\Get(
-     *      path="/api/v1/admin/enrolled-persons/{id}",
-     *      operationId="adminEnrolledPersonShow",
-     *      tags={"Admin"},
-     *      summary="Enrolled person detail (read-only)",
-     *      security={{"sanctum":{}}},
-     *
-     *      @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string", format="uuid")),
-     *
-     *      @OA\Response(response=200, description="Detail"),
-     *      @OA\Response(response=404, description="Not found")
-     * )
+     * Enrolled person detail (read-only)
      */
     public function show(string $id): JsonResponse
     {

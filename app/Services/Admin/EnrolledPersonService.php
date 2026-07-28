@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Enums\EnrollmentStatus;
-use App\Models\EnrollmentRequest;
 use App\Models\User;
 use App\Services\ServiceResult;
-use Carbon\Carbon;
 use Exception;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
 final class EnrolledPersonService

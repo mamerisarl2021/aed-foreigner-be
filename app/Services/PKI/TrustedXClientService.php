@@ -241,7 +241,7 @@ class TrustedXClientService
                 'role' => 'ROLE_SUBSCRIBER',
                 'first_login' => 'YES',
             ];
-            $request = new Psr7Request('POST', 'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users', $headers, json_encode($payload));
+            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users", $headers, json_encode($payload));
             $response = $client->sendAsync($request)->wait();
             if ($response->getStatusCode() == 200) {
                 $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
@@ -275,7 +275,7 @@ class TrustedXClientService
                 'value' => $user['password'],
                 'max_attempts' => 3,
             ];
-            $request = new Psr7Request('PUT', 'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users/'.$user['id']."/passwords/$type", $headers, json_encode($body));
+            $request = new Psr7Request('PUT', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$user['id']."/passwords/$type", $headers, json_encode($body));
             $response = $client->sendAsync($request)->wait();
             if ($response->getStatusCode() == 200) {
                 $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
@@ -369,7 +369,7 @@ class TrustedXClientService
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
             ];
-            $request = new Psr7Request('GET', 'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users?filter=npi eq "'.$npi.'"', $headers);
+            $request = new Psr7Request('GET', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users?filter=npi eq \"".$npi.'"', $headers);
             $response = $client->sendAsync($request)->wait();
             $jsonResponse = $response->getBody()->getContents();
             if ($response->getStatusCode() == 200 && ! empty(json_decode($jsonResponse, true)['users'])) {
@@ -420,7 +420,7 @@ class TrustedXClientService
 
                 $request = new Psr7Request(
                     'PATCH',
-                    'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users/'.$userId,
+                    "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId,
                     $headers,
                     json_encode($updateData, true)
                 );
@@ -476,7 +476,7 @@ class TrustedXClientService
 
                 $request = new Psr7Request(
                     'PATCH',
-                    'https://test-tx-pki.gouv.bj/trustedx-resources/accounts/v1/users/'.$userId,
+                    "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId,
                     $headers,
                     json_encode($updateData, true)
                 );

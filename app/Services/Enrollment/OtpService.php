@@ -21,6 +21,8 @@ final class OtpService
 
     private const VALIDITY_MINUTES = 10;
 
+    private const MAX_ATTEMPTS = 5;
+
     public function __construct(
         private readonly EnrollmentEventPublisherInterface $events,
     ) {}
@@ -36,7 +38,8 @@ final class OtpService
         if ($email) {
             $email = strtolower(trim($email));
             $otp = (string) random_int(100000, 999999);
-            Cache::put($this->emailKey($email), $otp, now()->addMinutes(self::TTL_MINUTES));
+            Cache::put($this->emailKey($email), hash('sha256', $otp), now()->addMinutes(self::TTL_MINUTES));
+            Cache::forget($this->attemptsKey('email', $email));
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
                 subject: 'Votre code OTP AED',
                 template: NotificationTemplate::ForeignerOtp,
@@ -51,7 +54,8 @@ final class OtpService
         if ($phonenumber) {
             $phone = $this->normalizePhone($phonenumber);
             $otp = (string) random_int(100000, 999999);
-            Cache::put($this->phoneKey($phone), $otp, now()->addMinutes(self::TTL_MINUTES));
+            Cache::put($this->phoneKey($phone), hash('sha256', $otp), now()->addMinutes(self::TTL_MINUTES));
+            Cache::forget($this->attemptsKey('phone', $phone));
             SendSmsNotificationJob::dispatch(new SmsNotificationData(
                 subject: "Votre code OTP AED est : {$otp} (valide ".self::TTL_MINUTES.' minutes).',
                 recipients: [NotificationRecipient::phone($phone, ['otp' => $otp])],
@@ -75,28 +79,44 @@ final class OtpService
 
     public function verify(?string $email, ?string $phonenumber, string $otp): ServiceResult
     {
+        if (! $email && ! $phonenumber) {
+            return ServiceResult::fail('Email ou numéro de téléphone requis.', null, 422);
+        }
+
         if ($email) {
             $email = strtolower(trim($email));
+
+            if ($this->tooManyAttempts('email', $email)) {
+                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            }
+
             $expected = Cache::get($this->emailKey($email));
-            if (! $expected || $expected !== $otp) {
+            if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
+                $this->recordFailedAttempt('email', $email);
+
                 return ServiceResult::fail('OTP email invalide ou expiré.', null, 400);
             }
             Cache::put($this->verifiedEmailKey($email), true, now()->addMinutes(self::VALIDITY_MINUTES));
             Cache::forget($this->emailKey($email));
+            Cache::forget($this->attemptsKey('email', $email));
         }
 
         if ($phonenumber) {
             $phone = $this->normalizePhone($phonenumber);
+
+            if ($this->tooManyAttempts('phone', $phone)) {
+                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            }
+
             $expected = Cache::get($this->phoneKey($phone));
-            if (! $expected || $expected !== $otp) {
+            if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
+                $this->recordFailedAttempt('phone', $phone);
+
                 return ServiceResult::fail('OTP téléphone invalide ou expiré.', null, 400);
             }
             Cache::put($this->verifiedPhoneKey($phone), true, now()->addMinutes(self::VALIDITY_MINUTES));
             Cache::forget($this->phoneKey($phone));
-        }
-
-        if (! $email && ! $phonenumber) {
-            return ServiceResult::fail('Email ou numéro de téléphone requis.', null, 422);
+            Cache::forget($this->attemptsKey('phone', $phone));
         }
 
         return ServiceResult::ok('OTP valide — email & téléphone confirmés.', [
@@ -125,6 +145,18 @@ final class OtpService
         return preg_replace('/[^\d+]/', '', trim($phonenumber)) ?? '';
     }
 
+    private function tooManyAttempts(string $channel, string $identifier): bool
+    {
+        return (int) Cache::get($this->attemptsKey($channel, $identifier), 0) >= self::MAX_ATTEMPTS;
+    }
+
+    private function recordFailedAttempt(string $channel, string $identifier): void
+    {
+        $key = $this->attemptsKey($channel, $identifier);
+        Cache::add($key, 0, now()->addMinutes(self::TTL_MINUTES));
+        Cache::increment($key);
+    }
+
     private function emailKey(string $email): string
     {
         return 'enrollment_otp_email_'.$email;
@@ -133,6 +165,11 @@ final class OtpService
     private function phoneKey(string $phone): string
     {
         return 'enrollment_otp_phone_'.$phone;
+    }
+
+    private function attemptsKey(string $channel, string $identifier): string
+    {
+        return 'enrollment_otp_attempts_'.$channel.'_'.$identifier;
     }
 
     private function verifiedEmailKey(string $email): string

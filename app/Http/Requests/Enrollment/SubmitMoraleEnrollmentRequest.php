@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
+use App\Models\EnrollmentRequest;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SubmitMoraleEnrollmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('submitMorale', \App\Models\EnrollmentRequest::class) ?? false;
+        return $this->user()?->can('submitMorale', EnrollmentRequest::class) ?? false;
     }
 
     /**

@@ -20,6 +20,10 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
+        if (app()->isProduction() && $password === 'Secret123!') {
+            throw new \RuntimeException('Refusing to seed the default admin password in production. Set a strong SEED_ADMIN_PASSWORD.');
+        }
+
         Role::firstOrCreate([
             'name' => config('roles.administrateur_plateforme'),
             'guard_name' => 'web',

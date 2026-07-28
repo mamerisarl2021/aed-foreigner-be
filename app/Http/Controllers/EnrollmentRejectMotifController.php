@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\ListRejectMotifsRequest;
 use App\Http\Resources\EnrollmentRejectMotifResource;
 use App\Models\EnrollmentRejectMotif;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
+#[Group('Admin')]
 class EnrollmentRejectMotifController extends BaseController
 {
-    public function index(Request $request): JsonResponse
+    /**
+     * List enrollment reject motifs
+     */
+    public function index(ListRejectMotifsRequest $request): JsonResponse
     {
         $this->authorize('viewAny', EnrollmentRejectMotif::class);
 

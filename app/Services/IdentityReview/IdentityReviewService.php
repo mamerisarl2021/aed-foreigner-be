@@ -16,16 +16,16 @@ use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
-use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\ActivityLog\ActivityLogService;
+use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use App\Support\NpiAllocator;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -104,7 +104,9 @@ class IdentityReviewService
         $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($orderBy, $orderDir);
 
-        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate((int) $request->input('per_page', 15));
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
+
+        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate($perPage);
     }
 
     public function show(int $id): ServiceResult
@@ -266,7 +268,7 @@ class IdentityReviewService
             ActivityLogAction::RejetAgent,
             sprintf(
                 '%s a rejeté la demande n°%d.',
-                ActivityLogService::actorLabel($agent),
+                ActivityLogService::actorLabel($enrollment->assignedAgent),
                 $enrollment->id
             ),
             $enrollment->assigned_agent_id,
@@ -361,7 +363,7 @@ class IdentityReviewService
             $finalisationToken = Str::random(60);
             PasswordResetToken::updateOrCreate(
                 ['npi' => $user->npi, 'type' => 'finalisation'],
-                ['token' => $finalisationToken, 'created_at' => Carbon::now()]
+                ['token' => hash('sha256', $finalisationToken), 'created_at' => Carbon::now()]
             );
 
             $link = config('app.frontend_url').'/enrolements/finalisation?token='.$finalisationToken;

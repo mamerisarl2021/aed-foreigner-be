@@ -28,24 +28,15 @@ class UserRegistrationService
         private readonly AnipSimulatorService $anipSimulator,
     ) {}
 
+    private const OTP_MAX_ATTEMPTS = 5;
+
     public function sendOtp(string $npi): ServiceResult
     {
-        $otp = implode('', array_map(fn () => (string) mt_rand(0, 9), range(1, 6)));
+        $otp = (string) random_int(100000, 999999);
         $validUntil = Carbon::now()->addMinutes(5);
 
-        $existingOTP = OTP::where('npi', $npi)->first();
-        if ($existingOTP) {
-            $existingOTP->update(['otp' => $otp, 'valid_until' => $validUntil]);
-        } else {
-            OTP::create([
-                'npi' => $npi,
-                'otp' => $otp,
-                'valid_until' => $validUntil,
-            ]);
-        }
-
         $anipData = $this->anipSimulator->getUserData($npi);
-        if (! $anipData['status']) {
+        if (! ($anipData['status'] ?? false)) {
             Log::error('NPI inexistant');
 
             return ServiceResult::fail(
@@ -54,6 +45,12 @@ class UserRegistrationService
                 404
             );
         }
+
+        OTP::updateOrCreate(
+            ['npi' => $npi],
+            ['otp' => hash('sha256', $otp), 'valid_until' => $validUntil]
+        );
+        Cache::forget('user_'.$npi.'_otp_attempts');
 
         SendOTPJob::dispatch($anipData['data']['email'], $otp);
         Cache::put('user_'.$npi, ['data' => $anipData], 600);
@@ -64,12 +61,19 @@ class UserRegistrationService
     public function verifyOtp(string $npi, string $otp): ServiceResult
     {
         try {
+            $attemptsKey = 'user_'.$npi.'_otp_attempts';
+            if ((int) Cache::get($attemptsKey, 0) >= self::OTP_MAX_ATTEMPTS) {
+                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            }
+
             $existingOTP = OTP::where('npi', $npi)
-                ->where('otp', $otp)
                 ->where('valid_until', '>=', Carbon::now())
                 ->first();
 
-            if (! $existingOTP) {
+            if (! $existingOTP || ! hash_equals((string) $existingOTP->otp, hash('sha256', $otp))) {
+                Cache::add($attemptsKey, 0, 300);
+                Cache::increment($attemptsKey);
+
                 return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
             }
 
@@ -78,12 +82,15 @@ class UserRegistrationService
                 return ServiceResult::fail("Le code OTP n'est plus valide veuillez réessayer", null, 404);
             }
 
+            Cache::forget($attemptsKey);
             $ttlSeconds = Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
             Cache::put('user_'.$npi.'_validate_otp', true, $ttlSeconds > 0 ? $ttlSeconds : 300);
 
             return ServiceResult::ok('OTP valide.', $cachedData['data']);
         } catch (Exception $e) {
-            return ServiceResult::fail($e->getMessage(), null, 500);
+            Log::error('OTP verification failed: '.$e->getMessage());
+
+            return ServiceResult::fail('Erreur lors de la vérification du code OTP.', null, 500);
         }
     }
 
@@ -133,7 +140,7 @@ class UserRegistrationService
 
         PasswordResetToken::updateOrCreate(
             ['npi' => $npi, 'type' => $type],
-            ['token' => $token, 'created_at' => Carbon::now(), 'type' => $type]
+            ['token' => hash('sha256', $token), 'created_at' => Carbon::now(), 'type' => $type]
         );
 
         $user = $this->trustedXClient->getUserWithNPI($npi);

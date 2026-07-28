@@ -1,41 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Models\EnrollmentRequest;
-use App\Models\Identity;
-use App\Models\OTP;
-use App\Models\User;
+use App\Services\Stats\StatsService;
+use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
-class StatsController extends Controller
+#[Group('Admin')]
+class StatsController extends BaseController
 {
-    public function index()
+    public function __construct(
+        private readonly StatsService $stats,
+    ) {}
+
+    /**
+     * Platform statistics overview
+     *
+     * Totals per entity, users per role, and enrollment requests per status.
+     */
+    public function index(): JsonResponse
     {
-        $stats = [
-            'total_users' => User::count(),
-            'total_identities' => Identity::count(),
-            'total_enrollment_requests' => EnrollmentRequest::count(),
-            'total_otps' => OTP::count(),
-        ];
+        Gate::authorize('viewStats');
 
-        $roles = [
-            'administrateur_plateforme' => User::role(config('roles.administrateur_plateforme'))->count(),
-            'client' => User::role(config('roles.client'))->count(),
-            'agent' => User::role(config('roles.agent'))->count(),
-            'responsable_de_validation' => User::role(config('roles.responsable_de_validation'))->count(),
-            'manager' => User::role(config('roles.manager'))->count(),
-            'auditeur' => User::role(config('roles.auditeur'))->count(),
-        ];
-
-        $enrollmentByStatus = EnrollmentRequest::query()
-            ->selectRaw('status, count(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status');
-
-        return response()->json([
-            'stats' => $stats,
-            'roles' => $roles,
-            'enrollment_by_status' => $enrollmentByStatus,
-        ]);
+        return $this->respond($this->stats->overview());
     }
 }

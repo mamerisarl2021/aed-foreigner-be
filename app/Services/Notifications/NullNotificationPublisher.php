@@ -9,15 +9,9 @@ use App\DataTransferObjects\WebsocketNotificationData;
 
 final class NullNotificationPublisher implements NotificationPublisherInterface
 {
-    public function publishEmail(EmailNotificationData $notification): void
-    {
-    }
+    public function publishEmail(EmailNotificationData $notification): void {}
 
-    public function publishSms(SmsNotificationData $notification): void
-    {
-    }
+    public function publishSms(SmsNotificationData $notification): void {}
 
-    public function publishWebsocket(WebsocketNotificationData $notification): void
-    {
-    }
+    public function publishWebsocket(WebsocketNotificationData $notification): void {}
 }

@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Singletons;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
+use App\Http\Resources\UserResource;
+use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class UserProfileController extends Controller
+#[Group('Client Auth')]
+class UserProfileController extends BaseController
 {
     /**
-     * @return mixed
+     * Authenticated user profile
      */
-    public function __invoke(Request $request)
+    public function __invoke(Request $request): JsonResponse
     {
-        return $request->user();
+        return $this->sendResponse('Profil utilisateur.', new UserResource($request->user()));
     }
 }

@@ -57,17 +57,14 @@ trait EncryptionTrait
 
     public function storeEncFile($fileName, $filePath, $folder)
     {
-        // Lire le contenu du fichier
         $content = file_get_contents($filePath);
-        $publicKey = file_get_contents(storage_path('aed-public.key'));
-        // The encryption method
+        $key = $this->encryptionKey();
         $method = 'AES-256-CBC';
-        // The IV
-        $iv = '4921a67c51de4c8b';
-        // Créer une instance RSA ave// The encrypted data
-        $encryptedData = openssl_encrypt($content, $method, $publicKey, OPENSSL_RAW_DATA, $iv);
+        // Random IV per file, prepended to the ciphertext (new format).
+        $iv = random_bytes(16);
+        $encryptedData = openssl_encrypt($content, $method, $key, OPENSSL_RAW_DATA, $iv);
         $path = Storage::path("public/$folder/$fileName");
-        file_put_contents($path, $encryptedData);
+        file_put_contents($path, $iv.$encryptedData);
 
         return $fileName;
     }
@@ -84,22 +81,30 @@ trait EncryptionTrait
 
     public function getEncFile(string $filename, string $folder)
     {
-        // Chemin complet vers le fichier chiffré
         $encryptedFileFullPath = Storage::path("public/$folder/$filename");
-        // Lire le contenu chiffré du fichier
         $encryptedContent = file_get_contents($encryptedFileFullPath);
 
-        // Charger la clé privée
-        $privateKey = file_get_contents(storage_path('aed-public.key'));
-        // Déchiffrer le contenu avec la clé privée
+        $key = $this->encryptionKey();
         $method = 'AES-256-CBC';
-        // The IV
-        $iv = '4921a67c51de4c8b';
-        // Créer une instance RSA ave// The encrypted data
-        $decryptedContent = openssl_decrypt($encryptedContent, $method, $privateKey, OPENSSL_RAW_DATA, $iv);
 
-        // Encode the decrypted content to base64
-        return base64_encode($decryptedContent);
+        // New format: the first 16 bytes are the random IV.
+        if (strlen($encryptedContent) > 16) {
+            $iv = substr($encryptedContent, 0, 16);
+            $decryptedContent = openssl_decrypt(substr($encryptedContent, 16), $method, $key, OPENSSL_RAW_DATA, $iv);
+            if ($decryptedContent !== false) {
+                return base64_encode($decryptedContent);
+            }
+        }
+
+        // Legacy format: whole file encrypted with a fixed IV (files stored before the crypto fix).
+        $decryptedContent = openssl_decrypt($encryptedContent, $method, $key, OPENSSL_RAW_DATA, '4921a67c51de4c8b');
+
+        return base64_encode($decryptedContent === false ? '' : $decryptedContent);
+    }
+
+    private function encryptionKey(): string
+    {
+        return (string) file_get_contents(storage_path('aed-public.key'));
     }
 
     public function deleteDirectory($folderTemporary)

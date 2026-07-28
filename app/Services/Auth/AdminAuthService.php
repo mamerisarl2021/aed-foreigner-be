@@ -12,10 +12,9 @@ use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\StaffRoleMapper;
 use Exception;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +24,13 @@ class AdminAuthService
 {
     public function __construct(
         private readonly ActivityLogService $activityLog,
+        private readonly KeycloakJwtValidator $keycloakJwtValidator,
     ) {}
+
+    public static function staffKeycloakEnabled(): bool
+    {
+        return (bool) config('keycloak.staff.enabled');
+    }
 
     /** @return list<string> */
     private static function staffRoles(): array
@@ -73,7 +78,7 @@ class AdminAuthService
         }
     }
 
-    public function registerAgent(array $input): ServiceResult
+    public function registerAgent(array $input, ?User $actor = null): ServiceResult
     {
         try {
             $defaultPassword = Str::password(12);
@@ -93,17 +98,16 @@ class AdminAuthService
 
             WelcomeAgentJob::dispatch($user, $defaultPassword);
 
-            $actorId = Auth::id();
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurCree,
                 sprintf(
                     '%s a créé le compte utilisateur %s %s (%s).',
-                    ActivityLogService::actorLabel(Auth::user()),
+                    ActivityLogService::actorLabel($actor),
                     $user->first_name,
                     $user->name,
                     $user->email
                 ),
-                is_string($actorId) ? $actorId : null,
+                is_string($actor?->id) ? $actor->id : null,
             );
 
             return ServiceResult::ok('Agent enregistré avec succès', (new StaffUserDetailResource($user))->resolve());
@@ -114,7 +118,7 @@ class AdminAuthService
         }
     }
 
-    public function loginDirect(User $user): ServiceResult
+    public function loginDirect(User $user, bool $requirePassword = true): ServiceResult
     {
         if (! $user->hasAnyRole(self::staffRoles())) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
@@ -124,7 +128,7 @@ class AdminAuthService
             return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
         }
 
-        if (empty($user->password)) {
+        if ($requirePassword && empty($user->password)) {
             return ServiceResult::fail('Mot de passe non défini. Contactez un administrateur.', null, 403);
         }
 
@@ -145,6 +149,38 @@ class AdminAuthService
     }
 
     /**
+     * Exchange a Keycloak access token (frontend OIDC login) for a Sanctum token.
+     * The local users table stays the source of truth: the account must exist
+     * locally with a staff role; Keycloak only proves identity.
+     */
+    public function loginWithKeycloak(string $accessToken): ServiceResult
+    {
+        if (! self::staffKeycloakEnabled()) {
+            return ServiceResult::fail('Authentification Keycloak non activée.', null, 403);
+        }
+
+        try {
+            $payload = $this->keycloakJwtValidator->validate($accessToken, 'keycloak.staff');
+        } catch (\Throwable $e) {
+            Log::warning('Staff Keycloak login rejected: '.$e->getMessage());
+
+            return ServiceResult::fail('Token Keycloak invalide.', null, 401);
+        }
+
+        $email = $payload['email'] ?? $payload['preferred_username'] ?? null;
+        if (! is_string($email) || $email === '') {
+            return ServiceResult::fail('Le token Keycloak ne contient pas d\'email.', null, 401);
+        }
+
+        $user = User::where('email', strtolower(trim($email)))->first();
+        if (! $user) {
+            return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
+        }
+
+        return $this->loginDirect($user, requirePassword: false);
+    }
+
+    /**
      * @param  array{current_password: string, password: string}  $validatedData
      */
     public function changePassword(User $user, array $validatedData): ServiceResult
@@ -157,7 +193,10 @@ class AdminAuthService
         $user->must_change_password = false;
         $user->save();
 
-        return ServiceResult::ok('Mot de passe mis à jour avec succès.', []);
+        // Revoke every Sanctum token so all sessions must re-authenticate.
+        $user->tokens()->delete();
+
+        return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
 
     public function listAgents(Request $request): ServiceResult
@@ -242,6 +281,9 @@ class AdminAuthService
             $user->status = 'ACTIVE';
             $user->must_change_password = false;
             $user->save();
+
+            // Revoke every Sanctum token so all sessions must re-authenticate.
+            $user->tokens()->delete();
 
             DB::table('password_reset_tokens')->where('email', $validatedData['email'])->delete();
 

@@ -1,9 +1,14 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Regula;
 
 class MockRegulaService implements RegulaService
 {
+    /**
+     * @param  array<string, mixed>  $files
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     public function analyzeIdentity(array $files, array $data): array
     {
         $riskScore = random_int(0, 10);

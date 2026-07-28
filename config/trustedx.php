@@ -18,6 +18,10 @@ return [
 
     'anip_base_url' => env('ANIP_BASE_URL'),
 
+    'anip_username' => env('ANIP_USERNAME'),
+
+    'anip_password' => env('ANIP_PASSWORD'),
+
     'timestamp' => [
         'url' => env('TIMESTAMP_API_URL'),
         'username' => env('TIMESTAMP_API_USERNAME'),

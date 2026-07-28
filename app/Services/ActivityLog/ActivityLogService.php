@@ -8,8 +8,8 @@ use App\Enums\ActivityLogAction;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class ActivityLogService
 {

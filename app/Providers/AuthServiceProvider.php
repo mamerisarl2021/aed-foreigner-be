@@ -7,22 +7,28 @@ use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\OTP;
+use App\Models\User;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\AuthorizationPolicy;
 use App\Policies\EnrolledPersonPolicy;
+use App\Policies\EnrollmentRejectMotifPolicy;
+use App\Policies\EnrollmentRequestPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Opcodes\LogViewer\Facades\LogViewer;
 
 class AuthServiceProvider extends ServiceProvider
 {
     /** @var array<class-string, class-string> */
     protected $policies = [
-        EnrollmentRequest::class => \App\Policies\EnrollmentRequestPolicy::class,
-        EnrollmentRejectMotif::class => \App\Policies\EnrollmentRejectMotifPolicy::class,
+        EnrollmentRequest::class => EnrollmentRequestPolicy::class,
+        EnrollmentRejectMotif::class => EnrollmentRejectMotifPolicy::class,
         ActivityLog::class => ActivityLogPolicy::class,
         Identity::class => AuthorizationPolicy::class,
         OTP::class => AuthorizationPolicy::class,
+        User::class => UserPolicy::class,
     ];
 
     public function boot(): void
@@ -32,6 +38,17 @@ class AuthServiceProvider extends ServiceProvider
         $enrolledPersonPolicy = new EnrolledPersonPolicy;
         Gate::define('viewAnyEnrolledPerson', fn ($user) => $enrolledPersonPolicy->viewAny($user));
         Gate::define('viewEnrolledPerson', fn ($user) => $enrolledPersonPolicy->view($user));
+
+        Gate::define('viewStats', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));
+        Gate::define('viewAudits', fn (User $user) => $user->hasAnyRole([
+            config('roles.administrateur_plateforme'),
+            config('roles.agent'),
+            config('roles.auditeur'),
+            config('roles.responsable_de_validation'),
+        ]));
+        Gate::define('viewApiDocs', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));
+
+        LogViewer::auth(fn ($request) => $request->user()?->hasRole(config('roles.administrateur_plateforme')) ?? false);
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
