@@ -12,6 +12,7 @@ use App\Jobs\SendSmsJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
+use App\Rules\PhoneNumber;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
@@ -73,7 +74,7 @@ class PersonneMoraleEnrollmentService
         }
 
         $email = strtolower(trim($request->input('email')));
-        $phone = $this->normalizePhone((string) $request->input('phonenumber'));
+        $phone = PhoneNumber::normalize((string) $request->input('phonenumber'));
         $uploadedFiles = $this->uploadMoraleFiles($request);
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
@@ -255,11 +256,6 @@ class PersonneMoraleEnrollmentService
             'enrollment_request_id' => $enrollment->id,
             'status' => $enrollment->fresh()->status,
         ]);
-    }
-
-    public function normalizePhone(string $phonenumber): string
-    {
-        return preg_replace('/[^\d+]/', '', trim($phonenumber)) ?? '';
     }
 
     private function hasFinalizedPhysiqueEnrollment(User $user): bool

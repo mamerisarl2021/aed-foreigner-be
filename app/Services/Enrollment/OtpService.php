@@ -11,6 +11,7 @@ use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\Notifications\SendSmsNotificationJob;
+use App\Rules\PhoneNumber;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use Illuminate\Support\Facades\Cache;
@@ -53,6 +54,9 @@ final class OtpService
 
         if ($phonenumber) {
             $phone = $this->normalizePhone($phonenumber);
+            if ($phone === '' || ! PhoneNumber::isValid($phonenumber)) {
+                return ServiceResult::fail('Numéro de téléphone invalide.', null, 422);
+            }
             $otp = (string) random_int(100000, 999999);
             Cache::put($this->phoneKey($phone), hash('sha256', $otp), now()->addMinutes(self::TTL_MINUTES));
             Cache::forget($this->attemptsKey('phone', $phone));
@@ -73,7 +77,7 @@ final class OtpService
 
         return ServiceResult::ok('OTP en cours d\'envoi.', [
             'email' => $email ?? null,
-            'phonenumber' => $phonenumber ?? null,
+            'phonenumber' => isset($phone) ? $phone : ($phonenumber ?? null),
         ]);
     }
 
@@ -103,6 +107,9 @@ final class OtpService
 
         if ($phonenumber) {
             $phone = $this->normalizePhone($phonenumber);
+            if ($phone === '' || ! PhoneNumber::isValid($phonenumber)) {
+                return ServiceResult::fail('Numéro de téléphone invalide.', null, 422);
+            }
 
             if ($this->tooManyAttempts('phone', $phone)) {
                 return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
@@ -142,7 +149,7 @@ final class OtpService
 
     public function normalizePhone(string $phonenumber): string
     {
-        return preg_replace('/[^\d+]/', '', trim($phonenumber)) ?? '';
+        return PhoneNumber::normalize($phonenumber);
     }
 
     private function tooManyAttempts(string $channel, string $identifier): bool

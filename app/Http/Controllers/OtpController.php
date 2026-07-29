@@ -22,6 +22,7 @@ final class OtpController extends BaseController
      *
      * Diagram §2.2. Publishes otp.send event and delivers via notify.email / notify.sms.
      * Call once with both email and phonenumber, then verify each channel separately.
+     * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function send(SendOtpRequest $request): JsonResponse
     {
@@ -35,6 +36,7 @@ final class OtpController extends BaseController
      * Verify OTP for one channel (email or phone)
      *
      * Call twice (email, then phonenumber) before POST /kyc/verify. Both channels must be verified.
+     * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyOtpRequest $request): JsonResponse
     {
