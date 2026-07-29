@@ -28,4 +28,11 @@ return [
         'password' => env('TIMESTAMP_API_PASSWORD'),
     ],
 
+    /*
+    | When true (non-production only), successful TrustedX HTTP calls are logged
+    | at INFO including password/PIN values and access tokens for local debugging.
+    | Keep false in production — never enable under real traffic.
+    */
+    'log_calls' => (bool) env('TRUSTEDX_LOG_CALLS', false),
+
 ];

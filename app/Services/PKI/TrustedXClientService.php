@@ -243,8 +243,15 @@ class TrustedXClientService
             ];
             $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users", $headers, json_encode($payload));
             $response = $client->sendAsync($request)->wait();
-            if ($response->getStatusCode() == 200) {
-                $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
+            $statusCode = $response->getStatusCode();
+            if ($statusCode == 200) {
+                $data = json_decode($response->getBody()->getContents(), true);
+                $this->logCall('register', 'POST', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users", $statusCode, [
+                    'npi' => $user['data']['npi'] ?? null,
+                    'trustedx_user_id' => is_array($data) ? ($data['id'] ?? null) : null,
+                    'access_token' => $token,
+                ]);
+                $output = ['status' => true, 'data' => $data];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer votre copte nous vous prions de réessayer.'];
             }
@@ -275,9 +282,18 @@ class TrustedXClientService
                 'value' => $user['password'],
                 'max_attempts' => 3,
             ];
-            $request = new Psr7Request('PUT', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$user['id']."/passwords/$type", $headers, json_encode($body));
+            $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$user['id']."/passwords/$type";
+            $request = new Psr7Request('PUT', $url, $headers, json_encode($body));
             $response = $client->sendAsync($request)->wait();
-            if ($response->getStatusCode() == 200) {
+            $statusCode = $response->getStatusCode();
+            if ($statusCode == 200) {
+                $secretKey = $type === 'pin' ? 'pin' : 'password';
+                $this->logCall('setDefaultPassword', 'PUT', $url, $statusCode, [
+                    'type' => $type,
+                    'trustedx_user_id' => $user['id'] ?? null,
+                    $secretKey => $user['password'] ?? null,
+                    'access_token' => $token,
+                ]);
                 $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer un mot de passe par défaut nous vous prions de réessayer.'];
@@ -310,9 +326,22 @@ class TrustedXClientService
 
             $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token", $headers);
             $response = $client->sendAsync($request, $options)->wait();
+            $statusCode = $response->getStatusCode();
 
-            if ($response->getStatusCode() == 200) {
-                return ['status' => true, 'token' => json_decode($response->getBody()->getContents(), true)['access_token']];
+            if ($statusCode == 200) {
+                $accessToken = json_decode($response->getBody()->getContents(), true)['access_token'] ?? null;
+                $this->logCall(
+                    'getToken',
+                    'POST',
+                    "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token",
+                    $statusCode,
+                    [
+                        'scope' => $scope,
+                        'access_token' => $accessToken,
+                    ],
+                );
+
+                return ['status' => true, 'token' => $accessToken];
             } else {
                 return ['status' => false, 'message' => 'Nous n\'avons pas pû vous envoyer le message veuillez réessayer.'];
             }
@@ -369,11 +398,20 @@ class TrustedXClientService
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
             ];
-            $request = new Psr7Request('GET', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users?filter=npi eq \"".$npi.'"', $headers);
+            $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users?filter=npi eq \"".$npi.'"';
+            $request = new Psr7Request('GET', $url, $headers);
             $response = $client->sendAsync($request)->wait();
             $jsonResponse = $response->getBody()->getContents();
-            if ($response->getStatusCode() == 200 && ! empty(json_decode($jsonResponse, true)['users'])) {
-                $output = ['status' => true, 'data' => json_decode($jsonResponse, true)['users'][0]];
+            $statusCode = $response->getStatusCode();
+            $decoded = json_decode($jsonResponse, true);
+            if ($statusCode == 200 && ! empty($decoded['users'])) {
+                $userData = $decoded['users'][0];
+                $this->logCall('getUserWithNPI', 'GET', $url, $statusCode, [
+                    'npi' => $npi,
+                    'trustedx_user_id' => $userData['id'] ?? null,
+                    'access_token' => $token,
+                ]);
+                $output = ['status' => true, 'data' => $userData];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû récupérer l\'utilisateur à partir du npi spécifié.'];
             }
@@ -498,5 +536,23 @@ class TrustedXClientService
 
             return ['status' => false, 'message' => 'An error occurred while updating user attributes.'];
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function logCall(string $operation, string $method, string $url, int $statusCode, array $context = []): void
+    {
+        // Local/debug only — never dump TrustedX secrets under production traffic (§7.2).
+        if (! config('trustedx.log_calls') || app()->isProduction()) {
+            return;
+        }
+
+        Log::info('TrustedX call', array_merge([
+            'operation' => $operation,
+            'method' => $method,
+            'url' => $url,
+            'status' => $statusCode,
+        ], $context));
     }
 }
