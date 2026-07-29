@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
+use App\Rules\PhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SubmitEnrollmentRequest extends FormRequest
@@ -20,7 +21,7 @@ class SubmitEnrollmentRequest extends FormRequest
     {
         return [
             'email' => ['required', 'email', 'max:255'],
-            'phonenumber' => ['required', 'string', 'min:8', 'max:20'],
+            'phonenumber' => ['required', 'string', new PhoneNumber],
             'name' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],
             'sexe' => ['required', 'string', 'in:M,F'],

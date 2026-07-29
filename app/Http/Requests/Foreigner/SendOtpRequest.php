@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Foreigner;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Rules\PhoneNumber;
 
 class SendOtpRequest extends ApiFormRequest
 {
@@ -10,7 +11,7 @@ class SendOtpRequest extends ApiFormRequest
     {
         return [
             'email' => 'required_without:phonenumber|nullable|email|unique:users,email',
-            'phonenumber' => 'required_without:email|nullable|string|min:8|max:20',
+            'phonenumber' => ['required_without:email', 'nullable', 'string', new PhoneNumber],
         ];
     }
 

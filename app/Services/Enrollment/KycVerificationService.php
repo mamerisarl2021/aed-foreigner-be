@@ -23,8 +23,12 @@ final class KycVerificationService
         $email = strtolower(trim((string) $request->input('email')));
         $phone = $this->otpService->normalizePhone((string) $request->input('phonenumber'));
 
-        if ($email === '' || $phone === '') {
-            return ServiceResult::fail('Email et téléphone requis pour la vérification KYC.', null, 422);
+        if ($email === '') {
+            return ServiceResult::fail('Email requis pour la vérification KYC.', null, 422);
+        }
+
+        if ($phone === '') {
+            return ServiceResult::fail('Numéro de téléphone invalide.', null, 422);
         }
 
         if (! $this->otpService->bothChannelsVerified($email, $phone)) {

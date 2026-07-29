@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Rules\PhoneNumber;
 
 class VerifyKycRequest extends ApiFormRequest
 {
@@ -15,7 +16,7 @@ class VerifyKycRequest extends ApiFormRequest
     {
         return [
             'email' => ['required', 'email', 'max:255'],
-            'phonenumber' => ['required', 'string', 'min:8', 'max:20'],
+            'phonenumber' => ['required', 'string', new PhoneNumber],
             'liveness' => ['nullable', 'string', 'max:50'],
             'similarity' => ['nullable', 'numeric'],
             'selfie' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
