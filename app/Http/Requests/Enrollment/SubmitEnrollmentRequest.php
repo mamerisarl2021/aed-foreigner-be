@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
+use App\Http\Requests\ApiFormRequest;
 use App\Rules\PhoneNumber;
-use Illuminate\Foundation\Http\FormRequest;
 
-class SubmitEnrollmentRequest extends FormRequest
+class SubmitEnrollmentRequest extends ApiFormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -21,6 +16,7 @@ class SubmitEnrollmentRequest extends FormRequest
     {
         return [
             'email' => ['required', 'email', 'max:255'],
+            // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['required', 'string', new PhoneNumber],
             'name' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],

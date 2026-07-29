@@ -20,6 +20,7 @@ final class KycController extends BaseController
      * Sync KYC / liveness verification
      *
      * Diagram §2.3. Requires both OTP channels verified. Stores KYC session in cache for submit.
+     * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyKycRequest $request): JsonResponse
     {

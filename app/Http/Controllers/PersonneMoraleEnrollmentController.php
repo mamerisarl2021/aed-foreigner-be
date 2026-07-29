@@ -26,6 +26,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * Requires authenticated client with finalized physique enrollment.
      * Initial statut AWAITING_CONTACT_VERIFICATION.
+     * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function submit(SubmitMoraleEnrollmentRequest $request): JsonResponse
     {

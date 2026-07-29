@@ -16,6 +16,7 @@ class VerifyKycRequest extends ApiFormRequest
     {
         return [
             'email' => ['required', 'email', 'max:255'],
+            // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['required', 'string', new PhoneNumber],
             'liveness' => ['nullable', 'string', 'max:50'],
             'similarity' => ['nullable', 'numeric'],

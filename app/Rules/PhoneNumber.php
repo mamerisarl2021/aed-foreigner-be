@@ -6,8 +6,9 @@ namespace App\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Translation\PotentiallyTranslatedString;
 
-final class PhoneNumber implements ValidationRule
+class PhoneNumber implements ValidationRule
 {
     /**
      * Strip separators so only digits and an optional leading "+" remain.
@@ -24,6 +25,11 @@ final class PhoneNumber implements ValidationRule
         return (bool) preg_match('/^\+?\d{8,20}$/', $normalized);
     }
 
+    /**
+     * Run the validation rule.
+     *
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (! is_string($value) || ! self::isValid($value)) {

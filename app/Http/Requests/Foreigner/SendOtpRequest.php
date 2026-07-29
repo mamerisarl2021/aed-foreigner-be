@@ -11,6 +11,7 @@ class SendOtpRequest extends ApiFormRequest
     {
         return [
             'email' => 'required_without:phonenumber|nullable|email|unique:users,email',
+            // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['required_without:email', 'nullable', 'string', new PhoneNumber],
         ];
     }
