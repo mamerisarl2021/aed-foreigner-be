@@ -12,6 +12,7 @@ use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Jobs\RegulaAnalysisJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Services\ActivityLog\ActivityLogService;
@@ -152,6 +153,7 @@ final class ForeignerEnrollmentService
 
         Bus::chain([
             new UploadEnrollmentFilesJob($enrollmentRequest->id, $uploadedFiles),
+            new RegulaAnalysisJob($enrollmentRequest->id),
             new ForeignerFinalizedJob($enrollmentRequest->email, 'PERSONNE_PHYSIQUE'),
         ])->dispatch();
     }

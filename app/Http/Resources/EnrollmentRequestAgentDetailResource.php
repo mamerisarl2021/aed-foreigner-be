@@ -44,6 +44,12 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
 
         return array_merge($base, $this->physiqueDetail(), [
             'pieces_jointes' => $this->physiquePiecesJointes($this->documents),
+            'analyse_kyc' => [
+                'liveness' => $this->liveness,
+                'similarity' => $this->similarity,
+                'risk_score' => $this->risk_score,
+                'details' => $this->analysis_details,
+            ],
         ]);
     }
 }
