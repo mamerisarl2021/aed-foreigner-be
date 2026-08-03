@@ -25,3 +25,5 @@ yarn-error.log
 .commands
 .env.prod
 notes
+docker/regula/regula.license
+docker/regula/.env

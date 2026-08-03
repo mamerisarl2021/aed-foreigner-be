@@ -39,11 +39,13 @@ return [
     ],
 
     'regula' => [
-        // Real document-analysis service by default; set REGULA_MOCK=true for local dev.
         'mock' => (bool) env('REGULA_MOCK', false),
-        'url' => env('REGULA_URL'),
-        'api_key' => env('REGULA_API_KEY'),
-        'timeout' => (int) env('REGULA_TIMEOUT', 30),
+        'document_url' => env('REGULA_DOCUMENT_URL') ?: env('REGULA_URL'),
+        'face_url' => env('REGULA_FACE_URL') ?: env('REGULA_URL'),
+        'timeout' => (int) env('REGULA_TIMEOUT', 60),
+        'document_scenario' => env('REGULA_DOCUMENT_SCENARIO', 'FullProcess'),
+        // Face /api/match similarity is 0.0–1.0; below this threshold KYC fails closed.
+        'match_threshold' => (float) env('REGULA_MATCH_THRESHOLD', 0.75),
     ],
 
 ];

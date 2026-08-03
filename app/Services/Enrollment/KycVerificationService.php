@@ -43,8 +43,8 @@ final class KycVerificationService
 
         $analysis = $this->regulaService->analyzeIdentity($files, [
             'email' => $email,
-            'liveness' => $request->input('liveness'),
-            'similarity' => $request->input('similarity'),
+            'liveness' => $request->input('liveness_transaction_id') ?: $request->input('liveness'),
+            'liveness_transaction_id' => $request->input('liveness_transaction_id'),
         ]);
 
         if (($analysis['status'] ?? '') !== 'OK') {
@@ -53,8 +53,8 @@ final class KycVerificationService
 
         Cache::put($this->cacheKey($email, $phone), [
             'verified_at' => now()->toIso8601String(),
-            'liveness' => $request->input('liveness'),
-            'similarity' => $request->input('similarity'),
+            'liveness' => $analysis['liveness'] ?? null,
+            'similarity' => $analysis['similarity'] ?? null,
             'risk_score' => $analysis['risk_score'] ?? null,
             'analysis_details' => $analysis['details'] ?? null,
         ], now()->addMinutes(self::VALIDITY_MINUTES));
@@ -62,6 +62,7 @@ final class KycVerificationService
         return ServiceResult::ok('KYC valide.', [
             'kyc_valid' => true,
             'risk_score' => $analysis['risk_score'] ?? null,
+            'similarity' => $analysis['similarity'] ?? null,
         ]);
     }
 

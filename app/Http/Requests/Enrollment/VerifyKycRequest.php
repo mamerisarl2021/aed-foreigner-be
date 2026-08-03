@@ -14,14 +14,20 @@ class VerifyKycRequest extends ApiFormRequest
      */
     public function rules(): array
     {
+        $mock = (bool) config('services.regula.mock');
+        $fileRequired = $mock ? 'nullable' : 'required';
+
         return [
             'email' => ['required', 'email', 'max:255'],
             // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['required', 'string', new PhoneNumber],
-            'liveness' => ['nullable', 'string', 'max:50'],
+            // Face liveness transaction id (optional). Legacy numeric "scores" are ignored by the orchestrator.
+            'liveness' => ['nullable', 'string', 'max:128'],
+            'liveness_transaction_id' => ['nullable', 'string', 'max:128'],
+            // Deprecated client-supplied score — ignored for the OK/KO gate when not mocking.
             'similarity' => ['nullable', 'numeric'],
-            'selfie' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
-            'recto' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'selfie' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'recto' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
@@ -34,6 +40,8 @@ class VerifyKycRequest extends ApiFormRequest
         return [
             'email.required' => 'L\'adresse email est obligatoire.',
             'phonenumber.required' => 'Le numéro de téléphone est obligatoire.',
+            'selfie.required' => 'La photo selfie est obligatoire pour la vérification KYC.',
+            'recto.required' => 'Le recto de la pièce est obligatoire pour la vérification KYC.',
             'selfie.mimes' => 'La photo selfie doit être au format jpg, jpeg ou png.',
             'recto.mimes' => 'Le recto doit être au format jpg, jpeg, png ou pdf.',
             'verso.mimes' => 'Le verso doit être au format jpg, jpeg, png ou pdf.',
