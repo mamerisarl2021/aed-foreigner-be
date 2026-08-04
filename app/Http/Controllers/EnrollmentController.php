@@ -31,7 +31,8 @@ final class EnrollmentController extends BaseController
      * Submit personne physique enrollment
      *
      * Diagram §2.4. Requires OTP + KYC gates. Full identity data and documents
-     * (selfie, recto) are required at submit time. Returns 202 with statut EN_ATTENTE.
+     * (selfie, recto; verso optional) are required at submit time.
+     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse
