@@ -15,10 +15,10 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Real Regula client by default; the mock is opt-in (REGULA_MOCK=true, local dev only).
-        $this->app->bind(RegulaService::class, function () {
+        $this->app->bind(RegulaService::class, function ($app) {
             return config('services.regula.mock')
-                ? new MockRegulaService
-                : new HttpRegulaService;
+                ? $app->make(MockRegulaService::class)
+                : $app->make(HttpRegulaService::class);
         });
     }
 
