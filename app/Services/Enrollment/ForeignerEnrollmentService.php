@@ -18,6 +18,7 @@ use App\Models\EnrollmentRequest;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
+use App\Support\TrackingCodeAllocator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ final class ForeignerEnrollmentService
         DB::beginTransaction();
         try {
             $enrollmentRequest = EnrollmentRequest::create([
+                'tracking_code' => TrackingCodeAllocator::next(),
                 'email' => $email,
                 'phonenumber' => $phone,
                 'kyc_data' => [
@@ -102,14 +104,22 @@ final class ForeignerEnrollmentService
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
                 subject: 'Confirmation de soumission — enrôlement AED',
                 template: NotificationTemplate::ForeignerFinalized,
-                recipients: [NotificationRecipient::email($email, ['name' => $request->input('name')])],
-                variables: ['name' => $request->input('name'), 'demande_id' => $enrollmentRequest->id],
+                recipients: [NotificationRecipient::email($email, [
+                    'name' => $request->input('name'),
+                    'numero_suivi' => $enrollmentRequest->tracking_code,
+                ])],
+                variables: [
+                    'name' => $request->input('name'),
+                    'demande_id' => $enrollmentRequest->id,
+                    'numero_suivi' => $enrollmentRequest->tracking_code,
+                ],
                 type: 'ENROLEMENT_SUBMITTED',
                 platform: NotificationPlatform::from(config('notifications.platform')),
             ));
 
             return ServiceResult::ok('Demande acceptée.', [
                 'demande_id' => $enrollmentRequest->id,
+                'numero_suivi' => $enrollmentRequest->tracking_code,
                 'statut' => $enrollmentRequest->status,
             ], 202);
         } catch (\Exception $e) {

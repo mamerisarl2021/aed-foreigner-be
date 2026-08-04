@@ -17,9 +17,13 @@ final class KycController extends BaseController
     ) {}
 
     /**
-     * Sync KYC / liveness verification
+     * Sync KYC verification (Document Reader + Face match)
      *
-     * Diagram §2.3. Requires both OTP channels verified. Stores KYC session in cache for submit.
+     * Diagram §2.3. Requires both OTP channels verified.
+     * When REGULA_MOCK=false: selfie + recto required; verso optional.
+     * Optional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).
+     * Client similarity is ignored for the OK/KO gate; scores come from Face /api/match.
+     * Success caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyKycRequest $request): JsonResponse

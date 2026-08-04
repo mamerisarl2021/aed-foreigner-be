@@ -67,6 +67,10 @@ Route::group([], function () {
         Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
+        Route::post('/enrolements/finalisation/otp/send', [FinalisationController::class, 'sendOtp'])
+            ->middleware(['guest', 'throttle:otp-send']);
+        Route::post('/enrolements/finalisation/otp/verify', [FinalisationController::class, 'verifyOtp'])
+            ->middleware(['guest', 'throttle:otp-verify']);
         Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store'])->middleware(['throttle:password-reset']);
 
         Route::middleware(['auth:sanctum'])->group(function () {
