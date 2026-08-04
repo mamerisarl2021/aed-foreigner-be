@@ -10,6 +10,7 @@ class VerifyOtpRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
+            // Send both contacts when possible so the verify response can report both cache flags.
             'email' => 'required_without:phonenumber|nullable|email',
             // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['required_without:email', 'nullable', 'string', new PhoneNumber],
