@@ -23,6 +23,9 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
     {
         $base = [
             'id' => $this->id,
+            // Code de suivi communiqué au demandeur : c'est par lui qu'on
+            // désigne un dossier, l'UUID ne circulant qu'entre machines.
+            'numero_suivi' => $this->tracking_code,
             'type' => $this->type,
             'statut' => $this->status,
             'date_soumission' => $this->created_at,
