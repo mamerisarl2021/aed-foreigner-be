@@ -81,9 +81,9 @@ final class EnrollmentRejectMotifCrudTest extends TestCase
     }
 
     #[Test]
-    public function agent_can_list_motifs_but_cannot_create(): void
+    public function agent_can_list_motifs_but_cannot_mutate_via_admin_routes(): void
     {
-        EnrollmentRejectMotif::query()->create([
+        $motif = EnrollmentRejectMotif::query()->create([
             'title' => 'Autre motif',
             'description' => 'Description',
         ]);
@@ -98,6 +98,16 @@ final class EnrollmentRejectMotifCrudTest extends TestCase
             'title' => 'Interdit',
             'description' => 'Pas autorisé',
         ])->assertForbidden();
+
+        $this->getJson($this->api("/admin/enrollment-reject-motifs/{$motif->id}"))
+            ->assertForbidden();
+
+        $this->patchJson($this->api("/admin/enrollment-reject-motifs/{$motif->id}"), [
+            'title' => 'Hack',
+        ])->assertForbidden();
+
+        $this->deleteJson($this->api("/admin/enrollment-reject-motifs/{$motif->id}"))
+            ->assertForbidden();
     }
 
     #[Test]

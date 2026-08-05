@@ -42,12 +42,14 @@ Route::group([], function () {
             Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
             Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
             Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
-            Route::post('/admin/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'store']);
-            Route::get('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'show']);
-            Route::patch('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'update']);
-            Route::delete('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'destroy']);
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
         });
+
+        // Motif CRUD: auth only — EnrollmentRejectMotifPolicy is the access gate (§9.3).
+        Route::post('/admin/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'store']);
+        Route::get('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'show']);
+        Route::patch('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'update']);
+        Route::delete('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'destroy']);
 
         Route::middleware('role:administrateur_plateforme|agent|auditeur|responsable_de_validation')->group(function () {
             Route::get('/audits', [AuditLogController::class, 'index']);
