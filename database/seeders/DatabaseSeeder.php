@@ -12,6 +12,9 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             EnrollmentRejectMotifSeeder::class,
             AdminUserSeeder::class,
+            AgentUserSeeder::class,
+            ResponsableValidationUserSeeder::class,
+            ManagerUserSeeder::class,
         ]);
     }
 }
