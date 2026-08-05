@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\ChangeStaffPasswordRequest;
+use App\Http\Requests\Auth\DeleteAgentRequest;
 use App\Http\Requests\Auth\KeycloakLoginRequest;
 use App\Http\Requests\Auth\ListAgentsRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterAgentRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
+use App\Http\Requests\Auth\ShowAgentRequest;
 use App\Http\Requests\Auth\UpdateAgentRequest;
 use App\Models\User;
 use App\Services\Auth\AdminAuthService;
@@ -74,26 +76,30 @@ class AuthController extends BaseController
     /**
      * Update staff user details (admin only)
      */
-    public function updateAgent(UpdateAgentRequest $request, string $id): JsonResponse
+    public function updateAgent(UpdateAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        $user = User::find($id);
+        $validated = $request->validated();
+        $id = (string) $validated['id'];
+        unset($validated['id']);
+
+        $user = User::query()->find($id);
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->updateAgent($user, $request->validated()));
+        return $this->respond($this->adminAuth->updateAgent($user, $validated));
     }
 
     /**
      * Delete a staff user (admin only)
      */
-    public function deleteAgent(string $id): JsonResponse
+    public function deleteAgent(DeleteAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        $user = User::find($id);
+        $user = User::query()->find((string) $request->validated('id'));
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
@@ -136,11 +142,11 @@ class AuthController extends BaseController
     /**
      * Staff user detail (admin only)
      */
-    public function showAgent(string $id): JsonResponse
+    public function showAgent(ShowAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        return $this->respond($this->adminAuth->showAgent($id));
+        return $this->respond($this->adminAuth->showAgent((string) $request->validated('id')));
     }
 
     /**

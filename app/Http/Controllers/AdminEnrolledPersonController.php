@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\ListEnrolledPersonsRequest;
+use App\Http\Requests\Admin\ShowEnrolledPersonRequest;
 use App\Http\Resources\EnrolledPersonDetailResource;
 use App\Http\Resources\EnrolledPersonListResource;
 use App\Services\Admin\EnrolledPersonService;
@@ -37,11 +38,11 @@ final class AdminEnrolledPersonController extends BaseController
     /**
      * Enrolled person detail (read-only)
      */
-    public function show(string $id): JsonResponse
+    public function show(ShowEnrolledPersonRequest $request): JsonResponse
     {
         Gate::authorize('viewEnrolledPerson');
 
-        $result = $this->enrolledPersonService->show($id);
+        $result = $this->enrolledPersonService->show((string) $request->validated('id'));
         if (! $result->success) {
             return $this->respond($result);
         }

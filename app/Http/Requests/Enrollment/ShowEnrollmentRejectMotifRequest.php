@@ -6,9 +6,8 @@ namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
-use Illuminate\Validation\Rule;
 
-class UpdateEnrollmentRejectMotifRequest extends ApiFormRequest
+class ShowEnrollmentRejectMotifRequest extends ApiFormRequest
 {
     use MergesRouteId;
 
@@ -22,18 +21,8 @@ class UpdateEnrollmentRejectMotifRequest extends ApiFormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('id');
-
         return [
             'id' => ['required', 'uuid', 'exists:enrollment_reject_motifs,id'],
-            'title' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('enrollment_reject_motifs', 'title')->ignore($id),
-            ],
-            'description' => ['sometimes', 'required', 'string'],
         ];
     }
 }

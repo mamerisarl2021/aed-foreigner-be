@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\DestroyEnrollmentRejectMotifRequest;
 use App\Http\Requests\Enrollment\ListRejectMotifsRequest;
+use App\Http\Requests\Enrollment\ShowEnrollmentRejectMotifRequest;
 use App\Http\Requests\Enrollment\StoreEnrollmentRejectMotifRequest;
 use App\Http\Requests\Enrollment\UpdateEnrollmentRejectMotifRequest;
 use App\Http\Resources\EnrollmentRejectMotifResource;
 use App\Models\EnrollmentRejectMotif;
+use App\Services\Enrollment\EnrollmentRejectMotifService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Admin')]
 class EnrollmentRejectMotifController extends BaseController
 {
+    public function __construct(
+        private readonly EnrollmentRejectMotifService $motifs,
+    ) {}
+
     /**
      * List enrollment reject motifs
      *
@@ -25,13 +32,9 @@ class EnrollmentRejectMotifController extends BaseController
     {
         $this->authorize('viewAny', EnrollmentRejectMotif::class);
 
-        $motifs = EnrollmentRejectMotif::query()
-            ->orderBy('title')
-            ->get();
-
         return $this->sendResponse(
             'Liste des motifs de rejet.',
-            EnrollmentRejectMotifResource::collection($motifs)
+            EnrollmentRejectMotifResource::collection($this->motifs->list())
         );
     }
 
@@ -44,30 +47,33 @@ class EnrollmentRejectMotifController extends BaseController
     {
         $this->authorize('create', EnrollmentRejectMotif::class);
 
-        $motif = EnrollmentRejectMotif::query()->create($request->validated());
+        $result = $this->motifs->create($request->validated());
+        if (! $result->success) {
+            return $this->respond($result);
+        }
 
         return $this->sendResponse(
-            'Motif de rejet créé.',
-            new EnrollmentRejectMotifResource($motif),
-            201
+            $result->message,
+            new EnrollmentRejectMotifResource($result->data),
+            $result->code
         );
     }
 
     /**
      * Show enrollment reject motif (admin only)
      */
-    public function show(string $id): JsonResponse
+    public function show(ShowEnrollmentRejectMotifRequest $request): JsonResponse
     {
-        $motif = EnrollmentRejectMotif::query()->find($id);
-        if (! $motif) {
-            return $this->sendError('Motif de rejet introuvable.', null, 404);
+        $result = $this->motifs->find((string) $request->validated('id'));
+        if (! $result->success) {
+            return $this->respond($result);
         }
 
-        $this->authorize('view', $motif);
+        $this->authorize('view', $result->data);
 
         return $this->sendResponse(
-            'Motif de rejet.',
-            new EnrollmentRejectMotifResource($motif)
+            $result->message,
+            new EnrollmentRejectMotifResource($result->data)
         );
     }
 
@@ -76,21 +82,27 @@ class EnrollmentRejectMotifController extends BaseController
      *
      * Body: `{ title?, description? }`.
      */
-    public function update(UpdateEnrollmentRejectMotifRequest $request, string $id): JsonResponse
+    public function update(UpdateEnrollmentRejectMotifRequest $request): JsonResponse
     {
-        $motif = EnrollmentRejectMotif::query()->find($id);
-        if (! $motif) {
-            return $this->sendError('Motif de rejet introuvable.', null, 404);
+        $validated = $request->validated();
+        $id = (string) $validated['id'];
+        unset($validated['id']);
+
+        $existing = $this->motifs->find($id);
+        if (! $existing->success) {
+            return $this->respond($existing);
         }
 
-        $this->authorize('update', $motif);
+        $this->authorize('update', $existing->data);
 
-        $motif->fill($request->validated());
-        $motif->save();
+        $result = $this->motifs->update($id, $validated);
+        if (! $result->success) {
+            return $this->respond($result);
+        }
 
         return $this->sendResponse(
-            'Motif de rejet mis à jour.',
-            new EnrollmentRejectMotifResource($motif)
+            $result->message,
+            new EnrollmentRejectMotifResource($result->data)
         );
     }
 
@@ -99,17 +111,17 @@ class EnrollmentRejectMotifController extends BaseController
      *
      * Hard delete — the motif is permanently removed.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(DestroyEnrollmentRejectMotifRequest $request): JsonResponse
     {
-        $motif = EnrollmentRejectMotif::query()->find($id);
-        if (! $motif) {
-            return $this->sendError('Motif de rejet introuvable.', null, 404);
+        $id = (string) $request->validated('id');
+
+        $existing = $this->motifs->find($id);
+        if (! $existing->success) {
+            return $this->respond($existing);
         }
 
-        $this->authorize('delete', $motif);
+        $this->authorize('delete', $existing->data);
 
-        $motif->delete();
-
-        return $this->sendResponse('Motif de rejet supprimé.', []);
+        return $this->respond($this->motifs->delete($id));
     }
 }
