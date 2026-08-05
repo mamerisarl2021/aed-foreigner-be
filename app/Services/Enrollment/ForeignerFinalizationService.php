@@ -84,6 +84,14 @@ final class ForeignerFinalizationService
             platform: NotificationPlatform::from(config('notifications.platform')),
         ));
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP de finalisation envoyé pour %s.', $enrollment->tracking_code),
+            null,
+            $enrollment->id,
+            ['context' => 'finalisation'],
+        );
+
         return ServiceResult::ok('OTP de finalisation envoyé.', [
             'numero_suivi' => $enrollment->tracking_code,
             'demande_id' => $enrollment->id,
@@ -113,6 +121,14 @@ final class ForeignerFinalizationService
         Cache::forget($this->otpKey($code));
         Cache::forget($this->otpAttemptsKey($code));
         Cache::put($this->otpVerifiedKey($code), true, now()->addMinutes(self::OTP_PROOF_MINUTES));
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('OTP de finalisation vérifié pour %s.', $enrollment->tracking_code),
+            null,
+            $enrollment->id,
+            ['context' => 'finalisation'],
+        );
 
         return ServiceResult::ok('OTP de finalisation valide.', [
             'numero_suivi' => $enrollment->tracking_code,

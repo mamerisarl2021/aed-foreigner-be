@@ -23,7 +23,6 @@ final class StaffRoleMapper
             'AGENT' => config('roles.agent'),
             'RESPONSABLE_DE_VALIDATION' => config('roles.responsable_de_validation'),
             'MANAGER' => config('roles.manager'),
-            'AUDITEUR' => config('roles.auditeur'),
             'ADMINISTRATEUR_PLATEFORME' => config('roles.administrateur_plateforme'),
             'CLIENT' => config('roles.client'),
             'DEMANDEUR_AUTHENTIFIE' => config('roles.demandeur_authentifie'),
@@ -37,7 +36,6 @@ final class StaffRoleMapper
             config('roles.agent') => 'AGENT',
             config('roles.responsable_de_validation') => 'RESPONSABLE_DE_VALIDATION',
             config('roles.manager') => 'MANAGER',
-            config('roles.auditeur') => 'AUDITEUR',
             config('roles.administrateur_plateforme') => 'ADMINISTRATEUR_PLATEFORME',
             config('roles.client') => 'CLIENT',
             config('roles.demandeur_authentifie') => 'DEMANDEUR_AUTHENTIFIE',
@@ -55,7 +53,6 @@ final class StaffRoleMapper
             config('roles.responsable_de_validation'),
             config('roles.manager'),
             config('roles.agent'),
-            config('roles.auditeur'),
             config('roles.client'),
             config('roles.demandeur_authentifie'),
         ];

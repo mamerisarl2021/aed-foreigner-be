@@ -134,6 +134,17 @@ class IdentityReviewService
         $enrollment->save();
         $enrollment->load('assignedAgent', 'submittedBy');
 
+        $this->activityLog->record(
+            ActivityLogAction::PriseEnChargeAgent,
+            sprintf(
+                '%s a pris en charge la demande %s.',
+                ActivityLogService::actorLabel($enrollment->assignedAgent),
+                $enrollment->tracking_code ?? $enrollment->id
+            ),
+            $agentId,
+            $enrollment->id,
+        );
+
         $this->events->publish('agent_assigned', [
             'demande_id' => $enrollment->id,
             'assigned_agent_id' => $agentId,
@@ -161,6 +172,17 @@ class IdentityReviewService
         $enrollment->assigned_responsable_id = $responsableId;
         $enrollment->save();
         $enrollment->load(['assignedAgent', 'assignedResponsable', 'submittedBy']);
+
+        $this->activityLog->record(
+            ActivityLogAction::PriseEnChargeResponsable,
+            sprintf(
+                '%s a pris en charge la validation de la demande %s.',
+                ActivityLogService::actorLabel($enrollment->assignedResponsable),
+                $enrollment->tracking_code ?? $enrollment->id
+            ),
+            $responsableId,
+            $enrollment->id,
+        );
 
         $this->events->publish('responsable_assigned', [
             'demande_id' => $enrollment->id,

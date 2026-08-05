@@ -152,7 +152,9 @@ class UserController extends BaseController
     {
         $this->authorize('updateStatus', User::class);
 
-        return $this->respond($this->users->updateStatuses($request->input('users')));
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+
+        return $this->respond($this->users->updateStatuses($request->input('users'), $actorId));
     }
 
     /**

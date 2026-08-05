@@ -38,7 +38,7 @@ class AdminAuthService
         return config('roles.staff', []);
     }
 
-    public function updateAgent(User $user, array $input): ServiceResult
+    public function updateAgent(User $user, array $input, ?User $actor = null): ServiceResult
     {
         try {
             $user->update([
@@ -56,6 +56,19 @@ class AdminAuthService
 
             $user->load('roles');
 
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurModifie,
+                sprintf(
+                    '%s a modifié le compte %s (%s).',
+                    ActivityLogService::actorLabel($actor),
+                    trim(($user->first_name ?? '').' '.($user->name ?? '')),
+                    $user->email
+                ),
+                is_string($actor?->id) ? $actor->id : null,
+                null,
+                ['target_user_id' => $user->id],
+            );
+
             return ServiceResult::ok('Agent mis à jour avec succès.', (new StaffUserDetailResource($user))->resolve());
         } catch (Exception $e) {
             Log::error('Failed to update agent: '.$e->getMessage());
@@ -64,11 +77,21 @@ class AdminAuthService
         }
     }
 
-    public function deleteAgent(User $user): ServiceResult
+    public function deleteAgent(User $user, ?User $actor = null): ServiceResult
     {
         try {
+            $label = trim(($user->first_name ?? '').' '.($user->name ?? '')).' ('.$user->email.')';
+            $targetId = $user->id;
             $user->roles()->detach();
             $user->delete();
+
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurSupprime,
+                sprintf('%s a supprimé le compte %s.', ActivityLogService::actorLabel($actor), $label),
+                is_string($actor?->id) ? $actor->id : null,
+                null,
+                ['target_user_id' => $targetId],
+            );
 
             return ServiceResult::ok('Agent supprimé avec succès.', null);
         } catch (Exception $e) {
@@ -137,6 +160,12 @@ class AdminAuthService
 
         $token = $user->createToken($user->email.'-'.now())->plainTextToken;
 
+        $this->activityLog->record(
+            ActivityLogAction::ConnexionAdmin,
+            sprintf('%s s\'est connecté(e) à l\'espace staff.', ActivityLogService::actorLabel($user)),
+            is_string($user->id) ? $user->id : null,
+        );
+
         return ServiceResult::ok(
             "Bienvenue sur la plateforme d'enregistrement déléguée!",
             [
@@ -195,6 +224,12 @@ class AdminAuthService
 
         // Revoke every Sanctum token so all sessions must re-authenticate.
         $user->tokens()->delete();
+
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseChange,
+            sprintf('%s a modifié son mot de passe staff.', ActivityLogService::actorLabel($user)),
+            is_string($user->id) ? $user->id : null,
+        );
 
         return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
@@ -281,6 +316,12 @@ class AdminAuthService
             $user->status = 'ACTIVE';
             $user->must_change_password = false;
             $user->save();
+
+            $this->activityLog->record(
+                ActivityLogAction::MotDePasseReinitialise,
+                sprintf('%s a réinitialisé son mot de passe staff.', ActivityLogService::actorLabel($user)),
+                is_string($user->id) ? $user->id : null,
+            );
 
             // Revoke every Sanctum token so all sessions must re-authenticate.
             $user->tokens()->delete();

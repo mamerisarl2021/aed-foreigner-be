@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityLogAction;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Traits\EncryptionTrait;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -15,16 +18,20 @@ class EncryptionController extends Controller
 {
     use EncryptionTrait;
 
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /**
      * Decrypt and display an encrypted enrollment document
      *
-     * Staff only (viewAudits gate). `filename` is the stored encrypted file name;
+     * Staff reviewers only (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;
      * the decrypted content is returned inline with its detected MIME type.
      * 404 when the file does not exist.
      */
-    public function decryptAndDisplay(string $filename): Response
+    public function decryptAndDisplay(Request $request, string $filename): Response
     {
-        Gate::authorize('viewAudits');
+        Gate::authorize('viewEncryptedDocuments');
 
         $filename = basename($filename);
         if ($filename === '' || str_contains($filename, '..')) {
@@ -34,6 +41,19 @@ class EncryptionController extends Controller
         if (! Storage::exists("public/docs/{$filename}")) {
             abort(404);
         }
+
+        $user = $request->user();
+        $this->activityLog->record(
+            ActivityLogAction::DocumentDechiffre,
+            sprintf(
+                '%s a consulté le document chiffré %s.',
+                ActivityLogService::actorLabel($user),
+                $filename
+            ),
+            is_string($user?->id) ? $user->id : null,
+            null,
+            ['filename' => $filename],
+        );
 
         $base64EncodedContent = $this->getEncFile($filename, 'docs');
         $fileContent = base64_decode($base64EncodedContent);

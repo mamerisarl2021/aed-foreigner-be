@@ -27,7 +27,6 @@ final class StatsService
             'agent' => User::role(config('roles.agent'))->count(),
             'responsable_de_validation' => User::role(config('roles.responsable_de_validation'))->count(),
             'manager' => User::role(config('roles.manager'))->count(),
-            'auditeur' => User::role(config('roles.auditeur'))->count(),
         ];
 
         $enrollmentByStatus = EnrollmentRequest::query()

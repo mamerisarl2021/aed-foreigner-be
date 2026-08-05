@@ -15,7 +15,7 @@ class ListAgentsRequest extends ApiFormRequest
     {
         return [
             'q' => ['nullable', 'string', 'max:255'],
-            'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR,ADMINISTRATEUR_PLATEFORME'],
+            'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,ADMINISTRATEUR_PLATEFORME'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'order_by' => ['nullable', 'string', 'in:created_at,name,email,last_login_at'],
             'order_dir' => ['nullable', 'string', 'in:asc,desc'],

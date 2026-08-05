@@ -16,12 +16,12 @@ class ListActivityLogsRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            // Recherche sur la description ou le code d'action.
+            // Recherche sur la description ou le libellé d'action.
             'q' => ['nullable', 'string', 'max:255'],
             'action' => ['nullable', 'string', Rule::in(array_column(ActivityLogAction::cases(), 'value'))],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            // Défaut: 15. Maximum: 100.
+            // Défaut: 20. Maximum: 100.
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }

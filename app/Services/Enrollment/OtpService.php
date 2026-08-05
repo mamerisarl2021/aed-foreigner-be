@@ -7,11 +7,13 @@ namespace App\Services\Enrollment;
 use App\Contracts\EnrollmentEventPublisherInterface;
 use App\DataTransferObjects\EmailNotificationData;
 use App\DataTransferObjects\SmsNotificationData;
+use App\Enums\ActivityLogAction;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\Notifications\SendSmsNotificationJob;
 use App\Rules\PhoneNumber;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use Illuminate\Support\Facades\Cache;
@@ -26,6 +28,7 @@ final class OtpService
 
     public function __construct(
         private readonly EnrollmentEventPublisherInterface $events,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function send(?string $email, ?string $phonenumber): ServiceResult
@@ -74,6 +77,18 @@ final class OtpService
             'phonenumber' => isset($phone) ? $phone : null,
             'channels' => $channels,
         ]);
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP enrollment envoyé (%s).', implode(', ', $channels)),
+            null,
+            null,
+            [
+                'email' => $email ?? null,
+                'phonenumber' => isset($phone) ? $phone : null,
+                'channels' => $channels,
+            ],
+        );
 
         return ServiceResult::ok('OTP en cours d\'envoi.', [
             'email' => $email ?? null,
@@ -145,6 +160,17 @@ final class OtpService
 
             return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
         }
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            'OTP enrollment vérifié avec succès.',
+            null,
+            null,
+            [
+                'email' => $email,
+                'phonenumber' => $phone,
+            ],
+        );
 
         return ServiceResult::ok('OTP valide.', [
             'email_verified' => $email !== null && (bool) Cache::get($this->verifiedEmailKey($email)),

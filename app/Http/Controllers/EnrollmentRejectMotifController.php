@@ -47,7 +47,8 @@ class EnrollmentRejectMotifController extends BaseController
     {
         $this->authorize('create', EnrollmentRejectMotif::class);
 
-        $result = $this->motifs->create($request->validated());
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+        $result = $this->motifs->create($request->validated(), $actorId);
         if (! $result->success) {
             return $this->respond($result);
         }
@@ -95,7 +96,8 @@ class EnrollmentRejectMotifController extends BaseController
 
         $this->authorize('update', $existing->data);
 
-        $result = $this->motifs->update($id, $validated);
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+        $result = $this->motifs->update($id, $validated, $actorId);
         if (! $result->success) {
             return $this->respond($result);
         }
@@ -122,6 +124,8 @@ class EnrollmentRejectMotifController extends BaseController
 
         $this->authorize('delete', $existing->data);
 
-        return $this->respond($this->motifs->delete($id));
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+
+        return $this->respond($this->motifs->delete($id, $actorId));
     }
 }

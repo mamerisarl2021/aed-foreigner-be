@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\ActivityLogAction;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Regula\RegulaService;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
@@ -16,6 +18,7 @@ final class KycVerificationService
     public function __construct(
         private readonly RegulaService $regulaService,
         private readonly OtpService $otpService,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function verify(Request $request): ServiceResult
@@ -48,6 +51,14 @@ final class KycVerificationService
         ]);
 
         if (($analysis['status'] ?? '') !== 'OK') {
+            $this->activityLog->record(
+                ActivityLogAction::KycVerifie,
+                sprintf('Échec de la vérification KYC pour %s.', $email),
+                null,
+                null,
+                ['email' => $email, 'phonenumber' => $phone, 'ok' => false],
+            );
+
             return ServiceResult::fail('Échec de la vérification KYC.', $analysis, 422);
         }
 
@@ -58,6 +69,20 @@ final class KycVerificationService
             'risk_score' => $analysis['risk_score'] ?? null,
             'analysis_details' => $analysis['details'] ?? null,
         ], now()->addMinutes(self::VALIDITY_MINUTES));
+
+        $this->activityLog->record(
+            ActivityLogAction::KycVerifie,
+            sprintf('Vérification KYC réussie pour %s.', $email),
+            null,
+            null,
+            [
+                'email' => $email,
+                'phonenumber' => $phone,
+                'ok' => true,
+                'similarity' => $analysis['similarity'] ?? null,
+                'risk_score' => $analysis['risk_score'] ?? null,
+            ],
+        );
 
         return ServiceResult::ok('KYC valide.', [
             'kyc_valid' => true,

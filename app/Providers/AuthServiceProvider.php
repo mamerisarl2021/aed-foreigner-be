@@ -40,10 +40,10 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('viewEnrolledPerson', fn ($user) => $enrolledPersonPolicy->view($user));
 
         Gate::define('viewStats', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));
-        Gate::define('viewAudits', fn (User $user) => $user->hasAnyRole([
+        Gate::define('viewAudits', fn (User $user) => $user->hasRole(config('roles.administrateur_plateforme')));
+        Gate::define('viewEncryptedDocuments', fn (User $user) => $user->hasAnyRole([
             config('roles.administrateur_plateforme'),
             config('roles.agent'),
-            config('roles.auditeur'),
             config('roles.responsable_de_validation'),
         ]));
         Gate::define('viewApiDocs', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));

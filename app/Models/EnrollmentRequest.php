@@ -7,10 +7,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class EnrollmentRequest extends Model
+class EnrollmentRequest extends Model implements Auditable
 {
     use HasUuids;
+    use \OwenIt\Auditing\Auditable;
+
+    /** @var list<string> */
+    protected array $auditExclude = [
+        'email_verification_token',
+    ];
 
     protected $fillable = [
         'tracking_code',

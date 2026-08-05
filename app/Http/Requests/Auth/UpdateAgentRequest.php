@@ -29,7 +29,7 @@ class UpdateAgentRequest extends ApiFormRequest
             'id' => ['required', 'uuid', 'exists:users,id'],
             'name' => ['sometimes', 'string', 'max:255'],
             'first_name' => ['sometimes', 'string', 'max:255'],
-            'role' => ['sometimes', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
+            'role' => ['sometimes', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
             // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
             'phonenumber' => ['sometimes', 'string', new PhoneNumber],
             'npi' => ['sometimes', 'string', 'max:10', Rule::unique('users', 'npi')->ignore($userId)],

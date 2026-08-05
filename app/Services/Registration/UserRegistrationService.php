@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Registration;
 
+use App\Enums\ActivityLogAction;
 use App\Jobs\SendInitLinkJob;
 use App\Jobs\SendOTPJob;
 use App\Models\OTP;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ANIP\AnipSimulatorService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
@@ -26,6 +28,7 @@ class UserRegistrationService
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
         private readonly AnipSimulatorService $anipSimulator,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     private const OTP_MAX_ATTEMPTS = 5;
@@ -98,18 +101,38 @@ class UserRegistrationService
     {
         $response = $this->trustedXClient->userInfo($code);
 
-        return $response['status']
-            ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
-            : ServiceResult::fail($response['message'], null, 401);
+        if ($response['status']) {
+            $this->activityLog->record(
+                ActivityLogAction::ConnexionClient,
+                'Connexion client TrustedX réussie.',
+                null,
+                null,
+                ['channel' => 'web'],
+            );
+
+            return ServiceResult::ok('Token obtenu avec succès!', $response['data']);
+        }
+
+        return ServiceResult::fail($response['message'], null, 401);
     }
 
     public function loginMobile(string $code): ServiceResult
     {
         $response = $this->trustedXClient->mobileUserInfo($code);
 
-        return $response['status']
-            ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
-            : ServiceResult::fail($response['message'], null, 401);
+        if ($response['status']) {
+            $this->activityLog->record(
+                ActivityLogAction::ConnexionClient,
+                'Connexion client mobile TrustedX réussie.',
+                null,
+                null,
+                ['channel' => 'mobile'],
+            );
+
+            return ServiceResult::ok('Token obtenu avec succès!', $response['data']);
+        }
+
+        return ServiceResult::fail($response['message'], null, 401);
     }
 
     public function setPassword(string $npi, string $password, string $type): ServiceResult

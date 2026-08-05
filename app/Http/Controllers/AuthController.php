@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityLogAction;
 use App\Http\Requests\Auth\ChangeStaffPasswordRequest;
 use App\Http\Requests\Auth\DeleteAgentRequest;
 use App\Http\Requests\Auth\KeycloakLoginRequest;
@@ -15,6 +16,7 @@ use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
 use App\Http\Requests\Auth\ShowAgentRequest;
 use App\Http\Requests\Auth\UpdateAgentRequest;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Auth\AdminAuthService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +27,7 @@ class AuthController extends BaseController
 {
     public function __construct(
         private readonly AdminAuthService $adminAuth,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -89,7 +92,7 @@ class AuthController extends BaseController
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->updateAgent($user, $validated));
+        return $this->respond($this->adminAuth->updateAgent($user, $validated, $request->user()));
     }
 
     /**
@@ -104,7 +107,7 @@ class AuthController extends BaseController
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->deleteAgent($user));
+        return $this->respond($this->adminAuth->deleteAgent($user, $request->user()));
     }
 
     /**
@@ -112,7 +115,14 @@ class AuthController extends BaseController
      */
     public function logoutAdmin(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $user->currentAccessToken()->delete();
+
+        $this->activityLog->record(
+            ActivityLogAction::DeconnexionAdmin,
+            sprintf('%s s\'est déconnecté(e) de l\'espace staff.', ActivityLogService::actorLabel($user)),
+            is_string($user->id) ? $user->id : null,
+        );
 
         return $this->sendResponse('Déconnexion réussie.', []);
     }
