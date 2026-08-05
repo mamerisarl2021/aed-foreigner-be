@@ -6,7 +6,6 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Models\EnrollmentRequest;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,10 +23,17 @@ class EnrollmentRequestListResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var array<string, mixed>|null $kyc */
+        $kyc = $this->kyc_data;
+
         return [
             'id' => $this->id,
             'type' => $this->type,
-            'demandeur' => $this->demandeurForList(),
+            'demandeur' => $this->formatDemandeur(
+                $this->isPersonneMorale(),
+                $kyc,
+                $this->relationLoaded('submittedBy') ? $this->submittedBy : null,
+            ),
             'date_soumission' => $this->created_at,
             'statut' => $this->status,
             'agent_responsable' => $this->relationLoaded('assignedAgent')
@@ -39,30 +45,6 @@ class EnrollmentRequestListResource extends JsonResource
             // Un retour du responsable remet la demande en EN_ATTENTE : sans cet
             // horodatage, rien ne la distingue d'une demande jamais instruite.
             'retournee_le' => $this->returned_at,
-        ];
-    }
-
-    /**
-     * @return array{nom: ?string, prenom: ?string}
-     */
-    private function demandeurForList(): array
-    {
-        if ($this->isPersonneMorale()) {
-            /** @var User|null $submitter */
-            $submitter = $this->relationLoaded('submittedBy') ? $this->submittedBy : null;
-
-            return [
-                'nom' => $submitter?->name,
-                'prenom' => $submitter?->first_name,
-            ];
-        }
-
-        /** @var array<string, mixed> $kyc */
-        $kyc = $this->kyc_data ?? [];
-
-        return [
-            'nom' => $kyc['name'] ?? null,
-            'prenom' => $kyc['first_name'] ?? null,
         ];
     }
 }
