@@ -331,7 +331,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
-2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `auditeur`, `client`, and (placeholder) `demandeur_authentifie`.
+2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
 3. Prefer expanding policies over adding more nested `role:` middleware groups.
 4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
 
@@ -366,7 +366,7 @@ List and search endpoints **MUST** use a Form Request for query params — same 
 ```php
 // ListAgentsRequest — GET /agents
 'q' => ['nullable', 'string', 'max:255'],
-'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
+'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
 'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
 'order_by' => ['nullable', 'string', 'in:created_at,name,email,last_login_at'],
 'order_dir' => ['nullable', 'string', 'in:asc,desc'],
@@ -403,7 +403,7 @@ If behavior differs when a param is absent vs. sent empty, state that explicitly
 'sexe' => ['required', 'string', 'in:M,F'],
 'document_type' => ['required', 'string', 'in:PASSPORT,CNI_ECOWAS'],
 'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-'role' => ['required', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
+'role' => ['required', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
 ```
 
 **Examples (bad):**
@@ -595,9 +595,8 @@ Role mapping (PDF → Spatie):
 | Administrateur de la plateforme | `administrateur_plateforme` |
 | Étranger enrôlé / portail | `client` |
 | Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
-| Auditeur (compliance extension) | `auditeur` |
 
-Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
+Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
 
 - **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE`. No assign-to-other-agent.
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `VALIDATION_AGENT` or `REJET_AGENT`. No assign-to-other.
@@ -688,22 +687,24 @@ Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, 
 POST /admin/login
 GET  /agents? q, role, per_page          → StaffUserListResource
 GET  /agents/{id}                        → StaffUserDetailResource
-POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER|AUDITEUR)
+POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER)
 POST /agents/{id}                        → update staff
 DELETE /agents/{id}                      → delete staff
-GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier (action, description, date)
+GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier UI (défaut per_page=20)
+GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
 POST /admin/enrollment-reject-motifs                       { title, description }
 GET  /admin/enrollment-reject-motifs/{id}
 PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
 DELETE /admin/enrollment-reject-motifs/{id}                hard delete
-GET  /audits                                               → journal OwenIt (compliance / auditeur)
+GET  /audits                                               → journal OwenIt technique (admin only)
 ```
 
 - Login sets `users.last_login_at`.
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
-- **Journaux** (`activity_logs`): business actions (demande, validation agent/responsable, création utilisateur, finalisation). Distinct from `GET /audits` (model CRUD audit trail).
+- **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
+- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
 - **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
 
