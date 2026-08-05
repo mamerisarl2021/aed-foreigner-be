@@ -87,48 +87,68 @@ final class OtpService
             return ServiceResult::fail('Email ou numéro de téléphone requis.', null, 422);
         }
 
-        if ($email) {
-            $email = strtolower(trim($email));
-
-            if ($this->tooManyAttempts('email', $email)) {
-                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
-            }
-
-            $expected = Cache::get($this->emailKey($email));
-            if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
-                $this->recordFailedAttempt('email', $email);
-
-                return ServiceResult::fail('OTP email invalide ou expiré.', null, 400);
-            }
-            Cache::put($this->verifiedEmailKey($email), true, now()->addMinutes(self::VALIDITY_MINUTES));
-            Cache::forget($this->emailKey($email));
-            Cache::forget($this->attemptsKey('email', $email));
-        }
-
+        $email = $email ? strtolower(trim($email)) : null;
+        $phone = null;
         if ($phonenumber) {
             $phone = $this->normalizePhone($phonenumber);
             if ($phone === '' || ! PhoneNumber::isValid($phonenumber)) {
                 return ServiceResult::fail('Numéro de téléphone invalide.', null, 422);
             }
+        }
 
+        $matched = false;
+
+        // Prefer matching a single channel when both contacts are sent (different OTPs per channel).
+        if ($email !== null) {
+            if ($this->tooManyAttempts('email', $email)) {
+                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            }
+
+            $expected = Cache::get($this->emailKey($email));
+            if (is_string($expected) && hash_equals($expected, hash('sha256', $otp))) {
+                Cache::put($this->verifiedEmailKey($email), true, now()->addMinutes(self::VALIDITY_MINUTES));
+                Cache::forget($this->emailKey($email));
+                Cache::forget($this->attemptsKey('email', $email));
+                $matched = true;
+            } elseif ($phone === null) {
+                $this->recordFailedAttempt('email', $email);
+
+                return ServiceResult::fail('OTP email invalide ou expiré.', null, 400);
+            }
+        }
+
+        if (! $matched && $phone !== null) {
             if ($this->tooManyAttempts('phone', $phone)) {
                 return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
             }
 
             $expected = Cache::get($this->phoneKey($phone));
-            if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
+            if (is_string($expected) && hash_equals($expected, hash('sha256', $otp))) {
+                Cache::put($this->verifiedPhoneKey($phone), true, now()->addMinutes(self::VALIDITY_MINUTES));
+                Cache::forget($this->phoneKey($phone));
+                Cache::forget($this->attemptsKey('phone', $phone));
+                $matched = true;
+            } elseif ($email === null) {
                 $this->recordFailedAttempt('phone', $phone);
 
                 return ServiceResult::fail('OTP téléphone invalide ou expiré.', null, 400);
             }
-            Cache::put($this->verifiedPhoneKey($phone), true, now()->addMinutes(self::VALIDITY_MINUTES));
-            Cache::forget($this->phoneKey($phone));
-            Cache::forget($this->attemptsKey('phone', $phone));
         }
 
-        return ServiceResult::ok('OTP valide — email & téléphone confirmés.', [
-            'email_verified' => (bool) $email,
-            'phone_verified' => (bool) $phonenumber,
+        if (! $matched) {
+            if ($email !== null) {
+                $this->recordFailedAttempt('email', $email);
+            }
+            if ($phone !== null) {
+                $this->recordFailedAttempt('phone', $phone);
+            }
+
+            return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
+        }
+
+        return ServiceResult::ok('OTP valide.', [
+            'email_verified' => $email !== null && (bool) Cache::get($this->verifiedEmailKey($email)),
+            'phone_verified' => $phone !== null && (bool) Cache::get($this->verifiedPhoneKey($phone)),
         ]);
     }
 

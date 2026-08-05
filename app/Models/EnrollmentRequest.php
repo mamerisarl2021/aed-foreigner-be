@@ -13,6 +13,7 @@ class EnrollmentRequest extends Model
     use HasUuids;
 
     protected $fillable = [
+        'tracking_code',
         'email',
         'phonenumber',
         'kyc_data',

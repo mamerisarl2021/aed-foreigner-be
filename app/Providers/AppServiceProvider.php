@@ -15,10 +15,10 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Real Regula client by default; the mock is opt-in (REGULA_MOCK=true, local dev only).
-        $this->app->bind(RegulaService::class, function () {
+        $this->app->bind(RegulaService::class, function ($app) {
             return config('services.regula.mock')
-                ? new MockRegulaService
-                : new HttpRegulaService;
+                ? $app->make(MockRegulaService::class)
+                : $app->make(HttpRegulaService::class);
         });
     }
 
@@ -48,6 +48,10 @@ final class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth-login', function (Request $request) {
             return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
+        });
+
+        RateLimiter::for('document-read', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
         });
 
         RateLimiter::for('password-reset', function (Request $request) {

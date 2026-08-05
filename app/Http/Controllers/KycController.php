@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\ReadDocumentRequest;
 use App\Http\Requests\Enrollment\VerifyKycRequest;
+use App\Services\Enrollment\DocumentReadService;
 use App\Services\Enrollment\KycVerificationService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
@@ -14,16 +16,46 @@ final class KycController extends BaseController
 {
     public function __construct(
         private readonly KycVerificationService $kycVerification,
+        private readonly DocumentReadService $documentRead,
     ) {}
 
     /**
-     * Sync KYC / liveness verification
+     * Sync KYC verification (Document Reader + Face match)
      *
-     * Diagram §2.3. Requires both OTP channels verified. Stores KYC session in cache for submit.
+     * Diagram §2.3. Requires both OTP channels verified.
+     * When REGULA_MOCK=false: selfie + recto required; verso optional.
+     * Optional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).
+     * Client similarity is ignored for the OK/KO gate; scores come from Face /api/match.
+     * Success caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyKycRequest $request): JsonResponse
     {
         return $this->respond($this->kycVerification->verify($request));
+    }
+
+    /**
+     * Assisted document pre-read (OCR + image quality)
+     *
+     * Diagram §2.2, capture screen. Guest, no OTP gate: assists form pre-fill and
+     * warns about an unusable photo before the KYC step. Nothing is persisted and
+     * nothing is enforced — `POST /kyc/verify` remains the authoritative check and
+     * replays the read with the same Regula scenario.
+     * Runs the scenario configured by REGULA_DOCUMENT_SCENARIO (deployed value: FullAuth).
+     * Always answers 200 when the request is well formed: an unreadable photo returns
+     * `ok: false` with `quality_issues`, not an HTTP error.
+     * data: { ok, document_name, fields, quality_issues, portrait }.
+     * `quality_issues` are stable codes, not sentences — wording and language belong to
+     * the client (same convention as `details.error` on /kyc/verify). Values:
+     * IMAGE_GLARES, IMAGE_FOCUS, IMAGE_RESOLUTION, IMAGE_COLORNESS, PERSPECTIVE, BOUNDS,
+     * PORTRAIT, BRIGHTNESS, OCCLUSION, QUALITY_UNKNOWN, UNREADABLE_DOCUMENT (photo the
+     * user can retake), READER_UNAVAILABLE (Regula unreachable).
+     * `fields` keys (all optional, present only when read): nom, prenoms, sexe (M|F),
+     * date_naissance, date_expiration (YYYY-MM-DD), numero_piece, nationalite,
+     * ville_naissance, pays_naissance. `portrait` is base64, no `data:` prefix.
+     */
+    public function readDocument(ReadDocumentRequest $request): JsonResponse
+    {
+        return $this->respond($this->documentRead->read($request));
     }
 }

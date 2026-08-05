@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Route;
 /*
 | API routes — loaded by bootstrap/app.php with the "api" middleware group.
 */
+const AGENT_BY_ID = '/agents/{id}';
+
 
 Route::group([], function () {
     Route::get('/health', HealthCheckController::class);
@@ -35,10 +37,10 @@ Route::group([], function () {
 
         Route::middleware('role:administrateur_plateforme')->group(function () {
             Route::post('/agents/register', [AuthController::class, 'registerAgent']);
-            Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
-            Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
+            Route::post(AGENT_BY_ID, [AuthController::class, 'updateAgent']);
+            Route::delete(AGENT_BY_ID, [AuthController::class, 'deleteAgent']);
             Route::get('/agents', [AuthController::class, 'listAgents']);
-            Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
+            Route::get(AGENT_BY_ID, [AuthController::class, 'showAgent']);
             Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
             Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
             Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
@@ -64,9 +66,14 @@ Route::group([], function () {
     Route::middleware(['keycloak'])->group(function () {
         Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction', 'throttle:otp-send']);
         Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest', 'throttle:otp-verify']);
+        Route::post('/kyc/document/read', [KycController::class, 'readDocument'])->middleware(['guest', 'throttle:document-read']);
         Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
+        Route::post('/enrolements/finalisation/otp/send', [FinalisationController::class, 'sendOtp'])
+            ->middleware(['guest', 'throttle:otp-send']);
+        Route::post('/enrolements/finalisation/otp/verify', [FinalisationController::class, 'verifyOtp'])
+            ->middleware(['guest', 'throttle:otp-verify']);
         Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store'])->middleware(['throttle:password-reset']);
 
         Route::middleware(['auth:sanctum'])->group(function () {

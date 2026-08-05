@@ -2381,11 +2381,47 @@
                 "security": []
             }
         },
+        "/v1/kyc/document/read": {
+            "post": {
+                "operationId": "kyc.readDocument",
+                "description": "Diagram \u00a72.2, capture screen. Guest, no OTP gate: assists form pre-fill and\nwarns about an unusable photo before the KYC step. Nothing is persisted and\nnothing is enforced \u2014 `POST /kyc/verify` remains the authoritative check and\nreplays the read with the same Regula scenario.\nRuns the scenario configured by REGULA_DOCUMENT_SCENARIO (deployed value: FullAuth).\nAlways answers 200 when the request is well formed: an unreadable photo returns\n`ok: false` with `quality_issues`, not an HTTP error.\ndata: { ok, document_name, fields, quality_issues, portrait }.\n`quality_issues` are stable codes, not sentences \u2014 wording and language belong to\nthe client (same convention as `details.error` on /kyc/verify). Values:\nIMAGE_GLARES, IMAGE_FOCUS, IMAGE_RESOLUTION, IMAGE_COLORNESS, PERSPECTIVE, BOUNDS,\nPORTRAIT, BRIGHTNESS, OCCLUSION, QUALITY_UNKNOWN, UNREADABLE_DOCUMENT (photo the\nuser can retake), READER_UNAVAILABLE (Regula unreachable).\n`fields` keys (all optional, present only when read): nom, prenoms, sexe (M|F),\ndate_naissance, date_expiration (YYYY-MM-DD), numero_piece, nationalite,\nville_naissance, pays_naissance. `portrait` is base64, no `data:` prefix.",
+                "summary": "Assisted document pre-read (OCR + image quality)",
+                "tags": [
+                    "Enrollment - KYC"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReadDocumentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/v1/kyc/verify": {
             "post": {
                 "operationId": "kyc.verify",
-                "description": "Diagram \u00a72.3. Requires both OTP channels verified. Stores KYC session in cache for submit.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
-                "summary": "Sync KYC / liveness verification",
+                "description": "Diagram \u00a72.3. Requires both OTP channels verified.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "summary": "Sync KYC verification (Document Reader + Face match)",
                 "tags": [
                     "Enrollment - KYC"
                 ],
@@ -2694,7 +2730,7 @@
         "/v1/otp/verify": {
             "post": {
                 "operationId": "otp.verify",
-                "description": "Call twice (email, then phonenumber) before POST /kyc/verify. Both channels must be verified.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each\ncall so the response reflects both cache flags; only the OTP matching one channel is consumed.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Verify OTP for one channel (email or phone)",
                 "tags": [
                     "Enrollment - OTP"
@@ -2730,7 +2766,7 @@
         "/v1/enrolements/etrangers": {
             "post": {
                 "operationId": "enrollment.storeEtranger",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto) are required at submit time. Returns 202 with statut EN_ATTENTE.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne physique enrollment",
                 "tags": [
                     "Enrollment - Physique"
@@ -2766,8 +2802,8 @@
         "/v1/enrolements/finalisation": {
             "get": {
                 "operationId": "finalisation.show",
-                "description": "Diagram \u00a74 \u2014 open link from invitation email.",
-                "summary": "Validate finalisation token and return UI payload",
+                "description": "Open the secure link from the approval email (`?token=`).\nSuccess data: demande_id, numero_suivi (PK\u2026), npi, email, statut (APPROUVEE).\nToken TTL: 60 minutes from issuance.",
+                "summary": "Validate finalisation invitation token",
                 "tags": [
                     "Enrollment - Physique"
                 ],
@@ -2800,11 +2836,83 @@
                 "security": []
             }
         },
+        "/v1/enrolements/finalisation/otp/send": {
+            "post": {
+                "operationId": "finalisation.sendOtp",
+                "description": "Body: numero_suivi (required) \u2014 tracking code from submit / invitation email.\nDemand must be APPROUVEE. Sends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).",
+                "summary": "Send finalisation email OTP",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendFinalisationOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/enrolements/finalisation/otp/verify": {
+            "post": {
+                "operationId": "finalisation.verifyOtp",
+                "description": "Body: numero_suivi, otp (6 digits). On success stores a short-lived OTP proof (~15 min) required before POST \u2026/finalisation.\nSuccess data: numero_suivi, demande_id, otp_verified=true.",
+                "summary": "Verify finalisation email OTP",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyFinalisationOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/v1/enrolements/{id}/finalisation": {
             "post": {
                 "operationId": "finalisation.store",
-                "description": "Diagram \u00a74. TrustedX identity must already exist (APPROUVEE). Sets statut ENROLEE.",
-                "summary": "Complete enrollment (password, PIN, security questions)",
+                "description": "Path `{id}` = demande_id. Requires prior POST \u2026/finalisation/otp/verify for the same numero_suivi.\nBody: password (min 8), security_questions (min 2 items with question + answer),\nnumero_suivi (required for FE flow; must match the demand), token (optional invitation token from the email link).\nNo client PIN \u2014 server generates a 4-digit PIN for TrustedX.\nSuccess: statut ENROLEE, npi, numero_suivi, demande_id.",
+                "summary": "Complete enrollment (password + security questions)",
                 "tags": [
                     "Enrollment - Physique"
                 ],
@@ -3265,28 +3373,11 @@
                     }
                 ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "allOf": [
-                                    {
-                                        "$ref": "#/components/schemas/InstructionEnrollmentRequest"
-                                    },
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "statut": {
-                                                "type": "string"
-                                            },
-                                            "motif": {
-                                                "type": "string"
-                                            },
-                                            "commentaire": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                ]
+                                "$ref": "#/components/schemas/InstructionEnrollmentRequest"
                             }
                         }
                     }
@@ -3333,28 +3424,11 @@
                     }
                 ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "allOf": [
-                                    {
-                                        "$ref": "#/components/schemas/ValidationEnrollmentRequest"
-                                    },
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "decision": {
-                                                "type": "string"
-                                            },
-                                            "commentaire": {
-                                                "type": "string"
-                                            },
-                                            "motif": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                ]
+                                "$ref": "#/components/schemas/ValidationEnrollmentRequest"
                             }
                         }
                     }
@@ -3553,13 +3627,50 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "action_code": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "actor_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "enrollment_request_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "metadata": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "action_code",
+                    "description",
+                    "actor_user_id",
+                    "enrollment_request_id",
+                    "metadata",
+                    "created_at"
+                ],
                 "title": "ActivityLog"
             },
             "App.Http.Requests.Foreigner.SendOtpRequest": {
@@ -3590,7 +3701,8 @@
                             "string",
                             "null"
                         ],
-                        "format": "email"
+                        "format": "email",
+                        "description": "Send both contacts when possible so the verify response can report both cache flags."
                     },
                     "phonenumber": {
                         "type": [
@@ -3611,13 +3723,101 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "event": {
+                        "type": "string"
+                    },
+                    "auditable_type": {
+                        "type": "string"
+                    },
+                    "auditable_id": {
+                        "type": "string"
+                    },
+                    "old_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "new_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_agent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tags": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "user_type",
+                    "user_id",
+                    "event",
+                    "auditable_type",
+                    "auditable_id",
+                    "old_values",
+                    "new_values",
+                    "url",
+                    "ip_address",
+                    "user_agent",
+                    "tags",
+                    "created_at",
+                    "updated_at"
+                ],
                 "title": "Audit"
             },
             "ChangeStaffPasswordRequest": {
@@ -3918,6 +4118,29 @@
                                         "url"
                                     ]
                                 }
+                            },
+                            "analyse_kyc": {
+                                "type": "object",
+                                "properties": {
+                                    "liveness": {
+                                        "type": "string"
+                                    },
+                                    "similarity": {
+                                        "type": "string"
+                                    },
+                                    "risk_score": {
+                                        "type": "string"
+                                    },
+                                    "details": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "liveness",
+                                    "similarity",
+                                    "risk_score",
+                                    "details"
+                                ]
                             }
                         },
                         "required": [
@@ -3931,7 +4154,8 @@
                             "peut_valider",
                             "demandeur",
                             "informations",
-                            "pieces_jointes"
+                            "pieces_jointes",
+                            "analyse_kyc"
                         ]
                     },
                     {
@@ -4171,7 +4395,7 @@
                         "type": "string"
                     },
                     "active": {
-                        "type": "string"
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -4187,7 +4411,13 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "integer"
+                        "type": "string"
+                    },
+                    "tracking_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "email": {
                         "type": "string"
@@ -4221,6 +4451,19 @@
                             "null"
                         ]
                     },
+                    "risk_score": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "analysis_details": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
                     "status": {
                         "type": "string"
                     },
@@ -4229,6 +4472,19 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "assigned_responsable_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agent_decided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "reject_stage": {
                         "type": [
@@ -4252,6 +4508,86 @@
                     "type": {
                         "type": "string"
                     },
+                    "submitted_by_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verification_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "phone_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "verification_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "visio_requested_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "returned_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "return_reasons": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "sla_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "sla_alert_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -4265,39 +4601,41 @@
                             "null"
                         ],
                         "format": "date-time"
-                    },
-                    "risk_score": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "analysis_details": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
                     }
                 },
                 "required": [
                     "id",
+                    "tracking_code",
                     "email",
                     "phonenumber",
                     "kyc_data",
                     "documents",
                     "liveness",
                     "similarity",
+                    "risk_score",
+                    "analysis_details",
                     "status",
                     "assigned_agent_id",
+                    "assigned_responsable_id",
+                    "agent_decided_at",
                     "reject_stage",
                     "reject_reasons",
                     "review_comments",
                     "type",
+                    "submitted_by_user_id",
+                    "email_verification_token",
+                    "email_verified_at",
+                    "phone_verified_at",
+                    "verification_deadline_at",
+                    "visio_notes",
+                    "visio_requested_at",
+                    "visio_completed_at",
+                    "returned_at",
+                    "return_reasons",
+                    "sla_deadline_at",
+                    "sla_alert_level",
                     "created_at",
-                    "updated_at",
-                    "risk_score",
-                    "analysis_details"
+                    "updated_at"
                 ],
                 "title": "EnrollmentRequest"
             },
@@ -4447,6 +4785,29 @@
                                         "url"
                                     ]
                                 }
+                            },
+                            "analyse_kyc": {
+                                "type": "object",
+                                "properties": {
+                                    "liveness": {
+                                        "type": "string"
+                                    },
+                                    "similarity": {
+                                        "type": "string"
+                                    },
+                                    "risk_score": {
+                                        "type": "string"
+                                    },
+                                    "details": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "liveness",
+                                    "similarity",
+                                    "risk_score",
+                                    "details"
+                                ]
                             }
                         },
                         "required": [
@@ -4459,7 +4820,8 @@
                             "peut_instruire",
                             "demandeur",
                             "informations",
-                            "pieces_jointes"
+                            "pieces_jointes",
+                            "analyse_kyc"
                         ]
                     },
                     {
@@ -4631,6 +4993,51 @@
             },
             "InstructionEnrollmentRequest": {
                 "type": "object",
+                "properties": {
+                    "statut": {
+                        "type": "string",
+                        "enum": [
+                            "VALIDATION_AGENT",
+                            "REJET_AGENT"
+                        ]
+                    },
+                    "commentaire": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
+                    "motif": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "doc_invalid",
+                                "doc_expired",
+                                "doc_mismatch",
+                                "photo_mismatch",
+                                "liveness_failed",
+                                "kyc_incomplete",
+                                "kyc_inconsistent",
+                                "duplicate_identity",
+                                "insufficient_evidence",
+                                "other",
+                                "company_duplicate",
+                                "company_data_inconsistent",
+                                "company_docs_invalid",
+                                "representative_unauthorized",
+                                "trade_register_invalid"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "statut"
+                ],
                 "title": "InstructionEnrollmentRequest"
             },
             "KeycloakLoginRequest": {
@@ -4712,6 +5119,30 @@
                     "raison_sociale"
                 ],
                 "title": "MoraleEnrollmentOwnerResource"
+            },
+            "ReadDocumentRequest": {
+                "type": "object",
+                "properties": {
+                    "recto": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "verso": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
+                    }
+                },
+                "required": [
+                    "recto"
+                ],
+                "title": "ReadDocumentRequest"
             },
             "RegisterAgentRequest": {
                 "type": "object",
@@ -4892,6 +5323,19 @@
                 ],
                 "title": "SendClientResetLinkRequest"
             },
+            "SendFinalisationOtpRequest": {
+                "type": "object",
+                "properties": {
+                    "numero_suivi": {
+                        "type": "string",
+                        "maxLength": 32
+                    }
+                },
+                "required": [
+                    "numero_suivi"
+                ],
+                "title": "SendFinalisationOtpRequest"
+            },
             "SendOtpRequest": {
                 "type": "object",
                 "properties": {
@@ -4948,24 +5392,25 @@
                 "type": "object",
                 "properties": {
                     "token": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Invitation token from email link (optional if numero_suivi + OTP proof are used).",
                         "maxLength": 100
+                    },
+                    "numero_suivi": {
+                        "type": "string",
+                        "description": "Tracking code PK\u2026 from submit / invitation email (required for the FE finalisation flow).",
+                        "maxLength": 32
                     },
                     "password": {
                         "type": "string",
                         "minLength": 8,
                         "maxLength": 255
                     },
-                    "pin": {
-                        "type": "string",
-                        "minLength": 4,
-                        "maxLength": 12
-                    },
                     "security_questions": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
+                        "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -4977,14 +5422,19 @@
                                     "type": "string",
                                     "maxLength": 255
                                 }
-                            }
-                        }
+                            },
+                            "required": [
+                                "question",
+                                "answer"
+                            ]
+                        },
+                        "minItems": 2
                     }
                 },
                 "required": [
-                    "token",
+                    "numero_suivi",
                     "password",
-                    "pin"
+                    "security_questions"
                 ],
                 "title": "StoreFinalisationRequest"
             },
@@ -5313,6 +5763,12 @@
                             "null"
                         ]
                     },
+                    "sexe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -5340,8 +5796,32 @@
                             "null"
                         ]
                     },
+                    "trustedx_registered_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "security_questions": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
                     "status": {
                         "type": "string"
+                    },
+                    "must_change_password": {
+                        "type": "boolean"
+                    },
+                    "last_login_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "email_verified_at": {
                         "type": [
@@ -5372,12 +5852,17 @@
                     "id",
                     "name",
                     "first_name",
+                    "sexe",
                     "email",
                     "phonenumber",
                     "nationality",
                     "profile",
                     "npi",
+                    "trustedx_registered_at",
+                    "security_questions",
                     "status",
+                    "must_change_password",
+                    "last_login_at",
                     "email_verified_at",
                     "created_at",
                     "updated_at",
@@ -5410,7 +5895,10 @@
                         ]
                     },
                     "sexe": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "nationality": {
                         "type": [
@@ -5457,7 +5945,72 @@
             },
             "ValidationEnrollmentRequest": {
                 "type": "object",
+                "properties": {
+                    "decision": {
+                        "type": "string",
+                        "enum": [
+                            "APPROUVEE",
+                            "REJET_CONFIRME",
+                            "RETOUR_AGENT"
+                        ]
+                    },
+                    "commentaire": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 1000
+                    },
+                    "motif": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "doc_invalid",
+                                "doc_expired",
+                                "doc_mismatch",
+                                "photo_mismatch",
+                                "liveness_failed",
+                                "kyc_incomplete",
+                                "kyc_inconsistent",
+                                "duplicate_identity",
+                                "insufficient_evidence",
+                                "other",
+                                "company_duplicate",
+                                "company_data_inconsistent",
+                                "company_docs_invalid",
+                                "representative_unauthorized",
+                                "trade_register_invalid"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "decision"
+                ],
                 "title": "ValidationEnrollmentRequest"
+            },
+            "VerifyFinalisationOtpRequest": {
+                "type": "object",
+                "properties": {
+                    "numero_suivi": {
+                        "type": "string",
+                        "maxLength": 32
+                    },
+                    "otp": {
+                        "type": "string",
+                        "minLength": 6,
+                        "maxLength": 6
+                    }
+                },
+                "required": [
+                    "numero_suivi",
+                    "otp"
+                ],
+                "title": "VerifyFinalisationOtpRequest"
             },
             "VerifyKycRequest": {
                 "type": "object",
@@ -5476,13 +6029,22 @@
                             "string",
                             "null"
                         ],
-                        "maxLength": 50
+                        "description": "Face liveness transaction id (optional). Legacy numeric \"scores\" are ignored by the orchestrator.",
+                        "maxLength": 128
+                    },
+                    "liveness_transaction_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 128
                     },
                     "similarity": {
                         "type": [
                             "number",
                             "null"
-                        ]
+                        ],
+                        "description": "Deprecated client-supplied score \u2014 ignored for the OK/KO gate when not mocking."
                     },
                     "selfie": {
                         "type": [

@@ -14,12 +14,14 @@ class StoreFinalisationRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string', 'max:100'],
+            // Invitation token from email link (optional if numero_suivi + OTP proof are used).
+            'token' => ['nullable', 'string', 'max:100'],
+            // Tracking code PK… from submit / invitation email (required for the FE finalisation flow).
+            'numero_suivi' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string', 'min:8', 'max:255'],
-            'pin' => ['required', 'string', 'min:4', 'max:12'],
-            'security_questions' => ['nullable', 'array'],
-            'security_questions.*.question' => ['required_with:security_questions', 'string', 'max:255'],
-            'security_questions.*.answer' => ['required_with:security_questions', 'string', 'max:255'],
+            'security_questions' => ['required', 'array', 'min:2'],
+            'security_questions.*.question' => ['required', 'string', 'max:255'],
+            'security_questions.*.answer' => ['required', 'string', 'max:255'],
         ];
     }
 
@@ -29,11 +31,11 @@ class StoreFinalisationRequest extends ApiFormRequest
     public function messages(): array
     {
         return [
-            'token.required' => 'Le token de finalisation est obligatoire.',
+            'numero_suivi.required' => 'Le numéro de suivi est obligatoire.',
             'password.required' => 'Le mot de passe est obligatoire.',
             'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'pin.required' => 'Le code PIN est obligatoire.',
-            'pin.min' => 'Le code PIN doit contenir au moins 4 caractères.',
+            'security_questions.required' => 'Les questions de sécurité sont obligatoires.',
+            'security_questions.min' => 'Deux questions de sécurité sont requises.',
         ];
     }
 }

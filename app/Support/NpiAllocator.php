@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
 use App\Models\User;
@@ -8,24 +10,28 @@ use RuntimeException;
 
 final class NpiAllocator
 {
+    /**
+     * Allocate a foreigner NPI that starts with a digit (no F- prefix for new allocations).
+     * Format: 9 digits in the 100000001–199999999 range.
+     */
     public static function nextForeignerNpi(): string
     {
         return DB::transaction(function () {
-            $lastNumber = User::query()
+            $candidates = User::query()
                 ->whereNotNull('npi')
-                ->where('npi', 'like', 'F-%')
                 ->lockForUpdate()
                 ->pluck('npi')
-                ->map(fn (string $npi) => (int) substr($npi, 2))
-                ->max() ?? 0;
+                ->filter(fn (string $npi) => preg_match('/^[0-9]+$/', $npi) === 1)
+                ->map(fn (string $npi) => (int) $npi);
 
-            $next = $lastNumber + 1;
+            $lastNumber = $candidates->max() ?? 100_000_000;
+            $next = max($lastNumber + 1, 100_000_001);
 
-            if ($next > 99_999_999) {
+            if ($next > 199_999_999) {
                 throw new RuntimeException('Foreigner NPI sequence exhausted.');
             }
 
-            return 'F-'.str_pad((string) $next, 8, '0', STR_PAD_LEFT);
+            return (string) $next;
         });
     }
 }

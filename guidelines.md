@@ -524,18 +524,20 @@ Canonical HTTP flow:
 
 ```
 POST /otp/send              { email, phonenumber }
-POST /otp/verify            { email|phonenumber, otp }
-POST /kyc/verify            multipart liveness + documents (sync Regula/KYC tier)
-POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, statut: EN_ATTENTE }
+POST /otp/verify            { email|phonenumber|both, otp }
+POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
+POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
+POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE }
 ```
 
 Business rules:
 
 - Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
-- Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE`.
+- Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE`, and a unique **`numero_suivi`** (`tracking_code`, format `PK…`) shown on the success screen.
 - Do **not** create `User` / `Identity` / NPI at submit time.
-- After submit: queue cloud upload + Regula analysis; send confirmation using the existing foreigner finalized notification template (reuse, do not invent a parallel “advanced id request” mail for this path).
+- After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
+- `POST /kyc/document/read` is **assistive only**: it pre-fills the identity form and warns about an unusable photo on the capture screen. No OTP gate, nothing persisted, always 200 when well formed (`ok: false` + `quality_issues` on an unreadable photo). It exists so the browser never calls the Regula server directly — that would require opening the Regula server's CORS and would let any visitor burn licensed transactions outside our API. `POST /kyc/verify` stays the authoritative check and replays the read with the same scenario.
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
 
@@ -545,7 +547,7 @@ Status machine:
 EN_ATTENTE → VALIDATION_AGENT | REJET_AGENT        (PATCH .../instruction)
 VALIDATION_AGENT → APPROUVEE | EN_ATTENTE          (PATCH .../validation)
 REJET_AGENT → REJETEE | EN_ATTENTE                 (PATCH .../validation)
-APPROUVEE → ENROLEE                                (POST .../finalisation)
+APPROUVEE → ENROLEE                                (finalisation OTP + password flow)
 ```
 
 Staff routes:
@@ -599,7 +601,7 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `VALIDATION_AGENT` or `REJET_AGENT`. No assign-to-other.
 - **Instruction:** agent must be the assigned agent; `REJET_AGENT` requires validated `motif[]` + optional `commentaire`; sets `reject_stage=AGENT` and `agent_decided_at`.
 - **Validation:** responsable must be the assigned responsable; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id` and `assigned_responsable_id`.
-- Responsable `APPROUVEE`: local User + NPI + Identity + **TrustedX register** + finalisation invite.
+- Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/enrolements/finalisation?token=`).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`, clears `assigned_agent_id`.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
@@ -610,13 +612,23 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 
 ### 13.3 Finalization (diagram §4)
 
+FE-aligned flow after invitation email (secure link opens the finalisation UI; applicant enters `numero_suivi` then email OTP, then password + security questions):
+
 ```
-GET  /enrolements/finalisation?token=
-POST /enrolements/{id}/finalisation  { token, password, pin, security_questions? }
+GET  /enrolements/finalisation?token=                 (éligibilité; returns demande_id, numero_suivi, npi, email, statut)
+POST /enrolements/finalisation/otp/send               { numero_suivi }
+POST /enrolements/finalisation/otp/verify             { numero_suivi, otp }
+POST /enrolements/{id}/finalisation                   { token?, numero_suivi?, password, security_questions }
 ```
 
-- TrustedX identity already registered at responsable `APPROUVEE`; finalisation is **update-only** (password/PIN/questions).
+Rules:
+
+- Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
+- `POST …/otp/send` / `…/otp/verify`: guest; email OTP for finalisation (AED), distinct from TrustedX login MFA.
+- After successful OTP verify: short-lived cache proof (like KYC gate).
+- Finalize requires valid invitation `token` **and/or** `numero_suivi` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN for TrustedX.
 - Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
+- Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
 ### 13.4 Personne morale enrollment (PDF §4)
 
