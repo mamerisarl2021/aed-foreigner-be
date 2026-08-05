@@ -20,6 +20,7 @@ class ActivityLog extends Model
         'actor_user_id',
         'enrollment_request_id',
         'metadata',
+        'ip_address',
         'created_at',
     ];
 

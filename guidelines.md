@@ -691,7 +691,7 @@ POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_
 POST /agents/{id}                        → update staff
 DELETE /agents/{id}                      → delete staff
 GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier UI (défaut per_page=20)
-GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id)
+GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id, ip_address)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
 POST /admin/enrollment-reject-motifs                       { title, description }

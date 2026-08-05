@@ -40,6 +40,7 @@ Route::group([], function () {
             Route::get('/agents', [AuthController::class, 'listAgents']);
             Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
             Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
+            Route::get('/admin/activity-logs/{id}', [AdminActivityLogController::class, 'show']);
             Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
             Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);

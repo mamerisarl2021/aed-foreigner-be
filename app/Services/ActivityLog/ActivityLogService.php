@@ -30,6 +30,10 @@ final class ActivityLogService
             'actor_user_id' => $actorUserId,
             'enrollment_request_id' => $enrollmentRequestId,
             'metadata' => $metadata,
+            // Résolue ici, au moment de l'écriture : les appelants sont des
+            // services métier qui n'ont pas à connaître la couche HTTP. Nulle
+            // hors requête (commande Artisan, job en file).
+            'ip_address' => request()->ip(),
             'created_at' => now(),
         ]);
     }

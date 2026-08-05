@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin ActivityLog
+ */
 class ActivityLogDetailResource extends JsonResource
 {
     /**
@@ -29,6 +33,7 @@ class ActivityLogDetailResource extends JsonResource
             ] : null,
             'enrollment_request_id' => $this->enrollment_request_id,
             'metadata' => $this->metadata,
+            'ip_address' => $this->ip_address,
         ];
     }
 }
