@@ -27,3 +27,5 @@ yarn-error.log
 notes
 docker/regula/regula.license
 docker/regula/.env
+minio
+docker-compose.yml

@@ -525,6 +525,7 @@ Canonical HTTP flow:
 ```
 POST /otp/send              { email, phonenumber }
 POST /otp/verify            { email|phonenumber|both, otp }
+POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
 POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
 POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE }
 ```
@@ -536,6 +537,7 @@ Business rules:
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
+- `POST /kyc/document/read` is **assistive only**: it pre-fills the identity form and warns about an unusable photo on the capture screen. No OTP gate, nothing persisted, always 200 when well formed (`ok: false` + `quality_issues` on an unreadable photo). It exists so the browser never calls the Regula server directly — that would require opening the Regula server's CORS and would let any visitor burn licensed transactions outside our API. `POST /kyc/verify` stays the authoritative check and replays the read with the same scenario.
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
 

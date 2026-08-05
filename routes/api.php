@@ -64,6 +64,7 @@ Route::group([], function () {
     Route::middleware(['keycloak'])->group(function () {
         Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction', 'throttle:otp-send']);
         Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest', 'throttle:otp-verify']);
+        Route::post('/kyc/document/read', [KycController::class, 'readDocument'])->middleware(['guest', 'throttle:document-read']);
         Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
