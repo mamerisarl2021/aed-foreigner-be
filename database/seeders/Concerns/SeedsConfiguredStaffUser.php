@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Concerns;
 
+use App\Enums\ActivityLogAction;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -33,6 +35,8 @@ trait SeedsConfiguredStaffUser
             'guard_name' => 'web',
         ]);
 
+        $wasRecentlyCreated = ! User::query()->where('email', $email)->exists();
+
         $user = User::query()->firstOrCreate(
             ['email' => $email],
             [
@@ -50,6 +54,16 @@ trait SeedsConfiguredStaffUser
 
         $user->syncRoles([$role]);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        if ($wasRecentlyCreated) {
+            app(ActivityLogService::class)->record(
+                ActivityLogAction::UtilisateurCree,
+                sprintf('Compte staff %s créé par seeder (%s).', $label, $role),
+                is_string($user->id) ? $user->id : null,
+                null,
+                ['context' => 'seeder', 'config_key' => $configKey, 'role' => $role],
+            );
+        }
 
         $this->command?->info("{$label} seeded: {$email} (role: {$role})");
     }

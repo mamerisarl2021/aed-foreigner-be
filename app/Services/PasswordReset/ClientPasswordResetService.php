@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\PasswordReset;
 
+use App\Enums\ActivityLogAction;
 use App\Jobs\SendLinkJob;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use Carbon\Carbon;
@@ -18,6 +20,7 @@ final class ClientPasswordResetService
 
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function sendResetLink(string $npi, string $type): ServiceResult
@@ -43,6 +46,14 @@ final class ClientPasswordResetService
         SendLinkJob::dispatch($localUser->email, $link);
 
         $typeLabel = $type === 'password' ? 'mot de passe' : 'pin';
+
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseReinitialise,
+            sprintf('Lien de réinitialisation %s client envoyé (NPI).', $typeLabel),
+            is_string($localUser->id) ? $localUser->id : null,
+            null,
+            ['npi' => $npi, 'type' => $type, 'step' => 'link_sent'],
+        );
 
         return ServiceResult::ok(
             "Un lien vous a été envoyé par MAIL consultez le pour mettre à jour votre {$typeLabel}.",
@@ -79,6 +90,14 @@ final class ClientPasswordResetService
         }
 
         $this->invalidateToken($tokenData);
+
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseReinitialise,
+            sprintf('Réinitialisation %s client effectuée (NPI).', $typeLabel),
+            is_string($localUser->id) ? $localUser->id : null,
+            null,
+            ['npi' => $npi, 'type' => $type, 'step' => 'reset_done'],
+        );
 
         return ServiceResult::ok("Votre {$typeLabel} a bien été mis à jour.", []);
     }
@@ -118,6 +137,14 @@ final class ClientPasswordResetService
         }
 
         $this->invalidateToken($tokenData);
+
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseReinitialise,
+            'Réinitialisation des identifiants client effectuée (NPI).',
+            is_string($localUser->id) ? $localUser->id : null,
+            null,
+            ['npi' => $npi, 'type' => 'credentials', 'step' => 'reset_done'],
+        );
 
         return ServiceResult::ok('Vos identifiants ont bien été mis à jour.', []);
     }

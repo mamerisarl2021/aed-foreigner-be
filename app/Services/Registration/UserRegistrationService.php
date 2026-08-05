@@ -58,6 +58,14 @@ class UserRegistrationService
         SendOTPJob::dispatch($anipData['data']['email'], $otp);
         Cache::put('user_'.$npi, ['data' => $anipData], 600);
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP client envoyé par e-mail (NPI %s).', $npi),
+            null,
+            null,
+            ['npi' => $npi, 'context' => 'client_registration', 'channel' => 'email'],
+        );
+
         return ServiceResult::ok('Un code OTP vous a été envoyé par e-mail. Il expire dans 5 minutes.');
     }
 
@@ -88,6 +96,14 @@ class UserRegistrationService
             Cache::forget($attemptsKey);
             $ttlSeconds = Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
             Cache::put('user_'.$npi.'_validate_otp', true, $ttlSeconds > 0 ? $ttlSeconds : 300);
+
+            $this->activityLog->record(
+                ActivityLogAction::OtpVerifie,
+                sprintf('OTP client vérifié (NPI %s).', $npi),
+                null,
+                null,
+                ['npi' => $npi, 'context' => 'client_registration', 'channel' => 'email'],
+            );
 
             return ServiceResult::ok('OTP valide.', $cachedData['data']);
         } catch (Exception $e) {
@@ -204,6 +220,17 @@ class UserRegistrationService
 
             $user->update($updateData);
             DB::commit();
+
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurModifie,
+                sprintf(
+                    '%s a mis à jour son profil.',
+                    ActivityLogService::actorLabel($user)
+                ),
+                is_string($user->id) ? $user->id : null,
+                null,
+                ['context' => 'profile_update', 'fields' => array_keys($updateData)],
+            );
 
             return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load('identities'));
         } catch (Exception $e) {

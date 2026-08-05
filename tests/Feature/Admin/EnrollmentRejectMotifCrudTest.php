@@ -52,7 +52,8 @@ final class EnrollmentRejectMotifCrudTest extends TestCase
         $create->assertCreated()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.title', 'Document illisible')
-            ->assertJsonPath('data.description', 'La pièce fournie ne peut pas être lue.');
+            ->assertJsonPath('data.description', 'La pièce fournie ne peut pas être lue.')
+            ->assertJsonStructure(['data' => ['id', 'title', 'description', 'created_at', 'updated_at']]);
 
         $id = $create->json('data.id');
         $this->assertNotEmpty($id);

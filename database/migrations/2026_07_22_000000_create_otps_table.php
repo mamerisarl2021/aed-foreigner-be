@@ -12,7 +12,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('email')->nullable()->index();
             $table->string('npi')->nullable()->index();
-            $table->string('otp', 6);
+            $table->string('otp', 64);
             $table->timestamp('valid_until');
             $table->timestamps();
         });

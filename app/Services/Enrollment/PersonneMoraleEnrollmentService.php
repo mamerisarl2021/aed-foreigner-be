@@ -177,6 +177,14 @@ class PersonneMoraleEnrollmentService
 
         $this->promoteToPendingIfVerified($enrollment);
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('Email officiel vérifié pour la demande morale %s.', $enrollment->id),
+            is_string($enrollment->submitted_by_user_id) ? $enrollment->submitted_by_user_id : null,
+            $enrollment->id,
+            ['context' => 'morale_email'],
+        );
+
         return ServiceResult::ok('Email officiel vérifié.', [
             'enrollment_request_id' => $enrollment->id,
             'email_verified' => true,
@@ -212,6 +220,14 @@ class PersonneMoraleEnrollmentService
         SendSmsJob::dispatch(
             $enrollment->phonenumber,
             "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes)."
+        );
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP téléphone morale envoyé pour la demande %s.', $enrollment->id),
+            is_string($user->id) ? $user->id : null,
+            $enrollment->id,
+            ['context' => 'morale_phone', 'channel' => 'phone'],
         );
 
         return ServiceResult::ok('OTP envoyé au téléphone officiel de l\'entreprise.', [
@@ -251,6 +267,14 @@ class PersonneMoraleEnrollmentService
         $enrollment->save();
 
         $this->promoteToPendingIfVerified($enrollment);
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('Téléphone officiel vérifié pour la demande morale %s.', $enrollment->id),
+            is_string($user->id) ? $user->id : null,
+            $enrollment->id,
+            ['context' => 'morale_phone'],
+        );
 
         return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', [
             'enrollment_request_id' => $enrollment->id,

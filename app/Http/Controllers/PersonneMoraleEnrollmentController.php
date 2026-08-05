@@ -99,6 +99,9 @@ class PersonneMoraleEnrollmentController extends BaseController
             return $this->sendError('Non authentifié.', null, 401);
         }
 
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('viewOwnMorale', $enrollment);
+
         return $this->respond($this->moraleEnrollment->verifyPhoneOtp($user, $id, $request->input('otp')));
     }
 }
