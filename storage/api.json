@@ -561,6 +561,338 @@
                 }
             }
         },
+        "/v1/admin/enrollment-reject-motifs": {
+            "post": {
+                "operationId": "enrollmentRejectMotif.store",
+                "description": "Body: `{ title, description }`.",
+                "summary": "Create enrollment reject motif (admin only)",
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreEnrollmentRejectMotifRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentRejectMotifResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet cr\u00e9\u00e9."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/enrollment-reject-motifs/{id}": {
+            "get": {
+                "operationId": "enrollmentRejectMotif.show",
+                "summary": "Show enrollment reject motif (admin only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentRejectMotifResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "enrollmentRejectMotif.update",
+                "description": "Body: `{ title?, description? }`.",
+                "summary": "Update enrollment reject motif (admin only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEnrollmentRejectMotifRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentRejectMotifResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet mis \u00e0 jour."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "enrollmentRejectMotif.destroy",
+                "description": "Hard delete \u2014 the motif is permanently removed.",
+                "summary": "Delete enrollment reject motif (admin only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet supprim\u00e9."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Motif de rejet introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/audits": {
             "get": {
                 "operationId": "auditLog.index",
@@ -899,42 +1231,10 @@
         "/v1/management/enrollment-reject-motifs": {
             "get": {
                 "operationId": "enrollmentRejectMotif.index",
-                "description": "Defaults: active_only=true. Optional stage filter\n(KYC, DOCUMENT, BIOMETRY, COMPANY, REPRESENTATIVE, OTHER).",
+                "description": "Available to agent, responsable de validation, and administrateur plateforme.\nReturns `{ id, title, description }` \u2014 use `id` in reject payloads (`motif[]` / `reasons[]`).",
                 "summary": "List enrollment reject motifs",
                 "tags": [
                     "Admin"
-                ],
-                "parameters": [
-                    {
-                        "name": "active_only",
-                        "in": "query",
-                        "description": "D\u00e9faut: true (seuls les motifs actifs sont retourn\u00e9s).",
-                        "schema": {
-                            "type": [
-                                "boolean",
-                                "null"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "stage",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "enum": [
-                                "KYC",
-                                "DOCUMENT",
-                                "BIOMETRY",
-                                "COMPANY",
-                                "REPRESENTATIVE",
-                                "OTHER",
-                                null
-                            ]
-                        }
-                    }
                 ],
                 "responses": {
                     "200": {
@@ -1045,7 +1345,7 @@
                                                     "items": {
                                                         "type": "object",
                                                         "properties": {
-                                                            "code": {
+                                                            "motif_id": {
                                                                 "anyOf": [
                                                                     {
                                                                         "type": "integer"
@@ -1060,7 +1360,7 @@
                                                             }
                                                         },
                                                         "required": [
-                                                            "code",
+                                                            "motif_id",
                                                             "count"
                                                         ]
                                                     }
@@ -3627,50 +3927,13 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "action_code": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "actor_user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "enrollment_request_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "action_code",
-                    "description",
-                    "actor_user_id",
-                    "enrollment_request_id",
-                    "metadata",
-                    "created_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "ActivityLog"
             },
             "App.Http.Requests.Foreigner.SendOtpRequest": {
@@ -3723,101 +3986,13 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "user_type": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "event": {
-                        "type": "string"
-                    },
-                    "auditable_type": {
-                        "type": "string"
-                    },
-                    "auditable_id": {
-                        "type": "string"
-                    },
-                    "old_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "new_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_agent": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "tags": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "user_type",
-                    "user_id",
-                    "event",
-                    "auditable_type",
-                    "auditable_id",
-                    "old_values",
-                    "new_values",
-                    "url",
-                    "ip_address",
-                    "user_agent",
-                    "tags",
-                    "created_at",
-                    "updated_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "Audit"
             },
             "ChangeStaffPasswordRequest": {
@@ -4385,25 +4560,17 @@
                     "id": {
                         "type": "string"
                     },
-                    "code": {
+                    "title": {
                         "type": "string"
                     },
-                    "label_fr": {
+                    "description": {
                         "type": "string"
-                    },
-                    "stage": {
-                        "type": "string"
-                    },
-                    "active": {
-                        "type": "boolean"
                     }
                 },
                 "required": [
                     "id",
-                    "code",
-                    "label_fr",
-                    "stage",
-                    "active"
+                    "title",
+                    "description"
                 ],
                 "title": "EnrollmentRejectMotifResource"
             },
@@ -4411,13 +4578,7 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
-                    },
-                    "tracking_code": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "integer"
                     },
                     "email": {
                         "type": "string"
@@ -4451,19 +4612,6 @@
                             "null"
                         ]
                     },
-                    "risk_score": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "analysis_details": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
                     "status": {
                         "type": "string"
                     },
@@ -4472,19 +4620,6 @@
                             "string",
                             "null"
                         ]
-                    },
-                    "assigned_responsable_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "agent_decided_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
                     },
                     "reject_stage": {
                         "type": [
@@ -4508,86 +4643,6 @@
                     "type": {
                         "type": "string"
                     },
-                    "submitted_by_user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "email_verification_token": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "email_verified_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "phone_verified_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "verification_deadline_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "visio_notes": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "visio_requested_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "visio_completed_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "returned_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "return_reasons": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "sla_deadline_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "sla_alert_level": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -4601,41 +4656,39 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "risk_score": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "analysis_details": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
                     }
                 },
                 "required": [
                     "id",
-                    "tracking_code",
                     "email",
                     "phonenumber",
                     "kyc_data",
                     "documents",
                     "liveness",
                     "similarity",
-                    "risk_score",
-                    "analysis_details",
                     "status",
                     "assigned_agent_id",
-                    "assigned_responsable_id",
-                    "agent_decided_at",
                     "reject_stage",
                     "reject_reasons",
                     "review_comments",
                     "type",
-                    "submitted_by_user_id",
-                    "email_verification_token",
-                    "email_verified_at",
-                    "phone_verified_at",
-                    "verification_deadline_at",
-                    "visio_notes",
-                    "visio_requested_at",
-                    "visio_completed_at",
-                    "returned_at",
-                    "return_reasons",
-                    "sla_deadline_at",
-                    "sla_alert_level",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "risk_score",
+                    "analysis_details"
                 ],
                 "title": "EnrollmentRequest"
             },
@@ -5015,23 +5068,7 @@
                         ],
                         "items": {
                             "type": "string",
-                            "enum": [
-                                "doc_invalid",
-                                "doc_expired",
-                                "doc_mismatch",
-                                "photo_mismatch",
-                                "liveness_failed",
-                                "kyc_incomplete",
-                                "kyc_inconsistent",
-                                "duplicate_identity",
-                                "insufficient_evidence",
-                                "other",
-                                "company_duplicate",
-                                "company_data_inconsistent",
-                                "company_docs_invalid",
-                                "representative_unauthorized",
-                                "trade_register_invalid"
-                            ]
+                            "format": "uuid"
                         }
                     }
                 },
@@ -5388,6 +5425,23 @@
                 ],
                 "title": "SetClientPasswordRequest"
             },
+            "StoreEnrollmentRejectMotifRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description"
+                ],
+                "title": "StoreEnrollmentRejectMotifRequest"
+            },
             "StoreFinalisationRequest": {
                 "type": "object",
                 "properties": {
@@ -5690,6 +5744,19 @@
                 },
                 "title": "UpdateAgentRequest"
             },
+            "UpdateEnrollmentRejectMotifRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "title": "UpdateEnrollmentRejectMotifRequest"
+            },
             "UpdateUserProfileRequest": {
                 "type": "object",
                 "properties": {
@@ -5763,12 +5830,6 @@
                             "null"
                         ]
                     },
-                    "sexe": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
                     "email": {
                         "type": "string"
                     },
@@ -5796,32 +5857,8 @@
                             "null"
                         ]
                     },
-                    "trustedx_registered_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "security_questions": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
                     "status": {
                         "type": "string"
-                    },
-                    "must_change_password": {
-                        "type": "boolean"
-                    },
-                    "last_login_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
                     },
                     "email_verified_at": {
                         "type": [
@@ -5852,17 +5889,12 @@
                     "id",
                     "name",
                     "first_name",
-                    "sexe",
                     "email",
                     "phonenumber",
                     "nationality",
                     "profile",
                     "npi",
-                    "trustedx_registered_at",
-                    "security_questions",
                     "status",
-                    "must_change_password",
-                    "last_login_at",
                     "email_verified_at",
                     "created_at",
                     "updated_at",
@@ -5895,10 +5927,7 @@
                         ]
                     },
                     "sexe": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "nationality": {
                         "type": [
@@ -5917,6 +5946,22 @@
                     },
                     "status": {
                         "type": "string"
+                    },
+                    "role": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "AGENT",
+                            "RESPONSABLE_DE_VALIDATION",
+                            "MANAGER",
+                            "AUDITEUR",
+                            "ADMINISTRATEUR_PLATEFORME",
+                            "CLIENT",
+                            "DEMANDEUR_AUTHENTIFIE",
+                            null
+                        ]
                     },
                     "link": {
                         "type": "string"
@@ -5938,6 +5983,7 @@
                     "email",
                     "phonenumber",
                     "status",
+                    "role",
                     "link",
                     "created_at"
                 ],
@@ -5968,23 +6014,7 @@
                         ],
                         "items": {
                             "type": "string",
-                            "enum": [
-                                "doc_invalid",
-                                "doc_expired",
-                                "doc_mismatch",
-                                "photo_mismatch",
-                                "liveness_failed",
-                                "kyc_incomplete",
-                                "kyc_inconsistent",
-                                "duplicate_identity",
-                                "insufficient_evidence",
-                                "other",
-                                "company_duplicate",
-                                "company_data_inconsistent",
-                                "company_docs_invalid",
-                                "representative_unauthorized",
-                                "trade_register_invalid"
-                            ]
+                            "format": "uuid"
                         }
                     }
                 },
@@ -6047,19 +6077,13 @@
                         "description": "Deprecated client-supplied score \u2014 ignored for the OK/KO gate when not mocking."
                     },
                     "selfie": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
                     },
                     "recto": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
@@ -6076,7 +6100,9 @@
                 },
                 "required": [
                     "email",
-                    "phonenumber"
+                    "phonenumber",
+                    "selfie",
+                    "recto"
                 ],
                 "title": "VerifyKycRequest"
             },

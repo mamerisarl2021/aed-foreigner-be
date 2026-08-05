@@ -18,6 +18,9 @@ class UserProfileController extends BaseController
      */
     public function __invoke(Request $request): JsonResponse
     {
-        return $this->sendResponse('Profil utilisateur.', new UserResource($request->user()));
+        $user = $request->user();
+        $user?->loadMissing('roles');
+
+        return $this->sendResponse('Profil utilisateur.', new UserResource($user));
     }
 }

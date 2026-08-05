@@ -22,8 +22,6 @@ use Illuminate\Support\Facades\Route;
 /*
 | API routes — loaded by bootstrap/app.php with the "api" middleware group.
 */
-const AGENT_BY_ID = '/agents/{id}';
-
 
 Route::group([], function () {
     Route::get('/health', HealthCheckController::class);
@@ -37,13 +35,17 @@ Route::group([], function () {
 
         Route::middleware('role:administrateur_plateforme')->group(function () {
             Route::post('/agents/register', [AuthController::class, 'registerAgent']);
-            Route::post(AGENT_BY_ID, [AuthController::class, 'updateAgent']);
-            Route::delete(AGENT_BY_ID, [AuthController::class, 'deleteAgent']);
+            Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
+            Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
             Route::get('/agents', [AuthController::class, 'listAgents']);
-            Route::get(AGENT_BY_ID, [AuthController::class, 'showAgent']);
+            Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
             Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
             Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
             Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
+            Route::post('/admin/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'store']);
+            Route::get('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'show']);
+            Route::patch('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'update']);
+            Route::delete('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'destroy']);
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
         });
 

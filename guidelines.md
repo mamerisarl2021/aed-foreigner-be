@@ -562,16 +562,18 @@ PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, mo
 PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire?, motif? }
 ```
 
+`motif[]` values are **UUID ids** from `GET /management/enrollment-reject-motifs` (not string codes).
+
 Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, responsable.
 
-Responsable detail includes `decision_agent` (Approuvé/Rejeté, agent, date, motifs, description), `peut_prendre_en_charge`, `peut_valider`.
+Responsable detail includes `decision_agent` (Approuvé/Rejeté, agent, date, motifs `{ id, title, description }`, description), `peut_prendre_en_charge`, `peut_valider`.
 
 Decision mapping (responsable buttons):
 
 | Current status | Approuver | Rejeter la décision |
 |----------------|-----------|---------------------|
-| `VALIDATION_AGENT` | `APPROUVEE` | `RETOUR_AGENT` (+ motif[], commentaire?) |
-| `REJET_AGENT` | `REJET_CONFIRME` | `RETOUR_AGENT` (+ motif[], commentaire?) |
+| `VALIDATION_AGENT` | `APPROUVEE` | `RETOUR_AGENT` (+ motif[] UUID, commentaire?) |
+| `REJET_AGENT` | `REJET_CONFIRME` | `RETOUR_AGENT` (+ motif[] UUID, commentaire?) |
 
 Staff auth:
 
@@ -605,7 +607,7 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`, clears `assigned_agent_id`.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
-- Reject motifs: `GET /management/enrollment-reject-motifs`.
+- Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`.
 - SLA: `enrollment:check-sla` hourly.
 - Authorization: `EnrollmentRequestPolicy` (see §9.3).
@@ -692,6 +694,10 @@ DELETE /agents/{id}                      → delete staff
 GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier (action, description, date)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
+POST /admin/enrollment-reject-motifs                       { title, description }
+GET  /admin/enrollment-reject-motifs/{id}
+PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
+DELETE /admin/enrollment-reject-motifs/{id}                hard delete
 GET  /audits                                               → journal OwenIt (compliance / auditeur)
 ```
 
@@ -699,6 +705,7 @@ GET  /audits                                               → journal OwenIt (c
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
 - **Journaux** (`activity_logs`): business actions (demande, validation agent/responsable, création utilisateur, finalisation). Distinct from `GET /audits` (model CRUD audit trail).
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
+- **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
 
 ### 13.6 Explicitly out of current API scope
 

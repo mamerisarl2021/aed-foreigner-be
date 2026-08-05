@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class AdminUserSeeder extends Seeder
 {
@@ -13,6 +14,7 @@ class AdminUserSeeder extends Seeder
         $name = config('seeding.admin.name');
         $email = config('seeding.admin.email');
         $password = config('seeding.admin.password');
+        $role = config('roles.administrateur_plateforme');
 
         if (! $email || ! $password) {
             $this->command?->warn('Skipping admin seed: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set.');
@@ -25,7 +27,7 @@ class AdminUserSeeder extends Seeder
         }
 
         Role::firstOrCreate([
-            'name' => config('roles.administrateur_plateforme'),
+            'name' => $role,
             'guard_name' => 'web',
         ]);
 
@@ -43,10 +45,9 @@ class AdminUserSeeder extends Seeder
             'status' => 'ACTIVE',
         ])->save();
 
-        if (! $admin->hasRole(config('roles.administrateur_plateforme'))) {
-            $admin->assignRole(config('roles.administrateur_plateforme'));
-        }
+        $admin->syncRoles([$role]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $this->command?->info("Administrator seeded: {$email}");
+        $this->command?->info("Administrator seeded: {$email} (role: {$role})");
     }
 }

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
+use Spatie\Permission\Models\Role;
 
 class ManageAdmin extends Command
 {
@@ -65,18 +66,18 @@ class ManageAdmin extends Command
             return;
         }
 
+        $role = config('roles.administrateur_plateforme');
+        Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+
         $admin = User::create([
             'name' => $name,
             'email' => $email,
+            'status' => 'ACTIVE',
         ]);
         $admin->forceFill(['password' => $password])->save();
+        $admin->syncRoles([$role]);
 
-        // Assign admin role
-        if (! $admin->hasRole(config('roles.administrateur_plateforme'))) {
-            $admin->assignRole(config('roles.administrateur_plateforme'));
-        }
-
-        $this->info('Administrator created successfully.');
+        $this->info("Administrator created successfully (role: {$role}).");
     }
 
     protected function updateAdmin($name, $email, $password)
@@ -89,10 +90,17 @@ class ManageAdmin extends Command
 
             return;
         }
+
+        $role = config('roles.administrateur_plateforme');
+        Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+
         $admin->forceFill([
             'name' => $name,
             'password' => $password,
+            'status' => 'ACTIVE',
         ])->save();
-        $this->info('Administrator updated successfully.');
+        $admin->syncRoles([$role]);
+
+        $this->info("Administrator updated successfully (role: {$role}).");
     }
 }

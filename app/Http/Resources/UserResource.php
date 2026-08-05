@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\User;
+use App\Support\StaffRoleMapper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +29,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'phonenumber' => $this->phonenumber,
             'status' => $this->status,
+            'role' => StaffRoleMapper::codeFromUser($this->resource),
             'link' => $this->link,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
