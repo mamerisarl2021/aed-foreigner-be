@@ -16,10 +16,8 @@ class EnrollmentRejectMotifResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'code' => $this->code,
-            'label_fr' => $this->label_fr,
-            'stage' => $this->stage,
-            'active' => $this->active,
+            'title' => $this->title,
+            'description' => $this->description,
         ];
     }
 }

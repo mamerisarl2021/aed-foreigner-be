@@ -13,10 +13,6 @@ class ListRejectMotifsRequest extends ApiFormRequest
      */
     public function rules(): array
     {
-        return [
-            // Défaut: true (seuls les motifs actifs sont retournés).
-            'active_only' => ['nullable', 'boolean'],
-            'stage' => ['nullable', 'string', 'in:KYC,DOCUMENT,BIOMETRY,COMPANY,REPRESENTATIVE,OTHER'],
-        ];
+        return [];
     }
 }

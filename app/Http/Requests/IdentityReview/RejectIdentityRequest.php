@@ -5,19 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Requests\IdentityReview;
 
 use App\Http\Requests\ApiFormRequest;
-use App\Models\EnrollmentRejectMotif;
 use Illuminate\Validation\Rule;
 
 class RejectIdentityRequest extends ApiFormRequest
 {
     public function rules(): array
     {
-        $activeCodes = EnrollmentRejectMotif::query()->active()->pluck('code')->all();
-
         return [
             'stage' => ['required', 'string', Rule::in(['KYC', 'DOCUMENT', 'BIOMETRY', 'COMPANY', 'REPRESENTATIVE', 'OTHER'])],
             'reasons' => ['required', 'array', 'min:1'],
-            'reasons.*' => ['required', 'string', Rule::in($activeCodes)],
+            'reasons.*' => ['required', 'uuid', Rule::exists('enrollment_reject_motifs', 'id')],
             'comments' => ['sometimes', 'nullable', 'string'],
         ];
     }
@@ -29,7 +26,8 @@ class RejectIdentityRequest extends ApiFormRequest
     {
         return [
             'stage.in' => 'Le stage doit être KYC, DOCUMENT, BIOMETRY, COMPANY, REPRESENTATIVE ou OTHER.',
-            'reasons.*.in' => 'Un ou plusieurs motifs de rejet sont invalides.',
+            'reasons.*.exists' => 'Un ou plusieurs motifs de rejet sont invalides.',
+            'reasons.*.uuid' => 'Un ou plusieurs motifs de rejet sont invalides.',
         ];
     }
 }

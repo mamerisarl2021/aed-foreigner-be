@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
-use App\Models\EnrollmentRejectMotif;
 use Illuminate\Validation\Rule;
 
 class ValidationEnrollmentRequest extends ApiFormRequest
@@ -17,7 +16,7 @@ class ValidationEnrollmentRequest extends ApiFormRequest
 
     public function rules(): array
     {
-        $activeCodes = EnrollmentRejectMotif::query()->active()->pluck('code')->all();
+        $motifIdRules = ['required', 'uuid', Rule::exists('enrollment_reject_motifs', 'id')];
 
         $rules = [
             'decision' => ['required', 'string', Rule::in(['APPROUVEE', 'REJET_CONFIRME', 'RETOUR_AGENT'])],
@@ -26,10 +25,10 @@ class ValidationEnrollmentRequest extends ApiFormRequest
 
         if ($this->input('decision') === 'RETOUR_AGENT') {
             $rules['motif'] = ['required', 'array', 'min:1'];
-            $rules['motif.*'] = ['required', 'string', Rule::in($activeCodes)];
+            $rules['motif.*'] = $motifIdRules;
         } else {
             $rules['motif'] = ['nullable', 'array'];
-            $rules['motif.*'] = ['string', Rule::in($activeCodes)];
+            $rules['motif.*'] = ['uuid', Rule::exists('enrollment_reject_motifs', 'id')];
         }
 
         return $rules;
@@ -42,7 +41,8 @@ class ValidationEnrollmentRequest extends ApiFormRequest
     {
         return [
             'motif.required' => 'Au moins un motif de rejet est requis.',
-            'motif.*.in' => 'Un ou plusieurs motifs de rejet sont invalides.',
+            'motif.*.exists' => 'Un ou plusieurs motifs de rejet sont invalides.',
+            'motif.*.uuid' => 'Un ou plusieurs motifs de rejet sont invalides.',
         ];
     }
 }

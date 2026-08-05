@@ -82,26 +82,29 @@ class EnrollmentDecisionDetailResource extends JsonResource
     }
 
     /**
-     * @param  list<string>|null  $codes
-     * @return list<array{code: string, label: string}>
+     * @param  list<string>|null  $ids
+     * @return list<array{id: string, title: string, description: string}>
      */
-    private function resolveMotifs(?array $codes): array
+    private function resolveMotifs(?array $ids): array
     {
-        if ($codes === null || $codes === []) {
+        if ($ids === null || $ids === []) {
             return [];
         }
 
+        $ids = array_values(array_map(fn ($id) => (string) $id, $ids));
+
         $motifs = EnrollmentRejectMotif::query()
-            ->whereIn('code', $codes)
+            ->whereIn('id', $ids)
             ->get()
-            ->keyBy('code');
+            ->keyBy('id');
 
         return array_values(array_map(
-            fn (string $code) => [
-                'code' => $code,
-                'label' => $motifs->get($code)?->label_fr ?? $code,
+            fn (string $id) => [
+                'id' => $id,
+                'title' => $motifs->get($id)?->title ?? $id,
+                'description' => $motifs->get($id)?->description ?? '',
             ],
-            $codes
+            $ids
         ));
     }
 }

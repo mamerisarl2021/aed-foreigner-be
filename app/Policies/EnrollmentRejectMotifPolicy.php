@@ -31,4 +31,19 @@ class EnrollmentRejectMotifPolicy
     {
         return $user->hasAnyRole(self::reviewerRoles());
     }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole(config('roles.administrateur_plateforme'));
+    }
+
+    public function update(User $user, EnrollmentRejectMotif $motif): bool
+    {
+        return $user->hasRole(config('roles.administrateur_plateforme'));
+    }
+
+    public function delete(User $user, EnrollmentRejectMotif $motif): bool
+    {
+        return $user->hasRole(config('roles.administrateur_plateforme'));
+    }
 }

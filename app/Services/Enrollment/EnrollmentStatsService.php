@@ -48,10 +48,10 @@ class EnrollmentStatsService
             ->whereNotNull('reject_reasons')
             ->get(['reject_reasons'])
             ->flatMap(function (EnrollmentRequest $row) {
-                return collect($row->reject_reasons ?? [])->map(fn ($code) => (string) $code);
+                return collect($row->reject_reasons ?? [])->map(fn ($id) => (string) $id);
             })
             ->countBy()
-            ->map(fn ($count, $code) => ['code' => $code, 'count' => $count])
+            ->map(fn ($count, $id) => ['motif_id' => $id, 'count' => $count])
             ->values()
             ->all();
 

@@ -10,31 +10,60 @@ class EnrollmentRejectMotifSeeder extends Seeder
     public function run(): void
     {
         $motifs = [
-            ['code' => 'doc_invalid', 'label_fr' => 'Pièce d\'identité invalide ou illisible', 'stage' => 'DOCUMENT'],
-            ['code' => 'doc_expired', 'label_fr' => 'Pièce d\'identité expirée', 'stage' => 'DOCUMENT'],
-            ['code' => 'doc_mismatch', 'label_fr' => 'Incohérence entre la pièce et les informations saisies', 'stage' => 'DOCUMENT'],
-            ['code' => 'photo_mismatch', 'label_fr' => 'Photo / selfie ne correspond pas au document', 'stage' => 'BIOMETRY'],
-            ['code' => 'liveness_failed', 'label_fr' => 'Contrôle de vivacité échoué', 'stage' => 'BIOMETRY'],
-            ['code' => 'kyc_incomplete', 'label_fr' => 'Informations KYC incomplètes ou incorrectes', 'stage' => 'KYC'],
-            ['code' => 'kyc_inconsistent', 'label_fr' => 'Incohérence des données personnelles', 'stage' => 'KYC'],
-            ['code' => 'duplicate_identity', 'label_fr' => 'Identité déjà enrôlée / suspicion de doublon', 'stage' => 'KYC'],
-            ['code' => 'insufficient_evidence', 'label_fr' => 'Éléments de preuve insuffisants', 'stage' => 'OTHER'],
-            ['code' => 'other', 'label_fr' => 'Autre motif (voir commentaires)', 'stage' => 'OTHER'],
-            ['code' => 'company_duplicate', 'label_fr' => 'Entreprise déjà enrôlée ou doublon', 'stage' => 'COMPANY'],
-            ['code' => 'company_data_inconsistent', 'label_fr' => 'Informations entreprise incohérentes', 'stage' => 'COMPANY'],
-            ['code' => 'company_docs_invalid', 'label_fr' => 'Pièces justificatives entreprise invalides', 'stage' => 'DOCUMENT'],
-            ['code' => 'representative_unauthorized', 'label_fr' => 'Mandataire non habilité / procuration manquante', 'stage' => 'REPRESENTATIVE'],
-            ['code' => 'trade_register_invalid', 'label_fr' => 'Extrait de registre de commerce invalide', 'stage' => 'DOCUMENT'],
+            [
+                'title' => 'Pièce d\'identité invalide ou illisible',
+                'description' => 'La pièce fournie est illisible, endommagée ou non reconnue.',
+            ],
+            [
+                'title' => 'Pièce d\'identité expirée',
+                'description' => 'La date d\'expiration de la pièce est dépassée.',
+            ],
+            [
+                'title' => 'Incohérence pièce / informations saisies',
+                'description' => 'Les données du formulaire ne correspondent pas au document présenté.',
+            ],
+            [
+                'title' => 'Photo / selfie ne correspond pas au document',
+                'description' => 'La comparaison biométrique entre le selfie et le portrait du document a échoué.',
+            ],
+            [
+                'title' => 'Contrôle de vivacité échoué',
+                'description' => 'Le contrôle de vivacité (liveness) n\'a pas été validé.',
+            ],
+            [
+                'title' => 'Informations KYC incomplètes ou incorrectes',
+                'description' => 'Des champs obligatoires sont manquants ou incorrects.',
+            ],
+            [
+                'title' => 'Identité déjà enrôlée / suspicion de doublon',
+                'description' => 'Une identité similaire ou identique existe déjà dans le système.',
+            ],
+            [
+                'title' => 'Éléments de preuve insuffisants',
+                'description' => 'Les pièces jointes ne suffisent pas pour instruire favorablement la demande.',
+            ],
+            [
+                'title' => 'Autre motif',
+                'description' => 'Autre motif — voir le commentaire de l\'agent ou du responsable.',
+            ],
+            [
+                'title' => 'Entreprise déjà enrôlée ou doublon',
+                'description' => 'Une entreprise avec le même immatriculation / pays est déjà enregistrée.',
+            ],
+            [
+                'title' => 'Pièces justificatives entreprise invalides',
+                'description' => 'Les documents société (RCCM, statuts, etc.) sont invalides ou incomplets.',
+            ],
+            [
+                'title' => 'Mandataire non habilité',
+                'description' => 'La procuration est manquante ou le mandataire n\'est pas habilité.',
+            ],
         ];
 
         foreach ($motifs as $motif) {
             EnrollmentRejectMotif::query()->updateOrCreate(
-                ['code' => $motif['code']],
-                [
-                    'label_fr' => $motif['label_fr'],
-                    'stage' => $motif['stage'],
-                    'active' => true,
-                ]
+                ['title' => $motif['title']],
+                ['description' => $motif['description']]
             );
         }
     }
