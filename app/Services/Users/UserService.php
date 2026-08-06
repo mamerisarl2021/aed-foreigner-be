@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -18,21 +17,6 @@ final class UserService
     public function __construct(
         private readonly ActivityLogService $activityLog,
     ) {}
-
-    public function show(string $id): ServiceResult
-    {
-        try {
-            $user = User::findOrFail($id);
-
-            return ServiceResult::ok('Utilisateur récupéré.', $user);
-        } catch (ModelNotFoundException) {
-            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
-        } catch (Exception $e) {
-            Log::error('Fetching user failed: '.$e->getMessage());
-
-            return ServiceResult::fail('Fetching user failed.', null, 500);
-        }
-    }
 
     public function search(string $query, int $limit, string $excludeUserId): ServiceResult
     {
@@ -71,22 +55,6 @@ final class UserService
             Log::error('Searching users failed: '.$e->getMessage());
 
             return ServiceResult::fail('Searching users failed.', null, 500);
-        }
-    }
-
-    public function destroy(string $id): ServiceResult
-    {
-        try {
-            $user = User::findOrFail($id);
-            $user->delete();
-
-            return ServiceResult::ok('User deleted successfully.', []);
-        } catch (ModelNotFoundException) {
-            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
-        } catch (Exception $e) {
-            Log::error('Deleting user failed: '.$e->getMessage());
-
-            return ServiceResult::fail('Deleting user failed.', null, 500);
         }
     }
 

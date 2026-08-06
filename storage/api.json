@@ -1185,11 +1185,6 @@
                     "200": {
                         "description": "Decrypted file bytes. Content-Type is the detected MIME type (often image/* or application/pdf).",
                         "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            },
                             "application/octet-stream": {
                                 "schema": {
                                     "type": "string",

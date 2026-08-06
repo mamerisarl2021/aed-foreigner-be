@@ -64,17 +64,6 @@ class UserController extends BaseController
     }
 
     /**
-     * User detail
-     */
-    public function show(string $id): JsonResponse
-    {
-        $user = User::findOrFail($id);
-        $this->authorize('view', $user);
-
-        return $this->sendResponse('Utilisateur récupéré.', new UserResource($user));
-    }
-
-    /**
      * Search users by email, name or NPI (staff only)
      *
      * Defaults: limit=10 (max 100).
@@ -135,17 +124,6 @@ class UserController extends BaseController
         );
 
         return $this->respond($result);
-    }
-
-    /**
-     * Delete a user (admin only)
-     */
-    public function destroy(string $id): JsonResponse
-    {
-        $target = User::findOrFail($id);
-        $this->authorize('delete', $target);
-
-        return $this->respond($this->users->destroy($id));
     }
 
     /**
