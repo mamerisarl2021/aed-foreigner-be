@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\ClaimEnrollmentRequest;
+use App\Http\Requests\Enrollment\ClaimValidationEnrollmentRequest;
 use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
 use App\Http\Requests\Enrollment\ListEnrollmentRequestsRequest;
+use App\Http\Requests\Enrollment\ShowEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitEnrollmentRequest;
 use App\Http\Requests\Enrollment\ValidationEnrollmentRequest;
 use App\Http\Resources\EnrollmentDecisionDetailResource;
@@ -17,7 +20,6 @@ use App\Services\Enrollment\ForeignerEnrollmentService;
 use App\Services\IdentityReview\IdentityReviewService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 #[Group('Enrollment - Physique')]
 final class EnrollmentController extends BaseController
@@ -66,8 +68,9 @@ final class EnrollmentController extends BaseController
      * Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource
      * with decision_agent block. Same route for physique and morale.
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function show(ShowEnrollmentRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('view', $enrollment);
         $result = $this->reviewService->show($id);
@@ -84,8 +87,9 @@ final class EnrollmentController extends BaseController
      *
      * Agent only. EN_ATTENTE and unassigned requests only.
      */
-    public function priseEnCharge(Request $request, string $id): JsonResponse
+    public function priseEnCharge(ClaimEnrollmentRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claim', $enrollment);
 
@@ -99,8 +103,9 @@ final class EnrollmentController extends BaseController
      *
      * Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.
      */
-    public function priseEnChargeValidation(Request $request, string $id): JsonResponse
+    public function priseEnChargeValidation(ClaimValidationEnrollmentRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claimValidation', $enrollment);
 
@@ -115,8 +120,9 @@ final class EnrollmentController extends BaseController
      * Diagram §3.1. From EN_ATTENTE to VALIDATION_AGENT or REJET_AGENT.
      * Agent must have prise en charge first.
      */
-    public function instruction(InstructionEnrollmentRequest $request, string $id): JsonResponse
+    public function instruction(InstructionEnrollmentRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('instruction', $enrollment);
 
@@ -134,8 +140,9 @@ final class EnrollmentController extends BaseController
      * Diagram §3.2. Requires prise en charge validation first.
      * VALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.
      */
-    public function validation(ValidationEnrollmentRequest $request, string $id): JsonResponse
+    public function validation(ValidationEnrollmentRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('validation', $enrollment);
 

@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\ActivityLogAction;
-use App\Services\ActivityLog\ActivityLogService;
-use App\Traits\EncryptionTrait;
+use App\Http\Requests\Admin\DecryptDocumentRequest;
+use App\Services\Encryption\DocumentDecryptService;
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 
 #[Group('Admin')]
 class EncryptionController extends Controller
 {
-    use EncryptionTrait;
-
     public function __construct(
-        private readonly ActivityLogService $activityLog,
+        private readonly DocumentDecryptService $decryptService,
     ) {}
 
     /**
@@ -29,41 +24,25 @@ class EncryptionController extends Controller
      * the decrypted content is returned inline with its detected MIME type.
      * 404 when the file does not exist.
      */
-    public function decryptAndDisplay(Request $request, string $filename): Response
+    public function decryptAndDisplay(DecryptDocumentRequest $request): Response
     {
         Gate::authorize('viewEncryptedDocuments');
 
-        $filename = basename($filename);
-        if ($filename === '' || str_contains($filename, '..')) {
-            abort(404);
-        }
-
-        if (! Storage::exists("public/docs/{$filename}")) {
-            abort(404);
-        }
-
-        $user = $request->user();
-        $this->activityLog->record(
-            ActivityLogAction::DocumentDechiffre,
-            sprintf(
-                '%s a consulté le document chiffré %s.',
-                ActivityLogService::actorLabel($user),
-                $filename
-            ),
-            is_string($user?->id) ? $user->id : null,
-            null,
-            ['filename' => $filename],
+        $result = $this->decryptService->decryptAndDisplay(
+            (string) $request->validated('filename'),
+            $request->user(),
         );
 
-        $base64EncodedContent = $this->getEncFile($filename, 'docs');
-        $fileContent = base64_decode($base64EncodedContent);
+        if (! $result->success) {
+            abort($result->code, $result->message);
+        }
 
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $fileType = $finfo->buffer($fileContent);
+        /** @var array{content: string, mime: string, filename: string} $data */
+        $data = $result->data;
 
-        return response()->make($fileContent, 200, [
-            'Content-Type' => $fileType,
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        return response()->make($data['content'], 200, [
+            'Content-Type' => $data['mime'],
+            'Content-Disposition' => 'inline; filename="'.$data['filename'].'"',
         ]);
     }
 }

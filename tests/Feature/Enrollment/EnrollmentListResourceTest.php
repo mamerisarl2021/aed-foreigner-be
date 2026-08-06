@@ -75,4 +75,13 @@ final class EnrollmentListResourceTest extends TestCase
             ->assertJsonPath('data.data.0.date_decision', null)
             ->assertJsonPath('data.data.0.retournee_le', null);
     }
+
+    #[Test]
+    public function show_rejects_invalid_enrollment_uuid(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/enrolements/not-a-uuid'))
+            ->assertStatus(422);
+    }
 }

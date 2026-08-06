@@ -1205,6 +1205,16 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "filename",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^\\/\\\\]+$",
+                            "maxLength": 255
+                        }
                     }
                 ],
                 "responses": {
@@ -1213,14 +1223,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "object"
-                                        }
-                                    ]
+                                    "type": "string"
                                 }
                             }
                         },
@@ -1235,11 +1238,11 @@
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -1835,6 +1838,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -2186,6 +2192,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -2849,6 +2858,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
                     }
                 ],
                 "responses": {
@@ -2894,6 +2912,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -2915,6 +2936,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendMoralePhoneOtpRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -2931,6 +2962,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -3594,6 +3628,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClaimEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -3631,6 +3675,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -3653,6 +3700,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClaimValidationEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -3690,6 +3747,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -3860,6 +3920,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
                     }
                 ],
                 "responses": {
@@ -3902,6 +3971,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -3997,6 +4069,12 @@
                         ],
                         "items": {}
                     },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time"
@@ -4009,6 +4087,7 @@
                     "actor_user_id",
                     "enrollment_request_id",
                     "metadata",
+                    "ip_address",
                     "created_at"
                 ],
                 "title": "ActivityLog"
@@ -4075,7 +4154,10 @@
                         "items": {}
                     },
                     "ip_address": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -4256,6 +4338,32 @@
                     "password_confirmation"
                 ],
                 "title": "ChangeStaffPasswordRequest"
+            },
+            "ClaimEnrollmentRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "title": "ClaimEnrollmentRequest"
+            },
+            "ClaimValidationEnrollmentRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "title": "ClaimValidationEnrollmentRequest"
             },
             "EnrolledPersonDetailResource": {
                 "type": "object",
@@ -5443,6 +5551,10 @@
             "InstructionEnrollmentRequest": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
                     "statut": {
                         "type": "string",
                         "enum": [
@@ -5469,6 +5581,7 @@
                     }
                 },
                 "required": [
+                    "id",
                     "statut"
                 ],
                 "title": "InstructionEnrollmentRequest"
@@ -5767,6 +5880,19 @@
                     "numero_suivi"
                 ],
                 "title": "SendFinalisationOtpRequest"
+            },
+            "SendMoralePhoneOtpRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "title": "SendMoralePhoneOtpRequest"
             },
             "SendOtpRequest": {
                 "type": "object",
@@ -6437,6 +6563,10 @@
             "ValidationEnrollmentRequest": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
                     "decision": {
                         "type": "string",
                         "enum": [
@@ -6464,6 +6594,7 @@
                     }
                 },
                 "required": [
+                    "id",
                     "decision"
                 ],
                 "title": "ValidationEnrollmentRequest"
@@ -6623,25 +6754,6 @@
                     }
                 }
             },
-            "AuthorizationException": {
-                "description": "Authorization error",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
-                            ]
-                        }
-                    }
-                }
-            },
             "ValidationException": {
                 "description": "Validation error",
                 "content": {
@@ -6667,6 +6779,25 @@
                             "required": [
                                 "message",
                                 "errors"
+                            ]
+                        }
+                    }
+                }
+            },
+            "AuthorizationException": {
+                "description": "Authorization error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
                             ]
                         }
                     }

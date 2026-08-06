@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\DeleteAgentRequest;
 use App\Http\Requests\Auth\KeycloakLoginRequest;
 use App\Http\Requests\Auth\ListAgentsRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\LogoutAdminRequest;
 use App\Http\Requests\Auth\RegisterAgentRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
@@ -20,7 +21,6 @@ use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Auth\AdminAuthService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 #[Group('Admin Auth')]
 class AuthController extends BaseController
@@ -113,7 +113,7 @@ class AuthController extends BaseController
     /**
      * Admin logout (revokes current token)
      */
-    public function logoutAdmin(Request $request): JsonResponse
+    public function logoutAdmin(LogoutAdminRequest $request): JsonResponse
     {
         $user = $request->user();
         $user->currentAccessToken()->delete();

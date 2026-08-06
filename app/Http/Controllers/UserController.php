@@ -168,6 +168,7 @@ class UserController extends BaseController
             $request->input('npi'),
             $request->input('password'),
             $request->input('type'),
+            $request->user(),
         ));
     }
 

@@ -118,10 +118,13 @@ class UserRegistrationService
         $response = $this->trustedXClient->userInfo($code);
 
         if ($response['status']) {
+            $actor = $response['data']['user'] ?? null;
+            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+
             $this->activityLog->record(
                 ActivityLogAction::ConnexionClient,
                 'Connexion client TrustedX réussie.',
-                null,
+                $actorId,
                 null,
                 ['channel' => 'web'],
             );
@@ -137,10 +140,13 @@ class UserRegistrationService
         $response = $this->trustedXClient->mobileUserInfo($code);
 
         if ($response['status']) {
+            $actor = $response['data']['user'] ?? null;
+            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+
             $this->activityLog->record(
                 ActivityLogAction::ConnexionClient,
                 'Connexion client mobile TrustedX réussie.',
-                null,
+                $actorId,
                 null,
                 ['channel' => 'mobile'],
             );
@@ -151,7 +157,7 @@ class UserRegistrationService
         return ServiceResult::fail($response['message'], null, 401);
     }
 
-    public function setPassword(string $npi, string $password, string $type): ServiceResult
+    public function setPassword(string $npi, string $password, string $type, ?User $actor = null): ServiceResult
     {
         $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
@@ -166,6 +172,19 @@ class UserRegistrationService
         if (! $output['status']) {
             return ServiceResult::fail($output['message'], null, 400);
         }
+
+        $typeLabel = $type === 'password' ? 'mot de passe' : 'pin';
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseChange,
+            sprintf(
+                '%s a défini le %s client (NPI).',
+                ActivityLogService::actorLabel($actor),
+                $typeLabel
+            ),
+            is_string($actor?->id) ? $actor->id : null,
+            null,
+            ['npi' => $npi, 'type' => $type, 'context' => 'admin_set_password'],
+        );
 
         return ServiceResult::ok(
             'Votre mot de passe a bien été mis à jour.',

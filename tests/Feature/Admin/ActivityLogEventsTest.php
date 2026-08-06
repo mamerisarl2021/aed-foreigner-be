@@ -310,4 +310,66 @@ final class ActivityLogEventsTest extends TestCase
                 ->exists()
         );
     }
+
+    #[Test]
+    public function client_login_journals_connexion_client_with_actor(): void
+    {
+        $client = User::factory()->create([
+            'email' => 'login-client@example.com',
+            'npi' => '1111222233334',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->mock(TrustedXClientService::class, function ($mock) use ($client) {
+            $mock->shouldReceive('userInfo')
+                ->once()
+                ->andReturn([
+                    'status' => true,
+                    'data' => [
+                        'user' => $client,
+                        'token' => 'sanctum-token',
+                        'pki_token' => 'pki-token',
+                    ],
+                ]);
+        });
+
+        $result = app(UserRegistrationService::class)->login('auth-code');
+
+        $this->assertTrue($result->success);
+        $this->assertTrue(
+            ActivityLog::query()
+                ->where('action_code', ActivityLogAction::ConnexionClient->label())
+                ->where('actor_user_id', $client->id)
+                ->exists()
+        );
+    }
+
+    #[Test]
+    public function admin_set_password_is_journalized(): void
+    {
+        $this->mock(TrustedXClientService::class, function ($mock) {
+            $mock->shouldReceive('getUserWithNPI')
+                ->once()
+                ->andReturn(['status' => true, 'data' => ['id' => 'tx-user-1']]);
+            $mock->shouldReceive('setDefaultPassword')
+                ->once()
+                ->andReturn(['status' => true, 'data' => []]);
+        });
+
+        $result = app(UserRegistrationService::class)->setPassword(
+            '5555666677778',
+            'NewSecret1!',
+            'password',
+            $this->admin,
+        );
+
+        $this->assertTrue($result->success);
+        $this->assertTrue(
+            ActivityLog::query()
+                ->where('action_code', ActivityLogAction::MotDePasseChange->label())
+                ->where('actor_user_id', $this->admin->id)
+                ->where('description', 'like', '%NPI%')
+                ->exists()
+        );
+    }
 }

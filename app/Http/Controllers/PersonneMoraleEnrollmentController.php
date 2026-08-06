@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\SendMoralePhoneOtpRequest;
+use App\Http\Requests\Enrollment\ShowMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\VerifyMoraleEmailRequest;
 use App\Http\Requests\Enrollment\VerifyMoralePhoneOtpRequest;
@@ -12,7 +14,6 @@ use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 #[Group('Enrollment - Morale')]
 class PersonneMoraleEnrollmentController extends BaseController
@@ -43,13 +44,14 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Morale enrollment detail (owner only)
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function show(ShowMoraleEnrollmentRequest $request): JsonResponse
     {
         $user = $request->user();
         if (! $user) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 
@@ -74,13 +76,14 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Send SMS OTP for company phone verification
      */
-    public function sendPhoneOtp(Request $request, string $id): JsonResponse
+    public function sendPhoneOtp(SendMoralePhoneOtpRequest $request): JsonResponse
     {
         $user = $request->user();
         if (! $user) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 

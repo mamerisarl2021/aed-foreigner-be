@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\MergesRouteId;
 use Illuminate\Validation\Rule;
 
 class ValidationEnrollmentRequest extends ApiFormRequest
 {
+    use MergesRouteId;
+
     protected function validationMessage(): string
     {
         return 'Format de donnée invalide.';
@@ -19,6 +22,7 @@ class ValidationEnrollmentRequest extends ApiFormRequest
         $motifIdRules = ['required', 'uuid', Rule::exists('enrollment_reject_motifs', 'id')];
 
         $rules = [
+            'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
             'decision' => ['required', 'string', Rule::in(['APPROUVEE', 'REJET_CONFIRME', 'RETOUR_AGENT'])],
             'commentaire' => ['nullable', 'string', 'max:1000'],
         ];
