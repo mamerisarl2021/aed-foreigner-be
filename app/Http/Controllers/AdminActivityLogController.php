@@ -11,6 +11,7 @@ use App\Http\Resources\ActivityLogListResource;
 use App\Models\ActivityLog;
 use App\Services\ActivityLog\ActivityLogService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Admin')]
@@ -40,6 +41,7 @@ final class AdminActivityLogController extends BaseController
     /**
      * Activity log detail (admin only)
      */
+    #[PathParameter('id', description: 'Activity log UUID.', type: 'string', format: 'uuid')]
     public function show(ShowActivityLogRequest $request): JsonResponse
     {
         $result = $this->activityLogService->show((string) $request->validated('id'));

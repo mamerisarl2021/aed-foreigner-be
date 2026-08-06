@@ -10,6 +10,7 @@ use App\Http\Requests\Enrollment\StoreFinalisationRequest;
 use App\Http\Requests\Enrollment\VerifyFinalisationOtpRequest;
 use App\Services\Enrollment\ForeignerFinalizationService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Enrollment - Physique')]
@@ -65,13 +66,14 @@ final class FinalisationController extends BaseController
      * No client PIN — server generates a 4-digit PIN for TrustedX.
      * Success: statut ENROLEE, npi, numero_suivi, demande_id.
      */
-    public function store(StoreFinalisationRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'Enrollment request UUID (demande_id).', type: 'string', format: 'uuid')]
+    public function store(StoreFinalisationRequest $request): JsonResponse
     {
         /** @var array<int, array{question: string, answer: string}> $questions */
         $questions = $request->input('security_questions', []);
 
         return $this->respond($this->finalizationService->finalize(
-            $id,
+            (string) $request->validated('id'),
             $request->input('password'),
             $questions,
             $request->input('token'),

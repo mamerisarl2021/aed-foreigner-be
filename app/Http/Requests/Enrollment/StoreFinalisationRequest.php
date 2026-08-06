@@ -5,15 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\MergesRouteId;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
+#[IgnoreParam('id')]
 class StoreFinalisationRequest extends ApiFormRequest
 {
+    use MergesRouteId;
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
+            'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
             // Invitation token from email link (optional if numero_suivi + OTP proof are used).
             'token' => ['nullable', 'string', 'max:100'],
             // Tracking code PK… from submit / invitation email (required for the FE finalisation flow).

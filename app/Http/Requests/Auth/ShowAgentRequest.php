@@ -6,7 +6,9 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
+#[IgnoreParam('id')]
 class ShowAgentRequest extends ApiFormRequest
 {
     use MergesRouteId;

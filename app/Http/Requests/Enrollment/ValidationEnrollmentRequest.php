@@ -6,8 +6,10 @@ namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 use Illuminate\Validation\Rule;
 
+#[IgnoreParam('id')]
 class ValidationEnrollmentRequest extends ApiFormRequest
 {
     use MergesRouteId;

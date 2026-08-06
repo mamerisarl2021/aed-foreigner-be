@@ -13,6 +13,7 @@ use App\Http\Resources\EnrollmentRejectMotifResource;
 use App\Models\EnrollmentRejectMotif;
 use App\Services\Enrollment\EnrollmentRejectMotifService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Admin')]
@@ -63,6 +64,7 @@ class EnrollmentRejectMotifController extends BaseController
     /**
      * Show enrollment reject motif (admin only)
      */
+    #[PathParameter('id', description: 'Reject motif UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrollmentRejectMotifRequest $request): JsonResponse
     {
         $result = $this->motifs->find((string) $request->validated('id'));
@@ -83,6 +85,7 @@ class EnrollmentRejectMotifController extends BaseController
      *
      * Body: `{ title?, description? }`.
      */
+    #[PathParameter('id', description: 'Reject motif UUID.', type: 'string', format: 'uuid')]
     public function update(UpdateEnrollmentRejectMotifRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -113,6 +116,7 @@ class EnrollmentRejectMotifController extends BaseController
      *
      * Hard delete — the motif is permanently removed.
      */
+    #[PathParameter('id', description: 'Reject motif UUID.', type: 'string', format: 'uuid')]
     public function destroy(DestroyEnrollmentRejectMotifRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');

@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Auth\AdminAuthService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Admin Auth')]
@@ -79,6 +80,7 @@ class AuthController extends BaseController
     /**
      * Update staff user details (admin only)
      */
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
     public function updateAgent(UpdateAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
@@ -98,6 +100,7 @@ class AuthController extends BaseController
     /**
      * Delete a staff user (admin only)
      */
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
     public function deleteAgent(DeleteAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
@@ -152,6 +155,7 @@ class AuthController extends BaseController
     /**
      * Staff user detail (admin only)
      */
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
     public function showAgent(ShowAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);

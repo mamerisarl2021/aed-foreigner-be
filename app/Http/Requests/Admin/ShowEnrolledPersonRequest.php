@@ -6,7 +6,9 @@ namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
+#[IgnoreParam('id')]
 class ShowEnrolledPersonRequest extends ApiFormRequest
 {
     use MergesRouteId;

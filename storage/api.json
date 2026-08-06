@@ -276,14 +276,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Enrolled person (user) UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -603,14 +596,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Activity log UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -972,14 +958,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Reject motif UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -1047,13 +1026,14 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Reject motif UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -1124,14 +1104,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Reject motif UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -1202,33 +1175,37 @@
                         "name": "filename",
                         "in": "path",
                         "required": true,
+                        "description": "Stored encrypted file name (basename only; no path segments).",
                         "schema": {
                             "type": "string"
-                        }
-                    },
-                    {
-                        "name": "filename",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "pattern": "^[^\\/\\\\]+$",
-                            "maxLength": 255
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Decrypted file bytes. Content-Type is the detected MIME type (often image/* or application/pdf).",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "string"
                                 }
+                            },
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
                             }
                         },
                         "headers": {
                             "Content-Disposition": {
+                                "description": "inline; filename=\"<basename>\"",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Type": {
+                                "description": "Detected MIME type of the decrypted file.",
                                 "schema": {
                                     "type": "string"
                                 }
@@ -1467,13 +1444,14 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Staff user UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -1547,14 +1525,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Staff user UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -1626,14 +1597,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Staff user UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -2211,8 +2175,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "User UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -2855,14 +2821,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Personne morale enrollment request UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -2931,21 +2890,13 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Personne morale enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SendMoralePhoneOtpRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -2982,8 +2933,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Personne morale enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -3033,8 +2986,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Personne morale enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -3295,8 +3250,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Enrollment request UUID (demande_id).",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -3623,21 +3580,13 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ClaimEnrollmentRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -3695,21 +3644,13 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ClaimValidationEnrollmentRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -3767,8 +3708,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -3818,8 +3761,10 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "description": "Enrollment request UUID.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "uuid"
                         }
                     }
                 ],
@@ -3917,14 +3862,7 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": true,
+                        "description": "Enrollment request UUID.",
                         "schema": {
                             "type": "string",
                             "format": "uuid"
@@ -4338,32 +4276,6 @@
                     "password_confirmation"
                 ],
                 "title": "ChangeStaffPasswordRequest"
-            },
-            "ClaimEnrollmentRequest": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    }
-                },
-                "required": [
-                    "id"
-                ],
-                "title": "ClaimEnrollmentRequest"
-            },
-            "ClaimValidationEnrollmentRequest": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    }
-                },
-                "required": [
-                    "id"
-                ],
-                "title": "ClaimValidationEnrollmentRequest"
             },
             "EnrolledPersonDetailResource": {
                 "type": "object",
@@ -5551,10 +5463,6 @@
             "InstructionEnrollmentRequest": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
                     "statut": {
                         "type": "string",
                         "enum": [
@@ -5581,7 +5489,6 @@
                     }
                 },
                 "required": [
-                    "id",
                     "statut"
                 ],
                 "title": "InstructionEnrollmentRequest"
@@ -5880,19 +5787,6 @@
                     "numero_suivi"
                 ],
                 "title": "SendFinalisationOtpRequest"
-            },
-            "SendMoralePhoneOtpRequest": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    }
-                },
-                "required": [
-                    "id"
-                ],
-                "title": "SendMoralePhoneOtpRequest"
             },
             "SendOtpRequest": {
                 "type": "object",
@@ -6232,10 +6126,6 @@
             "UpdateAgentRequest": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
                     "name": {
                         "type": "string",
                         "maxLength": 255
@@ -6266,18 +6156,11 @@
                         "maxLength": 255
                     }
                 },
-                "required": [
-                    "id"
-                ],
                 "title": "UpdateAgentRequest"
             },
             "UpdateEnrollmentRejectMotifRequest": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
                     "title": {
                         "type": "string",
                         "maxLength": 255
@@ -6286,9 +6169,6 @@
                         "type": "string"
                     }
                 },
-                "required": [
-                    "id"
-                ],
                 "title": "UpdateEnrollmentRejectMotifRequest"
             },
             "UpdateUserProfileRequest": {
@@ -6563,10 +6443,6 @@
             "ValidationEnrollmentRequest": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
                     "decision": {
                         "type": "string",
                         "enum": [
@@ -6594,7 +6470,6 @@
                     }
                 },
                 "required": [
-                    "id",
                     "decision"
                 ],
                 "title": "ValidationEnrollmentRequest"

@@ -13,6 +13,7 @@ use App\Http\Resources\MoraleEnrollmentOwnerResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Enrollment - Morale')]
@@ -44,6 +45,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Morale enrollment detail (owner only)
      */
+    #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function show(ShowMoraleEnrollmentRequest $request): JsonResponse
     {
         $user = $request->user();
@@ -68,14 +70,19 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * May promote the request to EN_ATTENTE if the phone is also verified.
      */
-    public function verifyEmail(VerifyMoraleEmailRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
+    public function verifyEmail(VerifyMoraleEmailRequest $request): JsonResponse
     {
-        return $this->respond($this->moraleEnrollment->verifyEmail($id, $request->input('token')));
+        return $this->respond($this->moraleEnrollment->verifyEmail(
+            (string) $request->validated('id'),
+            $request->input('token'),
+        ));
     }
 
     /**
      * Send SMS OTP for company phone verification
      */
+    #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function sendPhoneOtp(SendMoralePhoneOtpRequest $request): JsonResponse
     {
         $user = $request->user();
@@ -95,13 +102,15 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * May promote the request to EN_ATTENTE once both channels are verified.
      */
-    public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
+    public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request): JsonResponse
     {
         $user = $request->user();
         if (! $user) {
             return $this->sendError('Non authentifié.', null, 401);
         }
 
+        $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 

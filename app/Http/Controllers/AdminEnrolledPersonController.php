@@ -10,6 +10,7 @@ use App\Http\Resources\EnrolledPersonDetailResource;
 use App\Http\Resources\EnrolledPersonListResource;
 use App\Services\Admin\EnrolledPersonService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -38,6 +39,7 @@ final class AdminEnrolledPersonController extends BaseController
     /**
      * Enrolled person detail (read-only)
      */
+    #[PathParameter('id', description: 'Enrolled person (user) UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrolledPersonRequest $request): JsonResponse
     {
         Gate::authorize('viewEnrolledPerson');

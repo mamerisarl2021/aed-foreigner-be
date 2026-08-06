@@ -6,7 +6,9 @@ namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteFilename;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
+#[IgnoreParam('filename')]
 class DecryptDocumentRequest extends ApiFormRequest
 {
     use MergesRouteFilename;

@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
 use App\Services\Users\UserService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Client Auth')]
@@ -120,8 +121,10 @@ class UserController extends BaseController
     /**
      * Update own profile (email, profile photo)
      */
-    public function update(UpdateUserProfileRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'User UUID.', type: 'string', format: 'uuid')]
+    public function update(UpdateUserProfileRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $target = User::findOrFail($id);
         $this->authorize('update', $target);
 

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\MergesRouteId;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
-class VerifyMoraleEmailRequest extends FormRequest
+#[IgnoreParam('id')]
+class VerifyMoraleEmailRequest extends ApiFormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
+    use MergesRouteId;
 
     /**
      * @return array<string, mixed>
@@ -19,6 +19,7 @@ class VerifyMoraleEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
             'token' => ['required', 'string', 'size:64'],
         ];
     }

@@ -7,8 +7,10 @@ namespace App\Http\Requests\Auth;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
 use App\Rules\PhoneNumber;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 use Illuminate\Validation\Rule;
 
+#[IgnoreParam('id')]
 class UpdateAgentRequest extends ApiFormRequest
 {
     use MergesRouteId;

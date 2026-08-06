@@ -19,6 +19,7 @@ use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\ForeignerEnrollmentService;
 use App\Services\IdentityReview\IdentityReviewService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Enrollment - Physique')]
@@ -68,6 +69,7 @@ final class EnrollmentController extends BaseController
      * Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource
      * with decision_agent block. Same route for physique and morale.
      */
+    #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
@@ -87,6 +89,7 @@ final class EnrollmentController extends BaseController
      *
      * Agent only. EN_ATTENTE and unassigned requests only.
      */
+    #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function priseEnCharge(ClaimEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
@@ -103,6 +106,7 @@ final class EnrollmentController extends BaseController
      *
      * Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.
      */
+    #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function priseEnChargeValidation(ClaimValidationEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
@@ -120,6 +124,7 @@ final class EnrollmentController extends BaseController
      * Diagram §3.1. From EN_ATTENTE to VALIDATION_AGENT or REJET_AGENT.
      * Agent must have prise en charge first.
      */
+    #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function instruction(InstructionEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
@@ -140,6 +145,7 @@ final class EnrollmentController extends BaseController
      * Diagram §3.2. Requires prise en charge validation first.
      * VALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.
      */
+    #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function validation(ValidationEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
