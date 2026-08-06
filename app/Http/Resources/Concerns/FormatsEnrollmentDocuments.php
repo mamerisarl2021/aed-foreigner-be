@@ -6,6 +6,7 @@ namespace App\Http\Resources\Concerns;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 trait FormatsEnrollmentDocuments
 {
@@ -22,8 +23,33 @@ trait FormatsEnrollmentDocuments
     }
 
     /**
+     * Même fichier, mais servi en pièce jointe.
+     *
+     * L'attribut `download` du navigateur est ignoré sur un lien d'un autre
+     * domaine : c'est donc au stockage de l'imposer, via l'en-tête de
+     * disposition signé avec l'URL.
+     *
      * @param  array<string, mixed>|null  $docs
-     * @return list<array{type: string, label: string, url: string}>
+     */
+    protected function documentDownloadUrl(?array $docs, string $key, string $label): ?string
+    {
+        if (! is_array($docs) || empty($docs[$key])) {
+            return null;
+        }
+
+        $extension = pathinfo((string) $docs[$key], PATHINFO_EXTENSION);
+        $nom = Str::slug($label).($extension !== '' ? '.'.$extension : '');
+
+        return Storage::cloud()->temporaryUrl(
+            $docs[$key],
+            Carbon::now()->addDays(3),
+            ['ResponseContentDisposition' => 'attachment; filename="'.$nom.'"'],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $docs
+     * @return list<array{type: string, label: string, url: string, url_telechargement: ?string}>
      */
     protected function physiquePiecesJointes(?array $docs): array
     {
@@ -38,7 +64,12 @@ trait FormatsEnrollmentDocuments
         foreach ($map as $key => $label) {
             $url = $this->documentUrl($docs, $key);
             if ($url) {
-                $pieces[] = ['type' => $key, 'label' => $label, 'url' => $url];
+                $pieces[] = [
+                    'type' => $key,
+                    'label' => $label,
+                    'url' => $url,
+                    'url_telechargement' => $this->documentDownloadUrl($docs, $key, $label),
+                ];
             }
         }
 
@@ -47,7 +78,7 @@ trait FormatsEnrollmentDocuments
 
     /**
      * @param  array<string, mixed>|null  $docs
-     * @return list<array{type: string, label: string, url: string}>
+     * @return list<array{type: string, label: string, url: string, url_telechargement: ?string}>
      */
     protected function moralePiecesJointes(?array $docs): array
     {
@@ -61,7 +92,12 @@ trait FormatsEnrollmentDocuments
         foreach ($map as $key => $label) {
             $url = $this->documentUrl($docs, $key);
             if ($url) {
-                $pieces[] = ['type' => $key, 'label' => $label, 'url' => $url];
+                $pieces[] = [
+                    'type' => $key,
+                    'label' => $label,
+                    'url' => $url,
+                    'url_telechargement' => $this->documentDownloadUrl($docs, $key, $label),
+                ];
             }
         }
 
