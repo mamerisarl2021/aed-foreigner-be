@@ -32,19 +32,18 @@ Route::group([], function () {
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('users/{id}', [UserController::class, 'update']);
 
-        Route::middleware('role:administrateur_plateforme')->group(function () {
-            Route::post('/agents/register', [AuthController::class, 'registerAgent']);
-            Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
-            Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
-            Route::get('/agents', [AuthController::class, 'listAgents']);
-            Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
-            Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
-            Route::get('/admin/activity-logs/{id}', [AdminActivityLogController::class, 'show']);
-            Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
-            Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
-            Route::post('/clients/set-password', [UserController::class, 'setPassword']);
-        });
+        Route::post('/agents/register', [AuthController::class, 'registerAgent']);
+        Route::post('/agents/{id}', [AuthController::class, 'updateAgent']);
+        Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent']);
+        Route::get('/agents', [AuthController::class, 'listAgents']);
+        Route::get('/agents/{id}', [AuthController::class, 'showAgent']);
 
+        Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index']);
+        Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show']);
+        Route::post('/clients/set-password', [UserController::class, 'setPassword']);
+
+        Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index']);
+        Route::get('/admin/activity-logs/{id}', [AdminActivityLogController::class, 'show']);
         Route::get('/audits', [AuditLogController::class, 'index']);
 
         Route::post('/admin/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'store']);

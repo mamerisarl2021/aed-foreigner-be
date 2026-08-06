@@ -4026,7 +4026,8 @@
                         "type": "string"
                     },
                     "date": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "actor": {
                         "type": [
@@ -4038,10 +4039,16 @@
                                 "type": "string"
                             },
                             "name": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "first_name": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "email": {
                                 "type": "string"
@@ -4055,9 +4062,19 @@
                         ]
                     },
                     "enrollment_request_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "metadata": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "ip_address": {
                         "type": "string"
                     }
                 },
@@ -4068,7 +4085,8 @@
                     "date",
                     "actor",
                     "enrollment_request_id",
-                    "metadata"
+                    "metadata",
+                    "ip_address"
                 ],
                 "title": "ActivityLogDetailResource"
             },
@@ -4509,12 +4527,16 @@
                                         },
                                         "url": {
                                             "type": "null"
+                                        },
+                                        "url_telechargement": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
                                         "type",
                                         "label",
-                                        "url"
+                                        "url",
+                                        "url_telechargement"
                                     ]
                                 }
                             },
@@ -4751,12 +4773,16 @@
                                         },
                                         "url": {
                                             "type": "null"
+                                        },
+                                        "url_telechargement": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
                                         "type",
                                         "label",
-                                        "url"
+                                        "url",
+                                        "url_telechargement"
                                     ]
                                 }
                             }
@@ -5052,6 +5078,10 @@
                             "id": {
                                 "type": "string"
                             },
+                            "numero_suivi": {
+                                "type": "string",
+                                "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
+                            },
                             "type": {
                                 "type": "string"
                             },
@@ -5182,12 +5212,16 @@
                                         },
                                         "url": {
                                             "type": "null"
+                                        },
+                                        "url_telechargement": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
                                         "type",
                                         "label",
-                                        "url"
+                                        "url",
+                                        "url_telechargement"
                                     ]
                                 }
                             },
@@ -5217,6 +5251,7 @@
                         },
                         "required": [
                             "id",
+                            "numero_suivi",
                             "type",
                             "statut",
                             "date_soumission",
@@ -5234,6 +5269,10 @@
                         "properties": {
                             "id": {
                                 "type": "string"
+                            },
+                            "numero_suivi": {
+                                "type": "string",
+                                "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
                             },
                             "type": {
                                 "type": "string"
@@ -5370,18 +5409,23 @@
                                         },
                                         "url": {
                                             "type": "null"
+                                        },
+                                        "url_telechargement": {
+                                            "type": "null"
                                         }
                                     },
                                     "required": [
                                         "type",
                                         "label",
-                                        "url"
+                                        "url",
+                                        "url_telechargement"
                                     ]
                                 }
                             }
                         },
                         "required": [
                             "id",
+                            "numero_suivi",
                             "type",
                             "statut",
                             "date_soumission",
