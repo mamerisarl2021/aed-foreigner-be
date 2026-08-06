@@ -35,7 +35,7 @@ final class EnrollmentController extends BaseController
      *
      * Diagram §2.4. Requires OTP + KYC gates. Full identity data and documents
      * (selfie, recto; verso optional) are required at submit time.
-     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE.
+     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse
@@ -46,8 +46,12 @@ final class EnrollmentController extends BaseController
     /**
      * List enrollment requests
      *
-     * Diagram §3.1/§3.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).
-     * Default EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.
+     * Diagram §3.1/§3.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).
+     * Default EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE
+     * for responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is
+     * carried by its own field and no longer by the status.
+     * Every row exposes `statut` (machine, positional) and `statut_libelle`, worded for the
+     * caller's role: a request awaiting the responsable never reads as approved or rejected.
      * Defaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.
      */
     public function index(ListEnrollmentRequestsRequest $request): JsonResponse
@@ -67,7 +71,8 @@ final class EnrollmentController extends BaseController
      * Enrollment request detail (agent / responsable backoffice)
      *
      * Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource
-     * with decision_agent block. Same route for physique and morale.
+     * with a decision_agent block whose `avis` is null until the agent has actually ruled.
+     * Same route for physique and morale.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrollmentRequest $request): JsonResponse
@@ -87,7 +92,8 @@ final class EnrollmentController extends BaseController
     /**
      * Agent self-assign (prise en charge)
      *
-     * Agent only. EN_ATTENTE and unassigned requests only.
+     * Agent only. EN_ATTENTE_AGENT and unassigned requests only; moves the request
+     * to EN_COURS_AGENT so the queue shows it as taken.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function priseEnCharge(ClaimEnrollmentRequest $request): JsonResponse
@@ -104,7 +110,8 @@ final class EnrollmentController extends BaseController
     /**
      * Responsable self-assign (prise en charge décision)
      *
-     * Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.
+     * Responsable only. EN_ATTENTE_RESPONSABLE and unassigned decisions only; moves the
+     * request to EN_COURS_RESPONSABLE, which is what unlocks PATCH .../validation.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function priseEnChargeValidation(ClaimValidationEnrollmentRequest $request): JsonResponse
@@ -119,10 +126,12 @@ final class EnrollmentController extends BaseController
     }
 
     /**
-     * Agent instruction (validate or reject)
+     * Agent instruction (avis favorable or défavorable)
      *
-     * Diagram §3.1. From EN_ATTENTE to VALIDATION_AGENT or REJET_AGENT.
-     * Agent must have prise en charge first.
+     * Diagram §3.1. From EN_COURS_AGENT to EN_ATTENTE_RESPONSABLE, recording the agent's
+     * `avis` (FAVORABLE|DEFAVORABLE) in its own field. The agent gives an opinion, not a
+     * verdict: the request is never approved or rejected at this step.
+     * Agent must have prise en charge first. `motif[]` (UUIDs) is required when avis=DEFAVORABLE.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function instruction(InstructionEnrollmentRequest $request): JsonResponse
@@ -133,7 +142,7 @@ final class EnrollmentController extends BaseController
 
         return $this->respond($this->reviewService->instruction(
             $id,
-            $request->input('statut'),
+            (string) $request->validated('avis'),
             $request->input('motif'),
             $request->input('commentaire'),
         ));
@@ -142,8 +151,11 @@ final class EnrollmentController extends BaseController
     /**
      * Responsable validation decision
      *
-     * Diagram §3.2. Requires prise en charge validation first.
-     * VALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.
+     * Diagram §3.2. Requires EN_COURS_RESPONSABLE (prise en charge validation) first.
+     * avis_agent=FAVORABLE: APPROUVEE or RETOUR_AGENT.
+     * avis_agent=DEFAVORABLE: REJET_CONFIRME or RETOUR_AGENT.
+     * RETOUR_AGENT clears the agent's avis: the request goes back to EN_ATTENTE_AGENT
+     * with no decision at any level.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function validation(ValidationEnrollmentRequest $request): JsonResponse

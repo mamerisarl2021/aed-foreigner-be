@@ -16,12 +16,6 @@ use Illuminate\Support\Facades\Log;
 
 class EnrollmentSlaService
 {
-    private const OPEN_STATUSES = [
-        EnrollmentStatus::EnAttente->value,
-        EnrollmentStatus::ValidationAgent->value,
-        EnrollmentStatus::RejetAgent->value,
-    ];
-
     /**
      * @return array{checked: int, updated: int}
      */
@@ -36,7 +30,7 @@ class EnrollmentSlaService
         $updated = 0;
 
         EnrollmentRequest::query()
-            ->whereIn('status', self::OPEN_STATUSES)
+            ->whereIn('status', EnrollmentStatus::open())
             ->whereNotNull('sla_deadline_at')
             ->orderBy('id')
             ->chunkById(100, function ($enrollments) use ($maxHours, $levels, &$checked, &$updated) {

@@ -73,7 +73,7 @@ final class ForeignerEnrollmentService
                 'similarity' => $kycSession['similarity'] ?? $request->input('similarity'),
                 'risk_score' => $kycSession['risk_score'] ?? null,
                 'analysis_details' => $kycSession['analysis_details'] ?? null,
-                'status' => EnrollmentStatus::EnAttente->value,
+                'status' => EnrollmentStatus::EnAttenteAgent->value,
                 'type' => 'PERSONNE_PHYSIQUE',
                 'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
             ]);

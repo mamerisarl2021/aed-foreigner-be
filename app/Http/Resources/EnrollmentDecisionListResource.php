@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Models\EnrollmentRequest;
+use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,9 +43,16 @@ class EnrollmentDecisionListResource extends JsonResource
                 : null,
             'date_decision' => $this->agent_decided_at ?? $this->updated_at,
             'statut' => $this->status,
+            // « À valider » tant que le responsable n'a rien fait : le sens de
+            // l'avis de l'agent vit dans sa propre colonne, jamais dans le statut.
+            'statut_libelle' => EnrollmentStatusPresenter::labelFor($this->statut(), $request->user()),
+            'avis_agent' => $this->agent_avis,
+            'avis_agent_libelle' => $this->avisAgent()?->label(),
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
+            'pris_en_charge_par_moi' => $this->assigned_responsable_id !== null
+                && (string) $this->assigned_responsable_id === (string) $request->user()?->id,
         ];
     }
 }

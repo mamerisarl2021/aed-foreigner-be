@@ -3090,7 +3090,7 @@
         "/v1/enrolements/etrangers": {
             "post": {
                 "operationId": "enrollment.storeEtranger",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne physique enrollment",
                 "tags": [
                     "Enrollment - Physique"
@@ -3283,7 +3283,7 @@
         "/v1/enrolements": {
             "get": {
                 "operationId": "enrollment.index",
-                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: VALIDATION_AGENT|REJET_AGENT).\nDefault EN_ATTENTE for agent; VALIDATION_AGENT|REJET_AGENT for responsable.\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
+                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).\nDefault EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE\nfor responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is\ncarried by its own field and no longer by the status.\nEvery row exposes `statut` (machine, positional) and `statut_libelle`, worded for the\ncaller's role: a request awaiting the responsable never reads as approved or rejected.\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List enrollment requests",
                 "tags": [
                     "Enrollment - Physique"
@@ -3292,13 +3292,13 @@
                     {
                         "name": "statut",
                         "in": "query",
-                        "description": "Statut(s) \u00e0 filtrer: EN_ATTENTE, VALIDATION_AGENT, REJET_AGENT, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: EN_ATTENTE (agent) ou VALIDATION_AGENT|REJET_AGENT (responsable).",
+                        "description": "Statut(s) \u00e0 filtrer: EN_ATTENTE_AGENT, EN_COURS_AGENT, EN_ATTENTE_RESPONSABLE, EN_COURS_RESPONSABLE, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: EN_ATTENTE_AGENT|EN_COURS_AGENT (agent) ou EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE (responsable).",
                         "schema": {
                             "type": [
                                 "string",
                                 "null"
                             ],
-                            "pattern": "^(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE))*$"
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE))*$"
                         }
                     },
                     {
@@ -3310,7 +3310,23 @@
                                 "string",
                                 "null"
                             ],
-                            "pattern": "^(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE|VALIDATION_AGENT|REJET_AGENT|APPROUVEE|REJETEE|ENROLEE))*$"
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE))*$"
+                        }
+                    },
+                    {
+                        "name": "avis",
+                        "in": "query",
+                        "description": "Avis rendu par l'agent de traitement. S\u00e9pare, dans la file du responsable, les dossiers propos\u00e9s \u00e0 l'approbation de ceux propos\u00e9s au rejet.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "FAVORABLE",
+                                "DEFAVORABLE",
+                                null
+                            ]
                         }
                     },
                     {
@@ -3565,7 +3581,7 @@
         "/v1/enrolements/{id}/prise-en-charge": {
             "patch": {
                 "operationId": "enrollment.priseEnCharge",
-                "description": "Agent only. EN_ATTENTE and unassigned requests only.",
+                "description": "Agent only. EN_ATTENTE_AGENT and unassigned requests only; moves the request\nto EN_COURS_AGENT so the queue shows it as taken.",
                 "summary": "Agent self-assign (prise en charge)",
                 "tags": [
                     "Enrollment - Physique"
@@ -3601,7 +3617,7 @@
                                             "enum": [
                                                 "Demande prise en charge.",
                                                 "Cette demande est d\u00e9j\u00e0 assign\u00e9e \u00e0 un agent.",
-                                                "Seules les demandes EN_ATTENTE peuvent \u00eatre prises en charge."
+                                                "Seules les demandes EN_ATTENTE_AGENT peuvent \u00eatre prises en charge."
                                             ]
                                         }
                                     },
@@ -3629,7 +3645,7 @@
         "/v1/enrolements/{id}/prise-en-charge-validation": {
             "patch": {
                 "operationId": "enrollment.priseEnChargeValidation",
-                "description": "Responsable only. VALIDATION_AGENT or REJET_AGENT and unassigned decisions only.",
+                "description": "Responsable only. EN_ATTENTE_RESPONSABLE and unassigned decisions only; moves the\nrequest to EN_COURS_RESPONSABLE, which is what unlocks PATCH .../validation.",
                 "summary": "Responsable self-assign (prise en charge d\u00e9cision)",
                 "tags": [
                     "Enrollment - Physique"
@@ -3693,8 +3709,8 @@
         "/v1/enrolements/{id}/instruction": {
             "patch": {
                 "operationId": "enrollment.instruction",
-                "description": "Diagram \u00a73.1. From EN_ATTENTE to VALIDATION_AGENT or REJET_AGENT.\nAgent must have prise en charge first.",
-                "summary": "Agent instruction (validate or reject)",
+                "description": "Diagram \u00a73.1. From EN_COURS_AGENT to EN_ATTENTE_RESPONSABLE, recording the agent's\n`avis` (FAVORABLE|DEFAVORABLE) in its own field. The agent gives an opinion, not a\nverdict: the request is never approved or rejected at this step.\nAgent must have prise en charge first. `motif[]` (UUIDs) is required when avis=DEFAVORABLE.",
+                "summary": "Agent instruction (avis favorable or d\u00e9favorable)",
                 "tags": [
                     "Enrollment - Physique"
                 ],
@@ -3746,7 +3762,7 @@
         "/v1/enrolements/{id}/validation": {
             "patch": {
                 "operationId": "enrollment.validation",
-                "description": "Diagram \u00a73.2. Requires prise en charge validation first.\nVALIDATION_AGENT: APPROUVEE or RETOUR_AGENT. REJET_AGENT: REJET_CONFIRME or RETOUR_AGENT.",
+                "description": "Diagram \u00a73.2. Requires EN_COURS_RESPONSABLE (prise en charge validation) first.\navis_agent=FAVORABLE: APPROUVEE or RETOUR_AGENT.\navis_agent=DEFAVORABLE: REJET_CONFIRME or RETOUR_AGENT.\nRETOUR_AGENT clears the agent's avis: the request goes back to EN_ATTENTE_AGENT\nwith no decision at any level.",
                 "summary": "Responsable validation decision",
                 "tags": [
                     "Enrollment - Physique"
@@ -3803,12 +3819,12 @@
                                                                 "Erreur lors de l'approbation morale.",
                                                                 "Demande morale approuv\u00e9e.",
                                                                 "Repr\u00e9sentant introuvable.",
-                                                                "Statut non VALIDATION_AGENT.",
+                                                                "L'avis de l'agent n'est pas favorable.",
+                                                                "La d\u00e9cision doit d'abord \u00eatre prise en charge.",
                                                                 "Erreur lors de la confirmation du rejet.",
                                                                 "Rejet confirm\u00e9 et notifi\u00e9 au demandeur.",
-                                                                "Statut non REJET_AGENT.",
+                                                                "L'avis de l'agent n'est pas d\u00e9favorable.",
                                                                 "Demande renvoy\u00e9e \u00e0 l'agent.",
-                                                                "Statut non \u00e9ligible au retour agent.",
                                                                 "D\u00e9cision de validation invalide."
                                                             ]
                                                         }
@@ -3847,7 +3863,7 @@
         "/v1/enrolements/{id}": {
             "get": {
                 "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith decision_agent block. Same route for physique and morale.",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -4365,17 +4381,47 @@
                             "statut": {
                                 "type": "string"
                             },
+                            "statut_libelle": {
+                                "type": "string",
+                                "description": "Au niveau responsable, un dossier non pris en charge est \u00ab \u00c0 valider \u00bb :\nl'avis de l'agent est une proposition, il ne pr\u00e9juge de rien ici.",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
                             "date_soumission": {
                                 "type": "string"
                             },
                             "decision_agent": {
                                 "type": "object",
                                 "properties": {
-                                    "statut": {
-                                        "type": "string",
+                                    "avis": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "avis_libelle": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
                                         "enum": [
-                                            "Rejet\u00e9",
-                                            "Approuv\u00e9"
+                                            "Favorable",
+                                            "D\u00e9favorable",
+                                            null
                                         ]
                                     },
                                     "agent": {
@@ -4403,7 +4449,11 @@
                                         ]
                                     },
                                     "date": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "format": "date-time"
                                     },
                                     "motifs": {
                                         "type": "array",
@@ -4414,7 +4464,8 @@
                                     }
                                 },
                                 "required": [
-                                    "statut",
+                                    "avis",
+                                    "avis_libelle",
                                     "agent",
                                     "date",
                                     "motifs",
@@ -4583,6 +4634,7 @@
                             "id",
                             "type",
                             "statut",
+                            "statut_libelle",
                             "date_soumission",
                             "decision_agent",
                             "responsable",
@@ -4606,17 +4658,47 @@
                             "statut": {
                                 "type": "string"
                             },
+                            "statut_libelle": {
+                                "type": "string",
+                                "description": "Au niveau responsable, un dossier non pris en charge est \u00ab \u00c0 valider \u00bb :\nl'avis de l'agent est une proposition, il ne pr\u00e9juge de rien ici.",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
                             "date_soumission": {
                                 "type": "string"
                             },
                             "decision_agent": {
                                 "type": "object",
                                 "properties": {
-                                    "statut": {
-                                        "type": "string",
+                                    "avis": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "avis_libelle": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
                                         "enum": [
-                                            "Rejet\u00e9",
-                                            "Approuv\u00e9"
+                                            "Favorable",
+                                            "D\u00e9favorable",
+                                            null
                                         ]
                                     },
                                     "agent": {
@@ -4644,7 +4726,11 @@
                                         ]
                                     },
                                     "date": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "format": "date-time"
                                     },
                                     "motifs": {
                                         "type": "array",
@@ -4655,7 +4741,8 @@
                                     }
                                 },
                                 "required": [
-                                    "statut",
+                                    "avis",
+                                    "avis_libelle",
                                     "agent",
                                     "date",
                                     "motifs",
@@ -4806,6 +4893,7 @@
                             "id",
                             "type",
                             "statut",
+                            "statut_libelle",
                             "date_soumission",
                             "decision_agent",
                             "responsable",
@@ -4912,6 +5000,12 @@
                     },
                     "status": {
                         "type": "string"
+                    },
+                    "agent_avis": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "assigned_agent_id": {
                         "type": [
@@ -5061,6 +5155,7 @@
                     "risk_score",
                     "analysis_details",
                     "status",
+                    "agent_avis",
                     "assigned_agent_id",
                     "assigned_responsable_id",
                     "agent_decided_at",
@@ -5103,6 +5198,25 @@
                             "statut": {
                                 "type": "string"
                             },
+                            "statut_libelle": {
+                                "type": "string",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
                             "date_soumission": {
                                 "type": "string"
                             },
@@ -5128,6 +5242,16 @@
                                 "required": [
                                     "nom",
                                     "prenom"
+                                ]
+                            },
+                            "avis_agent": {
+                                "type": "string",
+                                "description": "Avis d\u00e9j\u00e0 rendu par le niveau agent, `null` tant qu'il ne l'a pas \u00e9t\u00e9."
+                            },
+                            "avis_agent_libelle": {
+                                "type": [
+                                    "string",
+                                    "null"
                                 ]
                             },
                             "peut_prendre_en_charge": {
@@ -5269,8 +5393,11 @@
                             "numero_suivi",
                             "type",
                             "statut",
+                            "statut_libelle",
                             "date_soumission",
                             "agent_responsable",
+                            "avis_agent",
+                            "avis_agent_libelle",
                             "peut_prendre_en_charge",
                             "peut_instruire",
                             "demandeur",
@@ -5294,6 +5421,25 @@
                             },
                             "statut": {
                                 "type": "string"
+                            },
+                            "statut_libelle": {
+                                "type": "string",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
                             },
                             "date_soumission": {
                                 "type": "string"
@@ -5320,6 +5466,16 @@
                                 "required": [
                                     "nom",
                                     "prenom"
+                                ]
+                            },
+                            "avis_agent": {
+                                "type": "string",
+                                "description": "Avis d\u00e9j\u00e0 rendu par le niveau agent, `null` tant qu'il ne l'a pas \u00e9t\u00e9."
+                            },
+                            "avis_agent_libelle": {
+                                "type": [
+                                    "string",
+                                    "null"
                                 ]
                             },
                             "peut_prendre_en_charge": {
@@ -5443,8 +5599,11 @@
                             "numero_suivi",
                             "type",
                             "statut",
+                            "statut_libelle",
                             "date_soumission",
                             "agent_responsable",
+                            "avis_agent",
+                            "avis_agent_libelle",
                             "peut_prendre_en_charge",
                             "peut_instruire",
                             "demandeur",
@@ -5458,11 +5617,12 @@
             "InstructionEnrollmentRequest": {
                 "type": "object",
                 "properties": {
-                    "statut": {
+                    "avis": {
                         "type": "string",
+                        "description": "Avis de l'agent, pas un statut de demande : il alimente `agent_avis`\net laisse la demande en attente du responsable.",
                         "enum": [
-                            "VALIDATION_AGENT",
-                            "REJET_AGENT"
+                            "FAVORABLE",
+                            "DEFAVORABLE"
                         ]
                     },
                     "commentaire": {
@@ -5484,7 +5644,7 @@
                     }
                 },
                 "required": [
-                    "statut"
+                    "avis"
                 ],
                 "title": "InstructionEnrollmentRequest"
             },

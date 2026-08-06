@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Models\EnrollmentRequest;
+use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,9 +37,18 @@ class EnrollmentRequestListResource extends JsonResource
             ),
             'date_soumission' => $this->created_at,
             'statut' => $this->status,
+            // Le statut machine dit où est la demande ; le libellé dit ce que
+            // *ce* lecteur doit en comprendre — un agent ne lit jamais
+            // « approuvée » sur un dossier passé au responsable.
+            'statut_libelle' => EnrollmentStatusPresenter::labelFor($this->statut(), $request->user()),
             'agent_responsable' => $this->relationLoaded('assignedAgent')
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
+            'pris_en_charge_par_moi' => $this->assigned_agent_id !== null
+                && (string) $this->assigned_agent_id === (string) $request->user()?->id,
+            // Avis rendu au niveau agent : c'est l'acte de ce niveau, pas le sort
+            // de la demande, qui reste suspendu à la décision du responsable.
+            'avis_agent' => $this->agent_avis,
             // Date de la décision de l'agent : c'est elle qui date un enrôlement
             // dans les listes, `created_at` ne datant que la soumission.
             'date_decision' => $this->agent_decided_at,

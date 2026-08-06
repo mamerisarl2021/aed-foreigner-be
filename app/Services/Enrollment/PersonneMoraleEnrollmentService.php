@@ -29,14 +29,19 @@ class PersonneMoraleEnrollmentService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    /** @var list<string> */
-    private const OPEN_MORALE_STATUSES = [
-        'AWAITING_CONTACT_VERIFICATION',
-        EnrollmentStatus::EnAttente->value,
-        EnrollmentStatus::ValidationAgent->value,
-        EnrollmentStatus::RejetAgent->value,
-        EnrollmentStatus::Approuvee->value,
-    ];
+    /**
+     * Une demande morale bloque les suivantes tant qu'elle n'est pas close.
+     *
+     * @return list<string>
+     */
+    private static function openMoraleStatuses(): array
+    {
+        return [
+            EnrollmentStatus::AwaitingContactVerification->value,
+            ...EnrollmentStatus::open(),
+            EnrollmentStatus::Approuvee->value,
+        ];
+    }
 
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
@@ -300,7 +305,7 @@ class PersonneMoraleEnrollmentService
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
-            ->whereIn('status', self::OPEN_MORALE_STATUSES)
+            ->whereIn('status', self::openMoraleStatuses())
             ->exists();
     }
 
@@ -378,7 +383,7 @@ class PersonneMoraleEnrollmentService
     {
         $enrollment->refresh();
 
-        if ($enrollment->status !== 'AWAITING_CONTACT_VERIFICATION') {
+        if ($enrollment->status !== EnrollmentStatus::AwaitingContactVerification->value) {
             return;
         }
 
@@ -386,7 +391,7 @@ class PersonneMoraleEnrollmentService
             return;
         }
 
-        $enrollment->status = EnrollmentStatus::EnAttente->value;
+        $enrollment->status = EnrollmentStatus::EnAttenteAgent->value;
         $enrollment->sla_deadline_at = now()->addHours((int) config('enrollment.sla.max_hours', 72));
         $enrollment->save();
     }

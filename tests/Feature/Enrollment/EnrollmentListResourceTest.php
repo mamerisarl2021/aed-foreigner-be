@@ -40,7 +40,7 @@ final class EnrollmentListResourceTest extends TestCase
         $enrollment = EnrollmentRequest::query()->create([
             'email' => 'applicant-list@example.com',
             'phonenumber' => '+2290162405472',
-            'status' => EnrollmentStatus::EnAttente->value,
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
             'type' => 'PERSONNE_PHYSIQUE',
             'kyc_data' => ['name' => 'KOTO', 'first_name' => 'Ada'],
             'agent_decided_at' => now()->subDay(),
@@ -63,7 +63,7 @@ final class EnrollmentListResourceTest extends TestCase
         EnrollmentRequest::query()->create([
             'email' => 'applicant-fresh@example.com',
             'phonenumber' => '+2290162405472',
-            'status' => EnrollmentStatus::EnAttente->value,
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
             'type' => 'PERSONNE_PHYSIQUE',
             'kyc_data' => ['name' => 'MENSAH', 'first_name' => 'Rita'],
         ]);

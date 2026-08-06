@@ -105,7 +105,7 @@ final class ActivityLogAdminTest extends TestCase
         $enrollment = EnrollmentRequest::query()->create([
             'email' => 'applicant-detail@example.com',
             'phonenumber' => '+2290162405472',
-            'status' => 'EN_ATTENTE',
+            'status' => 'EN_ATTENTE_AGENT',
             'type' => 'PERSONNE_PHYSIQUE',
             'kyc_data' => ['nom' => 'Test'],
         ]);
@@ -200,12 +200,12 @@ final class ActivityLogAdminTest extends TestCase
         $enrollment = EnrollmentRequest::query()->create([
             'email' => 'applicant@example.com',
             'phonenumber' => '+2290162405472',
-            'status' => 'EN_ATTENTE',
+            'status' => 'EN_ATTENTE_AGENT',
             'type' => 'PERSONNE_PHYSIQUE',
             'kyc_data' => ['nom' => 'Test'],
         ]);
 
-        $enrollment->update(['status' => 'VALIDATION_AGENT']);
+        $enrollment->update(['status' => 'EN_ATTENTE_RESPONSABLE']);
 
         $this->assertTrue(
             Audit::query()

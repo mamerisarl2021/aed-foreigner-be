@@ -88,9 +88,8 @@ class EnrollmentSimilarityService
         $otherDemandes = EnrollmentRequest::query()
             ->where('id', '!=', $enrollment->id)
             ->whereIn('status', [
+                ...EnrollmentStatus::open(),
                 EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::ValidationAgent->value,
-                EnrollmentStatus::EnAttente->value,
             ])
             ->where('type', 'PERSONNE_PHYSIQUE')
             ->limit(200)
@@ -197,9 +196,8 @@ class EnrollmentSimilarityService
             ->where('id', '!=', $enrollment->id)
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', [
+                ...EnrollmentStatus::open(),
                 EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::ValidationAgent->value,
-                EnrollmentStatus::EnAttente->value,
                 EnrollmentStatus::AwaitingContactVerification->value,
             ])
             ->limit(200)

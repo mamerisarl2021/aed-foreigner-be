@@ -22,12 +22,14 @@ class EnrollmentStatsService
             ->all();
 
         $received = (int) array_sum($byStatus);
-        $inProgress = (int) (
-            ($byStatus[EnrollmentStatus::EnAttente->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::ValidationAgent->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::RejetAgent->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::AwaitingContactVerification->value] ?? 0)
-        );
+        $openStatuses = [
+            ...EnrollmentStatus::open(),
+            EnrollmentStatus::AwaitingContactVerification->value,
+        ];
+        $inProgress = (int) array_sum(array_map(
+            fn (string $status) => $byStatus[$status] ?? 0,
+            $openStatuses,
+        ));
         $approved = (int) (($byStatus[EnrollmentStatus::Approuvee->value] ?? 0) + ($byStatus[EnrollmentStatus::Enrolee->value] ?? 0));
         $rejected = (int) ($byStatus[EnrollmentStatus::Rejetee->value] ?? 0);
 

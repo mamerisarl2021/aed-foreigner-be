@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\AgentAvis;
+use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +32,7 @@ class EnrollmentRequest extends Model implements Auditable
         'risk_score',
         'analysis_details',
         'status',
+        'agent_avis',
         'assigned_agent_id',
         'assigned_responsable_id',
         'agent_decided_at',
@@ -83,6 +86,16 @@ class EnrollmentRequest extends Model implements Auditable
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by_user_id');
+    }
+
+    public function statut(): EnrollmentStatus
+    {
+        return EnrollmentStatus::from((string) $this->status);
+    }
+
+    public function avisAgent(): ?AgentAvis
+    {
+        return $this->agent_avis !== null ? AgentAvis::from((string) $this->agent_avis) : null;
     }
 
     public function isPersonneMorale(): bool

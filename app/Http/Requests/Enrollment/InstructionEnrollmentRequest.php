@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
+use App\Enums\AgentAvis;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
 use Dedoc\Scramble\Attributes\IgnoreParam;
@@ -25,11 +26,13 @@ class InstructionEnrollmentRequest extends ApiFormRequest
 
         $rules = [
             'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
-            'statut' => ['required', 'string', Rule::in(['VALIDATION_AGENT', 'REJET_AGENT'])],
+            // Avis de l'agent, pas un statut de demande : il alimente `agent_avis`
+            // et laisse la demande en attente du responsable.
+            'avis' => ['required', 'string', Rule::in(AgentAvis::values())],
             'commentaire' => ['nullable', 'string', 'max:1000'],
         ];
 
-        if ($this->input('statut') === 'REJET_AGENT') {
+        if ($this->input('avis') === AgentAvis::Defavorable->value) {
             $rules['motif'] = ['required', 'array', 'min:1'];
             $rules['motif.*'] = $motifIdRules;
         } else {
