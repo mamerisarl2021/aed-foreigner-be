@@ -2977,11 +2977,11 @@
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -4789,12 +4789,26 @@
                     },
                     "description": {
                         "type": "string"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
                     "id",
                     "title",
-                    "description"
+                    "description",
+                    "created_at",
+                    "updated_at"
                 ],
                 "title": "EnrollmentRejectMotifResource"
             },

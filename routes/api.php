@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 | API routes — loaded by bootstrap/app.php with the "api" middleware group.
+| Authenticated resource actions rely on policies / gates (§9.3), not role: middleware.
 */
 
 Route::group([], function () {
@@ -29,9 +30,7 @@ Route::group([], function () {
     Route::middleware(['auth:sanctum'])->get('/me', UserProfileController::class);
 
     Route::middleware(['auth:sanctum'])->group(function () {
-        Route::middleware('role:administrateur_plateforme|client|agent|responsable_de_validation')->group(function () {
-            Route::post('users/{id}', [UserController::class, 'update']);
-        });
+        Route::post('users/{id}', [UserController::class, 'update']);
 
         Route::middleware('role:administrateur_plateforme')->group(function () {
             Route::post('/agents/register', [AuthController::class, 'registerAgent']);
@@ -46,23 +45,18 @@ Route::group([], function () {
             Route::post('/clients/set-password', [UserController::class, 'setPassword']);
         });
 
-        // Motif CRUD: auth only — EnrollmentRejectMotifPolicy is the access gate (§9.3).
+        Route::get('/audits', [AuditLogController::class, 'index']);
+
         Route::post('/admin/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'store']);
         Route::get('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'show']);
         Route::patch('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'update']);
         Route::delete('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'destroy']);
 
-        Route::middleware('role:administrateur_plateforme|agent|auditeur|responsable_de_validation')->group(function () {
-            Route::get('/audits', [AuditLogController::class, 'index']);
-            Route::get('/stats', [StatsController::class, 'index']);
-            Route::get('/users/search', [UserController::class, 'search']);
-            Route::post('/users-email/search', [UserController::class, 'searchPost']);
-            Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
-        });
-
-        Route::middleware('role:agent|responsable_de_validation')->group(function () {
-            Route::post('/management/users/update-status', [UserController::class, 'updateUserStatus']);
-        });
+        Route::get('/stats', [StatsController::class, 'index']);
+        Route::get('/users/search', [UserController::class, 'search']);
+        Route::post('/users-email/search', [UserController::class, 'searchPost']);
+        Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay']);
+        Route::post('/management/users/update-status', [UserController::class, 'updateUserStatus']);
 
         Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index']);
         Route::get('/management/enrollment-stats', [EnrollmentStatsController::class, 'index']);
@@ -89,7 +83,8 @@ Route::group([], function () {
             Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation']);
             Route::get('/enrolements/{id}', [EnrollmentController::class, 'show']);
 
-            Route::prefix('enrolements/morales')->middleware('role:client')->group(function () {
+            // Personne morale ownership is enforced by EnrollmentRequestPolicy.
+            Route::prefix('enrolements/morales')->group(function () {
                 Route::post('/', [PersonneMoraleEnrollmentController::class, 'submit']);
                 Route::get('/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
                 Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp'])->middleware('throttle:otp-send');
