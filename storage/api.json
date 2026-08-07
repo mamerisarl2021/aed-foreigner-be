@@ -2918,7 +2918,7 @@
         "/v1/enrolements/morales/{id}/verify-phone-otp": {
             "post": {
                 "operationId": "personneMoraleEnrollment.verifyPhoneOtp",
-                "description": "May promote the request to EN_ATTENTE once both channels are verified.",
+                "description": "May promote the request to EN_ATTENTE_AGENT once both channels are verified.",
                 "summary": "Verify company phone OTP",
                 "tags": [
                     "Enrollment - Morale"
@@ -2971,7 +2971,7 @@
         "/v1/enrolements/morales/{id}/verify-email": {
             "post": {
                 "operationId": "personneMoraleEnrollment.verifyEmail",
-                "description": "May promote the request to EN_ATTENTE if the phone is also verified.",
+                "description": "May promote the request to EN_ATTENTE_AGENT if the phone is also verified.",
                 "summary": "Verify company email (public token link)",
                 "tags": [
                     "Enrollment - Morale"
@@ -3988,57 +3988,13 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "action_code": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "actor_user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "enrollment_request_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "action_code",
-                    "description",
-                    "actor_user_id",
-                    "enrollment_request_id",
-                    "metadata",
-                    "ip_address",
-                    "created_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "ActivityLog"
             },
             "ActivityLogDetailResource": {
@@ -4054,8 +4010,7 @@
                         "type": "string"
                     },
                     "date": {
-                        "type": "string",
-                        "format": "date-time"
+                        "type": "string"
                     },
                     "actor": {
                         "type": [
@@ -4090,23 +4045,13 @@
                         ]
                     },
                     "enrollment_request_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
+                        "type": "string"
                     },
                     "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -4171,101 +4116,13 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "user_type": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "event": {
-                        "type": "string"
-                    },
-                    "auditable_type": {
-                        "type": "string"
-                    },
-                    "auditable_id": {
-                        "type": "string"
-                    },
-                    "old_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "new_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_agent": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "tags": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "user_type",
-                    "user_id",
-                    "event",
-                    "auditable_type",
-                    "auditable_id",
-                    "old_values",
-                    "new_values",
-                    "url",
-                    "ip_address",
-                    "user_agent",
-                    "tags",
-                    "created_at",
-                    "updated_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "Audit"
             },
             "ChangeStaffPasswordRequest": {
@@ -4449,11 +4306,7 @@
                                         ]
                                     },
                                     "date": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ],
-                                        "format": "date-time"
+                                        "type": "string"
                                     },
                                     "motifs": {
                                         "type": "array",
@@ -4726,11 +4579,7 @@
                                         ]
                                     },
                                     "date": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ],
-                                        "format": "date-time"
+                                        "type": "string"
                                     },
                                     "motifs": {
                                         "type": "array",
@@ -4945,13 +4794,7 @@
                 "type": "object",
                 "properties": {
                     "id": {
-                        "type": "string"
-                    },
-                    "tracking_code": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "integer"
                     },
                     "email": {
                         "type": "string"
@@ -4985,46 +4828,14 @@
                             "null"
                         ]
                     },
-                    "risk_score": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "analysis_details": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
                     "status": {
-                        "type": "string"
-                    },
-                    "agent_avis": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "$ref": "#/components/schemas/EnrollmentStatus"
                     },
                     "assigned_agent_id": {
                         "type": [
                             "string",
                             "null"
                         ]
-                    },
-                    "assigned_responsable_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "agent_decided_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
                     },
                     "reject_stage": {
                         "type": [
@@ -5048,86 +4859,6 @@
                     "type": {
                         "type": "string"
                     },
-                    "submitted_by_user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "email_verification_token": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "email_verified_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "phone_verified_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "verification_deadline_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "visio_notes": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "visio_requested_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "visio_completed_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "returned_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "return_reasons": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "sla_deadline_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "sla_alert_level": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -5141,42 +4872,39 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "risk_score": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "analysis_details": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
                     }
                 },
                 "required": [
                     "id",
-                    "tracking_code",
                     "email",
                     "phonenumber",
                     "kyc_data",
                     "documents",
                     "liveness",
                     "similarity",
-                    "risk_score",
-                    "analysis_details",
                     "status",
-                    "agent_avis",
                     "assigned_agent_id",
-                    "assigned_responsable_id",
-                    "agent_decided_at",
                     "reject_stage",
                     "reject_reasons",
                     "review_comments",
                     "type",
-                    "submitted_by_user_id",
-                    "email_verification_token",
-                    "email_verified_at",
-                    "phone_verified_at",
-                    "verification_deadline_at",
-                    "visio_notes",
-                    "visio_requested_at",
-                    "visio_completed_at",
-                    "returned_at",
-                    "return_reasons",
-                    "sla_deadline_at",
-                    "sla_alert_level",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "risk_score",
+                    "analysis_details"
                 ],
                 "title": "EnrollmentRequest"
             },
@@ -5245,7 +4973,10 @@
                                 ]
                             },
                             "avis_agent": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "Avis d\u00e9j\u00e0 rendu par le niveau agent, `null` tant qu'il ne l'a pas \u00e9t\u00e9."
                             },
                             "avis_agent_libelle": {
@@ -5469,7 +5200,10 @@
                                 ]
                             },
                             "avis_agent": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "Avis d\u00e9j\u00e0 rendu par le niveau agent, `null` tant qu'il ne l'a pas \u00e9t\u00e9."
                             },
                             "avis_agent_libelle": {
@@ -5613,6 +5347,21 @@
                     }
                 ],
                 "title": "EnrollmentRequestAgentDetailResource"
+            },
+            "EnrollmentStatus": {
+                "type": "string",
+                "description": "Position d'une demande dans le circuit d'instruction \u2014 **jamais** le contenu d'une d\u00e9cision. L'avis de l'agent vit dans `enrollment_requests.agent_avis` ({@see AgentAvis}). Sans cette s\u00e9paration, un statut comme l'ancien `VALIDATION_AGENT` signifiait \u00e0 la fois \u00ab le dossier est chez le responsable \u00bb et \u00ab l'agent a approuv\u00e9 \u00bb : le responsable voyait donc une demande \u00ab approuv\u00e9e \u00bb avant d'avoir agi.\n",
+                "enum": [
+                    "AWAITING_CONTACT_VERIFICATION",
+                    "EN_ATTENTE_AGENT",
+                    "EN_COURS_AGENT",
+                    "EN_ATTENTE_RESPONSABLE",
+                    "EN_COURS_RESPONSABLE",
+                    "APPROUVEE",
+                    "REJETEE",
+                    "ENROLEE"
+                ],
+                "title": "EnrollmentStatus"
             },
             "InstructionEnrollmentRequest": {
                 "type": "object",
@@ -6399,12 +6148,6 @@
                             "null"
                         ]
                     },
-                    "sexe": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
                     "email": {
                         "type": "string"
                     },
@@ -6432,32 +6175,8 @@
                             "null"
                         ]
                     },
-                    "trustedx_registered_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "security_questions": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
                     "status": {
                         "type": "string"
-                    },
-                    "must_change_password": {
-                        "type": "boolean"
-                    },
-                    "last_login_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
                     },
                     "email_verified_at": {
                         "type": [
@@ -6488,17 +6207,12 @@
                     "id",
                     "name",
                     "first_name",
-                    "sexe",
                     "email",
                     "phonenumber",
                     "nationality",
                     "profile",
                     "npi",
-                    "trustedx_registered_at",
-                    "security_questions",
                     "status",
-                    "must_change_password",
-                    "last_login_at",
                     "email_verified_at",
                     "created_at",
                     "updated_at",
@@ -6531,10 +6245,7 @@
                         ]
                     },
                     "sexe": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "nationality": {
                         "type": [
@@ -6683,19 +6394,13 @@
                         "description": "Deprecated client-supplied score \u2014 ignored for the OK/KO gate when not mocking."
                     },
                     "selfie": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
                     },
                     "recto": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
@@ -6712,7 +6417,9 @@
                 },
                 "required": [
                     "email",
-                    "phonenumber"
+                    "phonenumber",
+                    "selfie",
+                    "recto"
                 ],
                 "title": "VerifyKycRequest"
             },
