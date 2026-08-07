@@ -7,6 +7,8 @@ namespace App\Http\Resources;
 use App\Enums\EnrollmentStatus;
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Http\Resources\Concerns\MapsEnrollmentApplicantDetail;
+use App\Models\EnrollmentRequest;
+use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,18 +23,27 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var EnrollmentRequest $enrollment */
+        $enrollment = $this->resource;
+
         $base = [
             'id' => $this->id,
+            // Code de suivi communiqué au demandeur : c'est par lui qu'on
+            // désigne un dossier, l'UUID ne circulant qu'entre machines.
+            'numero_suivi' => $this->tracking_code,
             'type' => $this->type,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
+            'statut_libelle' => EnrollmentStatusPresenter::labelFor($enrollment->statut(), $request->user()),
             'date_soumission' => $this->created_at,
             'agent_responsable' => $this->relationLoaded('assignedAgent')
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
-            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttente->value
+            // Avis déjà rendu par le niveau agent, `null` tant qu'il ne l'a pas été.
+            'avis_agent' => $enrollment->agent_avis?->value,
+            'avis_agent_libelle' => $enrollment->avisAgent()?->label(),
+            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteAgent
                 && $this->assigned_agent_id === null,
-            'peut_instruire' => $this->status === EnrollmentStatus::EnAttente->value
-                && $this->assigned_agent_id !== null
+            'peut_instruire' => $this->status === EnrollmentStatus::EnCoursAgent
                 && (string) $this->assigned_agent_id === (string) $request->user()?->id,
         ];
 

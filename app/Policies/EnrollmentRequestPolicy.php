@@ -32,7 +32,7 @@ class EnrollmentRequestPolicy
 
     public function view(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        if ($enrollmentRequest->status === EnrollmentStatus::AwaitingContactVerification->value) {
+        if ($enrollmentRequest->status === EnrollmentStatus::AwaitingContactVerification) {
             return $this->viewOwnMorale($user, $enrollmentRequest);
         }
 
@@ -56,7 +56,9 @@ class EnrollmentRequestPolicy
             return false;
         }
 
-        if ($enrollmentRequest->status !== EnrollmentStatus::EnAttente->value) {
+        // L'instruction suppose une prise en charge : c'est elle qui fait passer
+        // la demande en EN_COURS_AGENT.
+        if ($enrollmentRequest->status !== EnrollmentStatus::EnCoursAgent) {
             return false;
         }
 
@@ -69,7 +71,7 @@ class EnrollmentRequestPolicy
             return false;
         }
 
-        return $enrollmentRequest->status === EnrollmentStatus::EnAttente->value
+        return $enrollmentRequest->status === EnrollmentStatus::EnAttenteAgent
             && $enrollmentRequest->assigned_agent_id === null;
     }
 
@@ -79,10 +81,8 @@ class EnrollmentRequestPolicy
             return false;
         }
 
-        return in_array($enrollmentRequest->status, [
-            EnrollmentStatus::ValidationAgent->value,
-            EnrollmentStatus::RejetAgent->value,
-        ], true) && $enrollmentRequest->assigned_responsable_id === null;
+        return $enrollmentRequest->status === EnrollmentStatus::EnAttenteResponsable
+            && $enrollmentRequest->assigned_responsable_id === null;
     }
 
     public function validation(User $user, EnrollmentRequest $enrollmentRequest): bool
@@ -91,10 +91,7 @@ class EnrollmentRequestPolicy
             return false;
         }
 
-        if (! in_array($enrollmentRequest->status, [
-            EnrollmentStatus::ValidationAgent->value,
-            EnrollmentStatus::RejetAgent->value,
-        ], true)) {
+        if ($enrollmentRequest->status !== EnrollmentStatus::EnCoursResponsable) {
             return false;
         }
 

@@ -4,25 +4,31 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityLogAction;
 use App\Http\Requests\Auth\ChangeStaffPasswordRequest;
+use App\Http\Requests\Auth\DeleteAgentRequest;
 use App\Http\Requests\Auth\KeycloakLoginRequest;
 use App\Http\Requests\Auth\ListAgentsRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\LogoutAdminRequest;
 use App\Http\Requests\Auth\RegisterAgentRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendPasswordResetLinkRequest;
+use App\Http\Requests\Auth\ShowAgentRequest;
 use App\Http\Requests\Auth\UpdateAgentRequest;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Auth\AdminAuthService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 #[Group('Admin Auth')]
 class AuthController extends BaseController
 {
     public function __construct(
         private readonly AdminAuthService $adminAuth,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     /**
@@ -74,39 +80,52 @@ class AuthController extends BaseController
     /**
      * Update staff user details (admin only)
      */
-    public function updateAgent(UpdateAgentRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
+    public function updateAgent(UpdateAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        $user = User::find($id);
+        $validated = $request->validated();
+        $id = (string) $validated['id'];
+        unset($validated['id']);
+
+        $user = User::query()->find($id);
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->updateAgent($user, $request->validated()));
+        return $this->respond($this->adminAuth->updateAgent($user, $validated, $request->user()));
     }
 
     /**
      * Delete a staff user (admin only)
      */
-    public function deleteAgent(string $id): JsonResponse
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
+    public function deleteAgent(DeleteAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        $user = User::find($id);
+        $user = User::query()->find((string) $request->validated('id'));
         if (! $user) {
             return $this->sendError('Agent introuvable.', null, 404);
         }
 
-        return $this->respond($this->adminAuth->deleteAgent($user));
+        return $this->respond($this->adminAuth->deleteAgent($user, $request->user()));
     }
 
     /**
      * Admin logout (revokes current token)
      */
-    public function logoutAdmin(Request $request): JsonResponse
+    public function logoutAdmin(LogoutAdminRequest $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $user->currentAccessToken()->delete();
+
+        $this->activityLog->record(
+            ActivityLogAction::DeconnexionAdmin,
+            sprintf('%s s\'est déconnecté(e) de l\'espace staff.', ActivityLogService::actorLabel($user)),
+            is_string($user->id) ? $user->id : null,
+        );
 
         return $this->sendResponse('Déconnexion réussie.', []);
     }
@@ -136,11 +155,12 @@ class AuthController extends BaseController
     /**
      * Staff user detail (admin only)
      */
-    public function showAgent(string $id): JsonResponse
+    #[PathParameter('id', description: 'Staff user UUID.', type: 'string', format: 'uuid')]
+    public function showAgent(ShowAgentRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        return $this->respond($this->adminAuth->showAgent($id));
+        return $this->respond($this->adminAuth->showAgent((string) $request->validated('id')));
     }
 
     /**

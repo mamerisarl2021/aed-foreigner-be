@@ -22,12 +22,14 @@ class EnrollmentStatsService
             ->all();
 
         $received = (int) array_sum($byStatus);
-        $inProgress = (int) (
-            ($byStatus[EnrollmentStatus::EnAttente->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::ValidationAgent->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::RejetAgent->value] ?? 0)
-            + ($byStatus[EnrollmentStatus::AwaitingContactVerification->value] ?? 0)
-        );
+        $openStatuses = [
+            ...EnrollmentStatus::open(),
+            EnrollmentStatus::AwaitingContactVerification->value,
+        ];
+        $inProgress = (int) array_sum(array_map(
+            fn (string $status) => $byStatus[$status] ?? 0,
+            $openStatuses,
+        ));
         $approved = (int) (($byStatus[EnrollmentStatus::Approuvee->value] ?? 0) + ($byStatus[EnrollmentStatus::Enrolee->value] ?? 0));
         $rejected = (int) ($byStatus[EnrollmentStatus::Rejetee->value] ?? 0);
 
@@ -48,10 +50,10 @@ class EnrollmentStatsService
             ->whereNotNull('reject_reasons')
             ->get(['reject_reasons'])
             ->flatMap(function (EnrollmentRequest $row) {
-                return collect($row->reject_reasons ?? [])->map(fn ($code) => (string) $code);
+                return collect($row->reject_reasons ?? [])->map(fn ($id) => (string) $id);
             })
             ->countBy()
-            ->map(fn ($count, $code) => ['code' => $code, 'count' => $count])
+            ->map(fn ($count, $id) => ['motif_id' => $id, 'count' => $count])
             ->values()
             ->all();
 

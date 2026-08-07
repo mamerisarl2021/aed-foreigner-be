@@ -17,7 +17,7 @@ class MoraleEnrollmentOwnerResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
             'type' => $this->type,
             'email_verifie' => $this->email_verified_at !== null,
             'telephone_verifie' => $this->phone_verified_at !== null,

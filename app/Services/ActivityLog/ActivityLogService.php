@@ -7,6 +7,7 @@ namespace App\Services\ActivityLog;
 use App\Enums\ActivityLogAction;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\ServiceResult;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -29,6 +30,10 @@ final class ActivityLogService
             'actor_user_id' => $actorUserId,
             'enrollment_request_id' => $enrollmentRequestId,
             'metadata' => $metadata,
+            // Résolue ici, au moment de l'écriture : les appelants sont des
+            // services métier qui n'ont pas à connaître la couche HTTP. Nulle
+            // hors requête (commande Artisan, job en file).
+            'ip_address' => request()->ip(),
             'created_at' => now(),
         ]);
     }
@@ -38,25 +43,43 @@ final class ActivityLogService
         $query = ActivityLog::query()->orderByDesc('created_at');
 
         if ($request->filled('q')) {
-            $q = $request->input('q');
-            $query->where('description', 'like', "%{$q}%");
+            $q = (string) $request->input('q');
+            $query->where(function ($sub) use ($q) {
+                $sub->where('description', 'like', "%{$q}%")
+                    ->orWhere('action_code', 'like', "%{$q}%");
+            });
         }
 
         if ($request->filled('action')) {
-            $query->where('action_code', 'like', '%'.$request->input('action').'%');
+            $action = ActivityLogAction::tryFrom((string) $request->input('action'));
+            if ($action) {
+                $query->where('action_code', $action->label());
+            } else {
+                $query->where('action_code', 'like', '%'.$request->input('action').'%');
+            }
         }
 
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', Carbon::parse($request->input('from'))->toDateString());
+            $query->whereDate('created_at', '>=', Carbon::parse((string) $request->input('from'))->toDateString());
         }
 
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', Carbon::parse($request->input('to'))->toDateString());
+            $query->whereDate('created_at', '<=', Carbon::parse((string) $request->input('to'))->toDateString());
         }
 
-        $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
+        $perPage = min((int) $request->input('per_page', $request->input('perPage', 20)), 100);
 
         return $query->paginate($perPage);
+    }
+
+    public function show(string $id): ServiceResult
+    {
+        $log = ActivityLog::query()->with('actor')->find($id);
+        if (! $log) {
+            return ServiceResult::fail('Journal introuvable.', null, 404);
+        }
+
+        return ServiceResult::ok('Détail du journal.', $log);
     }
 
     public static function actorLabel(?User $user): string

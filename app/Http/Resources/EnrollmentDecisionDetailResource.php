@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Http\Resources\Concerns\MapsEnrollmentApplicantDetail;
 use App\Models\EnrollmentRejectMotif;
+use App\Models\EnrollmentRequest;
+use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,23 +25,24 @@ class EnrollmentDecisionDetailResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $inQueue = in_array($this->status, [
-            EnrollmentStatus::ValidationAgent->value,
-            EnrollmentStatus::RejetAgent->value,
-        ], true);
+        /** @var EnrollmentRequest $enrollment */
+        $enrollment = $this->resource;
 
         $base = [
             'id' => $this->id,
             'type' => $this->type,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
+            // Au niveau responsable, un dossier non pris en charge est « À valider » :
+            // l'avis de l'agent est une proposition, il ne préjuge de rien ici.
+            'statut_libelle' => EnrollmentStatusPresenter::labelFor($enrollment->statut(), $request->user()),
             'date_soumission' => $this->created_at,
-            'decision_agent' => $this->decisionAgentBlock(),
+            'decision_agent' => $this->decisionAgentBlock($enrollment),
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
-            'peut_prendre_en_charge' => $inQueue && $this->assigned_responsable_id === null,
-            'peut_valider' => $inQueue
-                && $this->assigned_responsable_id !== null
+            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteResponsable
+                && $this->assigned_responsable_id === null,
+            'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable
                 && (string) $this->assigned_responsable_id === (string) $request->user()?->id,
         ];
 
@@ -62,46 +66,49 @@ class EnrollmentDecisionDetailResource extends JsonResource
     /**
      * @return array<string, mixed>
      */
-    private function decisionAgentBlock(): array
+    private function decisionAgentBlock(EnrollmentRequest $enrollment): array
     {
-        $agentRejected = match ($this->status) {
-            EnrollmentStatus::RejetAgent->value, EnrollmentStatus::Rejetee->value => true,
-            EnrollmentStatus::ValidationAgent->value, EnrollmentStatus::Approuvee->value => false,
-            default => $this->reject_stage === 'AGENT' && ! empty($this->reject_reasons),
-        };
+        // `null` quand l'agent n'a pas encore rendu d'avis — l'ancien bloc
+        // retombait sur « Approuvé » par défaut et annonçait donc une décision
+        // que personne n'avait prise.
+        $avis = $enrollment->avisAgent();
 
         return [
-            'statut' => $agentRejected ? 'Rejeté' : 'Approuvé',
+            'avis' => $avis?->value,
+            'avis_libelle' => $avis?->label(),
             'agent' => $this->relationLoaded('assignedAgent')
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
-            'date' => $this->agent_decided_at ?? $this->updated_at,
-            'motifs' => $agentRejected ? $this->resolveMotifs($this->reject_reasons) : [],
+            'date' => $enrollment->agent_decided_at,
+            'motifs' => $avis === AgentAvis::Defavorable ? $this->resolveMotifs($this->reject_reasons) : [],
             'description' => $this->review_comments,
         ];
     }
 
     /**
-     * @param  list<string>|null  $codes
-     * @return list<array{code: string, label: string}>
+     * @param  list<string>|null  $ids
+     * @return list<array{id: string, title: string, description: string}>
      */
-    private function resolveMotifs(?array $codes): array
+    private function resolveMotifs(?array $ids): array
     {
-        if ($codes === null || $codes === []) {
+        if ($ids === null || $ids === []) {
             return [];
         }
 
+        $ids = array_values(array_map(fn ($id) => (string) $id, $ids));
+
         $motifs = EnrollmentRejectMotif::query()
-            ->whereIn('code', $codes)
+            ->whereIn('id', $ids)
             ->get()
-            ->keyBy('code');
+            ->keyBy('id');
 
         return array_values(array_map(
-            fn (string $code) => [
-                'code' => $code,
-                'label' => $motifs->get($code)?->label_fr ?? $code,
+            fn (string $id) => [
+                'id' => $id,
+                'title' => $motifs->get($id)?->title ?? $id,
+                'description' => $motifs->get($id)?->description ?? '',
             ],
-            $codes
+            $ids
         ));
     }
 }

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Registration;
 
+use App\Enums\ActivityLogAction;
 use App\Jobs\SendInitLinkJob;
 use App\Jobs\SendOTPJob;
 use App\Models\OTP;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ANIP\AnipSimulatorService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
@@ -26,6 +28,7 @@ class UserRegistrationService
     public function __construct(
         private readonly TrustedXClientService $trustedXClient,
         private readonly AnipSimulatorService $anipSimulator,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     private const OTP_MAX_ATTEMPTS = 5;
@@ -54,6 +57,14 @@ class UserRegistrationService
 
         SendOTPJob::dispatch($anipData['data']['email'], $otp);
         Cache::put('user_'.$npi, ['data' => $anipData], 600);
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP client envoyé par e-mail (NPI %s).', $npi),
+            null,
+            null,
+            ['npi' => $npi, 'context' => 'client_registration', 'channel' => 'email'],
+        );
 
         return ServiceResult::ok('Un code OTP vous a été envoyé par e-mail. Il expire dans 5 minutes.');
     }
@@ -86,6 +97,14 @@ class UserRegistrationService
             $ttlSeconds = Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
             Cache::put('user_'.$npi.'_validate_otp', true, $ttlSeconds > 0 ? $ttlSeconds : 300);
 
+            $this->activityLog->record(
+                ActivityLogAction::OtpVerifie,
+                sprintf('OTP client vérifié (NPI %s).', $npi),
+                null,
+                null,
+                ['npi' => $npi, 'context' => 'client_registration', 'channel' => 'email'],
+            );
+
             return ServiceResult::ok('OTP valide.', $cachedData['data']);
         } catch (Exception $e) {
             Log::error('OTP verification failed: '.$e->getMessage());
@@ -98,21 +117,47 @@ class UserRegistrationService
     {
         $response = $this->trustedXClient->userInfo($code);
 
-        return $response['status']
-            ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
-            : ServiceResult::fail($response['message'], null, 401);
+        if ($response['status']) {
+            $actor = $response['data']['user'] ?? null;
+            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+
+            $this->activityLog->record(
+                ActivityLogAction::ConnexionClient,
+                'Connexion client TrustedX réussie.',
+                $actorId,
+                null,
+                ['channel' => 'web'],
+            );
+
+            return ServiceResult::ok('Token obtenu avec succès!', $response['data']);
+        }
+
+        return ServiceResult::fail($response['message'], null, 401);
     }
 
     public function loginMobile(string $code): ServiceResult
     {
         $response = $this->trustedXClient->mobileUserInfo($code);
 
-        return $response['status']
-            ? ServiceResult::ok('Token obtenu avec succès!', $response['data'])
-            : ServiceResult::fail($response['message'], null, 401);
+        if ($response['status']) {
+            $actor = $response['data']['user'] ?? null;
+            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+
+            $this->activityLog->record(
+                ActivityLogAction::ConnexionClient,
+                'Connexion client mobile TrustedX réussie.',
+                $actorId,
+                null,
+                ['channel' => 'mobile'],
+            );
+
+            return ServiceResult::ok('Token obtenu avec succès!', $response['data']);
+        }
+
+        return ServiceResult::fail($response['message'], null, 401);
     }
 
-    public function setPassword(string $npi, string $password, string $type): ServiceResult
+    public function setPassword(string $npi, string $password, string $type, ?User $actor = null): ServiceResult
     {
         $user = $this->trustedXClient->getUserWithNPI($npi);
         if (! $user['status']) {
@@ -127,6 +172,19 @@ class UserRegistrationService
         if (! $output['status']) {
             return ServiceResult::fail($output['message'], null, 400);
         }
+
+        $typeLabel = $type === 'password' ? 'mot de passe' : 'pin';
+        $this->activityLog->record(
+            ActivityLogAction::MotDePasseChange,
+            sprintf(
+                '%s a défini le %s client (NPI).',
+                ActivityLogService::actorLabel($actor),
+                $typeLabel
+            ),
+            is_string($actor?->id) ? $actor->id : null,
+            null,
+            ['npi' => $npi, 'type' => $type, 'context' => 'admin_set_password'],
+        );
 
         return ServiceResult::ok(
             'Votre mot de passe a bien été mis à jour.',
@@ -181,6 +239,17 @@ class UserRegistrationService
 
             $user->update($updateData);
             DB::commit();
+
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurModifie,
+                sprintf(
+                    '%s a mis à jour son profil.',
+                    ActivityLogService::actorLabel($user)
+                ),
+                is_string($user->id) ? $user->id : null,
+                null,
+                ['context' => 'profile_update', 'fields' => array_keys($updateData)],
+            );
 
             return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load('identities'));
         } catch (Exception $e) {

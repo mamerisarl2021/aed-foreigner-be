@@ -50,7 +50,7 @@ final class ForeignerFinalizationService
         return ServiceResult::ok('Demande éligible à la finalisation.', [
             'demande_id' => $enrollment->id,
             'numero_suivi' => $enrollment->tracking_code,
-            'statut' => $enrollment->status,
+            'statut' => $enrollment->status->value,
             'npi' => $user->npi,
             'email' => $user->email,
         ]);
@@ -84,6 +84,14 @@ final class ForeignerFinalizationService
             platform: NotificationPlatform::from(config('notifications.platform')),
         ));
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP de finalisation envoyé pour %s.', $enrollment->tracking_code),
+            null,
+            $enrollment->id,
+            ['context' => 'finalisation'],
+        );
+
         return ServiceResult::ok('OTP de finalisation envoyé.', [
             'numero_suivi' => $enrollment->tracking_code,
             'demande_id' => $enrollment->id,
@@ -114,6 +122,14 @@ final class ForeignerFinalizationService
         Cache::forget($this->otpAttemptsKey($code));
         Cache::put($this->otpVerifiedKey($code), true, now()->addMinutes(self::OTP_PROOF_MINUTES));
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('OTP de finalisation vérifié pour %s.', $enrollment->tracking_code),
+            null,
+            $enrollment->id,
+            ['context' => 'finalisation'],
+        );
+
         return ServiceResult::ok('OTP de finalisation valide.', [
             'numero_suivi' => $enrollment->tracking_code,
             'demande_id' => $enrollment->id,
@@ -132,7 +148,7 @@ final class ForeignerFinalizationService
         ?string $numeroSuivi = null,
     ): ServiceResult {
         $enrollment = EnrollmentRequest::findOrFail($demandeId);
-        if ($enrollment->status !== EnrollmentStatus::Approuvee->value) {
+        if ($enrollment->status !== EnrollmentStatus::Approuvee) {
             return ServiceResult::fail('Demande non éligible à la finalisation.', null, 422);
         }
 
@@ -213,7 +229,7 @@ final class ForeignerFinalizationService
             $user->status = 'ACTIVE';
             $user->save();
 
-            $enrollment->status = EnrollmentStatus::Enrolee->value;
+            $enrollment->status = EnrollmentStatus::Enrolee;
             $enrollment->save();
 
             if (is_string($token) && $token !== '') {
@@ -227,7 +243,7 @@ final class ForeignerFinalizationService
             $this->events->publish('completed', [
                 'demande_id' => $enrollment->id,
                 'npi' => $user->npi,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
 
             $this->activityLog->record(
@@ -246,7 +262,7 @@ final class ForeignerFinalizationService
             return ServiceResult::ok('Enrôlement finalisé.', [
                 'demande_id' => $enrollment->id,
                 'numero_suivi' => $enrollment->tracking_code,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
                 'npi' => $user->npi,
             ]);
         } catch (Exception $e) {

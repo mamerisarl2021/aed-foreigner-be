@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
 use App\Services\Users\UserService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Client Auth')]
@@ -60,17 +61,6 @@ class UserController extends BaseController
     public function loginMobile(LoginWithCodeRequest $request): JsonResponse
     {
         return $this->respond($this->registration->loginMobile($request->input('code')));
-    }
-
-    /**
-     * User detail
-     */
-    public function show(string $id): JsonResponse
-    {
-        $user = User::findOrFail($id);
-        $this->authorize('view', $user);
-
-        return $this->sendResponse('Utilisateur récupéré.', new UserResource($user));
     }
 
     /**
@@ -120,8 +110,10 @@ class UserController extends BaseController
     /**
      * Update own profile (email, profile photo)
      */
-    public function update(UpdateUserProfileRequest $request, string $id): JsonResponse
+    #[PathParameter('id', description: 'User UUID.', type: 'string', format: 'uuid')]
+    public function update(UpdateUserProfileRequest $request): JsonResponse
     {
+        $id = (string) $request->validated('id');
         $target = User::findOrFail($id);
         $this->authorize('update', $target);
 
@@ -135,24 +127,15 @@ class UserController extends BaseController
     }
 
     /**
-     * Delete a user (admin only)
-     */
-    public function destroy(string $id): JsonResponse
-    {
-        $target = User::findOrFail($id);
-        $this->authorize('delete', $target);
-
-        return $this->respond($this->users->destroy($id));
-    }
-
-    /**
      * Bulk update user statuses (staff)
      */
     public function updateUserStatus(UpdateUserStatusRequest $request): JsonResponse
     {
         $this->authorize('updateStatus', User::class);
 
-        return $this->respond($this->users->updateStatuses($request->input('users')));
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+
+        return $this->respond($this->users->updateStatuses($request->input('users'), $actorId));
     }
 
     /**
@@ -166,6 +149,7 @@ class UserController extends BaseController
             $request->input('npi'),
             $request->input('password'),
             $request->input('type'),
+            $request->user(),
         ));
     }
 

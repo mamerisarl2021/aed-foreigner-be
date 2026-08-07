@@ -18,6 +18,13 @@ class User extends Authenticatable implements Auditable
     use HasApiTokens, HasFactory, HasRoles, HasUuids, Notifiable;
     use \OwenIt\Auditing\Auditable;
 
+    /** @var list<string> */
+    protected array $auditExclude = [
+        'password',
+        'remember_token',
+        'security_questions',
+    ];
+
     /** @var array<int, string> */
     protected $fillable = [
         'name',

@@ -277,7 +277,7 @@ Per the PDF: keep **demandes** and **identités validées** in distinct stores.
 
 | Stage | Storage |
 |-------|---------|
-| Demande en instruction | `enrollment_requests` (`PENDING`, `VISIO_REQUESTED`, `APPROVED_BY_AGENT`, `RETURNED_TO_AGENT`, `REJECTED`, `APPROVED`, …) |
+| Demande en instruction | `enrollment_requests` (`EN_ATTENTE_AGENT`, `EN_COURS_AGENT`, `EN_ATTENTE_RESPONSABLE`, `EN_COURS_RESPONSABLE`, `APPROUVEE`, `REJETEE`, …) |
 | Identité définitivement approuvée | `users` + `identities` (created on supervisor approval) |
 
 Do not create `User` / `Identity` at submit time for personne physique.
@@ -331,7 +331,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
-2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `auditeur`, `client`, and (placeholder) `demandeur_authentifie`.
+2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
 3. Prefer expanding policies over adding more nested `role:` middleware groups.
 4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
 
@@ -366,7 +366,7 @@ List and search endpoints **MUST** use a Form Request for query params — same 
 ```php
 // ListAgentsRequest — GET /agents
 'q' => ['nullable', 'string', 'max:255'],
-'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
+'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
 'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
 'order_by' => ['nullable', 'string', 'in:created_at,name,email,last_login_at'],
 'order_dir' => ['nullable', 'string', 'in:asc,desc'],
@@ -403,7 +403,7 @@ If behavior differs when a param is absent vs. sent empty, state that explicitly
 'sexe' => ['required', 'string', 'in:M,F'],
 'document_type' => ['required', 'string', 'in:PASSPORT,CNI_ECOWAS'],
 'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-'role' => ['required', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER,AUDITEUR'],
+'role' => ['required', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
 ```
 
 **Examples (bad):**
@@ -527,13 +527,13 @@ POST /otp/send              { email, phonenumber }
 POST /otp/verify            { email|phonenumber|both, otp }
 POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
 POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
-POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE }
+POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT }
 ```
 
 Business rules:
 
 - Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
-- Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE`, and a unique **`numero_suivi`** (`tracking_code`, format `PK…`) shown on the success screen.
+- Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE_AGENT`, and a unique **`numero_suivi`** (`tracking_code`, format `PK…`) shown on the success screen.
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
@@ -541,37 +541,57 @@ Business rules:
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
 
-Status machine:
+**Position ≠ décision (règle structurante).** `enrollment_requests.status` décrit **où** est la demande, jamais **ce qui a été décidé**. L'avis de l'agent vit dans sa propre colonne `agent_avis` (`FAVORABLE` | `DEFAVORABLE` | `null`). Un statut ne doit jamais permettre à un niveau de lire le verdict d'un autre : l'ancien `VALIDATION_AGENT` signifiait à la fois « chez le responsable » et « l'agent a approuvé », et le responsable découvrait donc ses dossiers « approuvés » avant d'avoir agi.
+
+> Un niveau ne voit un verdict que s'il est **le sien** ou s'il est **définitif pour tout le dossier**.
+
+Status machine (positionnelle) :
 
 ```
-EN_ATTENTE → VALIDATION_AGENT | REJET_AGENT        (PATCH .../instruction)
-VALIDATION_AGENT → APPROUVEE | EN_ATTENTE          (PATCH .../validation)
-REJET_AGENT → REJETEE | EN_ATTENTE                 (PATCH .../validation)
-APPROUVEE → ENROLEE                                (finalisation OTP + password flow)
+EN_ATTENTE_AGENT → EN_COURS_AGENT                        (PATCH .../prise-en-charge)
+EN_COURS_AGENT → EN_ATTENTE_RESPONSABLE                  (PATCH .../instruction, écrit agent_avis)
+EN_ATTENTE_RESPONSABLE → EN_COURS_RESPONSABLE            (PATCH .../prise-en-charge-validation)
+EN_COURS_RESPONSABLE → APPROUVEE                         (validation, exige agent_avis=FAVORABLE)
+EN_COURS_RESPONSABLE → REJETEE                           (validation, exige agent_avis=DEFAVORABLE)
+EN_COURS_RESPONSABLE → EN_ATTENTE_AGENT                  (RETOUR_AGENT, remet agent_avis à null)
+APPROUVEE → ENROLEE                                      (finalisation OTP + password flow)
 ```
 
 Staff routes:
 
 ```
-GET   /enrolements?statut=EN_ATTENTE                              (agent default)
-GET   /enrolements?statut=VALIDATION_AGENT|REJET_AGENT            (responsable default when statut omitted)
+GET   /enrolements?statut=EN_ATTENTE_AGENT|EN_COURS_AGENT              (agent default)
+GET   /enrolements?statut=EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE  (responsable default when statut omitted)
+GET   /enrolements?avis=FAVORABLE|DEFAVORABLE                          (filtre sur l'avis agent)
 GET   /enrolements/{id}
 PATCH /enrolements/{id}/prise-en-charge                           (agent self-assign)
 PATCH /enrolements/{id}/prise-en-charge-validation                (responsable self-assign)
-PATCH /enrolements/{id}/instruction   { statut: VALIDATION_AGENT|REJET_AGENT, motif?, commentaire? }
+PATCH /enrolements/{id}/instruction   { avis: FAVORABLE|DEFAVORABLE, motif?, commentaire? }
 PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOUR_AGENT, commentaire?, motif? }
 ```
 
-Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, responsable.
+`motif[]` values are **UUID ids** from `GET /management/enrollment-reject-motifs` (not string codes).
 
-Responsable detail includes `decision_agent` (Approuvé/Rejeté, agent, date, motifs, description), `peut_prendre_en_charge`, `peut_valider`.
+**Libellés contextuels.** Toute ressource de demande expose `statut` (machine) **et** `statut_libelle`, calculé par `EnrollmentStatusPresenter` selon le rôle de l'appelant. Le statut machine est unique ; seul le mot change :
 
-Decision mapping (responsable buttons):
+| Statut | Agent | Responsable | Manager / admin | Demandeur |
+|--------|-------|-------------|-----------------|-----------|
+| `EN_ATTENTE_AGENT` | À traiter | En instruction | En attente d'un agent | En cours de traitement |
+| `EN_COURS_AGENT` | En cours d'instruction | En instruction | En cours d'instruction | En cours de traitement |
+| `EN_ATTENTE_RESPONSABLE` | Transmise au responsable | **À valider** | En attente du responsable | En cours de traitement |
+| `EN_COURS_RESPONSABLE` | Transmise au responsable | En cours de validation | En cours de validation | En cours de traitement |
+| `APPROUVEE` / `REJETEE` / `ENROLEE` | Approuvée / Rejetée / Enrôlée (identique pour tous : le verdict est définitif) |
 
-| Current status | Approuver | Rejeter la décision |
-|----------------|-----------|---------------------|
-| `VALIDATION_AGENT` | `APPROUVEE` | `RETOUR_AGENT` (+ motif[], commentaire?) |
-| `REJET_AGENT` | `REJET_CONFIRME` | `RETOUR_AGENT` (+ motif[], commentaire?) |
+Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, statut_libelle, `avis_agent`, responsable, `pris_en_charge_par_moi`.
+
+Responsable detail includes `decision_agent` (`avis` **nullable** + `avis_libelle`, agent, date, motifs `{ id, title, description }`, description), `peut_prendre_en_charge`, `peut_valider`. `avis` vaut `null` tant que l'agent n'a pas instruit — ne jamais retomber sur une valeur par défaut, qui annoncerait une décision que personne n'a prise.
+
+Decision mapping (responsable buttons), depuis `EN_COURS_RESPONSABLE` uniquement :
+
+| `agent_avis` | Approuver | Rejeter la décision |
+|--------------|-----------|---------------------|
+| `FAVORABLE` | `APPROUVEE` | `RETOUR_AGENT` (+ motif[] UUID, commentaire?) |
+| `DEFAVORABLE` | `REJET_CONFIRME` | `RETOUR_AGENT` (+ motif[] UUID, commentaire?) |
 
 Staff auth:
 
@@ -593,19 +613,18 @@ Role mapping (PDF → Spatie):
 | Administrateur de la plateforme | `administrateur_plateforme` |
 | Étranger enrôlé / portail | `client` |
 | Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
-| Auditeur (compliance extension) | `auditeur` |
 
-Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `AUDITEUR`. Platform admin is created via `php artisan manage:admin` only.
+Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
 
-- **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE`. No assign-to-other-agent.
-- **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `VALIDATION_AGENT` or `REJET_AGENT`. No assign-to-other.
-- **Instruction:** agent must be the assigned agent; `REJET_AGENT` requires validated `motif[]` + optional `commentaire`; sets `reject_stage=AGENT` and `agent_decided_at`.
-- **Validation:** responsable must be the assigned responsable; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id` and `assigned_responsable_id`.
+- **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE_AGENT`, then moves the request to `EN_COURS_AGENT` — la prise en charge doit être lisible dans le statut. No assign-to-other-agent.
+- **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `EN_ATTENTE_RESPONSABLE`, then moves the request to `EN_COURS_RESPONSABLE`. No assign-to-other.
+- **Instruction:** agent must be the assigned agent and the request must be `EN_COURS_AGENT`; `avis=DEFAVORABLE` requires validated `motif[]` + optional `commentaire`; sets `agent_avis`, `reject_stage=AGENT` and `agent_decided_at`. L'agent rend un **avis**, il ne tranche pas.
+- **Validation:** responsable must be the assigned responsable and the request must be `EN_COURS_RESPONSABLE`; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id`, `assigned_responsable_id`, `agent_avis` et `agent_decided_at` — le retour annule l'avis rendu.
 - Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/enrolements/finalisation?token=`).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
-- Responsable `RETOUR_AGENT`: back to `EN_ATTENTE`, clears `assigned_agent_id`.
+- Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
-- Reject motifs: `GET /management/enrollment-reject-motifs`.
+- Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`.
 - SLA: `enrollment:check-sla` hourly.
 - Authorization: `EnrollmentRequestPolicy` (see §9.3).
@@ -644,7 +663,7 @@ POST /enrolements/morales/{id}/send-phone-otp            (owner only)
 POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 ```
 
-After contact verified → `EN_ATTENTE`; same instruction/validation contract as physique.
+After contact verified → `EN_ATTENTE_AGENT`; same instruction/validation contract as physique.
 
 **Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié). Detail returns `informations_entreprise` + `pieces_jointes`. Client tracking uses `GET /enrolements/morales/{id}` only.
 
@@ -672,7 +691,7 @@ Contact: `email` / `phonenumber` on the row = **official company** email and pho
 Status machine (morale-specific gate):
 
 ```
-AWAITING_CONTACT_VERIFICATION → EN_ATTENTE → … (same as physique review)
+AWAITING_CONTACT_VERIFICATION → EN_ATTENTE_AGENT → … (same as physique review)
 APPROUVEE → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsable approve)
 ```
 
@@ -686,19 +705,26 @@ Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, 
 POST /admin/login
 GET  /agents? q, role, per_page          → StaffUserListResource
 GET  /agents/{id}                        → StaffUserDetailResource
-POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER|AUDITEUR)
+POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER)
 POST /agents/{id}                        → update staff
 DELETE /agents/{id}                      → delete staff
-GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier (action, description, date)
+GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier UI (défaut per_page=20)
+GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id, ip_address)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
-GET  /audits                                               → journal OwenIt (compliance / auditeur)
+POST /admin/enrollment-reject-motifs                       { title, description }
+GET  /admin/enrollment-reject-motifs/{id}
+PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
+DELETE /admin/enrollment-reject-motifs/{id}                hard delete
+GET  /audits                                               → journal OwenIt technique (admin only)
 ```
 
 - Login sets `users.last_login_at`.
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
-- **Journaux** (`activity_logs`): business actions (demande, validation agent/responsable, création utilisateur, finalisation). Distinct from `GET /audits` (model CRUD audit trail).
+- **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
+- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
+- **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
 
 ### 13.6 Explicitly out of current API scope
 

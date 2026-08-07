@@ -4,29 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Users;
 
+use App\Enums\ActivityLogAction;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 final class UserService
 {
-    public function show(string $id): ServiceResult
-    {
-        try {
-            $user = User::findOrFail($id);
-
-            return ServiceResult::ok('Utilisateur récupéré.', $user);
-        } catch (ModelNotFoundException) {
-            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
-        } catch (Exception $e) {
-            Log::error('Fetching user failed: '.$e->getMessage());
-
-            return ServiceResult::fail('Fetching user failed.', null, 500);
-        }
-    }
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
 
     public function search(string $query, int $limit, string $excludeUserId): ServiceResult
     {
@@ -68,26 +58,10 @@ final class UserService
         }
     }
 
-    public function destroy(string $id): ServiceResult
-    {
-        try {
-            $user = User::findOrFail($id);
-            $user->delete();
-
-            return ServiceResult::ok('User deleted successfully.', []);
-        } catch (ModelNotFoundException) {
-            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
-        } catch (Exception $e) {
-            Log::error('Deleting user failed: '.$e->getMessage());
-
-            return ServiceResult::fail('Deleting user failed.', null, 500);
-        }
-    }
-
     /**
      * @param  list<array{id: string, status: string}>  $users
      */
-    public function updateStatuses(array $users): ServiceResult
+    public function updateStatuses(array $users, ?string $actorUserId = null): ServiceResult
     {
         try {
             DB::transaction(function () use ($users) {
@@ -96,6 +70,14 @@ final class UserService
                     $user->update(['status' => $userData['status']]);
                 }
             });
+
+            $this->activityLog->record(
+                ActivityLogAction::StatutUtilisateurModifie,
+                sprintf('%d statut(s) utilisateur mis à jour.', count($users)),
+                $actorUserId,
+                null,
+                ['users' => $users],
+            );
 
             return ServiceResult::ok("Le statut de l'utilisateur à bien été mis à jour", $users);
         } catch (Exception $e) {

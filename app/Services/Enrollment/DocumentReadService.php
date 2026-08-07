@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\Enums\ActivityLogAction;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Regula\DocumentReaderClient;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
@@ -77,6 +79,7 @@ final class DocumentReadService
 
     public function __construct(
         private readonly DocumentReaderClient $documentReader,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function read(Request $request): ServiceResult
@@ -93,6 +96,14 @@ final class DocumentReadService
         $result = $this->documentReader->process($pages);
 
         if (! $result['ok']) {
+            $this->activityLog->record(
+                ActivityLogAction::DocumentLu,
+                'Lecture assistée de pièce impossible.',
+                null,
+                null,
+                ['ok' => false, 'error' => $result['error'] ?? null],
+            );
+
             return ServiceResult::ok('Lecture de la pièce impossible.', [
                 'ok' => false,
                 'document_name' => null,
@@ -102,7 +113,20 @@ final class DocumentReadService
             ]);
         }
 
-        return ServiceResult::ok('Pièce lue.', $this->summarize($result['payload']));
+        $summary = $this->summarize($result['payload']);
+        $this->activityLog->record(
+            ActivityLogAction::DocumentLu,
+            sprintf('Lecture assistée de pièce (%s).', $summary['document_name'] ?? 'document'),
+            null,
+            null,
+            [
+                'ok' => true,
+                'document_name' => $summary['document_name'] ?? null,
+                'quality_issues' => $summary['quality_issues'] ?? [],
+            ],
+        );
+
+        return ServiceResult::ok('Pièce lue.', $summary);
     }
 
     /**

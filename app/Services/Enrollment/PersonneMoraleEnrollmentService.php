@@ -29,14 +29,19 @@ class PersonneMoraleEnrollmentService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    /** @var list<string> */
-    private const OPEN_MORALE_STATUSES = [
-        'AWAITING_CONTACT_VERIFICATION',
-        EnrollmentStatus::EnAttente->value,
-        EnrollmentStatus::ValidationAgent->value,
-        EnrollmentStatus::RejetAgent->value,
-        EnrollmentStatus::Approuvee->value,
-    ];
+    /**
+     * Une demande morale bloque les suivantes tant qu'elle n'est pas close.
+     *
+     * @return list<string>
+     */
+    private static function openMoraleStatuses(): array
+    {
+        return [
+            EnrollmentStatus::AwaitingContactVerification->value,
+            ...EnrollmentStatus::open(),
+            EnrollmentStatus::Approuvee->value,
+        ];
+    }
 
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
@@ -120,7 +125,7 @@ class PersonneMoraleEnrollmentService
 
             return ServiceResult::ok('Demande enregistrée. Veuillez vérifier l\'email officiel et le téléphone de l\'entreprise.', [
                 'enrollment_request_id' => $enrollment->id,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
                 'verification_deadline_at' => $enrollment->verification_deadline_at?->toIso8601String(),
             ]);
         } catch (\Exception $e) {
@@ -159,7 +164,7 @@ class PersonneMoraleEnrollmentService
                 'enrollment_request_id' => $enrollment->id,
                 'email_verified' => true,
                 'phone_verified' => $enrollment->phone_verified_at !== null,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
             ]);
         }
 
@@ -177,11 +182,19 @@ class PersonneMoraleEnrollmentService
 
         $this->promoteToPendingIfVerified($enrollment);
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('Email officiel vérifié pour la demande morale %s.', $enrollment->id),
+            is_string($enrollment->submitted_by_user_id) ? $enrollment->submitted_by_user_id : null,
+            $enrollment->id,
+            ['context' => 'morale_email'],
+        );
+
         return ServiceResult::ok('Email officiel vérifié.', [
             'enrollment_request_id' => $enrollment->id,
             'email_verified' => true,
             'phone_verified' => $enrollment->phone_verified_at !== null,
-            'status' => $enrollment->fresh()->status,
+            'status' => $enrollment->fresh()->status->value,
         ]);
     }
 
@@ -212,6 +225,14 @@ class PersonneMoraleEnrollmentService
         SendSmsJob::dispatch(
             $enrollment->phonenumber,
             "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes)."
+        );
+
+        $this->activityLog->record(
+            ActivityLogAction::OtpEnvoye,
+            sprintf('OTP téléphone morale envoyé pour la demande %s.', $enrollment->id),
+            is_string($user->id) ? $user->id : null,
+            $enrollment->id,
+            ['context' => 'morale_phone', 'channel' => 'phone'],
         );
 
         return ServiceResult::ok('OTP envoyé au téléphone officiel de l\'entreprise.', [
@@ -252,9 +273,17 @@ class PersonneMoraleEnrollmentService
 
         $this->promoteToPendingIfVerified($enrollment);
 
+        $this->activityLog->record(
+            ActivityLogAction::OtpVerifie,
+            sprintf('Téléphone officiel vérifié pour la demande morale %s.', $enrollment->id),
+            is_string($user->id) ? $user->id : null,
+            $enrollment->id,
+            ['context' => 'morale_phone'],
+        );
+
         return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', [
             'enrollment_request_id' => $enrollment->id,
-            'status' => $enrollment->fresh()->status,
+            'status' => $enrollment->fresh()->status->value,
         ]);
     }
 
@@ -276,7 +305,7 @@ class PersonneMoraleEnrollmentService
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
-            ->whereIn('status', self::OPEN_MORALE_STATUSES)
+            ->whereIn('status', self::openMoraleStatuses())
             ->exists();
     }
 
@@ -354,7 +383,7 @@ class PersonneMoraleEnrollmentService
     {
         $enrollment->refresh();
 
-        if ($enrollment->status !== 'AWAITING_CONTACT_VERIFICATION') {
+        if ($enrollment->status !== EnrollmentStatus::AwaitingContactVerification) {
             return;
         }
 
@@ -362,7 +391,7 @@ class PersonneMoraleEnrollmentService
             return;
         }
 
-        $enrollment->status = EnrollmentStatus::EnAttente->value;
+        $enrollment->status = EnrollmentStatus::EnAttenteAgent;
         $enrollment->sla_deadline_at = now()->addHours((int) config('enrollment.sla.max_hours', 72));
         $enrollment->save();
     }

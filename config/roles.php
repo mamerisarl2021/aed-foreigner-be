@@ -7,14 +7,12 @@ return [
     'administrateur_plateforme' => 'administrateur_plateforme',
     'client' => 'client',
     'demandeur_authentifie' => 'demandeur_authentifie',
-    'auditeur' => 'auditeur',
 
     'staff' => [
         'agent',
         'responsable_de_validation',
         'manager',
         'administrateur_plateforme',
-        'auditeur',
     ],
 
     'participants' => [

@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\AgentAvis;
+use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class EnrollmentRequest extends Model
+class EnrollmentRequest extends Model implements Auditable
 {
     use HasUuids;
+    use \OwenIt\Auditing\Auditable;
+
+    /** @var list<string> */
+    protected array $auditExclude = [
+        'email_verification_token',
+    ];
 
     protected $fillable = [
         'tracking_code',
@@ -23,6 +32,7 @@ class EnrollmentRequest extends Model
         'risk_score',
         'analysis_details',
         'status',
+        'agent_avis',
         'assigned_agent_id',
         'assigned_responsable_id',
         'agent_decided_at',
@@ -52,6 +62,8 @@ class EnrollmentRequest extends Model
             'analysis_details' => 'array',
             'reject_reasons' => 'array',
             'return_reasons' => 'array',
+            'status' => EnrollmentStatus::class,
+            'agent_avis' => AgentAvis::class,
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'verification_deadline_at' => 'datetime',
@@ -78,9 +90,28 @@ class EnrollmentRequest extends Model
         return $this->belongsTo(User::class, 'submitted_by_user_id');
     }
 
+    public function statut(): EnrollmentStatus
+    {
+        return $this->status;
+    }
+
+    public function avisAgent(): ?AgentAvis
+    {
+        return $this->agent_avis;
+    }
+
     public function isPersonneMorale(): bool
     {
         return $this->type === 'PERSONNE_MORALE';
+    }
+
+    public function applicantDisplayName(): string
+    {
+        if ($this->isPersonneMorale()) {
+            return (string) ($this->kyc_data['legal_name'] ?? $this->email);
+        }
+
+        return (string) ($this->kyc_data['name'] ?? $this->email);
     }
 
     public function isContactVerificationComplete(): bool

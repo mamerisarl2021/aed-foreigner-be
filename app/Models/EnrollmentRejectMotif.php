@@ -4,30 +4,17 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class EnrollmentRejectMotif extends Model
+class EnrollmentRejectMotif extends Model implements Auditable
 {
     use HasUuids;
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'code',
-        'label_fr',
-        'stage',
-        'active',
+        'title',
+        'description',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'active' => 'boolean',
-        ];
-    }
-
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('active', true);
-    }
 }

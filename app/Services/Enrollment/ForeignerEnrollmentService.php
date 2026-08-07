@@ -73,7 +73,7 @@ final class ForeignerEnrollmentService
                 'similarity' => $kycSession['similarity'] ?? $request->input('similarity'),
                 'risk_score' => $kycSession['risk_score'] ?? null,
                 'analysis_details' => $kycSession['analysis_details'] ?? null,
-                'status' => EnrollmentStatus::EnAttente->value,
+                'status' => EnrollmentStatus::EnAttenteAgent->value,
                 'type' => 'PERSONNE_PHYSIQUE',
                 'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
             ]);
@@ -86,7 +86,7 @@ final class ForeignerEnrollmentService
 
             $this->events->publish('created', [
                 'demande_id' => $enrollmentRequest->id,
-                'statut' => $enrollmentRequest->status,
+                'statut' => $enrollmentRequest->status->value,
                 'email' => $email,
             ]);
 
@@ -120,7 +120,7 @@ final class ForeignerEnrollmentService
             return ServiceResult::ok('Demande acceptée.', [
                 'demande_id' => $enrollmentRequest->id,
                 'numero_suivi' => $enrollmentRequest->tracking_code,
-                'statut' => $enrollmentRequest->status,
+                'statut' => $enrollmentRequest->status->value,
             ], 202);
         } catch (\Exception $e) {
             DB::rollBack();

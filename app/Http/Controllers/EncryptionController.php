@@ -4,46 +4,58 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Traits\EncryptionTrait;
+use App\Http\Requests\Admin\DecryptDocumentRequest;
+use App\Services\Encryption\DocumentDecryptService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Header;
+use Dedoc\Scramble\Attributes\PathParameter;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 
 #[Group('Admin')]
 class EncryptionController extends Controller
 {
-    use EncryptionTrait;
+    public function __construct(
+        private readonly DocumentDecryptService $decryptService,
+    ) {}
 
     /**
      * Decrypt and display an encrypted enrollment document
      *
-     * Staff only (viewAudits gate). `filename` is the stored encrypted file name;
+     * Staff reviewers only (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;
      * the decrypted content is returned inline with its detected MIME type.
      * 404 when the file does not exist.
      */
-    public function decryptAndDisplay(string $filename): Response
+    #[PathParameter('filename', description: 'Stored encrypted file name (basename only; no path segments).', type: 'string')]
+    #[ScrambleResponse(
+        200,
+        description: 'Decrypted file bytes. Content-Type is the detected MIME type (often image/* or application/pdf).',
+        mediaType: 'application/octet-stream',
+        type: 'string',
+        format: 'binary',
+    )]
+    #[Header('Content-Type', description: 'Detected MIME type of the decrypted file.', type: 'string')]
+    #[Header('Content-Disposition', description: 'inline; filename="<basename>"', type: 'string')]
+    public function decryptAndDisplay(DecryptDocumentRequest $request): Response
     {
-        Gate::authorize('viewAudits');
+        Gate::authorize('viewEncryptedDocuments');
 
-        $filename = basename($filename);
-        if ($filename === '' || str_contains($filename, '..')) {
-            abort(404);
+        $result = $this->decryptService->decryptAndDisplay(
+            (string) $request->validated('filename'),
+            $request->user(),
+        );
+
+        if (! $result->success) {
+            abort($result->code, $result->message);
         }
 
-        if (! Storage::exists("public/docs/{$filename}")) {
-            abort(404);
-        }
+        /** @var array{content: string, mime: string, filename: string} $data */
+        $data = $result->data;
 
-        $base64EncodedContent = $this->getEncFile($filename, 'docs');
-        $fileContent = base64_decode($base64EncodedContent);
-
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $fileType = $finfo->buffer($fileContent);
-
-        return response()->make($fileContent, 200, [
-            'Content-Type' => $fileType,
-            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        return response()->make($data['content'], 200, [
+            'Content-Type' => $data['mime'],
+            'Content-Disposition' => 'inline; filename="'.$data['filename'].'"',
         ]);
     }
 }

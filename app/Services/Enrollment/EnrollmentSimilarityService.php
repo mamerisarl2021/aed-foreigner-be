@@ -88,9 +88,8 @@ class EnrollmentSimilarityService
         $otherDemandes = EnrollmentRequest::query()
             ->where('id', '!=', $enrollment->id)
             ->whereIn('status', [
+                ...EnrollmentStatus::open(),
                 EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::ValidationAgent->value,
-                EnrollmentStatus::EnAttente->value,
             ])
             ->where('type', 'PERSONNE_PHYSIQUE')
             ->limit(200)
@@ -126,7 +125,7 @@ class EnrollmentSimilarityService
                 $matches->push([
                     'type' => 'enrollment_request',
                     'enrollment_request_id' => $other->id,
-                    'status' => $other->status,
+                    'status' => $other->status->value,
                     'email' => $other->email,
                     'score' => min(100, $score),
                     'matched_fields' => array_values(array_unique($matchedFields)),
@@ -197,9 +196,8 @@ class EnrollmentSimilarityService
             ->where('id', '!=', $enrollment->id)
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', [
+                ...EnrollmentStatus::open(),
                 EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::ValidationAgent->value,
-                EnrollmentStatus::EnAttente->value,
                 EnrollmentStatus::AwaitingContactVerification->value,
             ])
             ->limit(200)
@@ -227,7 +225,7 @@ class EnrollmentSimilarityService
                 $matches->push([
                     'type' => 'enrollment_request',
                     'enrollment_request_id' => $other->id,
-                    'status' => $other->status,
+                    'status' => $other->status->value,
                     'legal_name' => $otherKyc['legal_name'] ?? null,
                     'score' => min(100, $score),
                     'matched_fields' => array_values(array_unique($matchedFields)),

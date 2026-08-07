@@ -1,23 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class PasswordResetToken extends Model
+class PasswordResetToken extends Model implements Auditable
 {
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'password_resets';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+    /** @var list<string> */
+    protected array $auditExclude = [
+        'token',
+    ];
+
     protected $fillable = [
         'npi',
         'email',
@@ -26,18 +26,8 @@ class PasswordResetToken extends Model
         'created_at',
     ];
 
-    /**
-     * Indicates if the model should be timestamped.
-     *
-     * @var bool
-     */
     public $timestamps = false;
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [

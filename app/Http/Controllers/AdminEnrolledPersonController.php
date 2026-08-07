@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\ListEnrolledPersonsRequest;
+use App\Http\Requests\Admin\ShowEnrolledPersonRequest;
 use App\Http\Resources\EnrolledPersonDetailResource;
 use App\Http\Resources\EnrolledPersonListResource;
 use App\Services\Admin\EnrolledPersonService;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -37,11 +39,12 @@ final class AdminEnrolledPersonController extends BaseController
     /**
      * Enrolled person detail (read-only)
      */
-    public function show(string $id): JsonResponse
+    #[PathParameter('id', description: 'Enrolled person (user) UUID.', type: 'string', format: 'uuid')]
+    public function show(ShowEnrolledPersonRequest $request): JsonResponse
     {
         Gate::authorize('viewEnrolledPerson');
 
-        $result = $this->enrolledPersonService->show($id);
+        $result = $this->enrolledPersonService->show((string) $request->validated('id'));
         if (! $result->success) {
             return $this->respond($result);
         }

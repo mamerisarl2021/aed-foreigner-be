@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Services\Regula\HttpRegulaService;
 use App\Services\Regula\MockRegulaService;
 use App\Services\Regula\RegulaService;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\Response as OpenApiResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -56,6 +59,27 @@ final class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());
+        });
+
+        // Scramble merges inferred JSON content with #[Response] binary for decrypt; drop the noise.
+        Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
+            foreach ($openApi->paths as $path) {
+                if (! str_ends_with($path->path, '/decrypt/token/file/{filename}')) {
+                    continue;
+                }
+
+                $operation = $path->operations['get'] ?? null;
+                if ($operation === null || $operation->responses === null) {
+                    continue;
+                }
+
+                foreach ($operation->responses as $response) {
+                    if (! $response instanceof OpenApiResponse || (int) $response->code !== 200) {
+                        continue;
+                    }
+                    unset($response->content['application/json']);
+                }
+            }
         });
     }
 }
