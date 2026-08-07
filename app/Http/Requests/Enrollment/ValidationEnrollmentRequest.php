@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enrollment;
 
+use App\Enums\SupervisorDecision;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\MergesRouteId;
 use Dedoc\Scramble\Attributes\IgnoreParam;
@@ -25,11 +26,11 @@ class ValidationEnrollmentRequest extends ApiFormRequest
 
         $rules = [
             'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
-            'decision' => ['required', 'string', Rule::in(['APPROUVEE', 'REJET_CONFIRME', 'RETOUR_AGENT'])],
+            'decision' => ['required', 'string', Rule::in(SupervisorDecision::values())],
             'commentaire' => ['nullable', 'string', 'max:1000'],
         ];
 
-        if ($this->input('decision') === 'RETOUR_AGENT') {
+        if ($this->input('decision') === SupervisorDecision::RetourAgent->value) {
             $rules['motif'] = ['required', 'array', 'min:1'];
             $rules['motif.*'] = $motifIdRules;
         } else {

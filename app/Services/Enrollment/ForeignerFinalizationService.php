@@ -50,7 +50,7 @@ final class ForeignerFinalizationService
         return ServiceResult::ok('Demande éligible à la finalisation.', [
             'demande_id' => $enrollment->id,
             'numero_suivi' => $enrollment->tracking_code,
-            'statut' => $enrollment->status,
+            'statut' => $enrollment->status->value,
             'npi' => $user->npi,
             'email' => $user->email,
         ]);
@@ -148,7 +148,7 @@ final class ForeignerFinalizationService
         ?string $numeroSuivi = null,
     ): ServiceResult {
         $enrollment = EnrollmentRequest::findOrFail($demandeId);
-        if ($enrollment->status !== EnrollmentStatus::Approuvee->value) {
+        if ($enrollment->status !== EnrollmentStatus::Approuvee) {
             return ServiceResult::fail('Demande non éligible à la finalisation.', null, 422);
         }
 
@@ -229,7 +229,7 @@ final class ForeignerFinalizationService
             $user->status = 'ACTIVE';
             $user->save();
 
-            $enrollment->status = EnrollmentStatus::Enrolee->value;
+            $enrollment->status = EnrollmentStatus::Enrolee;
             $enrollment->save();
 
             if (is_string($token) && $token !== '') {
@@ -243,7 +243,7 @@ final class ForeignerFinalizationService
             $this->events->publish('completed', [
                 'demande_id' => $enrollment->id,
                 'npi' => $user->npi,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
 
             $this->activityLog->record(
@@ -262,7 +262,7 @@ final class ForeignerFinalizationService
             return ServiceResult::ok('Enrôlement finalisé.', [
                 'demande_id' => $enrollment->id,
                 'numero_suivi' => $enrollment->tracking_code,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
                 'npi' => $user->npi,
             ]);
         } catch (Exception $e) {

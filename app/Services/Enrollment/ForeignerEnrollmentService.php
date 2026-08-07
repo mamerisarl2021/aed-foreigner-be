@@ -86,7 +86,7 @@ final class ForeignerEnrollmentService
 
             $this->events->publish('created', [
                 'demande_id' => $enrollmentRequest->id,
-                'statut' => $enrollmentRequest->status,
+                'statut' => $enrollmentRequest->status->value,
                 'email' => $email,
             ]);
 
@@ -120,7 +120,7 @@ final class ForeignerEnrollmentService
             return ServiceResult::ok('Demande acceptée.', [
                 'demande_id' => $enrollmentRequest->id,
                 'numero_suivi' => $enrollmentRequest->tracking_code,
-                'statut' => $enrollmentRequest->status,
+                'statut' => $enrollmentRequest->status->value,
             ], 202);
         } catch (\Exception $e) {
             DB::rollBack();

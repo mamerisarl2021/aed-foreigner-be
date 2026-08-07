@@ -31,7 +31,7 @@ class EnrollmentDecisionDetailResource extends JsonResource
         $base = [
             'id' => $this->id,
             'type' => $this->type,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
             // Au niveau responsable, un dossier non pris en charge est « À valider » :
             // l'avis de l'agent est une proposition, il ne préjuge de rien ici.
             'statut_libelle' => EnrollmentStatusPresenter::labelFor($enrollment->statut(), $request->user()),
@@ -40,9 +40,9 @@ class EnrollmentDecisionDetailResource extends JsonResource
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
-            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteResponsable->value
+            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteResponsable
                 && $this->assigned_responsable_id === null,
-            'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable->value
+            'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable
                 && (string) $this->assigned_responsable_id === (string) $request->user()?->id,
         ];
 

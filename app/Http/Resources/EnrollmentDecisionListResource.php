@@ -42,11 +42,11 @@ class EnrollmentDecisionListResource extends JsonResource
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
             'date_decision' => $this->agent_decided_at ?? $this->updated_at,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
             // « À valider » tant que le responsable n'a rien fait : le sens de
             // l'avis de l'agent vit dans sa propre colonne, jamais dans le statut.
             'statut_libelle' => EnrollmentStatusPresenter::labelFor($this->statut(), $request->user()),
-            'avis_agent' => $this->agent_avis,
+            'avis_agent' => $this->agent_avis?->value,
             'avis_agent_libelle' => $this->avisAgent()?->label(),
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)

@@ -125,7 +125,7 @@ class PersonneMoraleEnrollmentService
 
             return ServiceResult::ok('Demande enregistrée. Veuillez vérifier l\'email officiel et le téléphone de l\'entreprise.', [
                 'enrollment_request_id' => $enrollment->id,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
                 'verification_deadline_at' => $enrollment->verification_deadline_at?->toIso8601String(),
             ]);
         } catch (\Exception $e) {
@@ -164,7 +164,7 @@ class PersonneMoraleEnrollmentService
                 'enrollment_request_id' => $enrollment->id,
                 'email_verified' => true,
                 'phone_verified' => $enrollment->phone_verified_at !== null,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
             ]);
         }
 
@@ -194,7 +194,7 @@ class PersonneMoraleEnrollmentService
             'enrollment_request_id' => $enrollment->id,
             'email_verified' => true,
             'phone_verified' => $enrollment->phone_verified_at !== null,
-            'status' => $enrollment->fresh()->status,
+            'status' => $enrollment->fresh()->status->value,
         ]);
     }
 
@@ -283,7 +283,7 @@ class PersonneMoraleEnrollmentService
 
         return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', [
             'enrollment_request_id' => $enrollment->id,
-            'status' => $enrollment->fresh()->status,
+            'status' => $enrollment->fresh()->status->value,
         ]);
     }
 
@@ -383,7 +383,7 @@ class PersonneMoraleEnrollmentService
     {
         $enrollment->refresh();
 
-        if ($enrollment->status !== EnrollmentStatus::AwaitingContactVerification->value) {
+        if ($enrollment->status !== EnrollmentStatus::AwaitingContactVerification) {
             return;
         }
 
@@ -391,7 +391,7 @@ class PersonneMoraleEnrollmentService
             return;
         }
 
-        $enrollment->status = EnrollmentStatus::EnAttenteAgent->value;
+        $enrollment->status = EnrollmentStatus::EnAttenteAgent;
         $enrollment->sla_deadline_at = now()->addHours((int) config('enrollment.sla.max_hours', 72));
         $enrollment->save();
     }

@@ -32,18 +32,18 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
             // désigne un dossier, l'UUID ne circulant qu'entre machines.
             'numero_suivi' => $this->tracking_code,
             'type' => $this->type,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
             'statut_libelle' => EnrollmentStatusPresenter::labelFor($enrollment->statut(), $request->user()),
             'date_soumission' => $this->created_at,
             'agent_responsable' => $this->relationLoaded('assignedAgent')
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
             // Avis déjà rendu par le niveau agent, `null` tant qu'il ne l'a pas été.
-            'avis_agent' => $enrollment->agent_avis,
+            'avis_agent' => $enrollment->agent_avis?->value,
             'avis_agent_libelle' => $enrollment->avisAgent()?->label(),
-            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteAgent->value
+            'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteAgent
                 && $this->assigned_agent_id === null,
-            'peut_instruire' => $this->status === EnrollmentStatus::EnCoursAgent->value
+            'peut_instruire' => $this->status === EnrollmentStatus::EnCoursAgent
                 && (string) $this->assigned_agent_id === (string) $request->user()?->id,
         ];
 

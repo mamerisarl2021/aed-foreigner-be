@@ -10,7 +10,9 @@ enum ActivityLogAction: string
     case DemandeIdentiteMorale = 'DEMANDE_IDENTITE_MORALE';
     case PriseEnChargeAgent = 'PRISE_EN_CHARGE_AGENT';
     case PriseEnChargeResponsable = 'PRISE_EN_CHARGE_RESPONSABLE';
+    /** Historical event code — not an enrollment_requests.status value. */
     case ValidationAgent = 'VALIDATION_AGENT';
+    /** Historical event code — not an enrollment_requests.status value. */
     case RejetAgent = 'REJET_AGENT';
     case ValidationResponsable = 'VALIDATION_RESPONSABLE';
     case RejetConfirme = 'REJET_CONFIRME';

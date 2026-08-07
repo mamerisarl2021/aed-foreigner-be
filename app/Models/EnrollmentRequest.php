@@ -62,6 +62,8 @@ class EnrollmentRequest extends Model implements Auditable
             'analysis_details' => 'array',
             'reject_reasons' => 'array',
             'return_reasons' => 'array',
+            'status' => EnrollmentStatus::class,
+            'agent_avis' => AgentAvis::class,
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'verification_deadline_at' => 'datetime',
@@ -90,17 +92,26 @@ class EnrollmentRequest extends Model implements Auditable
 
     public function statut(): EnrollmentStatus
     {
-        return EnrollmentStatus::from((string) $this->status);
+        return $this->status;
     }
 
     public function avisAgent(): ?AgentAvis
     {
-        return $this->agent_avis !== null ? AgentAvis::from((string) $this->agent_avis) : null;
+        return $this->agent_avis;
     }
 
     public function isPersonneMorale(): bool
     {
         return $this->type === 'PERSONNE_MORALE';
+    }
+
+    public function applicantDisplayName(): string
+    {
+        if ($this->isPersonneMorale()) {
+            return (string) ($this->kyc_data['legal_name'] ?? $this->email);
+        }
+
+        return (string) ($this->kyc_data['name'] ?? $this->email);
     }
 
     public function isContactVerificationComplete(): bool

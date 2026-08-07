@@ -11,6 +11,7 @@ use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
+use App\Enums\SupervisorDecision;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\EnrollmentRequest;
@@ -18,154 +19,29 @@ use App\Models\Identity;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
-use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\NotificationRecipient;
 use App\Support\NpiAllocator;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class IdentityReviewService
+class SupervisorEnrollmentReviewService
 {
     private const DECISION_NON_PRISE_EN_CHARGE = 'La décision doit d\'abord être prise en charge.';
 
     public function __construct(
-        private readonly EnrollmentSimilarityService $similarityService,
         private readonly TrustedXClientService $trustedXClient,
         private readonly EnrollmentEventPublisherInterface $events,
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    public function list(Request $request): LengthAwarePaginator
+    public function claimValidation(EnrollmentRequest $enrollment, string $responsableId): ServiceResult
     {
-        $allowedStatuses = EnrollmentStatus::listable();
-        $allowedTypes = ['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'];
-
-        $user = $request->user();
-        $defaultStatuses = $user && $user->hasRole(config('roles.responsable_de_validation'))
-            ? EnrollmentStatus::responsableQueue()
-            : EnrollmentStatus::agentQueue();
-
-        $statutParam = $request->input('statut', $request->input('status'));
-        if (is_null($statutParam)) {
-            $statuses = $defaultStatuses;
-        } else {
-            $statuses = is_array($statutParam)
-                ? $statutParam
-                : array_map('trim', explode('|', (string) $statutParam));
-            $statuses = array_values(array_intersect($allowedStatuses, $statuses));
-            if ($statuses === []) {
-                $statuses = $defaultStatuses;
-            }
-        }
-
-        $query = EnrollmentRequest::whereIn('status', $statuses);
-
-        // L'avis de l'agent ayant quitté le statut, c'est par lui que le
-        // responsable retrouve « les dossiers proposés au rejet ».
-        if ($request->filled('avis')) {
-            $query->where('agent_avis', strtoupper((string) $request->input('avis')));
-        }
-
-        if ($request->filled('type')) {
-            $type = strtoupper($request->input('type'));
-            if (in_array($type, $allowedTypes, true)) {
-                $query->where('type', $type);
-            }
-        }
-
-        if ($request->filled('q')) {
-            $q = $request->input('q');
-            $query->where(function ($uq) use ($q) {
-                $uq->where('email', 'like', "%$q%")
-                    ->orWhere('phonenumber', 'like', "%$q%")
-                    ->orWhereJsonContains('kyc_data->name', $q)
-                    ->orWhereJsonContains('kyc_data->first_name', $q)
-                    ->orWhereJsonContains('kyc_data->legal_name', $q)
-                    ->orWhereJsonContains('kyc_data->registration_number', $q)
-                    ->orWhereHas('submittedBy', function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%$q%")
-                            ->orWhere('first_name', 'like', "%$q%");
-                    });
-            });
-        }
-
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', Carbon::parse($request->input('from'))->toDateString());
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', Carbon::parse($request->input('to'))->toDateString());
-        }
-
-        // UUID PKs are not sequential, so created_at is the meaningful default sort.
-        $orderBy = $request->input('order_by', 'created_at');
-        if (! in_array($orderBy, ['id', 'created_at'], true)) {
-            $orderBy = 'created_at';
-        }
-        $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
-        $query->orderBy($orderBy, $orderDir);
-
-        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
-
-        return $query->with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->paginate($perPage);
-    }
-
-    public function show(string $id): ServiceResult
-    {
-        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
-        $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
-
-        return ServiceResult::ok('Détail de la demande.', $enrollment);
-    }
-
-    public function claim(string $id, string $agentId): ServiceResult
-    {
-        $enrollment = EnrollmentRequest::findOrFail($id);
-
-        if ($enrollment->status !== EnrollmentStatus::EnAttenteAgent->value) {
-            return ServiceResult::fail('Seules les demandes EN_ATTENTE_AGENT peuvent être prises en charge.', null, 422);
-        }
-
-        if ($enrollment->assigned_agent_id !== null) {
-            return ServiceResult::fail('Cette demande est déjà assignée à un agent.', null, 422);
-        }
-
-        $enrollment->assigned_agent_id = $agentId;
-        $enrollment->status = EnrollmentStatus::EnCoursAgent->value;
-        $enrollment->save();
-        $enrollment->load('assignedAgent', 'submittedBy');
-
-        $this->activityLog->record(
-            ActivityLogAction::PriseEnChargeAgent,
-            sprintf(
-                '%s a pris en charge la demande %s.',
-                ActivityLogService::actorLabel($enrollment->assignedAgent),
-                $enrollment->tracking_code ?? $enrollment->id
-            ),
-            $agentId,
-            $enrollment->id,
-        );
-
-        $this->events->publish('agent_assigned', [
-            'demande_id' => $enrollment->id,
-            'assigned_agent_id' => $agentId,
-            'statut' => $enrollment->status,
-        ]);
-
-        return ServiceResult::ok('Demande prise en charge.', $enrollment);
-    }
-
-    public function claimValidation(string $id, string $responsableId): ServiceResult
-    {
-        $enrollment = EnrollmentRequest::findOrFail($id);
-
-        if ($enrollment->status !== EnrollmentStatus::EnAttenteResponsable->value) {
+        if ($enrollment->status !== EnrollmentStatus::EnAttenteResponsable) {
             return ServiceResult::fail('Seules les demandes en attente de validation responsable peuvent être prises en charge.', null, 422);
         }
 
@@ -174,7 +50,7 @@ class IdentityReviewService
         }
 
         $enrollment->assigned_responsable_id = $responsableId;
-        $enrollment->status = EnrollmentStatus::EnCoursResponsable->value;
+        $enrollment->status = EnrollmentStatus::EnCoursResponsable;
         $enrollment->save();
         $enrollment->load(['assignedAgent', 'assignedResponsable', 'submittedBy']);
 
@@ -192,152 +68,46 @@ class IdentityReviewService
         $this->events->publish('responsable_assigned', [
             'demande_id' => $enrollment->id,
             'assigned_responsable_id' => $responsableId,
-            'statut' => $enrollment->status,
+            'statut' => $enrollment->status->value,
         ]);
 
         return ServiceResult::ok('Décision prise en charge.', $enrollment);
     }
 
     /**
-     * Instruction de l'agent : il rend un **avis**, il ne tranche pas.
-     *
      * @param  list<string>|null  $motif
      */
-    public function instruction(string $id, string $avis, ?array $motif = null, ?string $comments = null): ServiceResult
-    {
-        $enrollment = EnrollmentRequest::findOrFail($id);
+    public function validation(
+        EnrollmentRequest $enrollment,
+        string|SupervisorDecision $decision,
+        ?string $commentaire = null,
+        ?string $supervisorId = null,
+        ?array $motif = null,
+    ): ServiceResult {
+        $decision = $decision instanceof SupervisorDecision
+            ? $decision
+            : SupervisorDecision::tryFrom($decision);
 
-        if ($enrollment->status !== EnrollmentStatus::EnCoursAgent->value) {
-            return ServiceResult::fail('Statut non éligible à l\'instruction agent (EN_COURS_AGENT requis).', null, 422);
+        if ($decision === null) {
+            return ServiceResult::fail('Décision de validation invalide.', null, 422);
         }
 
-        if ($avis === AgentAvis::Favorable->value) {
-            return $this->agentValidate($enrollment, $comments);
-        }
-
-        if ($avis === AgentAvis::Defavorable->value) {
-            return $this->agentReject($enrollment, $motif ?? [], $comments);
-        }
-
-        return ServiceResult::fail('Avis d\'instruction invalide.', null, 422);
-    }
-
-    public function validation(string $id, string $decision, ?string $commentaire = null, ?string $supervisorId = null, ?array $motif = null): ServiceResult
-    {
         return match ($decision) {
-            'APPROUVEE' => $this->supervisorApprove($id, (string) $supervisorId),
-            'REJET_CONFIRME' => $this->supervisorConfirmReject($id, $supervisorId),
-            'RETOUR_AGENT' => $this->supervisorReturnToAgent($id, $commentaire, $motif, $supervisorId),
-            default => ServiceResult::fail('Décision de validation invalide.', null, 422),
+            SupervisorDecision::Approuvee => $this->supervisorApprove($enrollment, (string) $supervisorId),
+            SupervisorDecision::RejetConfirme => $this->supervisorConfirmReject($enrollment, $supervisorId),
+            SupervisorDecision::RetourAgent => $this->supervisorReturnToAgent($enrollment, $commentaire, $motif, $supervisorId),
         };
     }
 
-    private function agentValidate(EnrollmentRequest $enrollment, ?string $comments = null): ServiceResult
+    public function supervisorApprove(EnrollmentRequest $enrollment, string $supervisorId): ServiceResult
     {
-        DB::beginTransaction();
-        try {
-            $enrollment->status = EnrollmentStatus::EnAttenteResponsable->value;
-            $enrollment->agent_avis = AgentAvis::Favorable->value;
-            $enrollment->review_comments = $comments;
-            $enrollment->reject_reasons = null;
-            $enrollment->reject_stage = null;
-            $enrollment->agent_decided_at = now();
-            $enrollment->save();
-            $enrollment->load('assignedAgent');
-
-            $this->activityLog->record(
-                ActivityLogAction::ValidationAgent,
-                sprintf(
-                    '%s a validé la demande n°%d.',
-                    ActivityLogService::actorLabel($enrollment->assignedAgent),
-                    $enrollment->id
-                ),
-                $enrollment->assigned_agent_id,
-                $enrollment->id,
-            );
-
-            $this->events->publish('status_changed', [
-                'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
-            ]);
-
-            SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Dossier transmis au responsable',
-                template: NotificationTemplate::IdentityStepApproved,
-                recipients: [
-                    NotificationRecipient::email($enrollment->email, [
-                        'name' => $this->applicantDisplayName($enrollment),
-                    ]),
-                ],
-                variables: ['name' => $this->applicantDisplayName($enrollment)],
-                type: 'ENROLEMENT_STATUS_CHANGED',
-                platform: NotificationPlatform::from(config('notifications.platform')),
-            ));
-
-            DB::commit();
-
-            return ServiceResult::ok('Avis favorable transmis au responsable.', [
-                'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
-                'avis_agent' => $enrollment->agent_avis,
-            ]);
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Agent validate failed: '.$e->getMessage());
-
-            return ServiceResult::fail('Erreur lors de la validation agent.', null, 500);
-        }
-    }
-
-    /**
-     * @param  list<string>  $motif
-     */
-    private function agentReject(EnrollmentRequest $enrollment, array $motif, ?string $comments): ServiceResult
-    {
-        $enrollment->reject_reasons = $motif;
-        $enrollment->review_comments = $comments;
-        $enrollment->reject_stage = 'AGENT';
-        $enrollment->status = EnrollmentStatus::EnAttenteResponsable->value;
-        $enrollment->agent_avis = AgentAvis::Defavorable->value;
-        $enrollment->agent_decided_at = now();
-        $enrollment->save();
-        $enrollment->load('assignedAgent');
-
-        $this->activityLog->record(
-            ActivityLogAction::RejetAgent,
-            sprintf(
-                '%s a rejeté la demande n°%d.',
-                ActivityLogService::actorLabel($enrollment->assignedAgent),
-                $enrollment->id
-            ),
-            $enrollment->assigned_agent_id,
-            $enrollment->id,
-        );
-
-        $this->events->publish('status_changed', [
-            'demande_id' => $enrollment->id,
-            'statut' => $enrollment->status,
-            'motif' => $motif,
-        ]);
-
-        return ServiceResult::ok('Avis défavorable transmis au responsable.', [
-            'demande_id' => $enrollment->id,
-            'statut' => $enrollment->status,
-            'avis_agent' => $enrollment->agent_avis,
-        ]);
-    }
-
-    public function supervisorApprove(string $id, string $supervisorId): ServiceResult
-    {
-        $enrollment = EnrollmentRequest::findOrFail($id);
-
         // La décision exige la prise en charge (EN_COURS_RESPONSABLE) *et* un avis
         // favorable : approuver un dossier proposé au rejet passe par RETOUR_AGENT.
-        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable->value) {
+        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable) {
             return ServiceResult::fail(self::DECISION_NON_PRISE_EN_CHARGE, null, 422);
         }
 
-        if ($enrollment->agent_avis !== AgentAvis::Favorable->value) {
+        if ($enrollment->agent_avis !== AgentAvis::Favorable) {
             return ServiceResult::fail('L\'avis de l\'agent n\'est pas favorable.', null, 422);
         }
 
@@ -415,7 +185,7 @@ class IdentityReviewService
             $link = config('app.frontend_url').'/etranger/finalisation?token='.$finalisationToken;
             WelcomeUserJob::dispatch($user->email, $user, $link, true);
 
-            $enrollment->status = EnrollmentStatus::Approuvee->value;
+            $enrollment->status = EnrollmentStatus::Approuvee;
             $enrollment->save();
 
             $this->activityLog->record(
@@ -428,7 +198,7 @@ class IdentityReviewService
             $this->events->publish('approved', [
                 'demande_id' => $enrollment->id,
                 'npi' => $user->npi,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
 
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
@@ -436,14 +206,14 @@ class IdentityReviewService
                 template: NotificationTemplate::SendInitLink,
                 recipients: [
                     NotificationRecipient::email($enrollment->email, [
-                        'name' => $this->applicantDisplayName($enrollment),
+                        'name' => $enrollment->applicantDisplayName(),
                         'link' => $link,
                         'npi' => $user->npi,
                         'numero_suivi' => $enrollment->tracking_code,
                     ]),
                 ],
                 variables: [
-                    'name' => $this->applicantDisplayName($enrollment),
+                    'name' => $enrollment->applicantDisplayName(),
                     'link' => $link,
                     'npi' => $user->npi,
                     'numero_suivi' => $enrollment->tracking_code,
@@ -456,7 +226,7 @@ class IdentityReviewService
 
             return ServiceResult::ok('Demande approuvée. Invitation de finalisation envoyée.', [
                 'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
                 'npi' => $user->npi,
             ]);
         } catch (Exception $e) {
@@ -467,21 +237,19 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorConfirmReject(string $id, ?string $supervisorId = null): ServiceResult
+    public function supervisorConfirmReject(EnrollmentRequest $enrollment, ?string $supervisorId = null): ServiceResult
     {
-        $enrollment = EnrollmentRequest::findOrFail($id);
-
-        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable->value) {
+        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable) {
             return ServiceResult::fail(self::DECISION_NON_PRISE_EN_CHARGE, null, 422);
         }
 
-        if ($enrollment->agent_avis !== AgentAvis::Defavorable->value) {
+        if ($enrollment->agent_avis !== AgentAvis::Defavorable) {
             return ServiceResult::fail('L\'avis de l\'agent n\'est pas défavorable.', null, 422);
         }
 
         DB::beginTransaction();
         try {
-            $enrollment->status = EnrollmentStatus::Rejetee->value;
+            $enrollment->status = EnrollmentStatus::Rejetee;
             $enrollment->save();
 
             $this->activityLog->record(
@@ -493,10 +261,10 @@ class IdentityReviewService
 
             $this->events->publish('rejected', [
                 'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
 
-            $recipientName = $this->applicantDisplayName($enrollment);
+            $recipientName = $enrollment->applicantDisplayName();
             SendEmailNotificationJob::dispatch(new EmailNotificationData(
                 subject: 'Votre demande d\'enrôlement a été rejetée',
                 template: NotificationTemplate::IdentityRejected,
@@ -519,7 +287,7 @@ class IdentityReviewService
 
             return ServiceResult::ok('Rejet confirmé et notifié au demandeur.', [
                 'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -529,15 +297,16 @@ class IdentityReviewService
         }
     }
 
-    public function supervisorReturnToAgent(string $id, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
+    /**
+     * @param  list<string>|null  $motif
+     */
+    public function supervisorReturnToAgent(EnrollmentRequest $enrollment, ?string $commentaire, ?array $motif = null, ?string $supervisorId = null): ServiceResult
     {
-        $enrollment = EnrollmentRequest::findOrFail($id);
-
-        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable->value) {
+        if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable) {
             return ServiceResult::fail(self::DECISION_NON_PRISE_EN_CHARGE, null, 422);
         }
 
-        $enrollment->status = EnrollmentStatus::EnAttenteAgent->value;
+        $enrollment->status = EnrollmentStatus::EnAttenteAgent;
         $enrollment->assigned_agent_id = null;
         $enrollment->assigned_responsable_id = null;
         $enrollment->review_comments = $commentaire;
@@ -564,13 +333,13 @@ class IdentityReviewService
 
         $this->events->publish('status_changed', [
             'demande_id' => $enrollment->id,
-            'statut' => $enrollment->status,
+            'statut' => $enrollment->status->value,
             'commentaire' => $commentaire,
         ]);
 
         return ServiceResult::ok('Demande renvoyée à l\'agent.', [
             'demande_id' => $enrollment->id,
-            'statut' => $enrollment->status,
+            'statut' => $enrollment->status->value,
         ]);
     }
 
@@ -615,7 +384,7 @@ class IdentityReviewService
                 platform: NotificationPlatform::from(config('notifications.platform')),
             ));
 
-            $enrollment->status = EnrollmentStatus::Approuvee->value;
+            $enrollment->status = EnrollmentStatus::Approuvee;
             $enrollment->save();
 
             $this->activityLog->record(
@@ -627,14 +396,14 @@ class IdentityReviewService
 
             $this->events->publish('approved', [
                 'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
 
             DB::commit();
 
             return ServiceResult::ok('Demande morale approuvée.', [
                 'demande_id' => $enrollment->id,
-                'statut' => $enrollment->status,
+                'statut' => $enrollment->status->value,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -642,14 +411,5 @@ class IdentityReviewService
 
             return ServiceResult::fail("Erreur lors de l'approbation morale.", null, 500);
         }
-    }
-
-    private function applicantDisplayName(EnrollmentRequest $enrollment): string
-    {
-        if ($enrollment->isPersonneMorale()) {
-            return (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
-        }
-
-        return (string) ($enrollment->kyc_data['name'] ?? $enrollment->email);
     }
 }

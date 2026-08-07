@@ -36,7 +36,7 @@ class EnrollmentRequestListResource extends JsonResource
                 $this->relationLoaded('submittedBy') ? $this->submittedBy : null,
             ),
             'date_soumission' => $this->created_at,
-            'statut' => $this->status,
+            'statut' => $this->status->value,
             // Le statut machine dit où est la demande ; le libellé dit ce que
             // *ce* lecteur doit en comprendre — un agent ne lit jamais
             // « approuvée » sur un dossier passé au responsable.
@@ -48,11 +48,11 @@ class EnrollmentRequestListResource extends JsonResource
                 && (string) $this->assigned_agent_id === (string) $request->user()?->id,
             // Avis rendu au niveau agent : c'est l'acte de ce niveau, pas le sort
             // de la demande, qui reste suspendu à la décision du responsable.
-            'avis_agent' => $this->agent_avis,
+            'avis_agent' => $this->agent_avis?->value,
             // Date de la décision de l'agent : c'est elle qui date un enrôlement
             // dans les listes, `created_at` ne datant que la soumission.
             'date_decision' => $this->agent_decided_at,
-            // Un retour du responsable remet la demande en EN_ATTENTE : sans cet
+            // Un retour du responsable remet la demande en EN_ATTENTE_AGENT : sans cet
             // horodatage, rien ne la distingue d'une demande jamais instruite.
             'retournee_le' => $this->returned_at,
         ];

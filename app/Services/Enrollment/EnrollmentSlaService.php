@@ -90,7 +90,7 @@ class EnrollmentSlaService
                 'level' => $level,
                 'enrollment_id' => $enrollment->id,
                 'email' => $enrollment->email,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
                 'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
             ]);
         }
@@ -107,7 +107,7 @@ class EnrollmentSlaService
                 'level' => $level,
                 'enrollment_id' => $enrollment->id,
                 'email' => $enrollment->email,
-                'status' => $enrollment->status,
+                'status' => $enrollment->status->value,
                 'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
             ],
             type: 'ENROLLMENT_SLA_ALERT',

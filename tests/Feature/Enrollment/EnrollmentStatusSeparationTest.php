@@ -59,7 +59,7 @@ final class EnrollmentStatusSeparationTest extends TestCase
             ->assertJsonPath('data.statut', EnrollmentStatus::EnCoursAgent->value)
             ->assertJsonPath('data.statut_libelle', 'En cours d\'instruction');
 
-        $this->assertSame(EnrollmentStatus::EnCoursAgent->value, $enrollment->fresh()->status);
+        $this->assertSame(EnrollmentStatus::EnCoursAgent, $enrollment->fresh()->status);
     }
 
     #[Test]
@@ -80,8 +80,8 @@ final class EnrollmentStatusSeparationTest extends TestCase
             ->assertJsonPath('data.avis_agent', AgentAvis::Favorable->value);
 
         $enrollment->refresh();
-        $this->assertSame(EnrollmentStatus::EnAttenteResponsable->value, $enrollment->status);
-        $this->assertSame(AgentAvis::Favorable->value, $enrollment->agent_avis);
+        $this->assertSame(EnrollmentStatus::EnAttenteResponsable, $enrollment->status);
+        $this->assertSame(AgentAvis::Favorable, $enrollment->agent_avis);
 
         // L'agent, lui, ne lit aucun verdict : le dossier est parti chez le responsable.
         $this->getJson($this->api("/enrolements/{$enrollment->id}"))
@@ -132,7 +132,7 @@ final class EnrollmentStatusSeparationTest extends TestCase
             'decision' => 'APPROUVEE',
         ])->assertForbidden();
 
-        $this->assertSame(EnrollmentStatus::EnAttenteResponsable->value, $enrollment->fresh()->status);
+        $this->assertSame(EnrollmentStatus::EnAttenteResponsable, $enrollment->fresh()->status);
     }
 
     #[Test]
@@ -196,7 +196,7 @@ final class EnrollmentStatusSeparationTest extends TestCase
         ])->assertOk();
 
         $enrollment->refresh();
-        $this->assertSame(EnrollmentStatus::EnAttenteAgent->value, $enrollment->status);
+        $this->assertSame(EnrollmentStatus::EnAttenteAgent, $enrollment->status);
         $this->assertNull($enrollment->agent_avis);
         $this->assertNull($enrollment->agent_decided_at);
         $this->assertNull($enrollment->assigned_agent_id);

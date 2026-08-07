@@ -125,7 +125,7 @@ class EnrollmentSimilarityService
                 $matches->push([
                     'type' => 'enrollment_request',
                     'enrollment_request_id' => $other->id,
-                    'status' => $other->status,
+                    'status' => $other->status->value,
                     'email' => $other->email,
                     'score' => min(100, $score),
                     'matched_fields' => array_values(array_unique($matchedFields)),
@@ -225,7 +225,7 @@ class EnrollmentSimilarityService
                 $matches->push([
                     'type' => 'enrollment_request',
                     'enrollment_request_id' => $other->id,
-                    'status' => $other->status,
+                    'status' => $other->status->value,
                     'legal_name' => $otherKyc['legal_name'] ?? null,
                     'score' => min(100, $score),
                     'matched_fields' => array_values(array_unique($matchedFields)),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Enrollment;
 
+use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
@@ -30,7 +31,7 @@ final class EnrollmentListResourceTest extends TestCase
     }
 
     /**
-     * Un retour du responsable remet la demande en EN_ATTENTE : seule la date de
+     * Un retour du responsable remet la demande en EN_ATTENTE_AGENT : seule la date de
      * retour la distingue d'une demande jamais instruite, et le backoffice s'en
      * sert pour l'afficher « à corriger ».
      */
@@ -83,5 +84,39 @@ final class EnrollmentListResourceTest extends TestCase
 
         $this->getJson($this->api('/enrolements/not-a-uuid'))
             ->assertStatus(422);
+    }
+
+    #[Test]
+    public function the_list_can_be_filtered_by_agent_avis(): void
+    {
+        Role::firstOrCreate(['name' => config('roles.responsable_de_validation'), 'guard_name' => 'web']);
+        $responsable = User::factory()->create(['email' => 'responsable-list-avis@example.com']);
+        $responsable->assignRole(config('roles.responsable_de_validation'));
+
+        $favorable = EnrollmentRequest::query()->create([
+            'email' => 'favorable@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::EnAttenteResponsable->value,
+            'agent_avis' => AgentAvis::Favorable->value,
+            'type' => 'PERSONNE_PHYSIQUE',
+            'kyc_data' => ['name' => 'FAV', 'first_name' => 'Ada'],
+        ]);
+
+        EnrollmentRequest::query()->create([
+            'email' => 'defavorable@example.com',
+            'phonenumber' => '+2290162405473',
+            'status' => EnrollmentStatus::EnAttenteResponsable->value,
+            'agent_avis' => AgentAvis::Defavorable->value,
+            'type' => 'PERSONNE_PHYSIQUE',
+            'kyc_data' => ['name' => 'DEF', 'first_name' => 'Bob'],
+        ]);
+
+        Sanctum::actingAs($responsable);
+
+        $this->getJson($this->api('/enrolements?avis=FAVORABLE'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $favorable->id)
+            ->assertJsonPath('data.data.0.avis_agent', 'FAVORABLE');
     }
 }

@@ -68,7 +68,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Verify company email (public token link)
      *
-     * May promote the request to EN_ATTENTE if the phone is also verified.
+     * May promote the request to EN_ATTENTE_AGENT if the phone is also verified.
      */
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function verifyEmail(VerifyMoraleEmailRequest $request): JsonResponse
@@ -100,7 +100,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Verify company phone OTP
      *
-     * May promote the request to EN_ATTENTE once both channels are verified.
+     * May promote the request to EN_ATTENTE_AGENT once both channels are verified.
      */
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request): JsonResponse

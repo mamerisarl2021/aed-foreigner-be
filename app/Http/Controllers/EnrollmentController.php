@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\EnrollmentListFilters;
 use App\Http\Requests\Enrollment\ClaimEnrollmentRequest;
 use App\Http\Requests\Enrollment\ClaimValidationEnrollmentRequest;
 use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
@@ -17,7 +18,9 @@ use App\Http\Resources\EnrollmentRequestAgentDetailResource;
 use App\Http\Resources\EnrollmentRequestListResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\ForeignerEnrollmentService;
-use App\Services\IdentityReview\IdentityReviewService;
+use App\Services\IdentityReview\AgentEnrollmentReviewService;
+use App\Services\IdentityReview\EnrollmentReviewQueryService;
+use App\Services\IdentityReview\SupervisorEnrollmentReviewService;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +30,9 @@ final class EnrollmentController extends BaseController
 {
     public function __construct(
         private readonly ForeignerEnrollmentService $foreignerEnrollment,
-        private readonly IdentityReviewService $reviewService,
+        private readonly EnrollmentReviewQueryService $reviewQuery,
+        private readonly AgentEnrollmentReviewService $agentReview,
+        private readonly SupervisorEnrollmentReviewService $supervisorReview,
     ) {}
 
     /**
@@ -57,7 +62,9 @@ final class EnrollmentController extends BaseController
     public function index(ListEnrollmentRequestsRequest $request): JsonResponse
     {
         $this->authorize('viewAny', EnrollmentRequest::class);
-        $paginator = $this->reviewService->list($request);
+        $paginator = $this->reviewQuery->list(
+            EnrollmentListFilters::fromValidated($request->validated(), $request->user())
+        );
         $user = $request->user();
         $resourceClass = $user && $user->hasRole(config('roles.responsable_de_validation'))
             ? EnrollmentDecisionListResource::class
@@ -80,7 +87,7 @@ final class EnrollmentController extends BaseController
         $id = (string) $request->validated('id');
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('view', $enrollment);
-        $result = $this->reviewService->show($id);
+        $result = $this->reviewQuery->show($enrollment);
         $user = $request->user();
         $resource = $user && $user->hasRole(config('roles.responsable_de_validation'))
             ? new EnrollmentDecisionDetailResource($result->data)
@@ -102,7 +109,7 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claim', $enrollment);
 
-        $result = $this->reviewService->claim($id, (string) $request->user()?->id);
+        $result = $this->agentReview->claim($enrollment, (string) $request->user()?->id);
 
         return $this->sendResponse($result->message, new EnrollmentRequestAgentDetailResource($result->data));
     }
@@ -120,7 +127,7 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('claimValidation', $enrollment);
 
-        $result = $this->reviewService->claimValidation($id, (string) $request->user()?->id);
+        $result = $this->supervisorReview->claimValidation($enrollment, (string) $request->user()?->id);
 
         return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($result->data));
     }
@@ -140,11 +147,13 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('instruction', $enrollment);
 
-        return $this->respond($this->reviewService->instruction(
-            $id,
-            (string) $request->validated('avis'),
-            $request->input('motif'),
-            $request->input('commentaire'),
+        $validated = $request->validated();
+
+        return $this->respond($this->agentReview->instruction(
+            $enrollment,
+            (string) $validated['avis'],
+            $validated['motif'] ?? null,
+            $validated['commentaire'] ?? null,
         ));
     }
 
@@ -164,12 +173,14 @@ final class EnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('validation', $enrollment);
 
-        $result = $this->reviewService->validation(
-            $id,
-            $request->input('decision'),
-            $request->input('commentaire'),
+        $validated = $request->validated();
+
+        $result = $this->supervisorReview->validation(
+            $enrollment,
+            (string) $validated['decision'],
+            $validated['commentaire'] ?? null,
             (string) $request->user()?->id,
-            $request->input('motif'),
+            $validated['motif'] ?? null,
         );
 
         if (! $result->success) {
