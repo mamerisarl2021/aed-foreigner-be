@@ -15,7 +15,10 @@ final class ConsulRegistrationStore
         ], JSON_THROW_ON_ERROR));
     }
 
-    public function getServiceId(): ?string
+    /**
+     * @return array{id: string, name: string, registered_at: ?string}|null
+     */
+    public function get(): ?array
     {
         if (! Storage::exists($this->path())) {
             return null;
@@ -23,7 +26,20 @@ final class ConsulRegistrationStore
 
         $data = json_decode(Storage::get($this->path()), true);
 
-        return is_array($data) ? ($data['id'] ?? null) : null;
+        if (! is_array($data) || ! is_string($data['id'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'id' => $data['id'],
+            'name' => is_string($data['name'] ?? null) ? $data['name'] : '',
+            'registered_at' => is_string($data['registered_at'] ?? null) ? $data['registered_at'] : null,
+        ];
+    }
+
+    public function getServiceId(): ?string
+    {
+        return $this->get()['id'] ?? null;
     }
 
     public function forget(): void
