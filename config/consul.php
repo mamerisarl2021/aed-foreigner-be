@@ -10,7 +10,7 @@ return [
 
     'service_name' =>env('CONSUL_SERVICE_NAME', 'portal-id-foreigner'),
     'service_ip' => env('CONSUL_SERVICE_IP', gethostbyname(gethostname())),
-    'service_port' => (int) env('CONSUL_SERVICE_PORT',8080),
+    'service_port' => (int) env('CONSUL_SERVICE_PORT',8000),
 
     'health_path' => env('CONSUL_HEALTH_PATH', '/api/v1/health'),
     'check_interval' => env('CONSUL_CHECK_INTERVAL', '10s'),
