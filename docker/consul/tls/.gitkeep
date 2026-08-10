@@ -1,0 +1,8 @@
+# Déposer ici les certificats TLS de Consul (NON versionnés, cf. .gitignore) :
+#   ca.pem          — autorité de certification (votre PKI)
+#   server.pem      — certificat serveur Consul
+#   server-key.pem  — clé privée serveur Consul
+#
+# Génération possible avec votre PKI, ou pour un test :
+#   consul tls ca create
+#   consul tls cert create -server -dc asin

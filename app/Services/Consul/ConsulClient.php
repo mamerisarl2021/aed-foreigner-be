@@ -22,6 +22,11 @@ final class ConsulClient implements ConsulClientInterface
         return $this->request()->put($this->url("/v1/agent/service/deregister/{$serviceId}"));
     }
 
+    public function agentChecks(): Response
+    {
+        return $this->request()->get($this->url('/v1/agent/checks'));
+    }
+
     private function request()
     {
         $request = Http::withHeaders([

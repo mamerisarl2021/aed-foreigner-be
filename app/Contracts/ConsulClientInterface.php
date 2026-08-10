@@ -9,4 +9,6 @@ interface ConsulClientInterface
     public function register(array $payload): Response;
 
     public function deregister(string $serviceId): Response;
+
+    public function agentChecks(): Response;
 }
