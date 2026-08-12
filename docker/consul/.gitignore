@@ -1,9 +1,0 @@
-# Ne JAMAIS committer les secrets de l'infra Consul
-tls/*.pem
-tls/*.key
-tls/*.crt
-secrets/
-*.gossip
-
-# Exceptions (placeholders versionnés)
-!tls/.gitkeep

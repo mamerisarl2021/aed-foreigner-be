@@ -21,15 +21,15 @@ return [
 
     'service_id_file' => storage_path('app/consul-service-id.json'),
 
-//    'keycloak' => [
-//        // Fail closed: the gateway token check is on unless explicitly disabled (local dev).
-//        'enabled' => env('KEYCLOAK_ENABLED', true),
-//        'token_uri' => env('KC_INFRA_TOKEN_URI'),
-//        'jwks_uri' => env('KC_INFRA_JWKS'),
-//        'issuer' => env('KC_INFRA_ISSUER'),
-//        'audience' => env('KC_INFRA_AUDIENCE'),
-//        'client_id' => env('KC_INFRA_CLIENT_ID'),
-//        'client_secret' => env('KC_INFRA_SECRET'),
-//        'auth_method' => env('CONSUL_ACL_AUTH_METHOD', 'keycloak-infra-svc'),
-//    ],
+    'keycloak' => [
+        // Fail closed: the gateway token check is on unless explicitly disabled (local dev).
+        'enabled' => env('KEYCLOAK_ENABLED', true),
+        'token_uri' => env('KC_INFRA_TOKEN_URI'),
+        'jwks_uri' => env('KC_INFRA_JWKS'),
+        'issuer' => env('KC_INFRA_ISSUER'),
+        'audience' => env('KC_INFRA_AUDIENCE'),
+        'client_id' => env('KC_INFRA_CLIENT_ID'),
+        'client_secret' => env('KC_INFRA_SECRET'),
+        'auth_method' => env('CONSUL_ACL_AUTH_METHOD', 'keycloak-infra-svc'),
+    ],
 ];
