@@ -697,7 +697,28 @@ APPROUVEE → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsa
 
 On responsable approve: **do not** create a new `User`; create `Identity` with `type = PERSONNE_MORALE` linked to `submitted_by_user_id`. No TrustedX / PSCEQ in this phase.
 
-### 13.5 Espace administrateur (backoffice)
+### 13.5 Espace client (post-TrustedX)
+
+Role: `client` (enrolled foreigner). TrustedX owns NPI + password (and optional MFA). AED exchanges the OAuth `code` for a Sanctum session.
+
+```
+POST /clients/login                      { code }  → Sanctum token + pki_token (existing)
+POST /mobile/login                       { code }
+GET  /me                                 profil + identites (id, type, statut, niveau, date)
+                                         + questions_secretes_configurees + pin_configure
+POST /clients/logout                     révoque le token Sanctum courant
+POST /clients/password/change            { current_password, password, password_confirmation }
+POST /clients/pin/change                 { current_pin, pin, pin_confirmation }  (exactly 4 digits)
+GET  /clients/security-questions         questions without answers
+PUT  /clients/security-questions         { current_password, security_questions }
+```
+
+- PIN is still **generated server-side at finalisation**; the client may change it later with the current PIN.
+- Password/PIN changes dual-write TrustedX and a local hash (`users.password` / `users.pin_hash`). If the local hash is missing (legacy enrollments), return 422 and tell the caller to use the e-mail reset.
+- Changing the password revokes all Sanctum tokens.
+- Client activity **history** is out of this lot.
+
+### 13.6 Espace administrateur (backoffice)
 
 Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, not `POST /agents/register`).
 
@@ -726,7 +747,7 @@ GET  /audits                                               → journal OwenIt te
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
 - **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
 
-### 13.6 Explicitly out of current API scope
+### 13.7 Explicitly out of current API scope
 
 Do not pretend these exist in code without implementing them:
 
@@ -735,15 +756,16 @@ Do not pretend these exist in code without implementing them:
 - **PSCEQ / professional certificate** acquisition for personne morale
 - Reopen of a rejected demande (applicant submits a **new** demande)
 - SLA thresholds admin UI (env/config only for now)
+- Client-facing **activity history** (journaux are admin-only)
 - National company registry auto-check beyond duplicate detection on `registration_number` + `country_of_incorporation`
 
-### 13.7 Infrastructure integration
+### 13.8 Infrastructure integration
 
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
 
-### 13.8 Legacy code
+### 13.9 Legacy code
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 

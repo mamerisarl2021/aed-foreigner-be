@@ -16,7 +16,7 @@ class ResetClientCredentialsRequest extends ApiFormRequest
         return [
             'token' => ['required', 'string', 'max:100'],
             'password' => ['sometimes', 'nullable', 'string', 'min:8', 'max:255'],
-            'pin' => ['sometimes', 'nullable', 'string', 'min:4', 'max:12'],
+            'pin' => ['sometimes', 'nullable', 'string', 'digits:4'],
             'npi' => ['required', 'string', 'max:50'],
         ];
     }

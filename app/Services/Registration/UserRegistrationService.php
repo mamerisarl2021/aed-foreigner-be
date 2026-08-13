@@ -14,6 +14,7 @@ use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ANIP\AnipSimulatorService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
+use App\Support\ClientLocalCredentials;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\UploadedFile;
@@ -118,8 +119,7 @@ class UserRegistrationService
         $response = $this->trustedXClient->userInfo($code);
 
         if ($response['status']) {
-            $actor = $response['data']['user'] ?? null;
-            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+            $actorId = $this->touchClientLogin($response['data']['user'] ?? null);
 
             $this->activityLog->record(
                 ActivityLogAction::ConnexionClient,
@@ -140,8 +140,7 @@ class UserRegistrationService
         $response = $this->trustedXClient->mobileUserInfo($code);
 
         if ($response['status']) {
-            $actor = $response['data']['user'] ?? null;
-            $actorId = is_object($actor) && is_string($actor->id ?? null) ? $actor->id : null;
+            $actorId = $this->touchClientLogin($response['data']['user'] ?? null);
 
             $this->activityLog->record(
                 ActivityLogAction::ConnexionClient,
@@ -171,6 +170,12 @@ class UserRegistrationService
 
         if (! $output['status']) {
             return ServiceResult::fail($output['message'], null, 400);
+        }
+
+        $localUser = User::where('npi', $npi)->first();
+        if ($localUser) {
+            ClientLocalCredentials::apply($localUser, $type, $password);
+            $localUser->save();
         }
 
         $typeLabel = $type === 'password' ? 'mot de passe' : 'pin';
@@ -246,7 +251,7 @@ class UserRegistrationService
                     '%s a mis à jour son profil.',
                     ActivityLogService::actorLabel($user)
                 ),
-                is_string($user->id) ? $user->id : null,
+                $user->id,
                 null,
                 ['context' => 'profile_update', 'fields' => array_keys($updateData)],
             );
@@ -258,5 +263,17 @@ class UserRegistrationService
 
             return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
         }
+    }
+
+    private function touchClientLogin(mixed $actor): ?string
+    {
+        if (! $actor instanceof User) {
+            return null;
+        }
+
+        $actor->last_login_at = now();
+        $actor->save();
+
+        return $actor->id;
     }
 }

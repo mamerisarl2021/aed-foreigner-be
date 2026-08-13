@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminActivityLogController;
 use App\Http\Controllers\AdminEnrolledPersonController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClientSecurityController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentRejectMotifController;
@@ -30,6 +31,15 @@ Route::group([], function () {
     Route::middleware(['auth:sanctum'])->get('/me', UserProfileController::class);
 
     Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/clients/logout', [ClientSecurityController::class, 'logout']);
+        Route::post('/clients/password/change', [ClientSecurityController::class, 'changePassword'])
+            ->middleware('throttle:password-reset');
+        Route::post('/clients/pin/change', [ClientSecurityController::class, 'changePin'])
+            ->middleware('throttle:password-reset');
+        Route::get('/clients/security-questions', [ClientSecurityController::class, 'showSecurityQuestions']);
+        Route::put('/clients/security-questions', [ClientSecurityController::class, 'updateSecurityQuestions'])
+            ->middleware('throttle:password-reset');
+
         Route::post('users/{id}', [UserController::class, 'update']);
 
         Route::post('/agents/register', [AuthController::class, 'registerAgent']);

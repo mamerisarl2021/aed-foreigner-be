@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
+use App\Support\ClientLocalCredentials;
 use App\Support\NotificationRecipient;
 use Carbon\Carbon;
 use Exception;
@@ -225,6 +226,8 @@ final class ForeignerFinalizationService
                 return ServiceResult::fail('Échec de la définition du mot de passe / PIN.', null, 400);
             }
 
+            ClientLocalCredentials::apply($user, 'password', $password);
+            ClientLocalCredentials::apply($user, 'pin', $generatedPin);
             $user->security_questions = $securityQuestions;
             $user->status = 'ACTIVE';
             $user->save();

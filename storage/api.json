@@ -390,6 +390,7 @@
                                 "MOT_DE_PASSE_CHANGE",
                                 "MOT_DE_PASSE_REINITIALISE",
                                 "CONNEXION_CLIENT",
+                                "DECONNEXION_CLIENT",
                                 "DOCUMENT_DECHIFFRE",
                                 null
                             ]
@@ -2148,6 +2149,230 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/clients/logout": {
+            "post": {
+                "operationId": "clientSecurity.logout",
+                "summary": "Client logout (revokes current Sanctum token)",
+                "tags": [
+                    "Client Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/clients/password/change": {
+            "post": {
+                "operationId": "clientSecurity.changePassword",
+                "description": "Body: current_password, password, password_confirmation (min 8).\nRevokes all Sanctum tokens; the caller must log in again.",
+                "summary": "Change client TrustedX password (requires current password)",
+                "tags": [
+                    "Client Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeClientPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/clients/pin/change": {
+            "post": {
+                "operationId": "clientSecurity.changePin",
+                "description": "Body: current_pin, pin, pin_confirmation \u2014 exactly 4 digits.",
+                "summary": "Change client TrustedX PIN (requires current PIN)",
+                "tags": [
+                    "Client Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeClientPinRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/clients/security-questions": {
+            "get": {
+                "operationId": "clientSecurity.showSecurityQuestions",
+                "summary": "List client security questions (answers omitted)",
+                "tags": [
+                    "Client Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "configure": {
+                                                    "type": "boolean"
+                                                },
+                                                "questions": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "question": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "question"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "configure",
+                                                "questions"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Questions de s\u00e9curit\u00e9."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "clientSecurity.updateSecurityQuestions",
+                "description": "Body: current_password, security_questions (min 2 items with question + answer).",
+                "summary": "Replace client security questions",
+                "tags": [
+                    "Client Auth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateClientSecurityQuestionsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -4277,6 +4502,46 @@
                 ],
                 "title": "Audit"
             },
+            "ChangeClientPasswordRequest": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "password_confirmation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "current_password",
+                    "password",
+                    "password_confirmation"
+                ],
+                "title": "ChangeClientPasswordRequest"
+            },
+            "ChangeClientPinRequest": {
+                "type": "object",
+                "properties": {
+                    "current_pin": {
+                        "type": "string"
+                    },
+                    "pin": {
+                        "type": "string"
+                    },
+                    "pin_confirmation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "current_pin",
+                    "pin",
+                    "pin_confirmation"
+                ],
+                "title": "ChangeClientPinRequest"
+            },
             "ChangeStaffPasswordRequest": {
                 "type": "object",
                 "properties": {
@@ -4296,6 +4561,37 @@
                     "password_confirmation"
                 ],
                 "title": "ChangeStaffPasswordRequest"
+            },
+            "ClientIdentityResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "statut": {
+                        "type": "string"
+                    },
+                    "niveau": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "type",
+                    "statut",
+                    "niveau",
+                    "date"
+                ],
+                "title": "ClientIdentityResource"
             },
             "EnrolledPersonDetailResource": {
                 "type": "object",
@@ -6058,9 +6354,7 @@
                         "type": [
                             "string",
                             "null"
-                        ],
-                        "minLength": 4,
-                        "maxLength": 12
+                        ]
                     },
                     "npi": {
                         "type": "string",
@@ -6223,7 +6517,8 @@
                 "properties": {
                     "password": {
                         "type": "string",
-                        "minLength": 8
+                        "minLength": 8,
+                        "maxLength": 255
                     },
                     "npi": {
                         "type": "string",
@@ -6562,6 +6857,40 @@
                 },
                 "title": "UpdateAgentRequest"
             },
+            "UpdateClientSecurityQuestionsRequest": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string"
+                    },
+                    "security_questions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "question": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "answer": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                }
+                            },
+                            "required": [
+                                "question",
+                                "answer"
+                            ]
+                        },
+                        "minItems": 2
+                    }
+                },
+                "required": [
+                    "current_password",
+                    "security_questions"
+                ],
+                "title": "UpdateClientSecurityQuestionsRequest"
+            },
             "UpdateEnrollmentRejectMotifRequest": {
                 "type": "object",
                 "properties": {
@@ -6826,6 +7155,31 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "identites": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/ClientIdentityResource"
+                                }
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 0,
+                                "maxItems": 0,
+                                "additionalItems": false
+                            }
+                        ]
+                    },
+                    "questions_secretes_configurees": {
+                        "type": "boolean"
+                    },
+                    "pin_configure": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -6840,7 +7194,10 @@
                     "status",
                     "role",
                     "link",
-                    "created_at"
+                    "created_at",
+                    "identites",
+                    "questions_secretes_configurees",
+                    "pin_configure"
                 ],
                 "title": "UserResource"
             },

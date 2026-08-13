@@ -34,6 +34,7 @@ enum ActivityLogAction: string
     case MotDePasseChange = 'MOT_DE_PASSE_CHANGE';
     case MotDePasseReinitialise = 'MOT_DE_PASSE_REINITIALISE';
     case ConnexionClient = 'CONNEXION_CLIENT';
+    case DeconnexionClient = 'DECONNEXION_CLIENT';
     case DocumentDechiffre = 'DOCUMENT_DECHIFFRE';
 
     public function label(): string
@@ -65,6 +66,7 @@ enum ActivityLogAction: string
             self::MotDePasseChange => 'MOT DE PASSE CHANGE',
             self::MotDePasseReinitialise => 'MOT DE PASSE REINITIALISE',
             self::ConnexionClient => 'CONNEXION CLIENT',
+            self::DeconnexionClient => 'DECONNEXION CLIENT',
             self::DocumentDechiffre => 'DOCUMENT DECHIFFRE',
         };
     }
