@@ -19,7 +19,7 @@ final class HttpRegulaService implements RegulaService
 
     /**
      * @param  array<string, mixed>  $files  Local paths keyed by slot (selfie, recto, verso)
-     * @param  array<string, mixed>  $data   Optional keys: liveness / liveness_transaction_id
+     * @param  array<string, mixed>  $data  Optional keys: liveness / liveness_transaction_id
      * @return array<string, mixed>
      */
     public function analyzeIdentity(array $files, array $data): array
@@ -233,8 +233,12 @@ final class HttpRegulaService implements RegulaService
             return [];
         }
 
+        $ocr = (new RegulaDocumentOcr)->summarize($payload);
+
         return [
             'overall_status' => $payload['overallStatus'] ?? $payload['Status'] ?? null,
+            'document_name' => $ocr['document_name'],
+            'ocr' => $ocr['ocr'],
             'transaction_info' => $payload['TransactionInfo'] ?? null,
             'chip_page' => $payload['ChipPage'] ?? null,
             'has_container_list' => isset($payload['ContainerList']),

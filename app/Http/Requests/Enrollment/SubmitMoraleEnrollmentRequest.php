@@ -39,6 +39,9 @@ class SubmitMoraleEnrollmentRequest extends ApiFormRequest
             'trade_register_extract' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'statutes' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'procuration' => [$isLegalRep ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+            'selfie' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'recto' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 }

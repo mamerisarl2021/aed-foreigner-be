@@ -44,29 +44,81 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
         $this->assertSame('0.70', $payload['similarity']);
         $this->assertSame(70, $payload['similarity_percent']);
         $this->assertSame('3', $payload['risk_score']);
-        $this->assertSame(['doc_validity' => true, 'face_match' => true], $payload['details']);
-
-        $this->assertSame([
-            'type_piece' => 'Passeport',
-            'pays' => 'Côte d\'Ivoire',
-            'verifie' => true,
-            'numero_document' => 'AB123456',
-            'nom' => 'KOTO',
-            'prenoms' => 'Ada',
-            'date_naissance' => '2000-05-25',
-            'nationalite' => 'BJ',
-            'date_expiration' => null,
-        ], $payload['document_identite']);
-
+        $this->assertTrue($payload['document_identite']['verifie']);
+        $this->assertSame('AB123456', $payload['document_identite']['numero_document']);
         $this->assertSame('https://example.test/selfies/face.jpg', $payload['selfie']['url']);
         $this->assertNull($payload['selfie']['capture_le']);
-
         $this->assertSame([
             'document_ajoute' => true,
             'informations_extraites' => true,
             'liveness_effectue' => true,
             'visage_compare' => true,
         ], $payload['etapes']);
+    }
+
+    #[Test]
+    public function it_prefers_regula_ocr_over_declared_kyc_and_parses_document_name(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => [
+                'name' => 'SAISI',
+                'document_number' => 'DECLARE',
+                'country_of_residence' => 'France',
+            ],
+            'documents' => ['recto' => 'r.jpg'],
+            'liveness' => '0',
+            'similarity' => '0.9',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'document' => [
+                    'document_name' => 'Côte d\'Ivoire - Passport',
+                    'ocr' => [
+                        'nom' => 'KOUASSI',
+                        'prenoms' => 'YAO',
+                        'numero_piece' => 'CI999',
+                        'date_naissance' => '1999-10-17',
+                        'nationalite' => 'CIV',
+                        'date_expiration' => '2026-10-17',
+                    ],
+                ],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertSame([
+            'type_piece' => 'Passport',
+            'pays' => 'Côte d\'Ivoire',
+            'verifie' => true,
+            'numero_document' => 'CI999',
+            'nom' => 'KOUASSI',
+            'prenoms' => 'YAO',
+            'date_naissance' => '1999-10-17',
+            'nationalite' => 'CIV',
+            'date_expiration' => '2026-10-17',
+        ], $payload['document_identite']);
+    }
+
+    #[Test]
+    public function it_does_not_treat_a_document_summary_as_verified_when_analysis_failed(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => ['name' => 'X'],
+            'documents' => ['recto' => 'r.jpg'],
+            'liveness' => '1',
+            'similarity' => '0.4',
+            'analysis_details' => [
+                'error' => 'liveness_not_confirmed',
+                'doc_validity' => true,
+                'document' => ['ocr' => ['nom' => 'X']],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertFalse($payload['document_identite']['verifie']);
+        $this->assertFalse($payload['etapes']['liveness_effectue']);
+        $this->assertTrue($payload['etapes']['visage_compare']);
     }
 
     #[Test]
@@ -88,21 +140,97 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
     }
 
     #[Test]
-    public function it_marks_failed_liveness_as_not_effectue(): void
+    public function skipped_or_failed_liveness_is_not_effectue(): void
+    {
+        foreach (['1', 'skipped', 'liveness_not_confirmed', 'failed', null, ''] as $liveness) {
+            $enrollment = new EnrollmentRequest([
+                'kyc_data' => ['name' => 'X'],
+                'documents' => ['recto' => 'r.jpg'],
+                'liveness' => $liveness,
+                'similarity' => null,
+            ]);
+
+            $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+            $this->assertFalse($payload['etapes']['liveness_effectue'], 'liveness='.var_export($liveness, true));
+        }
+    }
+
+    #[Test]
+    public function it_reads_ocr_from_the_mock_ocr_data_bag(): void
     {
         $enrollment = new EnrollmentRequest([
-            'kyc_data' => ['name' => 'X'],
+            'kyc_data' => ['name' => 'SAISI', 'document_number' => 'DECLARE'],
             'documents' => ['recto' => 'r.jpg'],
-            'liveness' => 'liveness_not_confirmed',
-            'similarity' => null,
+            'liveness' => '0',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'ocr_data' => [
+                    'nom' => 'MOCK',
+                    'numero_piece' => 'MOCK-1',
+                ],
+            ],
         ]);
 
         $payload = (new KycAnalysisMapperHarness)->map($enrollment);
 
-        $this->assertFalse($payload['etapes']['liveness_effectue']);
-        $this->assertFalse($payload['etapes']['visage_compare']);
-        $this->assertNull($payload['similarity_percent']);
-        $this->assertNull($payload['selfie']['url']);
+        $this->assertSame('MOCK', $payload['document_identite']['nom']);
+        $this->assertSame('MOCK-1', $payload['document_identite']['numero_document']);
+        $this->assertTrue($payload['document_identite']['verifie']);
+    }
+
+    #[Test]
+    public function it_does_not_mark_the_document_verified_without_doc_validity(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => ['name' => 'X'],
+            'documents' => ['recto' => 'r.jpg'],
+            'liveness' => '0',
+            'analysis_details' => [
+                'document' => ['ocr' => ['nom' => 'X']],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertFalse($payload['document_identite']['verifie']);
+        $this->assertTrue($payload['etapes']['liveness_effectue']);
+    }
+
+    #[Test]
+    public function morale_analyse_kyc_does_not_use_company_legal_name_as_document_identity(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => [
+                'legal_name' => 'TECH SARL INNOV',
+                'activity_sector' => 'Services',
+            ],
+            'documents' => [
+                'recto' => 'docs/id.jpg',
+                'selfie' => 'selfies/face.jpg',
+                'trade_register_extract' => 'docs/rccm.pdf',
+            ],
+            'liveness' => '0',
+            'similarity' => '0.92',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'document' => [
+                    'document_name' => 'Benin - Passport',
+                    'ocr' => [
+                        'nom' => 'KOTO',
+                        'prenoms' => 'Ada',
+                        'numero_piece' => 'AB123',
+                    ],
+                ],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->mapMorale($enrollment);
+
+        $this->assertSame('KOTO', $payload['document_identite']['nom']);
+        $this->assertSame('Ada', $payload['document_identite']['prenoms']);
+        $this->assertSame('AB123', $payload['document_identite']['numero_document']);
+        $this->assertNotSame('TECH SARL INNOV', $payload['document_identite']['nom']);
     }
 }
 
@@ -114,11 +242,25 @@ final class KycAnalysisMapperHarness
     use FormatsEnrollmentDocuments;
     use MapsEnrollmentKycAnalysis;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function map(EnrollmentRequest $enrollment): array
     {
         return $this->analyseKycPhysique($enrollment);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function mapMorale(EnrollmentRequest $enrollment): array
+    {
+        return $this->analyseKycMorale($enrollment);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $docs
+     */
     protected function documentUrl(?array $docs, string $key): ?string
     {
         if (! is_array($docs) || empty($docs[$key])) {

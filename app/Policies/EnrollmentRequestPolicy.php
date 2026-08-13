@@ -41,13 +41,33 @@ class EnrollmentRequestPolicy
 
     public function submitMorale(User $user): bool
     {
-        return $user->hasRole(config('roles.client')) && $user->status === 'ACTIVE';
+        return $user->hasRole(config('roles.client'))
+            && $user->status === 'ACTIVE'
+            && $user->identities()
+                ->where('type', 'IN_PERSON')
+                ->where('status', 'APPROVED')
+                ->exists();
     }
 
     public function viewOwnMorale(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         return $enrollmentRequest->isPersonneMorale()
             && $enrollmentRequest->submitted_by_user_id === $user->id;
+    }
+
+    public function listOwnMorale(User $user): bool
+    {
+        return $user->hasRole(config('roles.client'));
+    }
+
+    public function correctMorale(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        $deadlineOk = $enrollmentRequest->correction_deadline_at === null
+            || ! $enrollmentRequest->correction_deadline_at->isPast();
+
+        return $this->viewOwnMorale($user, $enrollmentRequest)
+            && $enrollmentRequest->status === EnrollmentStatus::ACorriger
+            && $deadlineOk;
     }
 
     public function instruction(User $user, EnrollmentRequest $enrollmentRequest): bool

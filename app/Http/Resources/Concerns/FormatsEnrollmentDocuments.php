@@ -19,7 +19,7 @@ trait FormatsEnrollmentDocuments
             return null;
         }
 
-        return Storage::cloud()->temporaryUrl($docs[$key], Carbon::now()->addDays(3));
+        return $this->cloudTemporaryUrl((string) $docs[$key]);
     }
 
     /**
@@ -40,11 +40,18 @@ trait FormatsEnrollmentDocuments
         $extension = pathinfo((string) $docs[$key], PATHINFO_EXTENSION);
         $nom = Str::slug($label).($extension !== '' ? '.'.$extension : '');
 
-        return Storage::cloud()->temporaryUrl(
-            $docs[$key],
-            Carbon::now()->addDays(3),
+        return $this->cloudTemporaryUrl(
+            (string) $docs[$key],
             ['ResponseContentDisposition' => 'attachment; filename="'.$nom.'"'],
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function cloudTemporaryUrl(string $path, array $options = []): string
+    {
+        return Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3), $options);
     }
 
     /**
@@ -143,6 +150,24 @@ trait FormatsEnrollmentDocuments
         return [
             'nom' => $kyc['name'] ?? null,
             'prenom' => $kyc['first_name'] ?? null,
+        ];
+    }
+
+    /**
+     * Colonnes de la table Demandes PM. Nulles sur une personne physique :
+     * le contrat de liste reste unique pour l'agent et le responsable.
+     *
+     * @param  array<string, mixed>|null  $kyc
+     * @return array{numero_suivi: ?string, raison_sociale: ?string, pays_origine: ?string}
+     */
+    protected function formatMoraleListColumns(bool $estPersonneMorale, ?array $kyc, ?string $trackingCode): array
+    {
+        $kyc ??= [];
+
+        return [
+            'numero_suivi' => $trackingCode,
+            'raison_sociale' => $estPersonneMorale ? ($kyc['legal_name'] ?? null) : null,
+            'pays_origine' => $estPersonneMorale ? ($kyc['country_of_incorporation'] ?? null) : null,
         ];
     }
 }

@@ -5,19 +5,25 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Support\NotificationRecipient;
 use Illuminate\Support\Facades\Log;
 
 class EnrollmentSlaService
 {
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /**
-     * @return array{checked: int, updated: int}
+     * @return array{checked: int, updated: int, correction_reminded: int, correction_archived: int}
      */
     public function checkAndNotify(): array
     {
@@ -59,7 +65,104 @@ class EnrollmentSlaService
                 }
             });
 
-        return ['checked' => $checked, 'updated' => $updated];
+        $correction = $this->checkMoraleCorrections();
+
+        return [
+            'checked' => $checked,
+            'updated' => $updated,
+            'correction_reminded' => $correction['reminded'],
+            'correction_archived' => $correction['archived'],
+        ];
+    }
+
+    /**
+     * @return array{reminded: int, archived: int}
+     */
+    public function checkMoraleCorrections(): array
+    {
+        $reminderHours = max(1, (int) config('enrollment.morale.correction_reminder_hours', 24));
+        $reminded = 0;
+        $archived = 0;
+
+        EnrollmentRequest::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('status', EnrollmentStatus::ACorriger)
+            ->whereNotNull('correction_deadline_at')
+            ->with(['submittedBy', 'assignedAgent'])
+            ->orderBy('id')
+            ->chunkById(100, function ($enrollments) use ($reminderHours, &$reminded, &$archived) {
+                foreach ($enrollments as $enrollment) {
+                    $deadline = $enrollment->correction_deadline_at;
+                    if ($deadline === null) {
+                        continue;
+                    }
+
+                    if ($deadline->isPast()) {
+                        if ($this->archiveExpiredCorrectionIfPending($enrollment)) {
+                            $archived++;
+                            $this->notifyCorrectionExpired($enrollment);
+                        }
+
+                        continue;
+                    }
+
+                    if ($enrollment->correction_reminder_sent_at !== null) {
+                        continue;
+                    }
+
+                    if ($deadline->lessThanOrEqualTo(now()->addHours($reminderHours))) {
+                        if ($this->markCorrectionReminderIfPending($enrollment)) {
+                            $reminded++;
+                            $this->notifyCorrectionReminder($enrollment);
+                        }
+                    }
+                }
+            });
+
+        return ['reminded' => $reminded, 'archived' => $archived];
+    }
+
+    public function archiveExpiredCorrectionIfPending(EnrollmentRequest $enrollment): bool
+    {
+        $updated = EnrollmentRequest::query()
+            ->whereKey($enrollment->id)
+            ->where('status', EnrollmentStatus::ACorriger)
+            ->where('correction_deadline_at', '<', now())
+            ->update(['status' => EnrollmentStatus::Rejetee->value]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $enrollment->refresh();
+        $this->activityLog->record(
+            ActivityLogAction::CorrectionMoraleExpiree,
+            sprintf(
+                'Le délai de correction de la demande morale %s est dépassé. Dossier archivé.',
+                $enrollment->tracking_code ?? $enrollment->id
+            ),
+            null,
+            $enrollment->id,
+        );
+
+        return true;
+    }
+
+    private function markCorrectionReminderIfPending(EnrollmentRequest $enrollment): bool
+    {
+        $updated = EnrollmentRequest::query()
+            ->whereKey($enrollment->id)
+            ->where('status', EnrollmentStatus::ACorriger)
+            ->whereNull('correction_reminder_sent_at')
+            ->update(['correction_reminder_sent_at' => now()]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $enrollment->refresh();
+
+        return true;
     }
 
     private function notifyRoles(EnrollmentRequest $enrollment, string $level): void
@@ -111,6 +214,81 @@ class EnrollmentSlaService
                 'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
             ],
             type: 'ENROLLMENT_SLA_ALERT',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+    }
+
+    private function notifyCorrectionReminder(EnrollmentRequest $enrollment): void
+    {
+        $enrollment->loadMissing('submittedBy');
+        $email = $enrollment->submittedBy instanceof User
+            ? $enrollment->submittedBy->email
+            : $enrollment->email;
+
+        if ($email === '') {
+            return;
+        }
+
+        $legalName = $enrollment->applicantDisplayName();
+        $deadline = $enrollment->correction_deadline_at?->toIso8601String();
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Rappel : corrigez votre demande personne morale',
+            template: NotificationTemplate::MoraleCorrectionReminder,
+            recipients: [NotificationRecipient::email($email, [
+                'name' => $legalName,
+                'correction_deadline_at' => $deadline,
+            ])],
+            variables: [
+                'name' => $legalName,
+                'correction_deadline_at' => $deadline,
+                'numero_suivi' => $enrollment->tracking_code,
+            ],
+            type: 'MORALE_CORRECTION_REMINDER',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+    }
+
+    private function notifyCorrectionExpired(EnrollmentRequest $enrollment): void
+    {
+        $agent = $enrollment->assignedAgent;
+        $recipients = [];
+
+        if ($agent instanceof User && $agent->email !== '') {
+            $recipients[] = NotificationRecipient::email($agent->email, [
+                'enrollment_id' => $enrollment->id,
+                'numero_suivi' => $enrollment->tracking_code,
+            ]);
+        } else {
+            foreach (User::role(config('roles.agent'))->get() as $user) {
+                if ($user->email === '') {
+                    continue;
+                }
+                $recipients[] = NotificationRecipient::email($user->email, [
+                    'enrollment_id' => $enrollment->id,
+                    'numero_suivi' => $enrollment->tracking_code,
+                ]);
+            }
+        }
+
+        if ($recipients === []) {
+            Log::info('Morale correction expired: no agent to notify', [
+                'enrollment_id' => $enrollment->id,
+            ]);
+
+            return;
+        }
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Dossier morale archivé — délai de correction dépassé',
+            template: NotificationTemplate::MoraleCorrectionExpired,
+            recipients: $recipients,
+            variables: [
+                'enrollment_id' => $enrollment->id,
+                'numero_suivi' => $enrollment->tracking_code,
+                'raison_sociale' => $enrollment->applicantDisplayName(),
+            ],
+            type: 'MORALE_CORRECTION_EXPIRED',
             platform: NotificationPlatform::from(config('notifications.platform')),
         ));
     }

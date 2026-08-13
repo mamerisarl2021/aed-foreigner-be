@@ -20,6 +20,7 @@ enum EnrollmentStatus: string
     case EnCoursAgent = 'EN_COURS_AGENT';
     case EnAttenteResponsable = 'EN_ATTENTE_RESPONSABLE';
     case EnCoursResponsable = 'EN_COURS_RESPONSABLE';
+    case ACorriger = 'A_CORRIGER';
     case Approuvee = 'APPROUVEE';
     case Rejetee = 'REJETEE';
     case Enrolee = 'ENROLEE';
@@ -46,6 +47,7 @@ enum EnrollmentStatus: string
             self::EnCoursAgent->value,
             self::EnAttenteResponsable->value,
             self::EnCoursResponsable->value,
+            self::ACorriger->value,
             self::Approuvee->value,
             self::Rejetee->value,
             self::Enrolee->value,

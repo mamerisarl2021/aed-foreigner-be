@@ -54,6 +54,11 @@ class UserPolicy
         return $user->hasRole(config('roles.administrateur_plateforme'));
     }
 
+    public function manageClientSecurity(User $user): bool
+    {
+        return $user->hasRole(config('roles.client'));
+    }
+
     public function manageStaff(User $user): bool
     {
         return $user->hasRole(config('roles.administrateur_plateforme'));

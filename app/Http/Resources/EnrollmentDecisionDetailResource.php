@@ -15,7 +15,10 @@ use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** Responsable detail view — agent decision card + applicant/enterprise fields. */
+/** Responsable detail view — agent decision card + applicant/enterprise fields.
+ *
+ * @mixin EnrollmentRequest
+ */
 class EnrollmentDecisionDetailResource extends JsonResource
 {
     use FormatsEnrollmentDocuments;
@@ -32,6 +35,8 @@ class EnrollmentDecisionDetailResource extends JsonResource
 
         $base = [
             'id' => $this->id,
+            'numero_suivi' => $this->tracking_code,
+            'identifiant' => $this->enrolledCompany?->identifiant,
             'type' => $this->type,
             'statut' => $this->status->value,
             // Au niveau responsable, un dossier non pris en charge est « À valider » :
@@ -46,11 +51,14 @@ class EnrollmentDecisionDetailResource extends JsonResource
                 && $this->assigned_responsable_id === null,
             'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable
                 && (string) $this->assigned_responsable_id === (string) $request->user()?->id,
+            // Vérification croisée (PDF §5.1) : déjà calculée au show, exposée ici.
+            'similar_enrollments' => $this->similarEnrollments($enrollment),
         ];
 
         if ($this->isPersonneMorale()) {
             return array_merge($base, $this->moraleDetail(), [
                 'pieces_jointes' => $this->moralePiecesJointes($this->documents),
+                'analyse_kyc' => $this->analyseKycMorale($enrollment),
             ]);
         }
 
@@ -92,20 +100,26 @@ class EnrollmentDecisionDetailResource extends JsonResource
             return [];
         }
 
-        $ids = array_values(array_map(fn ($id) => (string) $id, $ids));
+        $normalized = [];
+        foreach ($ids as $id) {
+            $normalized[] = (string) $id;
+        }
 
         $motifs = EnrollmentRejectMotif::query()
-            ->whereIn('id', $ids)
+            ->whereIn('id', $normalized)
             ->get()
             ->keyBy('id');
 
-        return array_values(array_map(
-            fn (string $id) => [
+        $resolved = [];
+        foreach ($normalized as $id) {
+            $motif = $motifs->get($id);
+            $resolved[] = [
                 'id' => $id,
-                'title' => $motifs->get($id)?->title ?? $id,
-                'description' => $motifs->get($id)?->description ?? '',
-            ],
-            $ids
-        ));
+                'title' => $motif !== null ? $motif->title : $id,
+                'description' => $motif !== null ? $motif->description : '',
+            ];
+        }
+
+        return $resolved;
     }
 }

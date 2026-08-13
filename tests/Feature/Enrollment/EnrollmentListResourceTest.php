@@ -119,4 +119,107 @@ final class EnrollmentListResourceTest extends TestCase
             ->assertJsonPath('data.data.0.id', $favorable->id)
             ->assertJsonPath('data.data.0.avis_agent', 'FAVORABLE');
     }
+
+    #[Test]
+    public function the_agent_list_exposes_company_columns_for_personne_morale(): void
+    {
+        $submitter = User::factory()->create([
+            'name' => 'KOTO',
+            'first_name' => 'Ada',
+            'email' => 'pm-submitter@example.com',
+        ]);
+
+        $enrollment = EnrollmentRequest::query()->create([
+            'email' => 'entreprise@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'type' => 'PERSONNE_MORALE',
+            'tracking_code' => 'PK123456789',
+            'submitted_by_user_id' => $submitter->id,
+            'kyc_data' => [
+                'legal_name' => 'TECH SARL INNOV',
+                'country_of_incorporation' => 'Canada',
+            ],
+        ]);
+
+        EnrollmentRequest::query()->create([
+            'email' => 'physique@example.com',
+            'phonenumber' => '+2290162405473',
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'type' => 'PERSONNE_PHYSIQUE',
+            'tracking_code' => 'PK987654321',
+            'kyc_data' => ['name' => 'MENSAH', 'first_name' => 'Rita'],
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/enrolements?type=PERSONNE_MORALE'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $enrollment->id)
+            ->assertJsonPath('data.data.0.raison_sociale', 'TECH SARL INNOV')
+            ->assertJsonPath('data.data.0.pays_origine', 'Canada')
+            ->assertJsonPath('data.data.0.numero_suivi', 'PK123456789')
+            ->assertJsonPath('data.data.0.demandeur.nom', 'KOTO')
+            ->assertJsonPath('data.data.0.demandeur.prenom', 'Ada');
+    }
+
+    #[Test]
+    public function physique_list_rows_keep_company_columns_null(): void
+    {
+        EnrollmentRequest::query()->create([
+            'email' => 'applicant-physique-cols@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'type' => 'PERSONNE_PHYSIQUE',
+            'tracking_code' => 'PKAAAAAAAAA',
+            'kyc_data' => ['name' => 'KOTO', 'first_name' => 'Ada'],
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/enrolements'))
+            ->assertOk()
+            ->assertJsonPath('data.data.0.raison_sociale', null)
+            ->assertJsonPath('data.data.0.pays_origine', null)
+            ->assertJsonPath('data.data.0.numero_suivi', 'PKAAAAAAAAA');
+    }
+
+    #[Test]
+    public function the_responsable_list_exposes_company_columns_for_personne_morale(): void
+    {
+        Role::firstOrCreate(['name' => config('roles.responsable_de_validation'), 'guard_name' => 'web']);
+        $responsable = User::factory()->create(['email' => 'responsable-pm-list@example.com']);
+        $responsable->assignRole(config('roles.responsable_de_validation'));
+
+        $submitter = User::factory()->create([
+            'name' => 'KOTO',
+            'first_name' => 'Ada',
+            'email' => 'pm-submitter-resp@example.com',
+        ]);
+
+        EnrollmentRequest::query()->create([
+            'email' => 'entreprise-resp@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::EnAttenteResponsable->value,
+            'agent_avis' => AgentAvis::Favorable->value,
+            'type' => 'PERSONNE_MORALE',
+            'tracking_code' => 'PKMORALE001',
+            'submitted_by_user_id' => $submitter->id,
+            'kyc_data' => [
+                'legal_name' => 'TECH SARL INNOV',
+                'country_of_incorporation' => 'Canada',
+            ],
+        ]);
+
+        Sanctum::actingAs($responsable);
+
+        $this->getJson($this->api('/enrolements?type=PERSONNE_MORALE'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.raison_sociale', 'TECH SARL INNOV')
+            ->assertJsonPath('data.data.0.pays_origine', 'Canada')
+            ->assertJsonPath('data.data.0.numero_suivi', 'PKMORALE001')
+            ->assertJsonPath('data.data.0.demandeur.nom', 'KOTO');
+    }
 }

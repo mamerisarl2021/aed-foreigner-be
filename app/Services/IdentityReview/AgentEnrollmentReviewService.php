@@ -100,9 +100,9 @@ class AgentEnrollmentReviewService
             $this->activityLog->record(
                 ActivityLogAction::ValidationAgent,
                 sprintf(
-                    '%s a validé la demande n°%d.',
+                    '%s a validé la demande %s.',
                     ActivityLogService::actorLabel($enrollment->assignedAgent),
-                    $enrollment->id
+                    $enrollment->tracking_code ?? $enrollment->id
                 ),
                 $enrollment->assigned_agent_id,
                 $enrollment->id,
@@ -158,9 +158,9 @@ class AgentEnrollmentReviewService
         $this->activityLog->record(
             ActivityLogAction::RejetAgent,
             sprintf(
-                '%s a rejeté la demande n°%d.',
+                '%s a rejeté la demande %s.',
                 ActivityLogService::actorLabel($enrollment->assignedAgent),
-                $enrollment->id
+                $enrollment->tracking_code ?? $enrollment->id
             ),
             $enrollment->assigned_agent_id,
             $enrollment->id,

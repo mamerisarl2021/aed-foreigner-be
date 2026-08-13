@@ -17,6 +17,8 @@ enum ActivityLogAction: string
     case ValidationResponsable = 'VALIDATION_RESPONSABLE';
     case RejetConfirme = 'REJET_CONFIRME';
     case RetourAgent = 'RETOUR_AGENT';
+    case CorrectionMorale = 'CORRECTION_MORALE';
+    case CorrectionMoraleExpiree = 'CORRECTION_MORALE_EXPIREE';
     case EnrolementFinalise = 'ENROLEMENT_FINALISE';
     case OtpEnvoye = 'OTP_ENVOYE';
     case OtpVerifie = 'OTP_VERIFIE';
@@ -34,6 +36,7 @@ enum ActivityLogAction: string
     case MotDePasseChange = 'MOT_DE_PASSE_CHANGE';
     case MotDePasseReinitialise = 'MOT_DE_PASSE_REINITIALISE';
     case ConnexionClient = 'CONNEXION_CLIENT';
+    case DeconnexionClient = 'DECONNEXION_CLIENT';
     case DocumentDechiffre = 'DOCUMENT_DECHIFFRE';
 
     public function label(): string
@@ -48,6 +51,8 @@ enum ActivityLogAction: string
             self::ValidationResponsable => 'VALIDATION RESPONSABLE',
             self::RejetConfirme => 'REJET CONFIRME',
             self::RetourAgent => 'RETOUR AGENT',
+            self::CorrectionMorale => 'CORRECTION MORALE',
+            self::CorrectionMoraleExpiree => 'CORRECTION MORALE EXPIREE',
             self::EnrolementFinalise => 'ENROLEMENT FINALISE',
             self::OtpEnvoye => 'OTP ENVOYE',
             self::OtpVerifie => 'OTP VERIFIE',
@@ -65,6 +70,7 @@ enum ActivityLogAction: string
             self::MotDePasseChange => 'MOT DE PASSE CHANGE',
             self::MotDePasseReinitialise => 'MOT DE PASSE REINITIALISE',
             self::ConnexionClient => 'CONNEXION CLIENT',
+            self::DeconnexionClient => 'DECONNEXION CLIENT',
             self::DocumentDechiffre => 'DOCUMENT DECHIFFRE',
         };
     }

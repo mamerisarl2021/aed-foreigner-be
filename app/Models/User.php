@@ -13,6 +13,13 @@ use Laravel\Sanctum\HasApiTokens;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * @property string $id
+ * @property string|null $pin_hash
+ * @property array<int, mixed>|null $security_questions
+ * @property \Illuminate\Support\Carbon|null $last_login_at
+ * @property \Illuminate\Support\Carbon|null $trustedx_registered_at
+ */
 class User extends Authenticatable implements Auditable
 {
     use HasApiTokens, HasFactory, HasRoles, HasUuids, Notifiable;
@@ -21,6 +28,7 @@ class User extends Authenticatable implements Auditable
     /** @var list<string> */
     protected array $auditExclude = [
         'password',
+        'pin_hash',
         'remember_token',
         'security_questions',
     ];
@@ -40,6 +48,7 @@ class User extends Authenticatable implements Auditable
         'npi',
         'trustedx_registered_at',
         'security_questions',
+        'pin_hash',
     ];
 
     /** @var array<int, string> */
@@ -48,6 +57,7 @@ class User extends Authenticatable implements Auditable
     /** @var array<int, string> */
     protected $hidden = [
         'password',
+        'pin_hash',
         'remember_token',
     ];
 
@@ -56,6 +66,7 @@ class User extends Authenticatable implements Auditable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'pin_hash' => 'hashed',
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
             'trustedx_registered_at' => 'datetime',

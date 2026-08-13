@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
+use App\Support\ClientLocalCredentials;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -50,7 +51,7 @@ final class ClientPasswordResetService
         $this->activityLog->record(
             ActivityLogAction::MotDePasseReinitialise,
             sprintf('Lien de réinitialisation %s client envoyé (NPI).', $typeLabel),
-            is_string($localUser->id) ? $localUser->id : null,
+            $localUser->id,
             null,
             ['npi' => $npi, 'type' => $type, 'step' => 'link_sent'],
         );
@@ -89,12 +90,15 @@ final class ClientPasswordResetService
             return ServiceResult::fail((string) ($output['message'] ?? 'Échec de la mise à jour.'), null, 400);
         }
 
+        ClientLocalCredentials::apply($localUser, $type, $password);
+        $localUser->save();
+
         $this->invalidateToken($tokenData);
 
         $this->activityLog->record(
             ActivityLogAction::MotDePasseReinitialise,
             sprintf('Réinitialisation %s client effectuée (NPI).', $typeLabel),
-            is_string($localUser->id) ? $localUser->id : null,
+            $localUser->id,
             null,
             ['npi' => $npi, 'type' => $type, 'step' => 'reset_done'],
         );
@@ -136,12 +140,20 @@ final class ClientPasswordResetService
             );
         }
 
+        if ($password !== null) {
+            ClientLocalCredentials::apply($localUser, 'password', $password);
+        }
+        if ($pin !== null) {
+            ClientLocalCredentials::apply($localUser, 'pin', $pin);
+        }
+        $localUser->save();
+
         $this->invalidateToken($tokenData);
 
         $this->activityLog->record(
             ActivityLogAction::MotDePasseReinitialise,
             'Réinitialisation des identifiants client effectuée (NPI).',
-            is_string($localUser->id) ? $localUser->id : null,
+            $localUser->id,
             null,
             ['npi' => $npi, 'type' => 'credentials', 'step' => 'reset_done'],
         );
