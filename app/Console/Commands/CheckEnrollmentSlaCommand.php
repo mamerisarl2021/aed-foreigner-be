@@ -18,9 +18,11 @@ class CheckEnrollmentSlaCommand extends Command
         $result = $slaService->checkAndNotify();
 
         $this->info(sprintf(
-            'Enrollment SLA check complete: %d open demandes scanned, %d alert levels updated.',
+            'Enrollment SLA check complete: %d open demandes scanned, %d alert levels updated, %d correction reminders, %d archived.',
             $result['checked'],
-            $result['updated']
+            $result['updated'],
+            $result['correction_reminded'],
+            $result['correction_archived'],
         ));
 
         return self::SUCCESS;

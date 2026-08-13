@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\Enums\ActivityLogAction;
+use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Regula\RegulaService;
 use App\Services\ServiceResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 
 final class KycVerificationService
 {
@@ -23,6 +25,8 @@ final class KycVerificationService
 
     public function verify(Request $request): ServiceResult
     {
+        $client = $this->authenticatedClient($request);
+
         $email = strtolower(trim((string) $request->input('email')));
         $phone = $this->otpService->normalizePhone((string) $request->input('phonenumber'));
 
@@ -34,7 +38,7 @@ final class KycVerificationService
             return ServiceResult::fail('Numéro de téléphone invalide.', null, 422);
         }
 
-        if (! $this->otpService->bothChannelsVerified($email, $phone)) {
+        if ($client === null && ! $this->otpService->bothChannelsVerified($email, $phone)) {
             return ServiceResult::fail('Veuillez d\'abord vérifier les OTP email et téléphone.', null, 400);
         }
 
@@ -54,7 +58,7 @@ final class KycVerificationService
             $this->activityLog->record(
                 ActivityLogAction::KycVerifie,
                 sprintf('Échec de la vérification KYC pour %s.', $email),
-                null,
+                $client?->id,
                 null,
                 ['email' => $email, 'phonenumber' => $phone, 'ok' => false],
             );
@@ -62,18 +66,24 @@ final class KycVerificationService
             return ServiceResult::fail('Échec de la vérification KYC.', $analysis, 422);
         }
 
-        Cache::put($this->cacheKey($email, $phone), [
+        $session = [
             'verified_at' => now()->toIso8601String(),
             'liveness' => $analysis['liveness'] ?? null,
             'similarity' => $analysis['similarity'] ?? null,
             'risk_score' => $analysis['risk_score'] ?? null,
             'analysis_details' => $analysis['details'] ?? null,
-        ], now()->addMinutes(self::VALIDITY_MINUTES));
+        ];
+
+        Cache::put(
+            $this->sessionKey($client, $email, $phone),
+            $session,
+            now()->addMinutes(self::VALIDITY_MINUTES)
+        );
 
         $this->activityLog->record(
             ActivityLogAction::KycVerifie,
             sprintf('Vérification KYC réussie pour %s.', $email),
-            null,
+            $client?->id,
             null,
             [
                 'email' => $email,
@@ -96,6 +106,11 @@ final class KycVerificationService
         return Cache::has($this->cacheKey(strtolower(trim($email)), $this->otpService->normalizePhone($phonenumber)));
     }
 
+    public function isVerifiedForUser(User $user): bool
+    {
+        return Cache::has($this->userCacheKey((string) $user->id));
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -108,8 +123,56 @@ final class KycVerificationService
         return is_array($data) ? $data : null;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function consumeVerificationForUser(User $user): ?array
+    {
+        $key = $this->userCacheKey((string) $user->id);
+        $data = Cache::get($key);
+        Cache::forget($key);
+
+        return is_array($data) ? $data : null;
+    }
+
+    public function authenticatedClient(Request $request): ?User
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            $plain = $request->bearerToken();
+            if (is_string($plain) && $plain !== '') {
+                $tokenable = PersonalAccessToken::findToken($plain)?->tokenable;
+                $user = $tokenable instanceof User ? $tokenable : null;
+            }
+        }
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        if (! $user->hasRole(config('roles.client')) || $user->status !== 'ACTIVE') {
+            return null;
+        }
+
+        return $user;
+    }
+
+    private function sessionKey(?User $client, string $email, string $phone): string
+    {
+        if ($client instanceof User) {
+            return $this->userCacheKey((string) $client->id);
+        }
+
+        return $this->cacheKey($email, $phone);
+    }
+
     private function cacheKey(string $email, string $phone): string
     {
         return 'enrollment_kyc_verified_'.$email.'_'.$phone;
+    }
+
+    private function userCacheKey(string $userId): string
+    {
+        return 'enrollment_kyc_verified_user_'.$userId;
     }
 }

@@ -582,7 +582,7 @@ PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOU
 | `EN_COURS_RESPONSABLE` | Transmise au responsable | En cours de validation | En cours de validation | En cours de traitement |
 | `APPROUVEE` / `REJETEE` / `ENROLEE` | Approuvée / Rejetée / Enrôlée (identique pour tous : le verdict est définitif) |
 
-Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, statut_libelle, `avis_agent`, responsable, `pris_en_charge_par_moi`.
+Responsable list columns (`EnrollmentDecisionListResource`): agent, date_decision (`agent_decided_at`), statut, statut_libelle, `avis_agent`, responsable, `pris_en_charge_par_moi`. Personne morale rows also expose `raison_sociale`, `pays_origine`, `numero_suivi` (null on physique except `numero_suivi`). Agent list (`EnrollmentRequestListResource`) uses the same three company columns.
 
 Responsable detail includes `decision_agent` (`avis` **nullable** + `avis_libelle`, agent, date, motifs `{ id, title, description }`, description), `peut_prendre_en_charge`, `peut_valider`. `avis` vaut `null` tant que l'agent n'a pas instruit — ne jamais retomber sur une valeur par défaut, qui annoncerait une décision que personne n'a prise.
 
@@ -625,7 +625,7 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
 - Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
-- Show attaches heuristic `similar_enrollments`.
+- Show attaches heuristic `similar_enrollments`; agent and responsable detail resources expose it (PDF §5.1 morale cross-check; physique uses the same key).
 - SLA: `enrollment:check-sla` hourly.
 - Authorization: `EnrollmentRequestPolicy` (see §9.3).
 
@@ -651,21 +651,25 @@ Rules:
 
 ### 13.4 Personne morale enrollment (PDF §4)
 
-Prerequisites: authenticated `client` with finalized physique enrollment (`ENROLEE`).
+Prerequisites: authenticated `client` with an approved `IN_PERSON` identity (`ACTIVE`). KYC/Regula (demandeur identity document + selfie) must succeed before submit — OTP is skipped for that client; session cached ~30 min on the user.
 
 Canonical HTTP flow:
 
 ```
-POST /enrolements/morales                              (auth:sanctum + client)
-GET  /enrolements/morales/{id}                         (owner only)
-POST /enrolements/morales/{id}/verify-email            (token from email link)
+POST /kyc/document/read                                (assistive OCR; no OTP)
+POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first)
+POST /enrolements/morales                              (auth:sanctum + client; returns numero_suivi PKI…)
+GET  /enrolements/morales                              (owner list — Mes entreprises)
+GET  /enrolements/morales/{id}                         (owner only: company fields + pièces jointes)
+PUT  /enrolements/morales/{id}                         (owner, statut A_CORRIGER: corriger champs + pièces)
+POST /enrolements/morales/{id}/verify-email            (token from email link, public)
 POST /enrolements/morales/{id}/send-phone-otp            (owner only)
 POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 ```
 
-After contact verified → `EN_ATTENTE_AGENT`; same instruction/validation contract as physique.
+After **both** company contacts verified → `EN_ATTENTE_AGENT` and confirmation email to the **demandeur** (`submittedBy.email`) with `numero_suivi`. The 24h verification link goes to the official company email at submit. Same instruction/validation contract as physique afterwards.
 
-**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié). Detail returns `informations_entreprise` + `pieces_jointes`. Client tracking uses `GET /enrolements/morales/{id}` only.
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Client tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}` only.
 
 On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
 
@@ -684,18 +688,26 @@ Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE
 | `legal_representative_first_name` | Prénoms du représentant légal | yes |
 | `is_legal_representative` | Demandeur = représentant légal | yes |
 
-Documents (`documents` JSON): `trade_register_extract` (required), `statutes` (optional), `procuration` (required when `is_legal_representative = false`).
+Documents (`documents` JSON): `trade_register_extract` (required), `statutes` (optional), `procuration` (required when `is_legal_representative = false`), plus `selfie` / `recto` / `verso` from the KYC step (agent `analyse_kyc`).
 
-Contact: `email` / `phonenumber` on the row = **official company** email and phone. Verified asynchronously after submit (email link, then SMS OTP) before the demande enters the agent queue.
+Contact: `email` / `phonenumber` on the row = **official company** email and phone. Verified asynchronously after submit (email link, then SMS OTP) before the demande enters the agent queue. Confirmation of submission is sent to the demandeur only after both verifications.
 
 Status machine (morale-specific gate):
 
 ```
 AWAITING_CONTACT_VERIFICATION → EN_ATTENTE_AGENT → … (same as physique review)
-APPROUVEE → (PSCEQ deferred; Identity type PERSONNE_MORALE created on responsable approve)
+APPROUVEE → Identity PERSONNE_MORALE + enrolled_companies (identifiant `PM…`)
+REJET_CONFIRME (morale) → A_CORRIGER (délai config, défaut 7 jours) → PUT correction → EN_ATTENTE_AGENT
+                         ↘ délai dépassé → REJETEE (archivage)
 ```
 
-On responsable approve: **do not** create a new `User`; create `Identity` with `type = PERSONNE_MORALE` linked to `submitted_by_user_id`. No TrustedX / PSCEQ in this phase.
+On responsable approve: **do not** create a new `User` / TrustedX. Insert `enrolled_companies` (source of vérité entreprise enrôlée, `identifiant` = `PM` + 9 caractères) and `Identity` `PERSONNE_MORALE` on `submitted_by_user_id`. Proof JSON includes `enrolled_company_id` + `identifiant`. Emails go to **demandeur** (`submittedBy.email`) **and** official company email. Response includes `identifiant`. Owner list/detail expose `identifiant` (null until approved) and `statut_libelle`.
+
+Duplicate submit is blocked against `enrolled_companies` (`ACTIVE`, `registration_number` + `country_of_incorporation`) plus leftover `APPROUVEE` demandes without a company row.
+
+Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces (not official email/phone, not KYC selfie) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
+
+No TrustedX / PSCEQ in this phase.
 
 ### 13.5 Espace client (post-TrustedX)
 
@@ -743,7 +755,7 @@ GET  /audits                                               → journal OwenIt te
 - Login sets `users.last_login_at`.
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
-- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
+- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
 - **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
 
@@ -753,8 +765,9 @@ Do not pretend these exist in code without implementing them:
 
 - Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
 - Kafka topic / object-storage hardening for local dev
-- **PSCEQ / professional certificate** acquisition for personne morale
-- Reopen of a rejected demande (applicant submits a **new** demande)
+- **PSCEQ / professional certificate** acquisition for personne morale (APIs §7, statut actif/suspendu/révoqué)
+- Transfert / changement de gestionnaire entreprise (PDF §9)
+- Reopen of a **physique** rejected demande (applicant submits a **new** demande). Morale uses `A_CORRIGER` + `PUT /enrolements/morales/{id}` instead.
 - SLA thresholds admin UI (env/config only for now)
 - Client-facing **activity history** (journaux are admin-only)
 - National company registry auto-check beyond duplicate detection on `registration_number` + `country_of_incorporation`

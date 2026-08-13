@@ -17,4 +17,8 @@ enum NotificationTemplate: string
     case EnrollmentVisioRequested = 'ENROLLMENT_VISIO_REQUESTED';
     case EnrollmentReturnedToAgent = 'ENROLLMENT_RETURNED_TO_AGENT';
     case EnrollmentSlaAlert = 'ENROLLMENT_SLA_ALERT';
+    case MoraleApproved = 'MORALE_APPROVED';
+    case MoraleCorrectionRequired = 'MORALE_CORRECTION_REQUIRED';
+    case MoraleCorrectionReminder = 'MORALE_CORRECTION_REMINDER';
+    case MoraleCorrectionExpired = 'MORALE_CORRECTION_EXPIRED';
 }

@@ -22,7 +22,8 @@ final class KycController extends BaseController
     /**
      * Sync KYC verification (Document Reader + Face match)
      *
-     * Diagram §2.3. Requires both OTP channels verified.
+     * Diagram §2.3. Guest physique: both OTP channels must be verified first.
+     * Authenticated ACTIVE client (morale): OTP skipped; session is cached on the user.
      * When REGULA_MOCK=false: selfie + recto required; verso optional.
      * Optional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).
      * Client similarity is ignored for the OK/KO gate; scores come from Face /api/match.

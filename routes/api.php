@@ -40,6 +40,16 @@ Route::group([], function () {
         Route::put('/clients/security-questions', [ClientSecurityController::class, 'updateSecurityQuestions'])
             ->middleware('throttle:password-reset');
 
+        // Personne morale ownership is enforced by EnrollmentRequestPolicy.
+        Route::prefix('enrolements/morales')->group(function () {
+            Route::get('/', [PersonneMoraleEnrollmentController::class, 'index']);
+            Route::post('/', [PersonneMoraleEnrollmentController::class, 'submit']);
+            Route::get('/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
+            Route::put('/{id}', [PersonneMoraleEnrollmentController::class, 'correct']);
+            Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp'])->middleware('throttle:otp-send');
+            Route::post('/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp'])->middleware('throttle:otp-verify');
+        });
+
         Route::post('users/{id}', [UserController::class, 'update']);
 
         Route::post('/agents/register', [AuthController::class, 'registerAgent']);
@@ -74,8 +84,8 @@ Route::group([], function () {
     Route::middleware(['keycloak'])->group(function () {
         Route::post('/otp/send', [OtpController::class, 'send'])->middleware(['guest', 'transaction', 'throttle:otp-send']);
         Route::post('/otp/verify', [OtpController::class, 'verify'])->middleware(['guest', 'throttle:otp-verify']);
-        Route::post('/kyc/document/read', [KycController::class, 'readDocument'])->middleware(['guest', 'throttle:document-read']);
-        Route::post('/kyc/verify', [KycController::class, 'verify'])->middleware(['guest']);
+        Route::post('/kyc/document/read', [KycController::class, 'readDocument'])->middleware(['throttle:document-read']);
+        Route::post('/kyc/verify', [KycController::class, 'verify']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
         Route::post('/enrolements/finalisation/otp/send', [FinalisationController::class, 'sendOtp'])
@@ -91,14 +101,6 @@ Route::group([], function () {
             Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction']);
             Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation']);
             Route::get('/enrolements/{id}', [EnrollmentController::class, 'show']);
-
-            // Personne morale ownership is enforced by EnrollmentRequestPolicy.
-            Route::prefix('enrolements/morales')->group(function () {
-                Route::post('/', [PersonneMoraleEnrollmentController::class, 'submit']);
-                Route::get('/{id}', [PersonneMoraleEnrollmentController::class, 'show']);
-                Route::post('/{id}/send-phone-otp', [PersonneMoraleEnrollmentController::class, 'sendPhoneOtp'])->middleware('throttle:otp-send');
-                Route::post('/{id}/verify-phone-otp', [PersonneMoraleEnrollmentController::class, 'verifyPhoneOtp'])->middleware('throttle:otp-verify');
-            });
         });
     });
 

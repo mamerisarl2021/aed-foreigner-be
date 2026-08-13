@@ -152,4 +152,22 @@ trait FormatsEnrollmentDocuments
             'prenom' => $kyc['first_name'] ?? null,
         ];
     }
+
+    /**
+     * Colonnes de la table Demandes PM. Nulles sur une personne physique :
+     * le contrat de liste reste unique pour l'agent et le responsable.
+     *
+     * @param  array<string, mixed>|null  $kyc
+     * @return array{numero_suivi: ?string, raison_sociale: ?string, pays_origine: ?string}
+     */
+    protected function formatMoraleListColumns(bool $estPersonneMorale, ?array $kyc, ?string $trackingCode): array
+    {
+        $kyc ??= [];
+
+        return [
+            'numero_suivi' => $trackingCode,
+            'raison_sociale' => $estPersonneMorale ? ($kyc['legal_name'] ?? null) : null,
+            'pays_origine' => $estPersonneMorale ? ($kyc['country_of_incorporation'] ?? null) : null,
+        ];
+    }
 }

@@ -57,6 +57,8 @@ final class EnrollmentController extends BaseController
      * carried by its own field and no longer by the status.
      * Every row exposes `statut` (machine, positional) and `statut_libelle`, worded for the
      * caller's role: a request awaiting the responsable never reads as approved or rejected.
+     * Personne morale rows also expose `raison_sociale`, `pays_origine`, and `numero_suivi`
+     * (null on physique except `numero_suivi` when a tracking code exists).
      * Defaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.
      */
     public function index(ListEnrollmentRequestsRequest $request): JsonResponse
@@ -80,6 +82,10 @@ final class EnrollmentController extends BaseController
      * Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource
      * with a decision_agent block whose `avis` is null until the agent has actually ruled.
      * Same route for physique and morale.
+     *
+     * Personne morale detail includes `similar_enrollments` (cross-check already computed on show)
+     * and `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).
+     * Responsable detail also exposes `numero_suivi` for the breadcrumb.
      *
      * Personne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`
      * plus `similarity_percent` (0–100 or null), `document_identite` (OCR preferred over declared
@@ -194,7 +200,7 @@ final class EnrollmentController extends BaseController
             return $this->respond($result);
         }
 
-        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy'])->findOrFail($id);
+        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])->findOrFail($id);
 
         return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($enrollment));
     }

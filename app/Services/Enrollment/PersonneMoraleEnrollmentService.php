@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
-use App\Jobs\ForeignerFinalizedJob;
+use App\Enums\NotificationPlatform;
+use App\Enums\NotificationTemplate;
 use App\Jobs\MoraleEmailVerificationJob;
+use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\SendSmsJob;
 use App\Jobs\UploadEnrollmentFilesJob;
+use App\Models\EnrolledCompany;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
 use App\Rules\PhoneNumber;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\NotificationRecipient;
+use App\Support\TrackingCodeAllocator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +34,7 @@ class PersonneMoraleEnrollmentService
 {
     public function __construct(
         private readonly ActivityLogService $activityLog,
+        private readonly KycVerificationService $kycVerification,
     ) {}
 
     /**
@@ -39,7 +47,7 @@ class PersonneMoraleEnrollmentService
         return [
             EnrollmentStatus::AwaitingContactVerification->value,
             ...EnrollmentStatus::open(),
-            EnrollmentStatus::Approuvee->value,
+            EnrollmentStatus::ACorriger->value,
         ];
     }
 
@@ -57,6 +65,10 @@ class PersonneMoraleEnrollmentService
                 null,
                 403
             );
+        }
+
+        if (! $this->kycVerification->isVerifiedForUser($user)) {
+            return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
         if ($this->hasOpenMoraleRequest($user)) {
@@ -83,10 +95,12 @@ class PersonneMoraleEnrollmentService
         $uploadedFiles = $this->uploadMoraleFiles($request);
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
+        $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
 
         DB::beginTransaction();
         try {
             $enrollment = EnrollmentRequest::create([
+                'tracking_code' => TrackingCodeAllocator::next(),
                 'email' => $email,
                 'phonenumber' => $phone,
                 'kyc_data' => [
@@ -102,6 +116,12 @@ class PersonneMoraleEnrollmentService
                     'is_legal_representative' => filter_var($request->input('is_legal_representative'), FILTER_VALIDATE_BOOLEAN),
                 ],
                 'documents' => $uploadedFiles,
+                'liveness' => $this->stringOrNull($kycSession['liveness'] ?? null),
+                'similarity' => $this->stringOrNull($kycSession['similarity'] ?? null),
+                'risk_score' => $this->stringOrNull($kycSession['risk_score'] ?? null),
+                'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
+                    ? $kycSession['analysis_details']
+                    : null,
                 'status' => 'AWAITING_CONTACT_VERIFICATION',
                 'type' => 'PERSONNE_MORALE',
                 'submitted_by_user_id' => $user->id,
@@ -124,8 +144,9 @@ class PersonneMoraleEnrollmentService
             );
 
             return ServiceResult::ok('Demande enregistrée. Veuillez vérifier l\'email officiel et le téléphone de l\'entreprise.', [
-                'enrollment_request_id' => $enrollment->id,
-                'status' => $enrollment->status->value,
+                'demande_id' => $enrollment->id,
+                'numero_suivi' => $enrollment->tracking_code,
+                'statut' => $enrollment->status->value,
                 'verification_deadline_at' => $enrollment->verification_deadline_at?->toIso8601String(),
             ]);
         } catch (\Exception $e) {
@@ -140,15 +161,121 @@ class PersonneMoraleEnrollmentService
         }
     }
 
+    /**
+     * @return LengthAwarePaginator<int, EnrollmentRequest>
+     */
+    public function listOwn(User $user, int $perPage): LengthAwarePaginator
+    {
+        return EnrollmentRequest::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('submitted_by_user_id', $user->id)
+            ->with('enrolledCompany')
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+    }
+
     public function show(User $user, string $id): ServiceResult
     {
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->with(['submittedBy', 'enrolledCompany'])->findOrFail($id);
 
         if ($enrollment->submitted_by_user_id !== $user->id) {
             return ServiceResult::fail('Accès non autorisé.', null, 403);
         }
 
         return ServiceResult::ok('Détail de la demande morale.', $enrollment);
+    }
+
+    public function correct(User $user, EnrollmentRequest $enrollment, Request $request): ServiceResult
+    {
+        if ($enrollment->submitted_by_user_id !== $user->id) {
+            return ServiceResult::fail('Accès non autorisé.', null, 403);
+        }
+
+        if (! $enrollment->isPersonneMorale() || $enrollment->status !== EnrollmentStatus::ACorriger) {
+            return ServiceResult::fail('Cette demande ne peut pas être corrigée.', null, 422);
+        }
+
+        if ($enrollment->correction_deadline_at !== null && $enrollment->correction_deadline_at->isPast()) {
+            return ServiceResult::fail('Le délai de correction est dépassé.', null, 422);
+        }
+
+        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
+        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+
+        if ($this->isCompanyAlreadyEnrolled($registrationNumber, $country)) {
+            return ServiceResult::fail(
+                'Une entreprise correspondant à ces informations est déjà enrôlée.',
+                null,
+                409
+            );
+        }
+
+        $uploadedFiles = $this->uploadMoraleFiles($request);
+        $existingDocs = is_array($enrollment->documents) ? $enrollment->documents : [];
+        $documents = array_merge($existingDocs, array_filter($uploadedFiles));
+
+        $kyc = is_array($enrollment->kyc_data) ? $enrollment->kyc_data : [];
+        $kyc['legal_name'] = $request->input('legal_name');
+        $kyc['legal_form'] = $request->input('legal_form');
+        $kyc['country_of_incorporation'] = $request->input('country_of_incorporation');
+        $kyc['registration_number'] = $request->input('registration_number');
+        $kyc['incorporation_date'] = $request->input('incorporation_date');
+        $kyc['headquarters_address'] = $request->input('headquarters_address');
+        $kyc['activity_sector'] = $request->input('activity_sector');
+        $kyc['legal_representative_name'] = $request->input('legal_representative_name');
+        $kyc['legal_representative_first_name'] = $request->input('legal_representative_first_name');
+        $kyc['is_legal_representative'] = filter_var($request->input('is_legal_representative'), FILTER_VALIDATE_BOOLEAN);
+
+        DB::beginTransaction();
+        try {
+            $enrollment->kyc_data = $kyc;
+            $enrollment->documents = $documents;
+            $enrollment->status = EnrollmentStatus::EnAttenteAgent;
+            $enrollment->assigned_agent_id = null;
+            $enrollment->assigned_responsable_id = null;
+            $enrollment->agent_avis = null;
+            $enrollment->agent_decided_at = null;
+            $enrollment->reject_reasons = null;
+            $enrollment->review_comments = null;
+            $enrollment->correction_deadline_at = null;
+            $enrollment->correction_reminder_sent_at = null;
+            $enrollment->sla_alert_level = null;
+            $enrollment->fill([
+                'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
+            ]);
+            $enrollment->save();
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Morale enrollment correction failed: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+            ]);
+            $this->cleanupUploadedFiles($uploadedFiles);
+
+            return ServiceResult::fail('Erreur lors de la correction de la demande morale.', null, 500);
+        }
+
+        if ($uploadedFiles !== []) {
+            Bus::chain([
+                new UploadEnrollmentFilesJob($enrollment->id, $uploadedFiles),
+            ])->dispatch();
+        }
+
+        $legalName = (string) ($kyc['legal_name'] ?? $enrollment->email);
+        $this->activityLog->record(
+            ActivityLogAction::CorrectionMorale,
+            sprintf('%s a corrigé la demande morale %s.', ActivityLogService::actorLabel($user), $legalName),
+            $user->id,
+            $enrollment->id,
+        );
+
+        return ServiceResult::ok('Dossier corrigé. La demande est de nouveau en file agent.', [
+            'demande_id' => $enrollment->id,
+            'numero_suivi' => $enrollment->tracking_code,
+            'statut' => $enrollment->status->value,
+        ]);
     }
 
     public function verifyEmail(string $id, string $token): ServiceResult
@@ -230,7 +357,7 @@ class PersonneMoraleEnrollmentService
         $this->activityLog->record(
             ActivityLogAction::OtpEnvoye,
             sprintf('OTP téléphone morale envoyé pour la demande %s.', $enrollment->id),
-            is_string($user->id) ? $user->id : null,
+            $user->id,
             $enrollment->id,
             ['context' => 'morale_phone', 'channel' => 'phone'],
         );
@@ -276,7 +403,7 @@ class PersonneMoraleEnrollmentService
         $this->activityLog->record(
             ActivityLogAction::OtpVerifie,
             sprintf('Téléphone officiel vérifié pour la demande morale %s.', $enrollment->id),
-            is_string($user->id) ? $user->id : null,
+            $user->id,
             $enrollment->id,
             ['context' => 'morale_phone'],
         );
@@ -293,10 +420,9 @@ class PersonneMoraleEnrollmentService
             return false;
         }
 
-        return EnrollmentRequest::query()
-            ->where('type', 'PERSONNE_PHYSIQUE')
-            ->where('email', $user->email)
-            ->where('status', EnrollmentStatus::Enrolee->value)
+        return $user->identities()
+            ->where('type', 'IN_PERSON')
+            ->where('status', 'APPROVED')
             ->exists();
     }
 
@@ -311,9 +437,20 @@ class PersonneMoraleEnrollmentService
 
     private function isCompanyAlreadyEnrolled(string $registrationNumber, string $country): bool
     {
+        $enrolled = EnrolledCompany::query()
+            ->where('status', EnrolledCompany::STATUS_ACTIVE)
+            ->whereRaw('UPPER(TRIM(registration_number)) = ?', [$registrationNumber])
+            ->whereRaw('UPPER(TRIM(country_of_incorporation)) = ?', [$country])
+            ->exists();
+
+        if ($enrolled) {
+            return true;
+        }
+
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', self::ENROLLED_MORALE_STATUSES)
+            ->whereDoesntHave('enrolledCompany')
             ->get()
             ->contains(function (EnrollmentRequest $row) use ($registrationNumber, $country) {
                 $kyc = $row->kyc_data ?? [];
@@ -329,7 +466,7 @@ class PersonneMoraleEnrollmentService
     private function uploadMoraleFiles(Request $request): array
     {
         $uploadedFiles = [];
-        $keys = ['trade_register_extract', 'statutes', 'procuration'];
+        $keys = ['trade_register_extract', 'statutes', 'procuration', 'selfie', 'recto', 'verso'];
 
         foreach ($keys as $key) {
             if ($request->hasFile($key)) {
@@ -348,10 +485,10 @@ class PersonneMoraleEnrollmentService
         array $uploadedFiles,
         string $plainVerificationToken,
     ): void {
-        $chain = [];
-
         if ($uploadedFiles !== []) {
-            $chain[] = new UploadEnrollmentFilesJob($enrollment->id, $uploadedFiles);
+            Bus::chain([
+                new UploadEnrollmentFilesJob($enrollment->id, $uploadedFiles),
+            ])->dispatch();
         }
 
         $verificationLink = config('app.frontend_url')
@@ -362,12 +499,6 @@ class PersonneMoraleEnrollmentService
             (string) ($enrollment->kyc_data['legal_name'] ?? 'Entreprise'),
             $verificationLink,
         );
-
-        $chain[] = new ForeignerFinalizedJob($enrollment->email, 'PERSONNE_MORALE');
-
-        if ($chain !== []) {
-            Bus::chain($chain)->dispatch();
-        }
     }
 
     private function assignDemandeurAuthentifieRole(User $user): void
@@ -392,8 +523,40 @@ class PersonneMoraleEnrollmentService
         }
 
         $enrollment->status = EnrollmentStatus::EnAttenteAgent;
-        $enrollment->sla_deadline_at = now()->addHours((int) config('enrollment.sla.max_hours', 72));
+        $enrollment->fill([
+            'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
+        ]);
         $enrollment->save();
+
+        $this->dispatchSubmissionConfirmation($enrollment);
+    }
+
+    private function dispatchSubmissionConfirmation(EnrollmentRequest $enrollment): void
+    {
+        $enrollment->loadMissing('submittedBy');
+        $submitter = $enrollment->submittedBy;
+        $demandeurEmail = $submitter instanceof User ? $submitter->email : null;
+        if (! is_string($demandeurEmail) || $demandeurEmail === '') {
+            return;
+        }
+
+        $legalName = (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Confirmation de soumission — enrôlement personne morale',
+            template: NotificationTemplate::ForeignerFinalized,
+            recipients: [NotificationRecipient::email($demandeurEmail, [
+                'name' => $legalName,
+                'numero_suivi' => $enrollment->tracking_code,
+            ])],
+            variables: [
+                'name' => $legalName,
+                'demande_id' => $enrollment->id,
+                'numero_suivi' => $enrollment->tracking_code,
+            ],
+            type: 'ENROLEMENT_SUBMITTED',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
     }
 
     /**
@@ -406,5 +569,18 @@ class PersonneMoraleEnrollmentService
                 Storage::disk('local')->delete($path);
             }
         }
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return null;
     }
 }

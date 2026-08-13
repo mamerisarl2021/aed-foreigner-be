@@ -196,6 +196,42 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
         $this->assertFalse($payload['document_identite']['verifie']);
         $this->assertTrue($payload['etapes']['liveness_effectue']);
     }
+
+    #[Test]
+    public function morale_analyse_kyc_does_not_use_company_legal_name_as_document_identity(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => [
+                'legal_name' => 'TECH SARL INNOV',
+                'activity_sector' => 'Services',
+            ],
+            'documents' => [
+                'recto' => 'docs/id.jpg',
+                'selfie' => 'selfies/face.jpg',
+                'trade_register_extract' => 'docs/rccm.pdf',
+            ],
+            'liveness' => '0',
+            'similarity' => '0.92',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'document' => [
+                    'document_name' => 'Benin - Passport',
+                    'ocr' => [
+                        'nom' => 'KOTO',
+                        'prenoms' => 'Ada',
+                        'numero_piece' => 'AB123',
+                    ],
+                ],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->mapMorale($enrollment);
+
+        $this->assertSame('KOTO', $payload['document_identite']['nom']);
+        $this->assertSame('Ada', $payload['document_identite']['prenoms']);
+        $this->assertSame('AB123', $payload['document_identite']['numero_document']);
+        $this->assertNotSame('TECH SARL INNOV', $payload['document_identite']['nom']);
+    }
 }
 
 /**
@@ -212,6 +248,14 @@ final class KycAnalysisMapperHarness
     public function map(EnrollmentRequest $enrollment): array
     {
         return $this->analyseKycPhysique($enrollment);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function mapMorale(EnrollmentRequest $enrollment): array
+    {
+        return $this->analyseKycMorale($enrollment);
     }
 
     /**

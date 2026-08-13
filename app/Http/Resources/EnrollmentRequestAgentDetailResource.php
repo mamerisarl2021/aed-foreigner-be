@@ -13,7 +13,10 @@ use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** Agent detail view — fields aligned with backoffice UI per type. */
+/** Agent detail view — fields aligned with backoffice UI per type.
+ *
+ * @mixin EnrollmentRequest
+ */
 class EnrollmentRequestAgentDetailResource extends JsonResource
 {
     use FormatsEnrollmentDocuments;
@@ -33,6 +36,7 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
             // Code de suivi communiqué au demandeur : c'est par lui qu'on
             // désigne un dossier, l'UUID ne circulant qu'entre machines.
             'numero_suivi' => $this->tracking_code,
+            'identifiant' => $this->enrolledCompany?->identifiant,
             'type' => $this->type,
             'statut' => $this->status->value,
             'statut_libelle' => EnrollmentStatusPresenter::labelFor($enrollment->statut(), $request->user()),
@@ -47,11 +51,14 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
                 && $this->assigned_agent_id === null,
             'peut_instruire' => $this->status === EnrollmentStatus::EnCoursAgent
                 && (string) $this->assigned_agent_id === (string) $request->user()?->id,
+            // Vérification croisée (PDF §5.1) : déjà calculée au show, exposée ici.
+            'similar_enrollments' => $this->similarEnrollments($enrollment),
         ];
 
         if ($this->isPersonneMorale()) {
             return array_merge($base, $this->moraleDetail(), [
                 'pieces_jointes' => $this->moralePiecesJointes($this->documents),
+                'analyse_kyc' => $this->analyseKycMorale($enrollment),
             ]);
         }
 

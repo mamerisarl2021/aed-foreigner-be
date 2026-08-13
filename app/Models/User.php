@@ -18,6 +18,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $pin_hash
  * @property array<int, mixed>|null $security_questions
  * @property \Illuminate\Support\Carbon|null $last_login_at
+ * @property \Illuminate\Support\Carbon|null $trustedx_registered_at
  */
 class User extends Authenticatable implements Auditable
 {

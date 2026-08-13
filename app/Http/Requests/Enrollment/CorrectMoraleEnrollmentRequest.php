@@ -5,14 +5,28 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\MergesRouteId;
 use App\Models\EnrollmentRequest;
-use App\Rules\PhoneNumber;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 
-class SubmitMoraleEnrollmentRequest extends ApiFormRequest
+#[IgnoreParam('id')]
+class CorrectMoraleEnrollmentRequest extends ApiFormRequest
 {
+    use MergesRouteId;
+
     public function authorize(): bool
     {
-        return $this->user()?->can('submitMorale', EnrollmentRequest::class) ?? false;
+        $enrollment = EnrollmentRequest::query()->find($this->input('id'));
+        if (! $enrollment instanceof EnrollmentRequest) {
+            return true;
+        }
+
+        return $this->user()?->can('correctMorale', $enrollment) ?? false;
+    }
+
+    protected function validationMessage(): string
+    {
+        return 'Format de donnée invalide.';
     }
 
     /**
@@ -23,9 +37,7 @@ class SubmitMoraleEnrollmentRequest extends ApiFormRequest
         $isLegalRep = filter_var($this->input('is_legal_representative', true), FILTER_VALIDATE_BOOLEAN);
 
         return [
-            'email' => ['required', 'email', 'max:255'],
-            // Optional leading +; 8–20 digits after stripping spaces/dashes/parentheses. Example: +2290162405472
-            'phonenumber' => ['required', 'string', new PhoneNumber],
+            'id' => ['required', 'uuid', 'exists:enrollment_requests,id'],
             'legal_name' => ['required', 'string', 'max:255'],
             'legal_form' => ['nullable', 'string', 'max:255'],
             'country_of_incorporation' => ['required', 'string', 'max:255'],
@@ -39,9 +51,6 @@ class SubmitMoraleEnrollmentRequest extends ApiFormRequest
             'trade_register_extract' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'statutes' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'procuration' => [$isLegalRep ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
-            'selfie' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
-            'recto' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 }

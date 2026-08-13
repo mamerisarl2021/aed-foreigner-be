@@ -199,6 +199,7 @@ class EnrollmentSimilarityService
                 ...EnrollmentStatus::open(),
                 EnrollmentStatus::Approuvee->value,
                 EnrollmentStatus::AwaitingContactVerification->value,
+                EnrollmentStatus::ACorriger->value,
             ])
             ->limit(200)
             ->get();

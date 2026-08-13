@@ -23,5 +23,7 @@ return [
     'morale' => [
         'email_verification_hours' => (int) env('ENROLLMENT_MORALE_EMAIL_VERIFICATION_HOURS', 24),
         'phone_otp_ttl_minutes' => (int) env('ENROLLMENT_MORALE_PHONE_OTP_TTL_MINUTES', 5),
+        'correction_days' => (int) env('ENROLLMENT_MORALE_CORRECTION_DAYS', 7),
+        'correction_reminder_hours' => (int) env('ENROLLMENT_MORALE_CORRECTION_REMINDER_HOURS', 24),
     ],
 ];

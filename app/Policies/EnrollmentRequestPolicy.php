@@ -50,6 +50,21 @@ class EnrollmentRequestPolicy
             && $enrollmentRequest->submitted_by_user_id === $user->id;
     }
 
+    public function listOwnMorale(User $user): bool
+    {
+        return $user->hasRole(config('roles.client'));
+    }
+
+    public function correctMorale(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        $deadlineOk = $enrollmentRequest->correction_deadline_at === null
+            || ! $enrollmentRequest->correction_deadline_at->isPast();
+
+        return $this->viewOwnMorale($user, $enrollmentRequest)
+            && $enrollmentRequest->status === EnrollmentStatus::ACorriger
+            && $deadlineOk;
+    }
+
     public function instruction(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
         if (! $user->hasAnyRole(self::AGENT_ROLES)) {

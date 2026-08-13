@@ -26,10 +26,18 @@ class EnrollmentDecisionListResource extends JsonResource
     {
         /** @var array<string, mixed>|null $kyc */
         $kyc = $this->kyc_data;
+        $moraleCols = $this->formatMoraleListColumns(
+            $this->isPersonneMorale(),
+            $kyc,
+            $this->tracking_code,
+        );
 
         return [
             'id' => $this->id,
             'type' => $this->type,
+            'numero_suivi' => $moraleCols['numero_suivi'],
+            'raison_sociale' => $moraleCols['raison_sociale'],
+            'pays_origine' => $moraleCols['pays_origine'],
             // Le responsable consulte aussi les personnes enrôlées : sans le
             // demandeur, cet écran n'aurait personne à nommer.
             'demandeur' => $this->formatDemandeur(

@@ -19,6 +19,9 @@
             "name": "Client Auth"
         },
         {
+            "name": "Enrollment - Morale"
+        },
+        {
             "name": "Admin Auth"
         },
         {
@@ -32,9 +35,6 @@
         },
         {
             "name": "Enrollment - Physique"
-        },
-        {
-            "name": "Enrollment - Morale"
         }
     ],
     "security": [
@@ -373,6 +373,7 @@
                                 "VALIDATION_RESPONSABLE",
                                 "REJET_CONFIRME",
                                 "RETOUR_AGENT",
+                                "CORRECTION_MORALE",
                                 "ENROLEMENT_FINALISE",
                                 "OTP_ENVOYE",
                                 "OTP_VERIFIE",
@@ -2955,7 +2956,7 @@
         "/v1/kyc/verify": {
             "post": {
                 "operationId": "kyc.verify",
-                "description": "Diagram \u00a72.3. Requires both OTP channels verified.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Sync KYC verification (Document Reader + Face match)",
                 "tags": [
                     "Enrollment - KYC"
@@ -2989,9 +2990,183 @@
             }
         },
         "/v1/enrolements/morales": {
+            "get": {
+                "operationId": "personneMoraleEnrollment.index",
+                "description": "Owner only. Includes AWAITING_CONTACT_VERIFICATION. Defaults: per_page=15 (max 100).",
+                "summary": "List the authenticated client's personne morale enrollments",
+                "tags": [
+                    "Enrollment - Morale"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "D\u00e9faut: 15. Maximum: 100.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/EnrollmentRequest"
+                                                    }
+                                                },
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "data",
+                                                "first_page_url",
+                                                "from",
+                                                "last_page_url",
+                                                "last_page",
+                                                "links",
+                                                "next_page_url",
+                                                "path",
+                                                "per_page",
+                                                "prev_page_url",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Liste des entreprises."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
             "post": {
                 "operationId": "personneMoraleEnrollment.submit",
-                "description": "Requires authenticated client with finalized physique enrollment.\nInitial statut AWAITING_CONTACT_VERIFICATION.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PKI\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne morale enrollment",
                 "tags": [
                     "Enrollment - Morale"
@@ -3032,6 +3207,7 @@
         "/v1/enrolements/morales/{id}": {
             "get": {
                 "operationId": "personneMoraleEnrollment.show",
+                "description": "Company fields, contact verification flags, and pi\u00e8ces jointes (RCCM, statuts, procuration).",
                 "summary": "Morale enrollment detail (owner only)",
                 "tags": [
                     "Enrollment - Morale"
@@ -3096,6 +3272,57 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 }
+            },
+            "put": {
+                "operationId": "personneMoraleEnrollment.correct",
+                "description": "Updates company fields and attachments (not official contacts, not KYC selfie).\nOn success the request returns to EN_ATTENTE_AGENT.",
+                "summary": "Correct a rejected personne morale enrollment (owner, A_CORRIGER only)",
+                "tags": [
+                    "Enrollment - Morale"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Personne morale enrollment request UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CorrectMoraleEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
             }
         },
         "/v1/enrolements/morales/{id}/send-phone-otp": {
@@ -3143,7 +3370,7 @@
         "/v1/enrolements/morales/{id}/verify-phone-otp": {
             "post": {
                 "operationId": "personneMoraleEnrollment.verifyPhoneOtp",
-                "description": "May promote the request to EN_ATTENTE_AGENT once both channels are verified.",
+                "description": "May promote the request to EN_ATTENTE_AGENT once both channels are verified.\nConfirmation email is sent to the demandeur only after both verifications.",
                 "summary": "Verify company phone OTP",
                 "tags": [
                     "Enrollment - Morale"
@@ -3508,7 +3735,7 @@
         "/v1/enrolements": {
             "get": {
                 "operationId": "enrollment.index",
-                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).\nDefault EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE\nfor responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is\ncarried by its own field and no longer by the status.\nEvery row exposes `statut` (machine, positional) and `statut_libelle`, worded for the\ncaller's role: a request awaiting the responsable never reads as approved or rejected.\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
+                "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).\nDefault EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE\nfor responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is\ncarried by its own field and no longer by the status.\nEvery row exposes `statut` (machine, positional) and `statut_libelle`, worded for the\ncaller's role: a request awaiting the responsable never reads as approved or rejected.\nPersonne morale rows also expose `raison_sociale`, `pays_origine`, and `numero_suivi`\n(null on physique except `numero_suivi` when a tracking code exists).\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List enrollment requests",
                 "tags": [
                     "Enrollment - Physique"
@@ -3517,13 +3744,13 @@
                     {
                         "name": "statut",
                         "in": "query",
-                        "description": "Statut(s) \u00e0 filtrer: EN_ATTENTE_AGENT, EN_COURS_AGENT, EN_ATTENTE_RESPONSABLE, EN_COURS_RESPONSABLE, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: EN_ATTENTE_AGENT|EN_COURS_AGENT (agent) ou EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE (responsable).",
+                        "description": "Statut(s) \u00e0 filtrer: EN_ATTENTE_AGENT, EN_COURS_AGENT, EN_ATTENTE_RESPONSABLE, EN_COURS_RESPONSABLE, A_CORRIGER, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: EN_ATTENTE_AGENT|EN_COURS_AGENT (agent) ou EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE (responsable).",
                         "schema": {
                             "type": [
                                 "string",
                                 "null"
                             ],
-                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE))*$"
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
                         }
                     },
                     {
@@ -3535,7 +3762,7 @@
                                 "string",
                                 "null"
                             ],
-                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|APPROUVEE|REJETEE|ENROLEE))*$"
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
                         }
                     },
                     {
@@ -4047,6 +4274,7 @@
                                                                 "L'avis de l'agent n'est pas favorable.",
                                                                 "La d\u00e9cision doit d'abord \u00eatre prise en charge.",
                                                                 "Erreur lors de la confirmation du rejet.",
+                                                                "Rejet notifi\u00e9. Le demandeur peut corriger le dossier avant l'\u00e9ch\u00e9ance.",
                                                                 "Rejet confirm\u00e9 et notifi\u00e9 au demandeur.",
                                                                 "L'avis de l'agent n'est pas d\u00e9favorable.",
                                                                 "Demande renvoy\u00e9e \u00e0 l'agent.",
@@ -4088,7 +4316,7 @@
         "/v1/enrolements/{id}": {
             "get": {
                 "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR preferred over declared\nKYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR preferred over declared\nKYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -4593,6 +4821,92 @@
                 ],
                 "title": "ClientIdentityResource"
             },
+            "CorrectMoraleEnrollmentRequest": {
+                "type": "object",
+                "properties": {
+                    "legal_name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "legal_form": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "country_of_incorporation": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "registration_number": {
+                        "type": "string",
+                        "maxLength": 100
+                    },
+                    "incorporation_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "headquarters_address": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "activity_sector": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "legal_representative_name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "legal_representative_first_name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "is_legal_representative": {
+                        "type": "boolean"
+                    },
+                    "trade_register_extract": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 10240 kilobytes."
+                    },
+                    "statutes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 10240 kilobytes."
+                    },
+                    "procuration": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 10240 kilobytes."
+                    }
+                },
+                "required": [
+                    "legal_name",
+                    "country_of_incorporation",
+                    "registration_number",
+                    "headquarters_address",
+                    "activity_sector",
+                    "legal_representative_name",
+                    "legal_representative_first_name",
+                    "is_legal_representative",
+                    "trade_register_extract"
+                ],
+                "title": "CorrectMoraleEnrollmentRequest"
+            },
             "EnrolledPersonDetailResource": {
                 "type": "object",
                 "properties": {
@@ -4680,6 +4994,18 @@
                             "id": {
                                 "type": "string"
                             },
+                            "numero_suivi": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "identifiant": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
                             "type": {
                                 "type": "string"
                             },
@@ -4693,6 +5019,7 @@
                                     "V\u00e9rification des contacts",
                                     "\u00c0 traiter",
                                     "En cours d'instruction",
+                                    "En attente de correction",
                                     "Transmise au responsable",
                                     "En instruction",
                                     "\u00c0 valider",
@@ -4700,6 +5027,7 @@
                                     "En attente d'un agent",
                                     "En attente du responsable",
                                     "V\u00e9rification de vos contacts",
+                                    "\u00c0 corriger",
                                     "En cours de traitement",
                                     "Approuv\u00e9e",
                                     "Rejet\u00e9e",
@@ -4707,7 +5035,11 @@
                                 ]
                             },
                             "date_soumission": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
                             },
                             "decision_agent": {
                                 "type": "object",
@@ -4762,10 +5094,31 @@
                                     },
                                     "motifs": {
                                         "type": "array",
-                                        "items": {}
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "title",
+                                                "description"
+                                            ]
+                                        }
                                     },
                                     "description": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -4807,21 +5160,16 @@
                             "peut_valider": {
                                 "type": "string"
                             },
+                            "similar_enrollments": {
+                                "type": "array",
+                                "description": "V\u00e9rification crois\u00e9e (PDF \u00a75.1) : d\u00e9j\u00e0 calcul\u00e9e au show, expos\u00e9e ici.",
+                                "items": {}
+                            },
                             "demandeur": {
                                 "type": "object",
                                 "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
+                                    "nom": {},
+                                    "prenom": {}
                                 },
                                 "required": [
                                     "nom",
@@ -4831,18 +5179,8 @@
                             "informations": {
                                 "type": "object",
                                 "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenoms": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
+                                    "nom": {},
+                                    "prenoms": {},
                                     "numero_piece": {
                                         "type": "string"
                                     },
@@ -4850,7 +5188,10 @@
                                         "type": "string"
                                     },
                                     "telephone": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "sexe": {
                                         "type": "string"
@@ -5037,6 +5378,8 @@
                         },
                         "required": [
                             "id",
+                            "numero_suivi",
+                            "identifiant",
                             "type",
                             "statut",
                             "statut_libelle",
@@ -5045,6 +5388,7 @@
                             "responsable",
                             "peut_prendre_en_charge",
                             "peut_valider",
+                            "similar_enrollments",
                             "demandeur",
                             "informations",
                             "pieces_jointes",
@@ -5052,268 +5396,8 @@
                         ]
                     },
                     {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "statut": {
-                                "type": "string"
-                            },
-                            "statut_libelle": {
-                                "type": "string",
-                                "description": "Au niveau responsable, un dossier non pris en charge est \u00ab \u00c0 valider \u00bb :\nl'avis de l'agent est une proposition, il ne pr\u00e9juge de rien ici.",
-                                "enum": [
-                                    "V\u00e9rification des contacts",
-                                    "\u00c0 traiter",
-                                    "En cours d'instruction",
-                                    "Transmise au responsable",
-                                    "En instruction",
-                                    "\u00c0 valider",
-                                    "En cours de validation",
-                                    "En attente d'un agent",
-                                    "En attente du responsable",
-                                    "V\u00e9rification de vos contacts",
-                                    "En cours de traitement",
-                                    "Approuv\u00e9e",
-                                    "Rejet\u00e9e",
-                                    "Enr\u00f4l\u00e9e"
-                                ]
-                            },
-                            "date_soumission": {
-                                "type": "string"
-                            },
-                            "decision_agent": {
-                                "type": "object",
-                                "properties": {
-                                    "avis": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "avis_libelle": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ],
-                                        "enum": [
-                                            "Favorable",
-                                            "D\u00e9favorable",
-                                            null
-                                        ]
-                                    },
-                                    "agent": {
-                                        "type": [
-                                            "object",
-                                            "null"
-                                        ],
-                                        "properties": {
-                                            "nom": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            },
-                                            "prenom": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            }
-                                        },
-                                        "required": [
-                                            "nom",
-                                            "prenom"
-                                        ]
-                                    },
-                                    "date": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ],
-                                        "format": "date-time"
-                                    },
-                                    "motifs": {
-                                        "type": "array",
-                                        "items": {}
-                                    },
-                                    "description": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "avis",
-                                    "avis_libelle",
-                                    "agent",
-                                    "date",
-                                    "motifs",
-                                    "description"
-                                ]
-                            },
-                            "responsable": {
-                                "type": [
-                                    "object",
-                                    "null"
-                                ],
-                                "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "nom",
-                                    "prenom"
-                                ]
-                            },
-                            "peut_prendre_en_charge": {
-                                "type": "string"
-                            },
-                            "peut_valider": {
-                                "type": "string"
-                            },
-                            "demandeur": {
-                                "type": "object",
-                                "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "nom",
-                                    "prenom"
-                                ]
-                            },
-                            "informations_entreprise": {
-                                "type": "object",
-                                "properties": {
-                                    "raison_sociale": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "date_creation": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "pays_origine": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "forme_juridique": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "telephone": {
-                                        "type": "string"
-                                    },
-                                    "mandataire": {
-                                        "type": "boolean"
-                                    },
-                                    "adresse_siege_social": {
-                                        "type": "string"
-                                    },
-                                    "nom_prenoms_mandataire": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "numero_immatriculation_legal": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "raison_sociale",
-                                    "email",
-                                    "date_creation",
-                                    "pays_origine",
-                                    "forme_juridique",
-                                    "telephone",
-                                    "mandataire",
-                                    "adresse_siege_social",
-                                    "nom_prenoms_mandataire",
-                                    "numero_immatriculation_legal"
-                                ]
-                            },
-                            "pieces_jointes": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "label": {
-                                            "type": "string"
-                                        },
-                                        "url": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
-                                        },
-                                        "url_telechargement": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "type",
-                                        "label",
-                                        "url",
-                                        "url_telechargement"
-                                    ]
-                                }
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "type",
-                            "statut",
-                            "statut_libelle",
-                            "date_soumission",
-                            "decision_agent",
-                            "responsable",
-                            "peut_prendre_en_charge",
-                            "peut_valider",
-                            "demandeur",
-                            "informations_entreprise",
-                            "pieces_jointes"
-                        ]
+                        "type": "array",
+                        "items": {}
                     }
                 ],
                 "title": "EnrollmentDecisionDetailResource"
@@ -5455,7 +5539,9 @@
                             "array",
                             "null"
                         ],
-                        "items": {}
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "review_comments": {
                         "type": [
@@ -5531,7 +5617,9 @@
                             "array",
                             "null"
                         ],
-                        "items": {}
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "sla_deadline_at": {
                         "type": [
@@ -5545,6 +5633,20 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "correction_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "correction_reminder_sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "created_at": {
                         "type": [
@@ -5593,6 +5695,8 @@
                     "return_reasons",
                     "sla_deadline_at",
                     "sla_alert_level",
+                    "correction_deadline_at",
+                    "correction_reminder_sent_at",
                     "created_at",
                     "updated_at"
                 ],
@@ -5607,8 +5711,17 @@
                                 "type": "string"
                             },
                             "numero_suivi": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
+                            },
+                            "identifiant": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "type": {
                                 "type": "string"
@@ -5622,6 +5735,7 @@
                                     "V\u00e9rification des contacts",
                                     "\u00c0 traiter",
                                     "En cours d'instruction",
+                                    "En attente de correction",
                                     "Transmise au responsable",
                                     "En instruction",
                                     "\u00c0 valider",
@@ -5629,6 +5743,7 @@
                                     "En attente d'un agent",
                                     "En attente du responsable",
                                     "V\u00e9rification de vos contacts",
+                                    "\u00c0 corriger",
                                     "En cours de traitement",
                                     "Approuv\u00e9e",
                                     "Rejet\u00e9e",
@@ -5636,7 +5751,11 @@
                                 ]
                             },
                             "date_soumission": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
                             },
                             "agent_responsable": {
                                 "type": [
@@ -5673,6 +5792,11 @@
                                 "type": [
                                     "string",
                                     "null"
+                                ],
+                                "enum": [
+                                    "Favorable",
+                                    "D\u00e9favorable",
+                                    null
                                 ]
                             },
                             "peut_prendre_en_charge": {
@@ -5681,21 +5805,16 @@
                             "peut_instruire": {
                                 "type": "string"
                             },
+                            "similar_enrollments": {
+                                "type": "array",
+                                "description": "V\u00e9rification crois\u00e9e (PDF \u00a75.1) : d\u00e9j\u00e0 calcul\u00e9e au show, expos\u00e9e ici.",
+                                "items": {}
+                            },
                             "demandeur": {
                                 "type": "object",
                                 "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
+                                    "nom": {},
+                                    "prenom": {}
                                 },
                                 "required": [
                                     "nom",
@@ -5705,18 +5824,8 @@
                             "informations": {
                                 "type": "object",
                                 "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenoms": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
+                                    "nom": {},
+                                    "prenoms": {},
                                     "numero_piece": {
                                         "type": "string"
                                     },
@@ -5724,7 +5833,10 @@
                                         "type": "string"
                                     },
                                     "telephone": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "sexe": {
                                         "type": "string"
@@ -5912,6 +6024,7 @@
                         "required": [
                             "id",
                             "numero_suivi",
+                            "identifiant",
                             "type",
                             "statut",
                             "statut_libelle",
@@ -5921,6 +6034,7 @@
                             "avis_agent_libelle",
                             "peut_prendre_en_charge",
                             "peut_instruire",
+                            "similar_enrollments",
                             "demandeur",
                             "informations",
                             "pieces_jointes",
@@ -5928,218 +6042,8 @@
                         ]
                     },
                     {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string"
-                            },
-                            "numero_suivi": {
-                                "type": "string",
-                                "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
-                            },
-                            "type": {
-                                "type": "string"
-                            },
-                            "statut": {
-                                "type": "string"
-                            },
-                            "statut_libelle": {
-                                "type": "string",
-                                "enum": [
-                                    "V\u00e9rification des contacts",
-                                    "\u00c0 traiter",
-                                    "En cours d'instruction",
-                                    "Transmise au responsable",
-                                    "En instruction",
-                                    "\u00c0 valider",
-                                    "En cours de validation",
-                                    "En attente d'un agent",
-                                    "En attente du responsable",
-                                    "V\u00e9rification de vos contacts",
-                                    "En cours de traitement",
-                                    "Approuv\u00e9e",
-                                    "Rejet\u00e9e",
-                                    "Enr\u00f4l\u00e9e"
-                                ]
-                            },
-                            "date_soumission": {
-                                "type": "string"
-                            },
-                            "agent_responsable": {
-                                "type": [
-                                    "object",
-                                    "null"
-                                ],
-                                "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "nom",
-                                    "prenom"
-                                ]
-                            },
-                            "avis_agent": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "description": "Avis d\u00e9j\u00e0 rendu par le niveau agent, `null` tant qu'il ne l'a pas \u00e9t\u00e9."
-                            },
-                            "avis_agent_libelle": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            },
-                            "peut_prendre_en_charge": {
-                                "type": "string"
-                            },
-                            "peut_instruire": {
-                                "type": "string"
-                            },
-                            "demandeur": {
-                                "type": "object",
-                                "properties": {
-                                    "nom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "prenom": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "nom",
-                                    "prenom"
-                                ]
-                            },
-                            "informations_entreprise": {
-                                "type": "object",
-                                "properties": {
-                                    "raison_sociale": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "date_creation": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "pays_origine": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "forme_juridique": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "telephone": {
-                                        "type": "string"
-                                    },
-                                    "mandataire": {
-                                        "type": "boolean"
-                                    },
-                                    "adresse_siege_social": {
-                                        "type": "string"
-                                    },
-                                    "nom_prenoms_mandataire": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    },
-                                    "numero_immatriculation_legal": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "raison_sociale",
-                                    "email",
-                                    "date_creation",
-                                    "pays_origine",
-                                    "forme_juridique",
-                                    "telephone",
-                                    "mandataire",
-                                    "adresse_siege_social",
-                                    "nom_prenoms_mandataire",
-                                    "numero_immatriculation_legal"
-                                ]
-                            },
-                            "pieces_jointes": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "label": {
-                                            "type": "string"
-                                        },
-                                        "url": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
-                                        },
-                                        "url_telechargement": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "type",
-                                        "label",
-                                        "url",
-                                        "url_telechargement"
-                                    ]
-                                }
-                            }
-                        },
-                        "required": [
-                            "id",
-                            "numero_suivi",
-                            "type",
-                            "statut",
-                            "statut_libelle",
-                            "date_soumission",
-                            "agent_responsable",
-                            "avis_agent",
-                            "avis_agent_libelle",
-                            "peut_prendre_en_charge",
-                            "peut_instruire",
-                            "demandeur",
-                            "informations_entreprise",
-                            "pieces_jointes"
-                        ]
+                        "type": "array",
+                        "items": {}
                     }
                 ],
                 "title": "EnrollmentRequestAgentDetailResource"
@@ -6153,6 +6057,7 @@
                     "EN_COURS_AGENT",
                     "EN_ATTENTE_RESPONSABLE",
                     "EN_COURS_RESPONSABLE",
+                    "A_CORRIGER",
                     "APPROUVEE",
                     "REJETEE",
                     "ENROLEE"
@@ -6235,42 +6140,8 @@
                 "title": "LoginWithCodeRequest"
             },
             "MoraleEnrollmentOwnerResource": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "statut": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "email_verifie": {
-                        "type": "boolean"
-                    },
-                    "telephone_verifie": {
-                        "type": "boolean"
-                    },
-                    "verification_deadline_at": {
-                        "type": "string"
-                    },
-                    "raison_sociale": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    }
-                },
-                "required": [
-                    "id",
-                    "statut",
-                    "type",
-                    "email_verifie",
-                    "telephone_verifie",
-                    "verification_deadline_at",
-                    "raison_sociale"
-                ],
+                "type": "array",
+                "items": {},
                 "title": "MoraleEnrollmentOwnerResource"
             },
             "ReadDocumentRequest": {
@@ -6805,6 +6676,27 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 10240 kilobytes."
+                    },
+                    "selfie": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "recto": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "verso": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Maximum file size: 5120 kilobytes."
                     }
                 },
                 "required": [
@@ -6818,7 +6710,9 @@
                     "legal_representative_name",
                     "legal_representative_first_name",
                     "is_legal_representative",
-                    "trade_register_extract"
+                    "trade_register_extract",
+                    "selfie",
+                    "recto"
                 ],
                 "title": "SubmitMoraleEnrollmentRequest"
             },

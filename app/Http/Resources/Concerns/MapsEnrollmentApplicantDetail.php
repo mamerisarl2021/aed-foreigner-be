@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Concerns;
 
+use App\Models\EnrollmentRequest;
+use App\Models\User;
+
 trait MapsEnrollmentApplicantDetail
 {
     /**
@@ -39,8 +42,18 @@ trait MapsEnrollmentApplicantDetail
      */
     protected function moraleDetail(): array
     {
-        $kyc = $this->kyc_data ?? [];
-        $submitter = $this->relationLoaded('submittedBy') ? $this->submittedBy : null;
+        $enrollment = $this->resource;
+        if (! $enrollment instanceof EnrollmentRequest) {
+            return [
+                'demandeur' => ['nom' => null, 'prenom' => null],
+                'informations_entreprise' => [],
+            ];
+        }
+
+        $kyc = is_array($enrollment->kyc_data) ? $enrollment->kyc_data : [];
+        $submitter = ($enrollment->relationLoaded('submittedBy') && $enrollment->submittedBy instanceof User)
+            ? $enrollment->submittedBy
+            : null;
         $repName = trim((string) ($kyc['legal_representative_name'] ?? ''));
         $repFirst = trim((string) ($kyc['legal_representative_first_name'] ?? ''));
         $mandataireLabel = trim($repName.' '.$repFirst) ?: null;
@@ -52,16 +65,29 @@ trait MapsEnrollmentApplicantDetail
             ],
             'informations_entreprise' => [
                 'raison_sociale' => $kyc['legal_name'] ?? null,
-                'email' => $this->email,
+                'email' => $enrollment->email,
                 'date_creation' => $kyc['incorporation_date'] ?? null,
                 'pays_origine' => $kyc['country_of_incorporation'] ?? null,
                 'forme_juridique' => $kyc['legal_form'] ?? null,
-                'telephone' => $this->phonenumber,
+                'telephone' => $enrollment->phonenumber,
                 'mandataire' => (bool) ($kyc['is_legal_representative'] ?? false),
                 'adresse_siege_social' => $kyc['headquarters_address'] ?? null,
                 'nom_prenoms_mandataire' => $mandataireLabel,
                 'numero_immatriculation_legal' => $kyc['registration_number'] ?? null,
+                'secteur_activite' => $kyc['activity_sector'] ?? null,
             ],
         ];
+    }
+
+    /**
+     * Vérification croisée déjà calculée par EnrollmentReviewQueryService::show.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function similarEnrollments(EnrollmentRequest $enrollment): array
+    {
+        $similar = $enrollment->getAttribute('similar_enrollments');
+
+        return is_array($similar) ? array_values($similar) : [];
     }
 }

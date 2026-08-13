@@ -7,7 +7,8 @@ namespace App\Http\Resources\Concerns;
 use App\Models\EnrollmentRequest;
 
 /**
- * Shapes `analyse_kyc` for personne physique agent/responsable detail views.
+ * Shapes `analyse_kyc` for agent/responsable detail views.
+ * Physique uses declared KYC as OCR fallback; morale uses OCR/selfie only.
  *
  * @mixin FormatsEnrollmentDocuments
  */
@@ -47,7 +48,73 @@ trait MapsEnrollmentKycAnalysis
      */
     protected function analyseKycPhysique(EnrollmentRequest $enrollment): array
     {
-        $kyc = $this->asStringKeyedArray($enrollment->kyc_data);
+        return $this->analyseKycFromDocument($enrollment, $this->asStringKeyedArray($enrollment->kyc_data));
+    }
+
+    /**
+     * Morale KYC is the demandeur's identity document, not company kyc_data.
+     *
+     * @return array{
+     *     liveness: mixed,
+     *     similarity: mixed,
+     *     similarity_percent: int|null,
+     *     risk_score: mixed,
+     *     details: mixed,
+     *     document_identite: array{
+     *         type_piece: mixed,
+     *         pays: mixed,
+     *         verifie: bool,
+     *         numero_document: mixed,
+     *         nom: mixed,
+     *         prenoms: mixed,
+     *         date_naissance: mixed,
+     *         nationalite: mixed,
+     *         date_expiration: mixed
+     *     },
+     *     selfie: array{url: string|null, capture_le: string|null},
+     *     etapes: array{
+     *         document_ajoute: bool,
+     *         informations_extraites: bool,
+     *         liveness_effectue: bool,
+     *         visage_compare: bool
+     *     }
+     * }
+     */
+    protected function analyseKycMorale(EnrollmentRequest $enrollment): array
+    {
+        return $this->analyseKycFromDocument($enrollment, []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $declaredKyc
+     * @return array{
+     *     liveness: mixed,
+     *     similarity: mixed,
+     *     similarity_percent: int|null,
+     *     risk_score: mixed,
+     *     details: mixed,
+     *     document_identite: array{
+     *         type_piece: mixed,
+     *         pays: mixed,
+     *         verifie: bool,
+     *         numero_document: mixed,
+     *         nom: mixed,
+     *         prenoms: mixed,
+     *         date_naissance: mixed,
+     *         nationalite: mixed,
+     *         date_expiration: mixed
+     *     },
+     *     selfie: array{url: string|null, capture_le: string|null},
+     *     etapes: array{
+     *         document_ajoute: bool,
+     *         informations_extraites: bool,
+     *         liveness_effectue: bool,
+     *         visage_compare: bool
+     *     }
+     * }
+     */
+    private function analyseKycFromDocument(EnrollmentRequest $enrollment, array $declaredKyc): array
+    {
         $documents = $this->asStringKeyedArray($enrollment->documents);
         $details = $enrollment->analysis_details;
         $similarity = $enrollment->similarity;
@@ -61,11 +128,11 @@ trait MapsEnrollmentKycAnalysis
             'similarity_percent' => $this->similarityPercent($similarity),
             'risk_score' => $enrollment->risk_score,
             'details' => $details,
-            'document_identite' => $this->documentIdentiteFromKyc($kyc, $ocr, $documentName, $details),
+            'document_identite' => $this->documentIdentiteFromKyc($declaredKyc, $ocr, $documentName, $details),
             'selfie' => $this->kycSelfieBlock($documents),
             'etapes' => [
                 'document_ajoute' => $this->hasDocumentSlot($documents, 'recto'),
-                'informations_extraites' => $this->hasExtractedIdentityInfo($kyc, $ocr),
+                'informations_extraites' => $this->hasExtractedIdentityInfo($declaredKyc, $ocr),
                 'liveness_effectue' => $this->isLivenessConfirmed($liveness),
                 'visage_compare' => $this->hasSimilarityScore($similarity),
             ],

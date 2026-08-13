@@ -76,6 +76,7 @@ final class EnrollmentStatusPresenter
             EnrollmentStatus::AwaitingContactVerification => 'Vérification des contacts',
             EnrollmentStatus::EnAttenteAgent => 'À traiter',
             EnrollmentStatus::EnCoursAgent => 'En cours d\'instruction',
+            EnrollmentStatus::ACorriger => 'En attente de correction',
             // Une fois l'avis rendu, la demande n'est plus au niveau de l'agent :
             // son sort dépend du responsable, donc aucun verdict ici.
             default => 'Transmise au responsable',
@@ -87,6 +88,7 @@ final class EnrollmentStatusPresenter
         return match ($status) {
             EnrollmentStatus::AwaitingContactVerification => 'Vérification des contacts',
             EnrollmentStatus::EnAttenteAgent, EnrollmentStatus::EnCoursAgent => 'En instruction',
+            EnrollmentStatus::ACorriger => 'En attente de correction',
             // Rien n'a encore été décidé à ce niveau tant que le responsable n'a
             // pas pris la décision en charge, puis tranché.
             EnrollmentStatus::EnAttenteResponsable => 'À valider',
@@ -101,14 +103,17 @@ final class EnrollmentStatusPresenter
             EnrollmentStatus::EnAttenteAgent => 'En attente d\'un agent',
             EnrollmentStatus::EnCoursAgent => 'En cours d\'instruction',
             EnrollmentStatus::EnAttenteResponsable => 'En attente du responsable',
+            EnrollmentStatus::ACorriger => 'En attente de correction',
             default => 'En cours de validation',
         };
     }
 
     private static function demandeurLabel(EnrollmentStatus $status): string
     {
-        return $status === EnrollmentStatus::AwaitingContactVerification
-            ? 'Vérification de vos contacts'
-            : 'En cours de traitement';
+        return match ($status) {
+            EnrollmentStatus::AwaitingContactVerification => 'Vérification de vos contacts',
+            EnrollmentStatus::ACorriger => 'À corriger',
+            default => 'En cours de traitement',
+        };
     }
 }

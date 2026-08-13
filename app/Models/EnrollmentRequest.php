@@ -9,6 +9,8 @@ use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
@@ -20,6 +22,17 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string|null $risk_score
  * @property EnrollmentStatus $status
  * @property AgentAvis|null $agent_avis
+ * @property list<string>|null $reject_reasons
+ * @property list<string>|null $return_reasons
+ * @property Carbon|null $returned_at
+ * @property Carbon|null $agent_decided_at
+ * @property Carbon|null $sla_deadline_at
+ * @property Carbon|null $correction_deadline_at
+ * @property Carbon|null $correction_reminder_sent_at
+ * @property-read User|null $assignedAgent
+ * @property-read User|null $assignedResponsable
+ * @property-read User|null $submittedBy
+ * @property-read EnrolledCompany|null $enrolledCompany
  */
 class EnrollmentRequest extends Model implements Auditable
 {
@@ -62,6 +75,8 @@ class EnrollmentRequest extends Model implements Auditable
         'return_reasons',
         'sla_deadline_at',
         'sla_alert_level',
+        'correction_deadline_at',
+        'correction_reminder_sent_at',
     ];
 
     protected function casts(): array
@@ -82,6 +97,8 @@ class EnrollmentRequest extends Model implements Auditable
             'returned_at' => 'datetime',
             'agent_decided_at' => 'datetime',
             'sla_deadline_at' => 'datetime',
+            'correction_deadline_at' => 'datetime',
+            'correction_reminder_sent_at' => 'datetime',
         ];
     }
 
@@ -98,6 +115,14 @@ class EnrollmentRequest extends Model implements Auditable
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by_user_id');
+    }
+
+    /**
+     * @return HasOne<EnrolledCompany, $this>
+     */
+    public function enrolledCompany(): HasOne
+    {
+        return $this->hasOne(EnrolledCompany::class);
     }
 
     public function statut(): EnrollmentStatus

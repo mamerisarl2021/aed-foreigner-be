@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Enrollment\CorrectMoraleEnrollmentRequest;
+use App\Http\Requests\Enrollment\ListMoraleEnrollmentsRequest;
 use App\Http\Requests\Enrollment\SendMoralePhoneOtpRequest;
 use App\Http\Requests\Enrollment\ShowMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\VerifyMoraleEmailRequest;
 use App\Http\Requests\Enrollment\VerifyMoralePhoneOtpRequest;
+use App\Http\Resources\MoraleEnrollmentOwnerListResource;
 use App\Http\Resources\MoraleEnrollmentOwnerResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
@@ -24,10 +27,34 @@ class PersonneMoraleEnrollmentController extends BaseController
     ) {}
 
     /**
+     * List the authenticated client's personne morale enrollments
+     *
+     * Owner only. Includes AWAITING_CONTACT_VERIFICATION. Defaults: per_page=15 (max 100).
+     */
+    public function index(ListMoraleEnrollmentsRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->sendError('Non authentifié.', null, 401);
+        }
+
+        $this->authorize('listOwnMorale', EnrollmentRequest::class);
+
+        $perPage = (int) ($request->validated('per_page') ?? 15);
+        $paginator = $this->moraleEnrollment->listOwn($user, $perPage);
+        $paginator->getCollection()->transform(
+            fn ($item) => new MoraleEnrollmentOwnerListResource($item)
+        );
+
+        return $this->sendResponse('Liste des entreprises.', $paginator);
+    }
+
+    /**
      * Submit personne morale enrollment
      *
-     * Requires authenticated client with finalized physique enrollment.
-     * Initial statut AWAITING_CONTACT_VERIFICATION.
+     * Requires authenticated client with finalized physique enrollment and a prior
+     * POST /kyc/verify session (OTP skipped for ACTIVE clients).
+     * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PKI…).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function submit(SubmitMoraleEnrollmentRequest $request): JsonResponse
@@ -44,6 +71,8 @@ class PersonneMoraleEnrollmentController extends BaseController
 
     /**
      * Morale enrollment detail (owner only)
+     *
+     * Company fields, contact verification flags, and pièces jointes (RCCM, statuts, procuration).
      */
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function show(ShowMoraleEnrollmentRequest $request): JsonResponse
@@ -63,6 +92,27 @@ class PersonneMoraleEnrollmentController extends BaseController
         }
 
         return $this->sendError($result->message, $result->data ?? [], $result->code);
+    }
+
+    /**
+     * Correct a rejected personne morale enrollment (owner, A_CORRIGER only)
+     *
+     * Updates company fields and attachments (not official contacts, not KYC selfie).
+     * On success the request returns to EN_ATTENTE_AGENT.
+     */
+    #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
+    public function correct(CorrectMoraleEnrollmentRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->sendError('Non authentifié.', null, 401);
+        }
+
+        $id = (string) $request->validated('id');
+        $enrollment = EnrollmentRequest::findOrFail($id);
+        $this->authorize('correctMorale', $enrollment);
+
+        return $this->respond($this->moraleEnrollment->correct($user, $enrollment, $request));
     }
 
     /**
@@ -101,6 +151,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      * Verify company phone OTP
      *
      * May promote the request to EN_ATTENTE_AGENT once both channels are verified.
+     * Confirmation email is sent to the demandeur only after both verifications.
      */
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function verifyPhoneOtp(VerifyMoralePhoneOtpRequest $request): JsonResponse

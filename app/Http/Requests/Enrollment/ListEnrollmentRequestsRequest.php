@@ -21,7 +21,7 @@ class ListEnrollmentRequestsRequest extends ApiFormRequest
         $statusRegex = "regex:/^({$statuses})(\\|({$statuses}))*$/";
 
         return [
-            // Statut(s) à filtrer: EN_ATTENTE_AGENT, EN_COURS_AGENT, EN_ATTENTE_RESPONSABLE, EN_COURS_RESPONSABLE, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs séparées par "|". Défaut: EN_ATTENTE_AGENT|EN_COURS_AGENT (agent) ou EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE (responsable).
+            // Statut(s) à filtrer: EN_ATTENTE_AGENT, EN_COURS_AGENT, EN_ATTENTE_RESPONSABLE, EN_COURS_RESPONSABLE, A_CORRIGER, APPROUVEE, REJETEE, ENROLEE. Plusieurs valeurs séparées par "|". Défaut: EN_ATTENTE_AGENT|EN_COURS_AGENT (agent) ou EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE (responsable).
             'statut' => ['nullable', 'string', $statusRegex],
             // Alias anglais de "statut". Mêmes valeurs.
             'status' => ['nullable', 'string', $statusRegex],

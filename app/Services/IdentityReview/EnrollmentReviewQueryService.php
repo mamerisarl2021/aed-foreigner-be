@@ -18,6 +18,9 @@ class EnrollmentReviewQueryService
         private readonly EnrollmentSimilarityService $similarityService,
     ) {}
 
+    /**
+     * @return LengthAwarePaginator<int, EnrollmentRequest>
+     */
     public function list(EnrollmentListFilters $filters): LengthAwarePaginator
     {
         $defaultStatuses = $filters->actor && $filters->actor->hasRole(config('roles.responsable_de_validation'))
@@ -69,7 +72,7 @@ class EnrollmentReviewQueryService
 
     public function show(EnrollmentRequest $enrollment): ServiceResult
     {
-        $enrollment->loadMissing(['assignedAgent', 'assignedResponsable', 'submittedBy']);
+        $enrollment->loadMissing(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany']);
         $enrollment->setAttribute('similar_enrollments', $this->similarityService->findSimilar($enrollment));
 
         return ServiceResult::ok('Détail de la demande.', $enrollment);

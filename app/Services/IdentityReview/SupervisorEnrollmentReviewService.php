@@ -14,6 +14,8 @@ use App\Enums\NotificationTemplate;
 use App\Enums\SupervisorDecision;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\WelcomeUserJob;
+use App\Models\EnrolledCompany;
+use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\PasswordResetToken;
@@ -21,6 +23,7 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
+use App\Support\CompanyIdentifiantAllocator;
 use App\Support\NotificationRecipient;
 use App\Support\NpiAllocator;
 use Carbon\Carbon;
@@ -249,8 +252,18 @@ class SupervisorEnrollmentReviewService
 
         DB::beginTransaction();
         try {
-            $enrollment->status = EnrollmentStatus::Rejetee;
-            $enrollment->save();
+            if ($enrollment->isPersonneMorale()) {
+                $days = max(1, (int) config('enrollment.morale.correction_days', 7));
+                $enrollment->status = EnrollmentStatus::ACorriger;
+                $enrollment->fill([
+                    'correction_deadline_at' => now()->addDays($days),
+                    'correction_reminder_sent_at' => null,
+                ]);
+                $enrollment->save();
+            } else {
+                $enrollment->status = EnrollmentStatus::Rejetee;
+                $enrollment->save();
+            }
 
             $this->activityLog->record(
                 ActivityLogAction::RejetConfirme,
@@ -264,30 +277,18 @@ class SupervisorEnrollmentReviewService
                 'statut' => $enrollment->status->value,
             ]);
 
-            $recipientName = $enrollment->applicantDisplayName();
-            SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Votre demande d\'enrôlement a été rejetée',
-                template: NotificationTemplate::IdentityRejected,
-                recipients: [
-                    NotificationRecipient::email($enrollment->email, [
-                        'name' => $recipientName,
-                        'reasons' => $enrollment->reject_reasons ?? [],
-                    ]),
-                ],
-                variables: [
-                    'name' => $recipientName,
-                    'reasons' => $enrollment->reject_reasons ?? [],
-                    'comments' => $enrollment->review_comments,
-                ],
-                type: 'ENROLEMENT_REJECTED',
-                platform: NotificationPlatform::from(config('notifications.platform')),
-            ));
+            $this->dispatchRejectNotification($enrollment);
 
             DB::commit();
 
-            return ServiceResult::ok('Rejet confirmé et notifié au demandeur.', [
+            $message = $enrollment->isPersonneMorale()
+                ? 'Rejet notifié. Le demandeur peut corriger le dossier avant l\'échéance.'
+                : 'Rejet confirmé et notifié au demandeur.';
+
+            return ServiceResult::ok($message, [
                 'demande_id' => $enrollment->id,
                 'statut' => $enrollment->status->value,
+                'correction_deadline_at' => $enrollment->correction_deadline_at?->toIso8601String(),
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -305,6 +306,9 @@ class SupervisorEnrollmentReviewService
         if ($enrollment->status !== EnrollmentStatus::EnCoursResponsable) {
             return ServiceResult::fail(self::DECISION_NON_PRISE_EN_CHARGE, null, 422);
         }
+
+        $enrollment->loadMissing('assignedAgent');
+        $this->dispatchReturnedToAgentNotification($enrollment, $commentaire, $motif);
 
         $enrollment->status = EnrollmentStatus::EnAttenteAgent;
         $enrollment->assigned_agent_id = null;
@@ -352,16 +356,42 @@ class SupervisorEnrollmentReviewService
 
         DB::beginTransaction();
         try {
+            $kyc = is_array($enrollment->kyc_data) ? $enrollment->kyc_data : [];
+            $identifiant = CompanyIdentifiantAllocator::next();
+
+            $company = EnrolledCompany::query()->create([
+                'identifiant' => $identifiant,
+                'enrollment_request_id' => $enrollment->id,
+                'manager_user_id' => $representative->id,
+                'legal_name' => (string) ($kyc['legal_name'] ?? $enrollment->email),
+                'legal_form' => $kyc['legal_form'] ?? null,
+                'country_of_incorporation' => (string) ($kyc['country_of_incorporation'] ?? ''),
+                'registration_number' => (string) ($kyc['registration_number'] ?? ''),
+                'incorporation_date' => filled($kyc['incorporation_date'] ?? null) ? $kyc['incorporation_date'] : null,
+                'headquarters_address' => (string) ($kyc['headquarters_address'] ?? ''),
+                'activity_sector' => (string) ($kyc['activity_sector'] ?? ''),
+                'legal_representative_name' => (string) ($kyc['legal_representative_name'] ?? ''),
+                'legal_representative_first_name' => (string) ($kyc['legal_representative_first_name'] ?? ''),
+                'company_email' => $enrollment->email,
+                'company_phone' => $enrollment->phonenumber,
+                'documents' => $enrollment->documents,
+                'status' => EnrolledCompany::STATUS_ACTIVE,
+                'approved_at' => now(),
+                'approved_by_user_id' => $supervisorId,
+            ]);
+
             Identity::create([
                 'user_id' => $representative->id,
                 'type' => 'PERSONNE_MORALE',
                 'level' => 'ADVANCED',
                 'proof' => json_encode([
-                    'company' => $enrollment->kyc_data,
+                    'company' => $kyc,
                     'documents' => $enrollment->documents,
                     'company_email' => $enrollment->email,
                     'company_phone' => $enrollment->phonenumber,
                     'enrollment_request_id' => $enrollment->id,
+                    'enrolled_company_id' => $company->id,
+                    'identifiant' => $identifiant,
                     'company_manager' => [
                         'user_id' => $representative->id,
                         'nom' => $representative->name,
@@ -373,16 +403,8 @@ class SupervisorEnrollmentReviewService
                 'assigned_agent_id' => $supervisorId,
             ]);
 
-            $legalName = (string) ($enrollment->kyc_data['legal_name'] ?? $enrollment->email);
-
-            SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Votre demande personne morale a été approuvée',
-                template: NotificationTemplate::IdentityStepApproved,
-                recipients: [NotificationRecipient::email($enrollment->email, ['name' => $legalName])],
-                variables: ['name' => $legalName],
-                type: 'MORALE_APPROVED',
-                platform: NotificationPlatform::from(config('notifications.platform')),
-            ));
+            $legalName = (string) ($kyc['legal_name'] ?? $enrollment->email);
+            $this->dispatchMoraleApprovedNotifications($enrollment, $representative, $identifiant, $legalName);
 
             $enrollment->status = EnrollmentStatus::Approuvee;
             $enrollment->save();
@@ -396,6 +418,7 @@ class SupervisorEnrollmentReviewService
 
             $this->events->publish('approved', [
                 'demande_id' => $enrollment->id,
+                'identifiant' => $identifiant,
                 'statut' => $enrollment->status->value,
             ]);
 
@@ -404,6 +427,7 @@ class SupervisorEnrollmentReviewService
             return ServiceResult::ok('Demande morale approuvée.', [
                 'demande_id' => $enrollment->id,
                 'statut' => $enrollment->status->value,
+                'identifiant' => $identifiant,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -411,5 +435,150 @@ class SupervisorEnrollmentReviewService
 
             return ServiceResult::fail("Erreur lors de l'approbation morale.", null, 500);
         }
+    }
+
+    private function dispatchMoraleApprovedNotifications(
+        EnrollmentRequest $enrollment,
+        User $representative,
+        string $identifiant,
+        string $legalName,
+    ): void {
+        $variables = [
+            'name' => $legalName,
+            'raison_sociale' => $legalName,
+            'identifiant' => $identifiant,
+            'numero_suivi' => $enrollment->tracking_code,
+        ];
+
+        $recipients = [];
+        $seen = [];
+        foreach ([$representative->email, $enrollment->email] as $email) {
+            if ($email === '') {
+                continue;
+            }
+            $key = strtolower($email);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $recipients[] = NotificationRecipient::email($email, $variables);
+        }
+
+        if ($recipients === []) {
+            return;
+        }
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Votre demande personne morale a été approuvée',
+            template: NotificationTemplate::MoraleApproved,
+            recipients: $recipients,
+            variables: $variables,
+            type: 'MORALE_APPROVED',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+    }
+
+    private function dispatchRejectNotification(EnrollmentRequest $enrollment): void
+    {
+        $enrollment->loadMissing('submittedBy');
+        $reasons = $this->motifTitles($enrollment->reject_reasons);
+        $recipientName = $enrollment->applicantDisplayName();
+        $demandeurEmail = $enrollment->submittedBy instanceof User
+            ? $enrollment->submittedBy->email
+            : $enrollment->email;
+
+        if ($demandeurEmail === '') {
+            $demandeurEmail = $enrollment->email;
+        }
+
+        $isMorale = $enrollment->isPersonneMorale();
+        $deadline = $enrollment->correction_deadline_at?->toIso8601String();
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: $isMorale
+                ? 'Votre demande personne morale est à corriger'
+                : 'Votre demande d\'enrôlement a été rejetée',
+            template: $isMorale
+                ? NotificationTemplate::MoraleCorrectionRequired
+                : NotificationTemplate::IdentityRejected,
+            recipients: [
+                NotificationRecipient::email($demandeurEmail, [
+                    'name' => $recipientName,
+                    'reasons' => $reasons,
+                ]),
+            ],
+            variables: [
+                'name' => $recipientName,
+                'reasons' => $reasons,
+                'comments' => $enrollment->review_comments,
+                'correction_deadline_at' => $deadline,
+                'numero_suivi' => $enrollment->tracking_code,
+                'stage' => $enrollment->reject_stage,
+            ],
+            type: $isMorale ? 'MORALE_CORRECTION_REQUIRED' : 'ENROLEMENT_REJECTED',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+    }
+
+    /**
+     * @param  list<string>|null  $motif
+     */
+    private function dispatchReturnedToAgentNotification(
+        EnrollmentRequest $enrollment,
+        ?string $commentaire,
+        ?array $motif,
+    ): void {
+        $agent = $enrollment->assignedAgent;
+        if (! $agent instanceof User || $agent->email === '') {
+            return;
+        }
+
+        $reasons = $this->motifTitles($motif ?? $enrollment->return_reasons);
+
+        SendEmailNotificationJob::dispatch(new EmailNotificationData(
+            subject: 'Une demande vous a été renvoyée par le responsable',
+            template: NotificationTemplate::EnrollmentReturnedToAgent,
+            recipients: [
+                NotificationRecipient::email($agent->email, [
+                    'enrollment_id' => $enrollment->id,
+                    'applicant_email' => $enrollment->email,
+                ]),
+            ],
+            variables: [
+                'enrollment_id' => $enrollment->id,
+                'applicant_email' => $enrollment->email,
+                'reasons' => $reasons,
+                'comments' => $commentaire,
+                'numero_suivi' => $enrollment->tracking_code,
+            ],
+            type: 'ENROLEMENT_RETURNED_TO_AGENT',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
+    }
+
+    /**
+     * @param  array<int|string, mixed>|null  $ids
+     * @return list<string>
+     */
+    private function motifTitles(?array $ids): array
+    {
+        if ($ids === null || $ids === []) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($ids as $id) {
+            $normalized[] = (string) $id;
+        }
+
+        $motifs = EnrollmentRejectMotif::query()->whereIn('id', $normalized)->get()->keyBy('id');
+
+        $titles = [];
+        foreach ($normalized as $id) {
+            $motif = $motifs->get($id);
+            $titles[] = $motif !== null ? $motif->title : $id;
+        }
+
+        return $titles;
     }
 }
