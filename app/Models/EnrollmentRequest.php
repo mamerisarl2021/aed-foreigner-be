@@ -11,6 +11,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OwenIt\Auditing\Contracts\Auditable;
 
+/**
+ * @property array<string, mixed>|null $kyc_data
+ * @property array<string, mixed>|null $documents
+ * @property array<string, mixed>|null $analysis_details
+ * @property string|null $liveness
+ * @property string|null $similarity
+ * @property string|null $risk_score
+ * @property EnrollmentStatus $status
+ * @property AgentAvis|null $agent_avis
+ */
 class EnrollmentRequest extends Model implements Auditable
 {
     use HasUuids;

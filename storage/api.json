@@ -3863,7 +3863,7 @@
         "/v1/enrolements/{id}": {
             "get": {
                 "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR preferred over declared\nKYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -4601,10 +4601,16 @@
                                             "type": "string"
                                         },
                                         "url": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "url_telechargement": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -4644,10 +4650,10 @@
                                     },
                                     "details": {
                                         "type": [
-                                            "array",
+                                            "object",
                                             "null"
                                         ],
-                                        "items": {}
+                                        "additionalProperties": {}
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -4680,10 +4686,16 @@
                                         "type": "object",
                                         "properties": {
                                             "url": {
-                                                "type": "null"
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
                                             },
                                             "capture_le": {
-                                                "type": "null"
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
                                             }
                                         },
                                         "required": [
@@ -4704,7 +4716,7 @@
                                                 "type": "boolean"
                                             },
                                             "visage_compare": {
-                                                "type": "string"
+                                                "type": "boolean"
                                             }
                                         },
                                         "required": [
@@ -4971,10 +4983,16 @@
                                             "type": "string"
                                         },
                                         "url": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "url_telechargement": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -5060,15 +5078,18 @@
                         ]
                     },
                     "kyc_data": {
-                        "type": "array",
-                        "items": {}
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {}
                     },
                     "documents": {
                         "type": [
-                            "array",
+                            "object",
                             "null"
                         ],
-                        "items": {}
+                        "additionalProperties": {}
                     },
                     "liveness": {
                         "type": [
@@ -5090,10 +5111,10 @@
                     },
                     "analysis_details": {
                         "type": [
-                            "array",
+                            "object",
                             "null"
                         ],
-                        "items": {}
+                        "additionalProperties": {}
                     },
                     "status": {
                         "$ref": "#/components/schemas/EnrollmentStatus"
@@ -5454,10 +5475,16 @@
                                             "type": "string"
                                         },
                                         "url": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "url_telechargement": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -5497,10 +5524,10 @@
                                     },
                                     "details": {
                                         "type": [
-                                            "array",
+                                            "object",
                                             "null"
                                         ],
-                                        "items": {}
+                                        "additionalProperties": {}
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -5533,10 +5560,16 @@
                                         "type": "object",
                                         "properties": {
                                             "url": {
-                                                "type": "null"
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
                                             },
                                             "capture_le": {
-                                                "type": "null"
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
                                             }
                                         },
                                         "required": [
@@ -5557,7 +5590,7 @@
                                                 "type": "boolean"
                                             },
                                             "visage_compare": {
-                                                "type": "string"
+                                                "type": "boolean"
                                             }
                                         },
                                         "required": [
@@ -5774,10 +5807,16 @@
                                             "type": "string"
                                         },
                                         "url": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "url_telechargement": {
-                                            "type": "null"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -6893,19 +6932,13 @@
                         "description": "Deprecated client-supplied score \u2014 ignored for the OK/KO gate when not mocking."
                     },
                     "selfie": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
                     },
                     "recto": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
@@ -6922,7 +6955,9 @@
                 },
                 "required": [
                     "email",
-                    "phonenumber"
+                    "phonenumber",
+                    "selfie",
+                    "recto"
                 ],
                 "title": "VerifyKycRequest"
             },

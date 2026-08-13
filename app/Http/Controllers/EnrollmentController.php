@@ -80,6 +80,13 @@ final class EnrollmentController extends BaseController
      * Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource
      * with a decision_agent block whose `avis` is null until the agent has actually ruled.
      * Same route for physique and morale.
+     *
+     * Personne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`
+     * plus `similarity_percent` (0–100 or null), `document_identite` (OCR preferred over declared
+     * KYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),
+     * `selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp
+     * is stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API
+     * confirmed liveness (status `0`). `etapes.visage_compare` is a boolean.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrollmentRequest $request): JsonResponse

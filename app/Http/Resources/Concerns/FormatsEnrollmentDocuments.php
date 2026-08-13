@@ -19,7 +19,7 @@ trait FormatsEnrollmentDocuments
             return null;
         }
 
-        return Storage::cloud()->temporaryUrl($docs[$key], Carbon::now()->addDays(3));
+        return $this->cloudTemporaryUrl((string) $docs[$key]);
     }
 
     /**
@@ -40,11 +40,18 @@ trait FormatsEnrollmentDocuments
         $extension = pathinfo((string) $docs[$key], PATHINFO_EXTENSION);
         $nom = Str::slug($label).($extension !== '' ? '.'.$extension : '');
 
-        return Storage::cloud()->temporaryUrl(
-            $docs[$key],
-            Carbon::now()->addDays(3),
+        return $this->cloudTemporaryUrl(
+            (string) $docs[$key],
             ['ResponseContentDisposition' => 'attachment; filename="'.$nom.'"'],
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function cloudTemporaryUrl(string $path, array $options = []): string
+    {
+        return Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3), $options);
     }
 
     /**
