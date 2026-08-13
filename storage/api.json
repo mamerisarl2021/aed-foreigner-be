@@ -4619,23 +4619,111 @@
                                 "type": "object",
                                 "properties": {
                                     "liveness": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "similarity": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "similarity_percent": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
                                     },
                                     "risk_score": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "details": {
-                                        "type": "string"
+                                        "type": [
+                                            "array",
+                                            "null"
+                                        ],
+                                        "items": {}
+                                    },
+                                    "document_identite": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type_piece": {},
+                                            "pays": {},
+                                            "verifie": {
+                                                "type": "boolean"
+                                            },
+                                            "numero_document": {},
+                                            "nom": {},
+                                            "prenoms": {},
+                                            "date_naissance": {},
+                                            "nationalite": {},
+                                            "date_expiration": {}
+                                        },
+                                        "required": [
+                                            "type_piece",
+                                            "pays",
+                                            "verifie",
+                                            "numero_document",
+                                            "nom",
+                                            "prenoms",
+                                            "date_naissance",
+                                            "nationalite",
+                                            "date_expiration"
+                                        ]
+                                    },
+                                    "selfie": {
+                                        "type": "object",
+                                        "properties": {
+                                            "url": {
+                                                "type": "null"
+                                            },
+                                            "capture_le": {
+                                                "type": "null"
+                                            }
+                                        },
+                                        "required": [
+                                            "url",
+                                            "capture_le"
+                                        ]
+                                    },
+                                    "etapes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "document_ajoute": {
+                                                "type": "boolean"
+                                            },
+                                            "informations_extraites": {
+                                                "type": "boolean"
+                                            },
+                                            "liveness_effectue": {
+                                                "type": "boolean"
+                                            },
+                                            "visage_compare": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "document_ajoute",
+                                            "informations_extraites",
+                                            "liveness_effectue",
+                                            "visage_compare"
+                                        ]
                                     }
                                 },
                                 "required": [
                                     "liveness",
                                     "similarity",
+                                    "similarity_percent",
                                     "risk_score",
-                                    "details"
+                                    "details",
+                                    "document_identite",
+                                    "selfie",
+                                    "etapes"
                                 ]
                             }
                         },
@@ -5384,23 +5472,111 @@
                                 "type": "object",
                                 "properties": {
                                     "liveness": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "similarity": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "similarity_percent": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
                                     },
                                     "risk_score": {
-                                        "type": "string"
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "details": {
-                                        "type": "string"
+                                        "type": [
+                                            "array",
+                                            "null"
+                                        ],
+                                        "items": {}
+                                    },
+                                    "document_identite": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type_piece": {},
+                                            "pays": {},
+                                            "verifie": {
+                                                "type": "boolean"
+                                            },
+                                            "numero_document": {},
+                                            "nom": {},
+                                            "prenoms": {},
+                                            "date_naissance": {},
+                                            "nationalite": {},
+                                            "date_expiration": {}
+                                        },
+                                        "required": [
+                                            "type_piece",
+                                            "pays",
+                                            "verifie",
+                                            "numero_document",
+                                            "nom",
+                                            "prenoms",
+                                            "date_naissance",
+                                            "nationalite",
+                                            "date_expiration"
+                                        ]
+                                    },
+                                    "selfie": {
+                                        "type": "object",
+                                        "properties": {
+                                            "url": {
+                                                "type": "null"
+                                            },
+                                            "capture_le": {
+                                                "type": "null"
+                                            }
+                                        },
+                                        "required": [
+                                            "url",
+                                            "capture_le"
+                                        ]
+                                    },
+                                    "etapes": {
+                                        "type": "object",
+                                        "properties": {
+                                            "document_ajoute": {
+                                                "type": "boolean"
+                                            },
+                                            "informations_extraites": {
+                                                "type": "boolean"
+                                            },
+                                            "liveness_effectue": {
+                                                "type": "boolean"
+                                            },
+                                            "visage_compare": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "document_ajoute",
+                                            "informations_extraites",
+                                            "liveness_effectue",
+                                            "visage_compare"
+                                        ]
                                     }
                                 },
                                 "required": [
                                     "liveness",
                                     "similarity",
+                                    "similarity_percent",
                                     "risk_score",
-                                    "details"
+                                    "details",
+                                    "document_identite",
+                                    "selfie",
+                                    "etapes"
                                 ]
                             }
                         },
