@@ -8,6 +8,7 @@ use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Http\Resources\Concerns\MapsEnrollmentApplicantDetail;
+use App\Http\Resources\Concerns\MapsEnrollmentKycAnalysis;
 use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
 use App\Support\EnrollmentStatusPresenter;
@@ -19,6 +20,7 @@ class EnrollmentDecisionDetailResource extends JsonResource
 {
     use FormatsEnrollmentDocuments;
     use MapsEnrollmentApplicantDetail;
+    use MapsEnrollmentKycAnalysis;
 
     /**
      * @return array<string, mixed>
@@ -54,12 +56,7 @@ class EnrollmentDecisionDetailResource extends JsonResource
 
         return array_merge($base, $this->physiqueDetail(), [
             'pieces_jointes' => $this->physiquePiecesJointes($this->documents),
-            'analyse_kyc' => [
-                'liveness' => $this->liveness,
-                'similarity' => $this->similarity,
-                'risk_score' => $this->risk_score,
-                'details' => $this->analysis_details,
-            ],
+            'analyse_kyc' => $this->analyseKycPhysique($enrollment),
         ]);
     }
 
