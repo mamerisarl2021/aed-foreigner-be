@@ -9,6 +9,7 @@ use App\Enums\NotificationTemplate;
 use App\Jobs\ForeignerFinalizedJob;
 use App\Jobs\MoraleEmailVerificationJob;
 use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Models\EnrolledCompany;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\User;
@@ -79,8 +80,7 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
         $this->passKyc();
 
         $this->post($this->api('/enrolements/morales'), $this->submitPayload())
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertForbidden();
     }
 
     #[Test]
@@ -289,6 +289,56 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.similar_enrollments.0.enrollment_request_id', $other->id)
             ->assertJsonPath('data.numero_suivi', 'PKSIMILAR01');
+    }
+
+    #[Test]
+    public function a_second_company_can_be_submitted_after_an_approved_one(): void
+    {
+        $source = EnrollmentRequest::query()->create([
+            'email' => 'deja-approuvee@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::Approuvee->value,
+            'type' => 'PERSONNE_MORALE',
+            'tracking_code' => 'PKAPPROVED1',
+            'submitted_by_user_id' => $this->client->id,
+            'kyc_data' => [
+                'legal_name' => 'TECH SARL INNOV',
+                'country_of_incorporation' => 'Canada',
+                'registration_number' => 'RCCM-CA-001',
+            ],
+        ]);
+        EnrolledCompany::query()->create([
+            'identifiant' => 'PMAPPROVED1',
+            'enrollment_request_id' => $source->id,
+            'manager_user_id' => $this->client->id,
+            'legal_name' => 'TECH SARL INNOV',
+            'country_of_incorporation' => 'Canada',
+            'registration_number' => 'RCCM-CA-001',
+            'headquarters_address' => 'Cotonou',
+            'activity_sector' => 'Services',
+            'legal_representative_name' => 'KOTO',
+            'legal_representative_first_name' => 'Ada',
+            'company_email' => 'deja-approuvee@example.com',
+            'status' => EnrolledCompany::STATUS_ACTIVE,
+            'approved_at' => now(),
+        ]);
+
+        Sanctum::actingAs($this->client);
+        $this->passKyc();
+
+        $payload = $this->submitPayload();
+        $payload['legal_name'] = 'AUTRE SARL';
+        $payload['registration_number'] = 'RCCM-CA-999';
+        $payload['email'] = 'autre-societe@example.com';
+
+        $this->post($this->api('/enrolements/morales'), $payload)
+            ->assertOk()
+            ->assertJsonPath('data.statut', EnrollmentStatus::AwaitingContactVerification->value);
+
+        $this->assertSame(2, EnrollmentRequest::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('submitted_by_user_id', $this->client->id)
+            ->count());
     }
 
     private function passKyc(): void

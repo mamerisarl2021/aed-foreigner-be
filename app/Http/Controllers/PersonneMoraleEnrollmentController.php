@@ -11,6 +11,7 @@ use App\Http\Requests\Enrollment\ShowMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\VerifyMoraleEmailRequest;
 use App\Http\Requests\Enrollment\VerifyMoralePhoneOtpRequest;
+use App\Http\Resources\MoraleEnrollmentCorrectionResource;
 use App\Http\Resources\MoraleEnrollmentOwnerListResource;
 use App\Http\Resources\MoraleEnrollmentOwnerResource;
 use App\Models\EnrollmentRequest;
@@ -54,7 +55,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * Requires authenticated client with finalized physique enrollment and a prior
      * POST /kyc/verify session (OTP skipped for ACTIVE clients).
-     * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PKI…).
+     * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK…).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function submit(SubmitMoraleEnrollmentRequest $request): JsonResponse
@@ -112,7 +113,12 @@ class PersonneMoraleEnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('correctMorale', $enrollment);
 
-        return $this->respond($this->moraleEnrollment->correct($user, $enrollment, $request));
+        $result = $this->moraleEnrollment->correct($user, $enrollment, $request);
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new MoraleEnrollmentCorrectionResource($result->data));
     }
 
     /**

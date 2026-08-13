@@ -41,7 +41,12 @@ class EnrollmentRequestPolicy
 
     public function submitMorale(User $user): bool
     {
-        return $user->hasRole(config('roles.client')) && $user->status === 'ACTIVE';
+        return $user->hasRole(config('roles.client'))
+            && $user->status === 'ACTIVE'
+            && $user->identities()
+                ->where('type', 'IN_PERSON')
+                ->where('status', 'APPROVED')
+                ->exists();
     }
 
     public function viewOwnMorale(User $user, EnrollmentRequest $enrollmentRequest): bool

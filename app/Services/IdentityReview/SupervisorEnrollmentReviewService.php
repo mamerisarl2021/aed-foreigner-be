@@ -193,7 +193,7 @@ class SupervisorEnrollmentReviewService
 
             $this->activityLog->record(
                 ActivityLogAction::ValidationResponsable,
-                sprintf('La demande n°%d a été approuvée par le responsable.', $enrollment->id),
+                sprintf('La demande %s a été approuvée par le responsable.', $enrollment->tracking_code ?? $enrollment->id),
                 $supervisorId,
                 $enrollment->id,
             );
@@ -267,7 +267,7 @@ class SupervisorEnrollmentReviewService
 
             $this->activityLog->record(
                 ActivityLogAction::RejetConfirme,
-                sprintf('Le rejet de la demande n°%d a été confirmé par le responsable.', $enrollment->id),
+                sprintf('Le rejet de la demande %s a été confirmé par le responsable.', $enrollment->tracking_code ?? $enrollment->id),
                 $supervisorId,
                 $enrollment->id,
             );
@@ -330,7 +330,7 @@ class SupervisorEnrollmentReviewService
 
         $this->activityLog->record(
             ActivityLogAction::RetourAgent,
-            sprintf('La demande n°%d a été renvoyée à l\'agent par le responsable.', $enrollment->id),
+            sprintf('La demande %s a été renvoyée à l\'agent par le responsable.', $enrollment->tracking_code ?? $enrollment->id),
             $supervisorId,
             $enrollment->id,
         );
@@ -411,7 +411,7 @@ class SupervisorEnrollmentReviewService
 
             $this->activityLog->record(
                 ActivityLogAction::ValidationResponsable,
-                sprintf('La demande morale n°%d a été approuvée par le responsable.', $enrollment->id),
+                sprintf('La demande morale %s a été approuvée par le responsable.', $enrollment->tracking_code ?? $enrollment->id),
                 $supervisorId,
                 $enrollment->id,
             );

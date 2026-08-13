@@ -18,6 +18,7 @@ enum ActivityLogAction: string
     case RejetConfirme = 'REJET_CONFIRME';
     case RetourAgent = 'RETOUR_AGENT';
     case CorrectionMorale = 'CORRECTION_MORALE';
+    case CorrectionMoraleExpiree = 'CORRECTION_MORALE_EXPIREE';
     case EnrolementFinalise = 'ENROLEMENT_FINALISE';
     case OtpEnvoye = 'OTP_ENVOYE';
     case OtpVerifie = 'OTP_VERIFIE';
@@ -51,6 +52,7 @@ enum ActivityLogAction: string
             self::RejetConfirme => 'REJET CONFIRME',
             self::RetourAgent => 'RETOUR AGENT',
             self::CorrectionMorale => 'CORRECTION MORALE',
+            self::CorrectionMoraleExpiree => 'CORRECTION MORALE EXPIREE',
             self::EnrolementFinalise => 'ENROLEMENT FINALISE',
             self::OtpEnvoye => 'OTP ENVOYE',
             self::OtpVerifie => 'OTP VERIFIE',

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Enrollment;
 
+use App\Enums\ActivityLogAction;
 use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Models\ActivityLog;
 use App\Models\EnrolledCompany;
 use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
@@ -205,6 +207,12 @@ final class PersonneMoraleDecisionTest extends TestCase
 
         $this->assertSame(1, $result['correction_archived']);
         $this->assertSame(EnrollmentStatus::Rejetee, $enrollment->fresh()->status);
+        $this->assertTrue(
+            ActivityLog::query()
+                ->where('action_code', ActivityLogAction::CorrectionMoraleExpiree->label())
+                ->where('enrollment_request_id', $enrollment->id)
+                ->exists()
+        );
 
         Bus::assertDispatched(SendEmailNotificationJob::class, function (SendEmailNotificationJob $job): bool {
             return $job->notification->template === NotificationTemplate::MoraleCorrectionExpired
@@ -229,6 +237,81 @@ final class PersonneMoraleDecisionTest extends TestCase
         $this->assertSame(0, $second['correction_reminded']);
 
         Bus::assertDispatchedTimes(SendEmailNotificationJob::class, 1);
+    }
+
+    #[Test]
+    public function correction_put_is_forbidden_for_another_client(): void
+    {
+        $enrollment = $this->createMoraleEnrollment([
+            'status' => EnrollmentStatus::ACorriger->value,
+            'correction_deadline_at' => now()->addDays(7),
+        ]);
+
+        $other = User::factory()->create([
+            'email' => 'other-owner@example.com',
+            'phonenumber' => '+2290162405479',
+            'status' => 'ACTIVE',
+        ]);
+        $other->assignRole(config('roles.client'));
+
+        Sanctum::actingAs($other);
+        $this->put($this->api("/enrolements/morales/{$enrollment->id}"), $this->correctionPayload())
+            ->assertForbidden();
+
+        $this->assertSame(EnrollmentStatus::ACorriger, $enrollment->fresh()->status);
+    }
+
+    #[Test]
+    public function correction_put_is_forbidden_after_the_deadline(): void
+    {
+        $enrollment = $this->createMoraleEnrollment([
+            'status' => EnrollmentStatus::ACorriger->value,
+            'correction_deadline_at' => now()->subHour(),
+        ]);
+
+        Sanctum::actingAs($this->client);
+        $this->put($this->api("/enrolements/morales/{$enrollment->id}"), $this->correctionPayload())
+            ->assertForbidden();
+
+        $this->assertSame(EnrollmentStatus::ACorriger, $enrollment->fresh()->status);
+    }
+
+    #[Test]
+    public function correction_put_is_forbidden_on_a_physique_enrollment(): void
+    {
+        $enrollment = EnrollmentRequest::query()->create([
+            'email' => 'physique-correct@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::ACorriger->value,
+            'type' => 'PERSONNE_PHYSIQUE',
+            'submitted_by_user_id' => $this->client->id,
+            'correction_deadline_at' => now()->addDays(7),
+            'kyc_data' => ['name' => 'KOTO', 'first_name' => 'Ada'],
+        ]);
+
+        Sanctum::actingAs($this->client);
+        $this->put($this->api("/enrolements/morales/{$enrollment->id}"), $this->correctionPayload())
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function sla_archive_does_not_clobber_a_corrected_dossier(): void
+    {
+        $enrollment = $this->createMoraleEnrollment([
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'correction_deadline_at' => now()->subHour(),
+        ]);
+
+        $archived = app(EnrollmentSlaService::class)->archiveExpiredCorrectionIfPending($enrollment);
+
+        $this->assertFalse($archived);
+        $this->assertSame(EnrollmentStatus::EnAttenteAgent, $enrollment->fresh()->status);
+        $this->assertFalse(
+            ActivityLog::query()
+                ->where('action_code', ActivityLogAction::CorrectionMoraleExpiree->label())
+                ->where('enrollment_request_id', $enrollment->id)
+                ->exists()
+        );
     }
 
     #[Test]
@@ -353,6 +436,26 @@ final class PersonneMoraleDecisionTest extends TestCase
         ])
             ->assertStatus(409)
             ->assertJsonPath('message', 'Une entreprise correspondant à ces informations est déjà enrôlée.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function correctionPayload(): array
+    {
+        return [
+            'legal_name' => 'TECH SARL CORRIGEE',
+            'legal_form' => 'SARL',
+            'country_of_incorporation' => 'Canada',
+            'registration_number' => 'RCCM-CA-002',
+            'incorporation_date' => '2024-03-06',
+            'headquarters_address' => 'Cotonou',
+            'activity_sector' => 'Services',
+            'legal_representative_name' => 'KOTO',
+            'legal_representative_first_name' => 'Ada',
+            'is_legal_representative' => '1',
+            'trade_register_extract' => UploadedFile::fake()->create('rccm.pdf', 100, 'application/pdf'),
+        ];
     }
 
     /**

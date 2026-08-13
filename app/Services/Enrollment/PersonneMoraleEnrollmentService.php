@@ -59,14 +59,6 @@ class PersonneMoraleEnrollmentService
 
     public function submit(User $user, Request $request): ServiceResult
     {
-        if (! $this->hasFinalizedPhysiqueEnrollment($user)) {
-            return ServiceResult::fail(
-                'Vous devez avoir finalisé votre enrôlement personne physique avant de soumettre une demande morale.',
-                null,
-                403
-            );
-        }
-
         if (! $this->kycVerification->isVerifiedForUser($user)) {
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
@@ -412,18 +404,6 @@ class PersonneMoraleEnrollmentService
             'enrollment_request_id' => $enrollment->id,
             'status' => $enrollment->fresh()->status->value,
         ]);
-    }
-
-    private function hasFinalizedPhysiqueEnrollment(User $user): bool
-    {
-        if ($user->status !== 'ACTIVE') {
-            return false;
-        }
-
-        return $user->identities()
-            ->where('type', 'IN_PERSON')
-            ->where('status', 'APPROVED')
-            ->exists();
     }
 
     private function hasOpenMoraleRequest(User $user): bool

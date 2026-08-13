@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Support\NotificationRecipient;
 use Illuminate\Support\Facades\Log;
 
 class EnrollmentSlaService
 {
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /**
      * @return array{checked: int, updated: int, correction_reminded: int, correction_archived: int}
      */
@@ -92,10 +98,10 @@ class EnrollmentSlaService
                     }
 
                     if ($deadline->isPast()) {
-                        $enrollment->status = EnrollmentStatus::Rejetee;
-                        $enrollment->save();
-                        $archived++;
-                        $this->notifyCorrectionExpired($enrollment);
+                        if ($this->archiveExpiredCorrectionIfPending($enrollment)) {
+                            $archived++;
+                            $this->notifyCorrectionExpired($enrollment);
+                        }
 
                         continue;
                     }
@@ -105,15 +111,58 @@ class EnrollmentSlaService
                     }
 
                     if ($deadline->lessThanOrEqualTo(now()->addHours($reminderHours))) {
-                        $enrollment->fill(['correction_reminder_sent_at' => now()]);
-                        $enrollment->save();
-                        $reminded++;
-                        $this->notifyCorrectionReminder($enrollment);
+                        if ($this->markCorrectionReminderIfPending($enrollment)) {
+                            $reminded++;
+                            $this->notifyCorrectionReminder($enrollment);
+                        }
                     }
                 }
             });
 
         return ['reminded' => $reminded, 'archived' => $archived];
+    }
+
+    public function archiveExpiredCorrectionIfPending(EnrollmentRequest $enrollment): bool
+    {
+        $updated = EnrollmentRequest::query()
+            ->whereKey($enrollment->id)
+            ->where('status', EnrollmentStatus::ACorriger)
+            ->where('correction_deadline_at', '<', now())
+            ->update(['status' => EnrollmentStatus::Rejetee->value]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $enrollment->refresh();
+        $this->activityLog->record(
+            ActivityLogAction::CorrectionMoraleExpiree,
+            sprintf(
+                'Le délai de correction de la demande morale %s est dépassé. Dossier archivé.',
+                $enrollment->tracking_code ?? $enrollment->id
+            ),
+            null,
+            $enrollment->id,
+        );
+
+        return true;
+    }
+
+    private function markCorrectionReminderIfPending(EnrollmentRequest $enrollment): bool
+    {
+        $updated = EnrollmentRequest::query()
+            ->whereKey($enrollment->id)
+            ->where('status', EnrollmentStatus::ACorriger)
+            ->whereNull('correction_reminder_sent_at')
+            ->update(['correction_reminder_sent_at' => now()]);
+
+        if ($updated === 0) {
+            return false;
+        }
+
+        $enrollment->refresh();
+
+        return true;
     }
 
     private function notifyRoles(EnrollmentRequest $enrollment, string $level): void
