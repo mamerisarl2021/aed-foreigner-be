@@ -74,7 +74,7 @@ final class FinalisationInviteLinkTest extends TestCase
 
         $npi = User::query()->where('email', 'finaliser@example.com')->value('npi');
         $this->assertIsString($npi);
-        $this->assertMatchesRegularExpression('/^[0-9]+$/', $npi);
+        $this->assertMatchesRegularExpression('/^1[0-9]{9}$/', $npi);
 
         Bus::assertDispatched(SendEmailNotificationJob::class, function (SendEmailNotificationJob $job) use ($npi, $enrollment): bool {
             if ($job->notification->template !== NotificationTemplate::SendInitLink) {
