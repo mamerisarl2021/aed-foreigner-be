@@ -12,7 +12,6 @@ use App\Http\Resources\FinalisationResource;
 use App\Services\Enrollment\ForeignerFinalizationService;
 use App\Services\ServiceResult;
 use Dedoc\Scramble\Attributes\Group;
-use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Enrollment - Physique')]
@@ -78,11 +77,10 @@ final class FinalisationController extends BaseController
      * Body: npi (digits), token (invitation), password (min 8),
      * security_questions (min 2 items with question + answer).
      * Requires prior POST …/finalisation/otp/verify for the same NPI.
-     * No client PIN — server generates a 4-digit PIN for TrustedX in a queued job.
-     * Success 202: TrustedX provisioning is async; poll POST /enrolements/suivi until statut ENROLEE.
-     * Immediate data: demande_id, numero_suivi, npi, statut APPROUVEE.
+     * No client PIN — server generates a 4-digit PIN and sets TrustedX password/PIN in this request
+     * (explicit exception to §10.1: ENROLEE is returned only after TrustedX credentials exist).
+     * Success 200: statut ENROLEE, npi, numero_suivi, demande_id.
      */
-    #[ScrambleResponse(202, description: 'Finalisation en cours. Poll POST /enrolements/suivi until statut ENROLEE.')]
     public function store(StoreFinalisationRequest $request): JsonResponse
     {
         /** @var array<int, array{question: string, answer: string}> $questions */

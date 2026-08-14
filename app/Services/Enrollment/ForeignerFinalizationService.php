@@ -11,7 +11,6 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Jobs\ProvisionFinalisationCredentialsJob;
 use App\Models\EnrollmentRequest;
 use App\Models\PasswordResetToken;
 use App\Models\User;
@@ -176,61 +175,14 @@ final class ForeignerFinalizationService
             return ServiceResult::fail('Deux questions de sécurité sont requises.', null, 422);
         }
 
-        ProvisionFinalisationCredentialsJob::dispatch(
-            $enrollment->id,
-            $user->id,
-            $npiKey,
-            $password,
-            $securityQuestions,
-        );
-
-        return ServiceResult::ok('Finalisation en cours.', [
-            'demande_id' => $enrollment->id,
-            'numero_suivi' => $enrollment->tracking_code,
-            'statut' => $enrollment->status->value,
-            'npi' => $npiKey,
-        ], 202);
-    }
-
-    /**
-     * TrustedX password/PIN then local ENROLEE. Idempotent if already finalised.
-     *
-     * @param  array<int, array{question: string, answer: string}>  $securityQuestions
-     */
-    public function provisionTrustedXCredentials(
-        string $enrollmentRequestId,
-        string $userId,
-        string $npi,
-        string $password,
-        array $securityQuestions,
-    ): void {
-        $enrollment = EnrollmentRequest::query()->find($enrollmentRequestId);
-        $user = User::query()->find($userId);
-
-        if ($enrollment === null || $user === null) {
-            throw new Exception('Demande ou utilisateur introuvable pour la finalisation.');
-        }
-
-        if ($enrollment->status === EnrollmentStatus::Enrolee && $user->status === 'ACTIVE') {
-            return;
-        }
-
-        if ($enrollment->status !== EnrollmentStatus::Approuvee) {
-            throw new Exception('Demande non éligible à la finalisation.');
-        }
-
-        if ($user->trustedx_registered_at === null) {
-            throw new Exception('Identité TrustedX non enregistrée.');
-        }
-
         $lookup = $this->trustedXClient->getUserWithNPI($user->npi);
         if (! ($lookup['status'] ?? false)) {
-            throw new Exception($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.');
+            return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
         }
 
         $trustedXUserId = $lookup['data']['id'] ?? null;
         if ((! is_string($trustedXUserId) && ! is_int($trustedXUserId)) || $trustedXUserId === '') {
-            throw new Exception('Identifiant TrustedX introuvable.');
+            return ServiceResult::fail('Identifiant TrustedX introuvable.', null, 400);
         }
 
         $generatedPin = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -245,7 +197,7 @@ final class ForeignerFinalizationService
         );
 
         if (! ($passwordOutput['status'] ?? false) || ! ($pinOutput['status'] ?? false)) {
-            throw new Exception('Échec de la définition du mot de passe / PIN.');
+            return ServiceResult::fail('Échec de la définition du mot de passe / PIN.', null, 400);
         }
 
         DB::beginTransaction();
@@ -259,8 +211,8 @@ final class ForeignerFinalizationService
             $enrollment->status = EnrollmentStatus::Enrolee;
             $enrollment->save();
 
-            PasswordResetToken::where('npi', $npi)->where('type', 'finalisation')->delete();
-            Cache::forget($this->otpVerifiedKey($npi));
+            PasswordResetToken::where('npi', $npiKey)->where('type', 'finalisation')->delete();
+            Cache::forget($this->otpVerifiedKey($npiKey));
 
             $this->events->publish('completed', [
                 'demande_id' => $enrollment->id,
@@ -280,13 +232,20 @@ final class ForeignerFinalizationService
             );
 
             DB::commit();
+
+            return ServiceResult::ok('Enrôlement finalisé.', [
+                'demande_id' => $enrollment->id,
+                'numero_suivi' => $enrollment->tracking_code,
+                'statut' => $enrollment->status->value,
+                'npi' => $npiKey,
+            ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Foreigner finalization local commit failed: '.$e->getMessage(), [
-                'enrollment_request_id' => $enrollmentRequestId,
+            Log::error('Foreigner finalization failed: '.$e->getMessage(), [
+                'enrollment_request_id' => $enrollment->id,
             ]);
 
-            throw $e;
+            return ServiceResult::fail('Erreur lors de la finalisation.', null, 500);
         }
     }
 

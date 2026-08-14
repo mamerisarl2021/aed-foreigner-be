@@ -3660,7 +3660,7 @@
             },
             "post": {
                 "operationId": "finalisation.store",
-                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN for TrustedX in a queued job.\nSuccess 202: TrustedX provisioning is async; poll POST /enrolements/suivi until statut ENROLEE.\nImmediate data: demande_id, numero_suivi, npi, statut APPROUVEE.",
+                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN and sets TrustedX password/PIN in this request\n(explicit exception to \u00a710.1: ENROLEE is returned only after TrustedX credentials exist).\nSuccess 200: statut ENROLEE, npi, numero_suivi, demande_id.",
                 "summary": "Complete enrollment (password + security questions)",
                 "tags": [
                     "Enrollment - Physique"
@@ -3688,16 +3688,6 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
-                    },
-                    "202": {
-                        "description": "Finalisation en cours. Poll POST /enrolements/suivi until statut ENROLEE.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
                     }
                 },
                 "security": []

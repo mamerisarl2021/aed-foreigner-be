@@ -437,9 +437,11 @@ Any operation that is slow, external, or retryable **MUST** be a queued job impl
 
 - Email/SMS/notifications (via Kafka jobs)
 - File upload to cloud storage, Regula analysis
-- Third-party API calls (TrustedX, etc.)
+- Third-party API calls that can complete after the HTTP response
 
 HTTP responses **MUST NOT** wait on these operations.
+
+**Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`.
 
 Configure sensible `$tries`, `$timeout`, and `$backoff` on jobs.
 
@@ -641,7 +643,7 @@ FE-aligned flow after invitation email (secure link opens the finalisation UI; a
 GET  /enrolements/finalisation?token=[&npi=]          (éligibilité; npi optional/legacy, must match token; returns demande_id, numero_suivi, email, statut — not npi)
 POST /enrolements/finalisation/otp/send               { npi, token }
 POST /enrolements/finalisation/otp/verify             { npi, token, otp }
-POST /enrolements/finalisation                        { npi, token, password, security_questions }  → 202
+POST /enrolements/finalisation                        { npi, token, password, security_questions }
 ```
 
 Rules:
@@ -649,8 +651,8 @@ Rules:
 - Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
 - `POST …/otp/send` / `…/otp/verify` / `POST /enrolements/finalisation`: **guest-capable** (no Sanctum required; an existing session does not block). **NPI + invitation token** required together (sequential NPIs must not send OTP alone). `npi` is digits only; `otp` is 6 digits. Email OTP is AED, distinct from TrustedX login MFA. Typed NPI must match the invitation — `numero_suivi` is not accepted.
 - After successful OTP verify: short-lived cache proof keyed by NPI (like KYC gate).
-- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — a queued encrypted job (`ProvisionFinalisationCredentialsJob`) generates a 4-digit PIN and pushes password/PIN to TrustedX, then sets user `ACTIVE` and enrollment `ENROLEE`.
-- HTTP **202** `Finalisation en cours.` with `statut` still `APPROUVEE`. Poll **`POST /enrolements/suivi`** until `statut` is `ENROLEE` (then `finalisation_disponible` is false). Publishes `enrolement.completed` after the job succeeds.
+- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1).
+- Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
 - Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
 ### 13.4 Personne morale enrollment (PDF §4)

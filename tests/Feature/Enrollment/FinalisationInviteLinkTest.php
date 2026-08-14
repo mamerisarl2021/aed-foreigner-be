@@ -8,7 +8,6 @@ use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Jobs\ProvisionFinalisationCredentialsJob;
 use App\Jobs\WelcomeUserJob;
 use App\Models\EnrollmentRequest;
 use App\Models\PasswordResetToken;
@@ -173,42 +172,7 @@ final class FinalisationInviteLinkTest extends TestCase
     }
 
     #[Test]
-    public function applicant_finalizes_returns_202_without_waiting_for_trustedx(): void
-    {
-        Bus::fake([
-            SendEmailNotificationJob::class,
-            WelcomeUserJob::class,
-            ProvisionFinalisationCredentialsJob::class,
-        ]);
-
-        [$user, $enrollment, $plain] = $this->approvedInvite();
-        Cache::put('finalisation_otp_verified_'.$user->npi, true, now()->addMinutes(15));
-
-        $this->postJson($this->api('/enrolements/finalisation'), [
-            'npi' => $user->npi,
-            'token' => $plain,
-            'password' => 'SecretPass1',
-            'security_questions' => [
-                ['question' => 'Ville de naissance ?', 'answer' => 'Cotonou'],
-                ['question' => 'Nom de jeune fille de la mère ?', 'answer' => 'Koto'],
-            ],
-        ])
-            ->assertAccepted()
-            ->assertJsonPath('message', 'Finalisation en cours.')
-            ->assertJsonPath('data.statut', EnrollmentStatus::Approuvee->value)
-            ->assertJsonPath('data.npi', $user->npi)
-            ->assertJsonPath('data.demande_id', $enrollment->id);
-
-        Bus::assertDispatched(ProvisionFinalisationCredentialsJob::class);
-        $this->assertSame(EnrollmentStatus::Approuvee, $enrollment->fresh()->status);
-        $this->assertDatabaseHas('password_resets', [
-            'npi' => $user->npi,
-            'type' => 'finalisation',
-        ]);
-    }
-
-    #[Test]
-    public function queued_finalisation_job_sets_enrolee_after_trustedx(): void
+    public function applicant_finalizes_with_npi_and_token(): void
     {
         [$user, $enrollment, $plain] = $this->approvedInvite();
         Cache::put('finalisation_otp_verified_'.$user->npi, true, now()->addMinutes(15));
@@ -230,7 +194,12 @@ final class FinalisationInviteLinkTest extends TestCase
                 ['question' => 'Ville de naissance ?', 'answer' => 'Cotonou'],
                 ['question' => 'Nom de jeune fille de la mère ?', 'answer' => 'Koto'],
             ],
-        ])->assertAccepted();
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Enrôlement finalisé.')
+            ->assertJsonPath('data.statut', EnrollmentStatus::Enrolee->value)
+            ->assertJsonPath('data.npi', $user->npi)
+            ->assertJsonPath('data.demande_id', $enrollment->id);
 
         $this->assertDatabaseMissing('password_resets', [
             'npi' => $user->npi,
