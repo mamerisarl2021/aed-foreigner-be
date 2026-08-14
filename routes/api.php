@@ -9,6 +9,7 @@ use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentRejectMotifController;
 use App\Http\Controllers\EnrollmentStatsController;
+use App\Http\Controllers\EnrollmentTrackingController;
 use App\Http\Controllers\FinalisationController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\OtpController;
@@ -87,12 +88,15 @@ Route::group([], function () {
         Route::post('/kyc/document/read', [KycController::class, 'readDocument'])->middleware(['throttle:document-read']);
         Route::post('/kyc/verify', [KycController::class, 'verify']);
         Route::post('/enrolements/etrangers', [EnrollmentController::class, 'storeEtranger'])->middleware(['guest']);
+        Route::post('/enrolements/suivi', [EnrollmentTrackingController::class, 'show'])
+            ->middleware('throttle:enrollment-suivi');
         Route::get('/enrolements/finalisation', [FinalisationController::class, 'show']);
         Route::post('/enrolements/finalisation/otp/send', [FinalisationController::class, 'sendOtp'])
-            ->middleware(['guest', 'throttle:otp-send']);
+            ->middleware(['throttle:otp-send']);
         Route::post('/enrolements/finalisation/otp/verify', [FinalisationController::class, 'verifyOtp'])
-            ->middleware(['guest', 'throttle:otp-verify']);
-        Route::post('/enrolements/{id}/finalisation', [FinalisationController::class, 'store'])->middleware(['throttle:password-reset']);
+            ->middleware(['throttle:otp-verify']);
+        Route::post('/enrolements/finalisation', [FinalisationController::class, 'store'])
+            ->middleware(['throttle:password-reset']);
 
         Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/enrolements', [EnrollmentController::class, 'index']);

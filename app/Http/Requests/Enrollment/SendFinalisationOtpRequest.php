@@ -14,7 +14,8 @@ class SendFinalisationOtpRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'numero_suivi' => ['required', 'string', 'max:32'],
+            'npi' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
+            'token' => ['required', 'string', 'max:100'],
         ];
     }
 
@@ -24,7 +25,9 @@ class SendFinalisationOtpRequest extends ApiFormRequest
     public function messages(): array
     {
         return [
-            'numero_suivi.required' => 'Le numéro de suivi est obligatoire.',
+            'npi.required' => 'Le NPI est obligatoire.',
+            'npi.regex' => 'Le NPI doit être composé de chiffres.',
+            'token.required' => 'Le token de finalisation est obligatoire.',
         ];
     }
 }

@@ -185,7 +185,7 @@ class SupervisorEnrollmentReviewService
                 ['token' => hash('sha256', $finalisationToken), 'created_at' => Carbon::now()]
             );
 
-            $link = config('app.frontend_url').'/etranger/finalisation?token='.$finalisationToken;
+            $link = $this->finalisationInviteLink($finalisationToken);
             WelcomeUserJob::dispatch($user->email, $user, $link, true);
 
             $enrollment->status = EnrollmentStatus::Approuvee;
@@ -580,5 +580,12 @@ class SupervisorEnrollmentReviewService
         }
 
         return $titles;
+    }
+
+    private function finalisationInviteLink(string $token): string
+    {
+        return config('app.frontend_url').'/etranger/finalisation?'.http_build_query([
+            'token' => $token,
+        ], '', '&', PHP_QUERY_RFC3986);
     }
 }

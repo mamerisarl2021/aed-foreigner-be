@@ -88,8 +88,9 @@ final class EnrollmentController extends BaseController
      * Responsable detail also exposes `numero_suivi` for the breadcrumb.
      *
      * Personne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`
-     * plus `similarity_percent` (0–100 or null), `document_identite` (OCR preferred over declared
-     * KYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),
+     * plus `similarity_percent` (0–100 or null), `document_identite` (OCR only — every
+     * extracted text field, never form `kyc_data`; `verifie` is true only when
+     * `doc_validity` is true and `details.error` is absent),
      * `selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp
      * is stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API
      * confirmed liveness (status `0`). `etapes.visage_compare` is a boolean.

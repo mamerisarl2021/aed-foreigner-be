@@ -58,6 +58,8 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
                         'nom' => 'KOUASSI',
                         'prenoms' => 'YAO',
                         'numero_piece' => 'CI999',
+                        'sexe' => 'M',
+                        'date_emission' => '2016-10-17',
                     ],
                 ],
             ],
@@ -71,6 +73,8 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
             ->assertJsonPath('data.analyse_kyc.document_identite.nom', 'KOUASSI')
             ->assertJsonPath('data.analyse_kyc.document_identite.pays', 'Côte d\'Ivoire')
             ->assertJsonPath('data.analyse_kyc.document_identite.verifie', true)
+            ->assertJsonPath('data.analyse_kyc.document_identite.sexe', 'M')
+            ->assertJsonPath('data.analyse_kyc.document_identite.date_emission', '2016-10-17')
             ->assertJsonPath('data.analyse_kyc.etapes.liveness_effectue', true)
             ->assertJsonPath('data.analyse_kyc.etapes.visage_compare', true)
             ->assertJsonPath('data.analyse_kyc.etapes.document_ajoute', true)

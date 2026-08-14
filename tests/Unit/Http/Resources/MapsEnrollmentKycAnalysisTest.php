@@ -35,6 +35,15 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
             'analysis_details' => [
                 'doc_validity' => true,
                 'face_match' => true,
+                'document' => [
+                    'ocr' => [
+                        'nom' => 'KOTO',
+                        'prenoms' => 'Ada',
+                        'numero_piece' => 'AB123456',
+                        'date_naissance' => '2000-05-25',
+                        'nationalite' => 'BJ',
+                    ],
+                ],
             ],
         ]);
 
@@ -57,13 +66,14 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
     }
 
     #[Test]
-    public function it_prefers_regula_ocr_over_declared_kyc_and_parses_document_name(): void
+    public function it_uses_every_ocr_field_and_ignores_declared_kyc(): void
     {
         $enrollment = new EnrollmentRequest([
             'kyc_data' => [
                 'name' => 'SAISI',
                 'document_number' => 'DECLARE',
                 'country_of_residence' => 'France',
+                'sexe' => 'F',
             ],
             'documents' => ['recto' => 'r.jpg'],
             'liveness' => '0',
@@ -79,24 +89,38 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
                         'date_naissance' => '1999-10-17',
                         'nationalite' => 'CIV',
                         'date_expiration' => '2026-10-17',
+                        'sexe' => 'M',
+                        'date_emission' => '2016-10-17',
+                        'lieu_naissance' => 'ABIDJAN',
+                        'autorite' => 'MINISTERE DE L\'INTERIEUR',
+                        'pays_emission' => 'Côte d\'Ivoire',
+                        'checksum_numero_piece' => '7',
+                        'mrz' => 'P<CIVKOUASSI<<YAO',
                     ],
                 ],
             ],
         ]);
 
         $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+        $identite = $payload['document_identite'];
 
-        $this->assertSame([
-            'type_piece' => 'Passport',
-            'pays' => 'Côte d\'Ivoire',
-            'verifie' => true,
-            'numero_document' => 'CI999',
-            'nom' => 'KOUASSI',
-            'prenoms' => 'YAO',
-            'date_naissance' => '1999-10-17',
-            'nationalite' => 'CIV',
-            'date_expiration' => '2026-10-17',
-        ], $payload['document_identite']);
+        $this->assertSame('Passport', $identite['type_piece']);
+        $this->assertSame('Côte d\'Ivoire', $identite['pays']);
+        $this->assertTrue($identite['verifie']);
+        $this->assertSame('CI999', $identite['numero_document']);
+        $this->assertSame('KOUASSI', $identite['nom']);
+        $this->assertSame('YAO', $identite['prenoms']);
+        $this->assertSame('1999-10-17', $identite['date_naissance']);
+        $this->assertSame('CIV', $identite['nationalite']);
+        $this->assertSame('2026-10-17', $identite['date_expiration']);
+        $this->assertSame('M', $identite['sexe']);
+        $this->assertSame('2016-10-17', $identite['date_emission']);
+        $this->assertSame('ABIDJAN', $identite['lieu_naissance']);
+        $this->assertSame('MINISTERE DE L\'INTERIEUR', $identite['autorite']);
+        $this->assertSame('7', $identite['checksum_numero_piece']);
+        $this->assertSame('P<CIVKOUASSI<<YAO', $identite['mrz']);
+        $this->assertNotSame('SAISI', $identite['nom']);
+        $this->assertArrayNotHasKey('document_number', $identite);
     }
 
     #[Test]
@@ -157,6 +181,27 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
     }
 
     #[Test]
+    public function declared_form_kyc_is_not_treated_as_extracted_ocr(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => ['name' => 'SAISI', 'document_number' => 'DECLARE'],
+            'documents' => ['recto' => 'r.jpg'],
+            'liveness' => '0',
+            'similarity' => '0.9',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'document' => ['document_name' => 'Benin - Passport'],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertNull($payload['document_identite']['nom']);
+        $this->assertNull($payload['document_identite']['numero_document']);
+        $this->assertFalse($payload['etapes']['informations_extraites']);
+    }
+
+    #[Test]
     public function it_reads_ocr_from_the_mock_ocr_data_bag(): void
     {
         $enrollment = new EnrollmentRequest([
@@ -177,6 +222,38 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
         $this->assertSame('MOCK', $payload['document_identite']['nom']);
         $this->assertSame('MOCK-1', $payload['document_identite']['numero_document']);
         $this->assertTrue($payload['document_identite']['verifie']);
+    }
+
+    #[Test]
+    public function mock_ocr_data_without_identity_fields_is_ignored(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'kyc_data' => ['name' => 'SAISI', 'email' => 'ada@example.com'],
+            'documents' => ['recto' => 'r.jpg'],
+            'liveness' => '0',
+            'analysis_details' => [
+                'doc_validity' => true,
+                'ocr_data' => [
+                    'email' => 'ada@example.com',
+                    'liveness' => 'skipped',
+                    'liveness_transaction_id' => 'tx-1',
+                ],
+                'document' => [
+                    'ocr' => [
+                        'nom' => 'KOUASSI',
+                        'numero_piece' => 'CI999',
+                    ],
+                ],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertSame('KOUASSI', $payload['document_identite']['nom']);
+        $this->assertSame('CI999', $payload['document_identite']['numero_document']);
+        $this->assertArrayNotHasKey('email', $payload['document_identite']);
+        $this->assertArrayNotHasKey('liveness', $payload['document_identite']);
+        $this->assertArrayNotHasKey('liveness_transaction_id', $payload['document_identite']);
     }
 
     #[Test]

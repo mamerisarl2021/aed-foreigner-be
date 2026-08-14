@@ -15,6 +15,7 @@ class MockRegulaService implements RegulaService
     {
         $similarity = 0.92;
         $riskScore = (int) max(0, min(10, (int) round((1 - $similarity) * 10)));
+        unset($files, $data);
 
         return [
             'status' => 'OK',
@@ -24,7 +25,10 @@ class MockRegulaService implements RegulaService
             'details' => [
                 'face_match' => true,
                 'doc_validity' => true,
-                'ocr_data' => $data,
+                'document' => [
+                    'document_name' => null,
+                    'ocr' => [],
+                ],
                 'mock' => true,
             ],
         ];

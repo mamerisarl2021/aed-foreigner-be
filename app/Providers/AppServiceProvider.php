@@ -61,6 +61,12 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(3)->by($request->ip());
         });
 
+        RateLimiter::for('enrollment-suivi', function (Request $request) {
+            return Limit::perMinute(10)->by(
+                strtolower((string) $request->input('numero_suivi')).'|'.$request->ip()
+            );
+        });
+
         // Scramble merges inferred JSON content with #[Response] binary for decrypt; drop the noise.
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             foreach ($openApi->paths as $path) {

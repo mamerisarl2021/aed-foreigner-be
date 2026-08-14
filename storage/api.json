@@ -35,6 +35,9 @@
         },
         {
             "name": "Enrollment - Physique"
+        },
+        {
+            "name": "Enrollment - Suivi"
         }
     ],
     "security": [
@@ -3610,7 +3613,7 @@
         "/v1/enrolements/finalisation": {
             "get": {
                 "operationId": "finalisation.show",
-                "description": "Open the secure link from the approval email (`?token=`).\nSuccess data: demande_id, numero_suivi (PK\u2026), npi, email, statut (APPROUVEE).\nToken TTL: 60 minutes from issuance.",
+                "description": "Open the secure link from the approval email (`?token=`). Optional `npi` (legacy links)\nmust match the invitation when present; digits only. Success data: demande_id, numero_suivi, email, statut.\nThe applicant then types the generated NPI (not numero_suivi) on the form.\nToken TTL: 60 minutes from issuance.",
                 "summary": "Validate finalisation invitation token",
                 "tags": [
                     "Enrollment - Physique"
@@ -3623,6 +3626,18 @@
                         "schema": {
                             "type": "string",
                             "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "npi",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^[0-9]+$",
+                            "maxLength": 50
                         }
                     }
                 ],
@@ -3642,12 +3657,56 @@
                     }
                 },
                 "security": []
+            },
+            "post": {
+                "operationId": "finalisation.store",
+                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN for TrustedX in a queued job.\nSuccess 202: TrustedX provisioning is async; poll POST /enrolements/suivi until statut ENROLEE.\nImmediate data: demande_id, numero_suivi, npi, statut APPROUVEE.",
+                "summary": "Complete enrollment (password + security questions)",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreFinalisationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "202": {
+                        "description": "Finalisation en cours. Poll POST /enrolements/suivi until statut ENROLEE.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
             }
         },
         "/v1/enrolements/finalisation/otp/send": {
             "post": {
                 "operationId": "finalisation.sendOtp",
-                "description": "Body: numero_suivi (required) \u2014 tracking code from submit / invitation email.\nDemand must be APPROUVEE. Sends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).",
+                "description": "Body: npi (typed digits, generated NPI) + token (from the invitation link).\nThe NPI must match the invitation. Demand must be APPROUVEE.\nSends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).\nGuest-capable: no Sanctum token required; an existing session does not block the call.",
                 "summary": "Send finalisation email OTP",
                 "tags": [
                     "Enrollment - Physique"
@@ -3683,7 +3742,7 @@
         "/v1/enrolements/finalisation/otp/verify": {
             "post": {
                 "operationId": "finalisation.verifyOtp",
-                "description": "Body: numero_suivi, otp (6 digits). On success stores a short-lived OTP proof (~15 min) required before POST \u2026/finalisation.\nSuccess data: numero_suivi, demande_id, otp_verified=true.",
+                "description": "Body: npi (digits), token, otp (6 digits). On success stores a short-lived OTP proof (~15 min)\nrequired before POST /enrolements/finalisation.\nSuccess data: npi, demande_id, otp_verified=true.",
                 "summary": "Verify finalisation email OTP",
                 "tags": [
                     "Enrollment - Physique"
@@ -3694,54 +3753,6 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/VerifyFinalisationOtpRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/enrolements/{id}/finalisation": {
-            "post": {
-                "operationId": "finalisation.store",
-                "description": "Path `{id}` = demande_id. Requires prior POST \u2026/finalisation/otp/verify for the same numero_suivi.\nBody: password (min 8), security_questions (min 2 items with question + answer),\nnumero_suivi (required for FE flow; must match the demand), token (optional invitation token from the email link).\nNo client PIN \u2014 server generates a 4-digit PIN for TrustedX.\nSuccess: statut ENROLEE, npi, numero_suivi, demande_id.",
-                "summary": "Complete enrollment (password + security questions)",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "description": "Enrollment request UUID (demande_id).",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreFinalisationRequest"
                             }
                         }
                     }
@@ -4348,7 +4359,7 @@
         "/v1/enrolements/{id}": {
             "get": {
                 "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR preferred over declared\nKYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR only \u2014 every\nextracted text field, never form `kyc_data`; `verifie` is true only when\n`doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -4412,6 +4423,69 @@
                 }
             }
         },
+        "/v1/enrolements/suivi": {
+            "post": {
+                "operationId": "enrollmentTracking.show",
+                "description": "Guest POST. Proof of ownership: numero_suivi (from submit / confirmation email)\nplus the enrollment email (physique) or official/demandeur email (morale).\nReturns demandeur-facing statut_libelle only \u2014 no KYC analysis, avis agent, or documents.\nWrong or unknown pair \u2192 404 Demande introuvable.",
+                "summary": "Track an enrollment by numero_suivi and email",
+                "tags": [
+                    "Enrollment - Suivi"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TrackEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EnrollmentTrackingResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Suivi de la demande.",
+                                                        "Demande introuvable."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/v1/health": {
             "get": {
                 "operationId": "singletons.healthCheck",
@@ -4473,13 +4547,57 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "action_code": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "actor_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "enrollment_request_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "metadata": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "action_code",
+                    "description",
+                    "actor_user_id",
+                    "enrollment_request_id",
+                    "metadata",
+                    "ip_address",
+                    "created_at"
+                ],
                 "title": "ActivityLog"
             },
             "ActivityLogDetailResource": {
@@ -4495,7 +4613,8 @@
                         "type": "string"
                     },
                     "date": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "actor": {
                         "type": [
@@ -4530,13 +4649,23 @@
                         ]
                     },
                     "enrollment_request_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "metadata": {
-                        "type": "string"
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
                     },
                     "ip_address": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -4550,6 +4679,15 @@
                     "ip_address"
                 ],
                 "title": "ActivityLogDetailResource"
+            },
+            "AgentAvis": {
+                "type": "string",
+                "description": "Avis rendu par l'agent de traitement \u00e0 l'issue de l'instruction. C'est une **proposition** au responsable de validation, jamais une d\u00e9cision finale : elle est port\u00e9e par une colonne d\u00e9di\u00e9e pour qu'aucun statut de demande ne puisse la faire passer pour un verdict \u00e0 un autre niveau.\n",
+                "enum": [
+                    "FAVORABLE",
+                    "DEFAVORABLE"
+                ],
+                "title": "AgentAvis"
             },
             "App.Http.Requests.Foreigner.SendOtpRequest": {
                 "type": "object",
@@ -4601,13 +4739,101 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "event": {
+                        "type": "string"
+                    },
+                    "auditable_type": {
+                        "type": "string"
+                    },
+                    "auditable_id": {
+                        "type": "string"
+                    },
+                    "old_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "new_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_agent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tags": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "user_type",
+                    "user_id",
+                    "event",
+                    "auditable_type",
+                    "auditable_id",
+                    "old_values",
+                    "new_values",
+                    "url",
+                    "ip_address",
+                    "user_agent",
+                    "tags",
+                    "created_at",
+                    "updated_at"
+                ],
                 "title": "Audit"
             },
             "ChangeClientPasswordRequest": {
@@ -4875,7 +5101,10 @@
                                 "type": "string"
                             },
                             "numero_suivi": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "identifiant": {
                                 "type": [
@@ -4981,17 +5210,7 @@
                                                     "type": "string"
                                                 },
                                                 "description": {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "string"
-                                                        },
-                                                        {
-                                                            "type": "string",
-                                                            "enum": [
-                                                                ""
-                                                            ]
-                                                        }
-                                                    ]
+                                                    "type": "string"
                                                 }
                                             },
                                             "required": [
@@ -5181,30 +5400,7 @@
                                     },
                                     "document_identite": {
                                         "type": "object",
-                                        "properties": {
-                                            "type_piece": {},
-                                            "pays": {},
-                                            "verifie": {
-                                                "type": "boolean"
-                                            },
-                                            "numero_document": {},
-                                            "nom": {},
-                                            "prenoms": {},
-                                            "date_naissance": {},
-                                            "nationalite": {},
-                                            "date_expiration": {}
-                                        },
-                                        "required": [
-                                            "type_piece",
-                                            "pays",
-                                            "verifie",
-                                            "numero_document",
-                                            "nom",
-                                            "prenoms",
-                                            "date_naissance",
-                                            "nationalite",
-                                            "date_expiration"
-                                        ]
+                                        "additionalProperties": {}
                                     },
                                     "selfie": {
                                         "type": "object",
@@ -5329,6 +5525,12 @@
                     "id": {
                         "type": "string"
                     },
+                    "tracking_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -5380,11 +5582,34 @@
                     "status": {
                         "$ref": "#/components/schemas/EnrollmentStatus"
                     },
+                    "agent_avis": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentAvis"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "assigned_agent_id": {
                         "type": [
                             "string",
                             "null"
                         ]
+                    },
+                    "assigned_responsable_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agent_decided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "reject_stage": {
                         "type": [
@@ -5410,6 +5635,102 @@
                     "type": {
                         "type": "string"
                     },
+                    "submitted_by_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verification_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "phone_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "verification_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "visio_requested_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "returned_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "return_reasons": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sla_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "sla_alert_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "correction_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "correction_reminder_sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -5427,6 +5748,7 @@
                 },
                 "required": [
                     "id",
+                    "tracking_code",
                     "email",
                     "phonenumber",
                     "kyc_data",
@@ -5436,11 +5758,28 @@
                     "risk_score",
                     "analysis_details",
                     "status",
+                    "agent_avis",
                     "assigned_agent_id",
+                    "assigned_responsable_id",
+                    "agent_decided_at",
                     "reject_stage",
                     "reject_reasons",
                     "review_comments",
                     "type",
+                    "submitted_by_user_id",
+                    "email_verification_token",
+                    "email_verified_at",
+                    "phone_verified_at",
+                    "verification_deadline_at",
+                    "visio_notes",
+                    "visio_requested_at",
+                    "visio_completed_at",
+                    "returned_at",
+                    "return_reasons",
+                    "sla_deadline_at",
+                    "sla_alert_level",
+                    "correction_deadline_at",
+                    "correction_reminder_sent_at",
                     "created_at",
                     "updated_at"
                 ],
@@ -5455,7 +5794,10 @@
                                 "type": "string"
                             },
                             "numero_suivi": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
                             },
                             "identifiant": {
@@ -5680,30 +6022,7 @@
                                     },
                                     "document_identite": {
                                         "type": "object",
-                                        "properties": {
-                                            "type_piece": {},
-                                            "pays": {},
-                                            "verifie": {
-                                                "type": "boolean"
-                                            },
-                                            "numero_document": {},
-                                            "nom": {},
-                                            "prenoms": {},
-                                            "date_naissance": {},
-                                            "nationalite": {},
-                                            "date_expiration": {}
-                                        },
-                                        "required": [
-                                            "type_piece",
-                                            "pays",
-                                            "verifie",
-                                            "numero_document",
-                                            "nom",
-                                            "prenoms",
-                                            "date_naissance",
-                                            "nationalite",
-                                            "date_expiration"
-                                        ]
+                                        "additionalProperties": {}
                                     },
                                     "selfie": {
                                         "type": "object",
@@ -5804,6 +6123,166 @@
                     "ENROLEE"
                 ],
                 "title": "EnrollmentStatus"
+            },
+            "EnrollmentTrackingResource": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "numero_suivi": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "statut": {
+                                "type": "string"
+                            },
+                            "statut_libelle": {
+                                "type": "string",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "En attente de correction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "\u00c0 corriger",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
+                            "date_soumission": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "finalisation_disponible": {
+                                "type": "string"
+                            },
+                            "identifiant": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "correction_deadline_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "motifs": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "title",
+                                        "description"
+                                    ]
+                                }
+                            },
+                            "raison_sociale": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "demandeur": {
+                                "type": "object",
+                                "properties": {
+                                    "nom": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "prenom": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ]
+                            },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "numero_suivi",
+                            "type",
+                            "statut",
+                            "statut_libelle",
+                            "date_soumission",
+                            "finalisation_disponible",
+                            "identifiant",
+                            "correction_deadline_at",
+                            "motifs",
+                            "raison_sociale",
+                            "demandeur",
+                            "email_verifie",
+                            "telephone_verifie"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 0,
+                        "maxItems": 0,
+                        "additionalItems": false
+                    }
+                ],
+                "title": "EnrollmentTrackingResource"
             },
             "InstructionEnrollmentRequest": {
                 "type": "object",
@@ -6140,13 +6619,19 @@
             "SendFinalisationOtpRequest": {
                 "type": "object",
                 "properties": {
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     }
                 },
                 "required": [
-                    "numero_suivi"
+                    "npi",
+                    "token"
                 ],
                 "title": "SendFinalisationOtpRequest"
             },
@@ -6223,18 +6708,14 @@
             "StoreFinalisationRequest": {
                 "type": "object",
                 "properties": {
-                    "token": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Invitation token from email link (optional if numero_suivi + OTP proof are used).",
-                        "maxLength": 100
-                    },
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "description": "Tracking code PK\u2026 from submit / invitation email (required for the FE finalisation flow).",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "password": {
                         "type": "string",
@@ -6264,7 +6745,8 @@
                     }
                 },
                 "required": [
-                    "numero_suivi",
+                    "npi",
+                    "token",
                     "password",
                     "security_questions"
                 ],
@@ -6509,6 +6991,27 @@
                 ],
                 "title": "SubmitMoraleEnrollmentRequest"
             },
+            "TrackEnrollmentRequest": {
+                "type": "object",
+                "properties": {
+                    "numero_suivi": {
+                        "type": "string",
+                        "description": "Code communiqu\u00e9 \u00e0 la soumission et dans l'email de confirmation (PK\u2026).",
+                        "maxLength": 32
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email de la demande (physique) ou email officiel / demandeur (morale).",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "numero_suivi",
+                    "email"
+                ],
+                "title": "TrackEnrollmentRequest"
+            },
             "UpdateAgentRequest": {
                 "type": "object",
                 "properties": {
@@ -6664,6 +7167,12 @@
                             "null"
                         ]
                     },
+                    "sexe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -6691,8 +7200,32 @@
                             "null"
                         ]
                     },
+                    "trustedx_registered_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "security_questions": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
                     "status": {
                         "type": "string"
+                    },
+                    "must_change_password": {
+                        "type": "boolean"
+                    },
+                    "last_login_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "email_verified_at": {
                         "type": [
@@ -6723,12 +7256,17 @@
                     "id",
                     "name",
                     "first_name",
+                    "sexe",
                     "email",
                     "phonenumber",
                     "nationality",
                     "profile",
                     "npi",
+                    "trustedx_registered_at",
+                    "security_questions",
                     "status",
+                    "must_change_password",
+                    "last_login_at",
                     "email_verified_at",
                     "created_at",
                     "updated_at",
@@ -6761,7 +7299,10 @@
                         ]
                     },
                     "sexe": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "nationality": {
                         "type": [
@@ -6887,18 +7428,22 @@
             "VerifyFinalisationOtpRequest": {
                 "type": "object",
                 "properties": {
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "otp": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 6
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "numero_suivi",
+                    "npi",
+                    "token",
                     "otp"
                 ],
                 "title": "VerifyFinalisationOtpRequest"

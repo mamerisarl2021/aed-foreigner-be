@@ -15,6 +15,7 @@ class ShowFinalisationRequest extends ApiFormRequest
     {
         return [
             'token' => ['required', 'string', 'max:100'],
+            'npi' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]+$/'],
         ];
     }
 
@@ -25,6 +26,7 @@ class ShowFinalisationRequest extends ApiFormRequest
     {
         return [
             'token.required' => 'Le token de finalisation est obligatoire.',
+            'npi.regex' => 'Le NPI doit être composé de chiffres.',
         ];
     }
 }

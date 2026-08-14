@@ -528,6 +528,7 @@ POST /otp/verify            { email|phonenumber|both, otp }
 POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
 POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
 POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT }
+POST /enrolements/suivi     { numero_suivi, email }  (guest tracking; 404 if the pair does not match)
 ```
 
 Business rules:
@@ -537,6 +538,7 @@ Business rules:
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
+- After submit the demandeur tracks with **`POST /enrolements/suivi`** `{ numero_suivi, email }` (body, not query string). Email must match the enrollment row (physique) or the official company email **or** `submitted_by` email (morale). Same 404 (`Demande introuvable`) for unknown code and wrong email. Response uses demandeur `statut_libelle` only — no `analyse_kyc`, avis agent, or documents. `finalisation_disponible` is true only when physique is `APPROUVEE`. `motifs` on `A_CORRIGER` / `REJETEE` is `{ id, title, description }[]` resolved from UUID reject motifs. Throttle `enrollment-suivi` (10/min per IP + numero_suivi).
 - `POST /kyc/document/read` is **assistive only**: it pre-fills the identity form and warns about an unusable photo on the capture screen. No OTP gate, nothing persisted, always 200 when well formed (`ok: false` + `quality_issues` on an unreadable photo). It exists so the browser never calls the Regula server directly — that would require opening the Regula server's CORS and would let any visitor burn licensed transactions outside our API. `POST /kyc/verify` stays the authoritative check and replays the read with the same scenario.
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
@@ -571,6 +573,8 @@ PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOU
 ```
 
 `motif[]` values are **UUID ids** from `GET /management/enrollment-reject-motifs` (not string codes).
+
+`GET /enrolements/{id}` `analyse_kyc.document_identite` is **OCR-only** (never form `kyc_data`). After a successful `POST /kyc/verify`, OCR is stored in `analysis_details.document.ocr` (every Regula text container, recto + verso, first-wins). Canonical keys: `type_piece`, `pays`, `verifie`, `numero_document`, `nom`, `prenoms`, `date_naissance`, `nationalite`, `date_expiration`, `sexe`, `date_emission`, `lieu_naissance`, `autorite`, `numero_personnel`, `nom_complet`. Any other extracted Regula text field is merged on the same object, including MRZ, address, checksums, and check digits. `informations` / `informations_entreprise` remain the declared form. The identity panel is empty only when no identity OCR bag exists — it does not fall back to the form.
 
 **Libellés contextuels.** Toute ressource de demande expose `statut` (machine) **et** `statut_libelle`, calculé par `EnrollmentStatusPresenter` selon le rôle de l'appelant. Le statut machine est unique ; seul le mot change :
 
@@ -620,7 +624,7 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `EN_ATTENTE_RESPONSABLE`, then moves the request to `EN_COURS_RESPONSABLE`. No assign-to-other.
 - **Instruction:** agent must be the assigned agent and the request must be `EN_COURS_AGENT`; `avis=DEFAVORABLE` requires validated `motif[]` + optional `commentaire`; sets `agent_avis`, `reject_stage=AGENT` and `agent_decided_at`. L'agent rend un **avis**, il ne tranche pas.
 - **Validation:** responsable must be the assigned responsable and the request must be `EN_COURS_RESPONSABLE`; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id`, `assigned_responsable_id`, `agent_avis` et `agent_decided_at` — le retour annule l'avis rendu.
-- Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/enrolements/finalisation?token=`).
+- Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/etranger/finalisation?token=`). The NPI is in the email body, not the URL. After opening the link the applicant **types the generated NPI** (not `numero_suivi` / demande code).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
 - Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
@@ -631,22 +635,22 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 
 ### 13.3 Finalization (diagram §4)
 
-FE-aligned flow after invitation email (secure link opens the finalisation UI; applicant enters `numero_suivi` then email OTP, then password + security questions):
+FE-aligned flow after invitation email (secure link opens the finalisation UI; applicant **types the generated NPI**, then email OTP, then password + security questions):
 
 ```
-GET  /enrolements/finalisation?token=                 (éligibilité; returns demande_id, numero_suivi, npi, email, statut)
-POST /enrolements/finalisation/otp/send               { numero_suivi }
-POST /enrolements/finalisation/otp/verify             { numero_suivi, otp }
-POST /enrolements/{id}/finalisation                   { token?, numero_suivi?, password, security_questions }
+GET  /enrolements/finalisation?token=[&npi=]          (éligibilité; npi optional/legacy, must match token; returns demande_id, numero_suivi, email, statut — not npi)
+POST /enrolements/finalisation/otp/send               { npi, token }
+POST /enrolements/finalisation/otp/verify             { npi, token, otp }
+POST /enrolements/finalisation                        { npi, token, password, security_questions }  → 202
 ```
 
 Rules:
 
 - Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
-- `POST …/otp/send` / `…/otp/verify`: guest; email OTP for finalisation (AED), distinct from TrustedX login MFA.
-- After successful OTP verify: short-lived cache proof (like KYC gate).
-- Finalize requires valid invitation `token` **and/or** `numero_suivi` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN for TrustedX.
-- Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
+- `POST …/otp/send` / `…/otp/verify` / `POST /enrolements/finalisation`: **guest-capable** (no Sanctum required; an existing session does not block). **NPI + invitation token** required together (sequential NPIs must not send OTP alone). `npi` is digits only; `otp` is 6 digits. Email OTP is AED, distinct from TrustedX login MFA. Typed NPI must match the invitation — `numero_suivi` is not accepted.
+- After successful OTP verify: short-lived cache proof keyed by NPI (like KYC gate).
+- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — a queued encrypted job (`ProvisionFinalisationCredentialsJob`) generates a 4-digit PIN and pushes password/PIN to TrustedX, then sets user `ACTIVE` and enrollment `ENROLEE`.
+- HTTP **202** `Finalisation en cours.` with `statut` still `APPROUVEE`. Poll **`POST /enrolements/suivi`** until `statut` is `ENROLEE` (then `finalisation_disponible` is false). Publishes `enrolement.completed` after the job succeeds.
 - Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
 ### 13.4 Personne morale enrollment (PDF §4)
@@ -661,6 +665,7 @@ POST /kyc/verify                                       (auth client: no OTP; gue
 POST /enrolements/morales                              (auth:sanctum + client; returns numero_suivi PKI…)
 GET  /enrolements/morales                              (owner list — Mes entreprises)
 GET  /enrolements/morales/{id}                         (owner only: company fields + pièces jointes)
+POST /enrolements/suivi                                (guest: numero_suivi + email — physique or morale)
 PUT  /enrolements/morales/{id}                         (owner, statut A_CORRIGER: corriger champs + pièces)
 POST /enrolements/morales/{id}/verify-email            (token from email link, public)
 POST /enrolements/morales/{id}/send-phone-otp            (owner only)
@@ -669,7 +674,7 @@ POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 
 After **both** company contacts verified → `EN_ATTENTE_AGENT` and confirmation email to the **demandeur** (`submittedBy.email`) with `numero_suivi`. The 24h verification link goes to the official company email at submit. Same instruction/validation contract as physique afterwards.
 
-**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Client tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}` only.
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Authenticated owner tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}`. Guest tracking (numero_suivi + email) uses `POST /enrolements/suivi` for both types.
 
 On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
 

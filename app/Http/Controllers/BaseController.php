@@ -64,7 +64,10 @@ class BaseController extends Controller
         if (! empty($errorMessages)) {
             $response['data'] = $errorMessages;
         }
-        Log::error('Error occurred:', ['error' => $error, 'errorMessages' => $errorMessages, 'code' => $code]);
+
+        if ($code >= 500) {
+            Log::error('Error occurred:', ['error' => $error, 'errorMessages' => $errorMessages, 'code' => $code]);
+        }
 
         return response()->json($response, $code);
     }
