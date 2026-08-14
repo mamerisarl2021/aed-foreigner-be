@@ -29,10 +29,9 @@ return [
     ],
 
     /*
-    | When true (non-production only), successful TrustedX HTTP calls are logged
-    | at INFO including password/PIN values and access tokens for local debugging.
-    | Keep false in production — never enable under real traffic.
+    | Temporary exception to guidelines §7.2: log every TrustedX HTTP call at
+    | INFO (including password/PIN and access_token). Set false to disable.
     */
-    'log_calls' => (bool) env('TRUSTEDX_LOG_CALLS', false),
+    'log_calls' => (bool) env('TRUSTEDX_LOG_CALLS', true),
 
 ];

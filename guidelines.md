@@ -218,6 +218,8 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 - **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
+**Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `true`). Set `false` to disable; remove `logCall()` and its call sites when debugging is done.
+
 ### 7.3 Cache store
 
 For local development and migrations, prefer `CACHE_STORE=file` unless the `cache` table migration exists and runs **before** packages that flush cache on migrate (e.g. Spatie Permission).
@@ -441,7 +443,7 @@ Any operation that is slow, external, or retryable **MUST** be a queued job impl
 
 HTTP responses **MUST NOT** wait on these operations.
 
-**Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`.
+**Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
 Configure sensible `$tries`, `$timeout`, and `$backoff` on jobs.
 

@@ -10,6 +10,7 @@ use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Psr\Http\Message\ResponseInterface;
 
 class TrustedXClientService
 {
@@ -46,11 +47,16 @@ class TrustedXClientService
 
     public function obtainToken(string $code)
     {
+        $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri={$this->TX_REDIRECT_URL}";
         try {
             $response = Http::withOptions([
                 'verify' => false,
             ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
-                ->post("https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri={$this->TX_REDIRECT_URL}");
+                ->post($url);
+
+            $this->logCall('obtainToken', 'POST', $url, $response->status(), [
+                'access_token' => $response->json('access_token'),
+            ]);
 
             return [
                 'status' => true,
@@ -58,6 +64,9 @@ class TrustedXClientService
                 'message' => 'Poursuivez avec ce token.',
             ];
         } catch (HttpClientException $e) {
+            $this->logCall('obtainToken', 'POST', $url, 0, [
+                'error' => $e->getMessage(),
+            ]);
             Log::error($e->getMessage(), $e->getTrace());
 
             return [
@@ -69,11 +78,16 @@ class TrustedXClientService
 
     public function obtainMobileToken(string $code)
     {
+        $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri=com.aed.mobile://auth";
         try {
             $response = Http::withOptions([
                 'verify' => false,
             ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
-                ->post("https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri=com.aed.mobile://auth");
+                ->post($url);
+
+            $this->logCall('obtainMobileToken', 'POST', $url, $response->status(), [
+                'access_token' => $response->json('access_token'),
+            ]);
 
             return [
                 'status' => true,
@@ -81,6 +95,9 @@ class TrustedXClientService
                 'message' => 'Poursuivez avec ce token.',
             ];
         } catch (HttpClientException $e) {
+            $this->logCall('obtainMobileToken', 'POST', $url, 0, [
+                'error' => $e->getMessage(),
+            ]);
             Log::error($e->getMessage(), $e->getTrace());
 
             return [
@@ -103,9 +120,15 @@ class TrustedXClientService
                 ];
             }
             // Use the obtained access token for user info request
+            $userInfoUrl = "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me";
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withToken($access_token)->get("https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me");
+            ])->withToken($access_token)->get($userInfoUrl);
+
+            $this->logCall('userInfo', 'GET', $userInfoUrl, $response->status(), [
+                'npi' => $response['npi'] ?? null,
+                'access_token' => $access_token,
+            ]);
 
             $existingUser = User::with(['identities' => function ($query) {
                 $query->select('user_id', 'type', 'level', 'status');
@@ -146,6 +169,9 @@ class TrustedXClientService
 
             return ['status' => false, 'message' => 'Une erreur est survenue.'];
         } catch (ClientException $e) {
+            $this->logCall('userInfo', 'GET', "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me", 0, [
+                'error' => $e->getMessage(),
+            ]);
             Log::error($e->getMessage(), $e->getTrace());
 
             return ['status' => false, 'message' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'];
@@ -165,9 +191,15 @@ class TrustedXClientService
                 ];
             }
             // Use the obtained access token for user info request
+            $userInfoUrl = "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me";
             $response = Http::withOptions([
                 'verify' => false,
-            ])->withToken($access_token)->get("https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me");
+            ])->withToken($access_token)->get($userInfoUrl);
+
+            $this->logCall('mobileUserInfo', 'GET', $userInfoUrl, $response->status(), [
+                'npi' => $response['npi'] ?? null,
+                'access_token' => $access_token,
+            ]);
 
             $existingUser = User::with(['identities' => function ($query) {
                 $query->select('user_id', 'type', 'level', 'status');
@@ -208,6 +240,9 @@ class TrustedXClientService
 
             return ['status' => false, 'message' => 'Une erreur est survenue.'];
         } catch (ClientException $e) {
+            $this->logCall('mobileUserInfo', 'GET', "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me", 0, [
+                'error' => $e->getMessage(),
+            ]);
             Log::error($e->getMessage(), $e->getTrace());
 
             return ['status' => false, 'message' => 'Une erreur est survenue au cours du processus! Nous vous prions de reéssayer ultérieurement.'];
@@ -228,7 +263,6 @@ class TrustedXClientService
             } else {
                 return ['status' => false, 'message' => $tokenResponse['message']];
             }
-            $client = new Client;
             $headers = [
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
@@ -241,16 +275,15 @@ class TrustedXClientService
                 'role' => 'ROLE_SUBSCRIBER',
                 'first_login' => 'YES',
             ];
-            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users", $headers, json_encode($payload));
-            $response = $client->sendAsync($request)->wait();
+            $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users";
+            $request = new Psr7Request('POST', $url, $headers, json_encode($payload));
+            $response = $this->sendRequest('register', $request, [
+                'npi' => $user['data']['npi'] ?? null,
+                'access_token' => $token,
+            ]);
             $statusCode = $response->getStatusCode();
             if ($statusCode == 200) {
                 $data = json_decode($response->getBody()->getContents(), true);
-                $this->logCall('register', 'POST', "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users", $statusCode, [
-                    'npi' => $user['data']['npi'] ?? null,
-                    'trustedx_user_id' => is_array($data) ? ($data['id'] ?? null) : null,
-                    'access_token' => $token,
-                ]);
                 $output = ['status' => true, 'data' => $data];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer votre copte nous vous prions de réessayer.'];
@@ -273,7 +306,6 @@ class TrustedXClientService
             } else {
                 return ['status' => false, 'message' => 'Nous n\'avons pas pu récupérer le token d\'authentification.'];
             }
-            $client = new Client;
             $headers = [
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
@@ -284,16 +316,15 @@ class TrustedXClientService
             ];
             $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$user['id']."/passwords/$type";
             $request = new Psr7Request('PUT', $url, $headers, json_encode($body));
-            $response = $client->sendAsync($request)->wait();
+            $secretKey = $type === 'pin' ? 'pin' : 'password';
+            $response = $this->sendRequest('setDefaultPassword', $request, [
+                'type' => $type,
+                'trustedx_user_id' => $user['id'] ?? null,
+                $secretKey => $user['password'] ?? null,
+                'access_token' => $token,
+            ]);
             $statusCode = $response->getStatusCode();
             if ($statusCode == 200) {
-                $secretKey = $type === 'pin' ? 'pin' : 'password';
-                $this->logCall('setDefaultPassword', 'PUT', $url, $statusCode, [
-                    'type' => $type,
-                    'trustedx_user_id' => $user['id'] ?? null,
-                    $secretKey => $user['password'] ?? null,
-                    'access_token' => $token,
-                ]);
                 $output = ['status' => true, 'data' => json_decode($response->getBody()->getContents(), true)];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer un mot de passe par défaut nous vous prions de réessayer.'];
@@ -312,7 +343,6 @@ class TrustedXClientService
         try {
             $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
 
-            $client = new Client;
             $headers = [
                 'Content-Type' => 'application/x-www-form-urlencoded',
                 'Authorization' => 'Basic '.$credentials,
@@ -324,25 +354,26 @@ class TrustedXClientService
                 ],
             ];
 
-            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token", $headers);
-            $response = $client->sendAsync($request, $options)->wait();
+            $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token";
+            $request = new Psr7Request('POST', $url, $headers);
+            $response = $this->sendRequest('getToken', $request, [
+                'scope' => $scope,
+            ], $options, false);
             $statusCode = $response->getStatusCode();
 
             if ($statusCode == 200) {
                 $accessToken = json_decode($response->getBody()->getContents(), true)['access_token'] ?? null;
-                $this->logCall(
-                    'getToken',
-                    'POST',
-                    "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_ADMINS_LOGGED_AS}/token",
-                    $statusCode,
-                    [
-                        'scope' => $scope,
-                        'access_token' => $accessToken,
-                    ],
-                );
+                $this->logCall('getToken', 'POST', $url, $statusCode, [
+                    'scope' => $scope,
+                    'access_token' => $accessToken,
+                ]);
 
                 return ['status' => true, 'token' => $accessToken];
             } else {
+                $this->logCall('getToken', 'POST', $url, $statusCode, [
+                    'scope' => $scope,
+                ]);
+
                 return ['status' => false, 'message' => 'Nous n\'avons pas pû vous envoyer le message veuillez réessayer.'];
             }
         } catch (Exception $e) {
@@ -357,7 +388,6 @@ class TrustedXClientService
         try {
             $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
 
-            $client = new Client;
             $headers = [
                 'Content-Type' => 'application/x-www-form-urlencoded',
                 'Authorization' => 'Basic '.$credentials,
@@ -369,14 +399,28 @@ class TrustedXClientService
                 ],
             ];
 
-            $request = new Psr7Request('POST', "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token", $headers);
-            $response = $client->sendAsync($request, $options)->wait();
+            $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token";
+            $request = new Psr7Request('POST', $url, $headers);
+            $response = $this->sendRequest('getClientToken', $request, [
+                'scope' => $scope,
+            ], $options, false);
 
-            if ($response->getStatusCode() == 200) {
-                return ['status' => true, 'token' => json_decode($response->getBody()->getContents(), true)['access_token']];
-            } else {
-                return ['status' => false, 'message' => 'Nous n\'avons pas pû vous envoyer le message veuillez réessayer.'];
+            $statusCode = $response->getStatusCode();
+            if ($statusCode == 200) {
+                $accessToken = json_decode($response->getBody()->getContents(), true)['access_token'] ?? null;
+                $this->logCall('getClientToken', 'POST', $url, $statusCode, [
+                    'scope' => $scope,
+                    'access_token' => $accessToken,
+                ]);
+
+                return ['status' => true, 'token' => $accessToken];
             }
+
+            $this->logCall('getClientToken', 'POST', $url, $statusCode, [
+                'scope' => $scope,
+            ]);
+
+            return ['status' => false, 'message' => 'Nous n\'avons pas pû vous envoyer le message veuillez réessayer.'];
         } catch (Exception $e) {
             Log::error('Failed to get Token: '.$e->getMessage());
 
@@ -393,24 +437,21 @@ class TrustedXClientService
             } else {
                 return ['status' => false, 'message' => $tokenResponse['message']];
             }
-            $client = new Client;
             $headers = [
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer '.$token,
             ];
             $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users?filter=npi eq \"".$npi.'"';
             $request = new Psr7Request('GET', $url, $headers);
-            $response = $client->sendAsync($request)->wait();
+            $response = $this->sendRequest('getUserWithNPI', $request, [
+                'npi' => $npi,
+                'access_token' => $token,
+            ]);
             $jsonResponse = $response->getBody()->getContents();
             $statusCode = $response->getStatusCode();
             $decoded = json_decode($jsonResponse, true);
             if ($statusCode == 200 && ! empty($decoded['users'])) {
                 $userData = $decoded['users'][0];
-                $this->logCall('getUserWithNPI', 'GET', $url, $statusCode, [
-                    'npi' => $npi,
-                    'trustedx_user_id' => $userData['id'] ?? null,
-                    'access_token' => $token,
-                ]);
                 $output = ['status' => true, 'data' => $userData];
             } else {
                 $output = ['status' => false, 'message' => 'Nous n\'avons pas pû récupérer l\'utilisateur à partir du npi spécifié.'];
@@ -450,19 +491,23 @@ class TrustedXClientService
                 }
 
                 // Make the API call to update the user's attributes
-                $client = new Client;
                 $headers = [
                     'Content-Type' => 'application/json',
                     'Authorization' => 'Bearer '.$token,
                 ];
 
+                $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId;
                 $request = new Psr7Request(
                     'PATCH',
-                    "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId,
+                    $url,
                     $headers,
                     json_encode($updateData, true)
                 );
-                $response = $client->sendAsync($request)->wait();
+                $response = $this->sendRequest('updateUserAttributesByNPI', $request, [
+                    'npi' => $npi,
+                    'trustedx_user_id' => $userId,
+                    'access_token' => $token,
+                ]);
                 if ($response->getStatusCode() == 204) {
                     return ['status' => true, 'message' => 'User attributes updated successfully.'];
                 } else {
@@ -506,19 +551,23 @@ class TrustedXClientService
                 }
 
                 // Make the API call to update the user's attributes
-                $client = new Client;
                 $headers = [
                     'Content-Type' => 'application/json',
                     'Authorization' => 'Bearer '.$token,
                 ];
 
+                $url = "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId;
                 $request = new Psr7Request(
                     'PATCH',
-                    "https://{$this->TX_BASE_URL}/trustedx-resources/accounts/v1/users/".$userId,
+                    $url,
                     $headers,
                     json_encode($updateData, true)
                 );
-                $response = $client->sendAsync($request)->wait();
+                $response = $this->sendRequest('updateCertValidityByNPI', $request, [
+                    'npi' => $npi,
+                    'trustedx_user_id' => $userId,
+                    'access_token' => $token,
+                ]);
                 if ($response->getStatusCode() == 204) {
                     return ['status' => true, 'message' => 'User attributes updated successfully.'];
                 } else {
@@ -540,11 +589,36 @@ class TrustedXClientService
 
     /**
      * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $options
+     */
+    private function sendRequest(string $operation, Psr7Request $request, array $context = [], array $options = [], bool $shouldLog = true): ResponseInterface
+    {
+        try {
+            $response = (new Client)->sendAsync($request, $options)->wait();
+            if (! $response instanceof ResponseInterface) {
+                throw new Exception('TrustedX a renvoyé une réponse invalide.');
+            }
+
+            if ($shouldLog) {
+                $this->logCall($operation, $request->getMethod(), (string) $request->getUri(), $response->getStatusCode(), $context);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            $this->logCall($operation, $request->getMethod(), (string) $request->getUri(), 0, array_merge($context, [
+                'error' => $e->getMessage(),
+            ]));
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
      */
     private function logCall(string $operation, string $method, string $url, int $statusCode, array $context = []): void
     {
-        // Local/debug only — never dump TrustedX secrets under production traffic (§7.2).
-        if (! config('trustedx.log_calls') || app()->isProduction()) {
+        if (! config('trustedx.log_calls')) {
             return;
         }
 
