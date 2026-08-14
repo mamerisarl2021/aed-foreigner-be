@@ -26,7 +26,7 @@ class EnrollmentRejectMotifController extends BaseController
     /**
      * List enrollment reject motifs
      *
-     * Available to agent, responsable de validation, and administrateur plateforme.
+     * Available to agent, responsable de validation, manager, and administrateur plateforme.
      * Returns `{ id, title, description }` — use `id` in reject payloads (`motif[]` / `reasons[]`).
      */
     public function index(ListRejectMotifsRequest $request): JsonResponse

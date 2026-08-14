@@ -18,6 +18,7 @@ class EnrollmentRejectMotifPolicy
         return [
             config('roles.agent'),
             config('roles.responsable_de_validation'),
+            config('roles.manager'),
             config('roles.administrateur_plateforme'),
         ];
     }

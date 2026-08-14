@@ -12,6 +12,7 @@ use App\Http\Controllers\EnrollmentStatsController;
 use App\Http\Controllers\EnrollmentTrackingController;
 use App\Http\Controllers\FinalisationController;
 use App\Http\Controllers\KycController;
+use App\Http\Controllers\ManagerEnrollmentController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
@@ -80,6 +81,10 @@ Route::group([], function () {
 
         Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index']);
         Route::get('/management/enrollment-stats', [EnrollmentStatsController::class, 'index']);
+        Route::get('/management/enrolements/physiques', [ManagerEnrollmentController::class, 'indexPhysiques']);
+        Route::get('/management/enrolements/physiques/{id}', [ManagerEnrollmentController::class, 'showPhysique']);
+        Route::get('/management/enrolements/morales', [ManagerEnrollmentController::class, 'indexMorales']);
+        Route::get('/management/enrolements/morales/{id}', [ManagerEnrollmentController::class, 'showMorale']);
     });
 
     Route::middleware(['keycloak'])->group(function () {

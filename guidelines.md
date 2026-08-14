@@ -631,7 +631,18 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/etranger/finalisation?token=`). The NPI is in the email body, not the URL. After opening the link the applicant **types the generated NPI** (not `numero_suivi` / demande code).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
-- Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
+- Manager (read-only supervision; SLA level 3 notifies `manager`):
+
+```
+GET /management/enrollment-stats                         (?granularite=semaine|mois)
+GET /management/enrollment-reject-motifs
+GET /management/enrolements/physiques
+GET /management/enrolements/physiques/{id}
+GET /management/enrolements/morales
+GET /management/enrolements/morales/{id}
+```
+
+  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged.
 - Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`; agent and responsable detail resources expose it (PDF §5.1 morale cross-check; physique uses the same key).
 - SLA: `enrollment:check-sla` hourly.

@@ -122,4 +122,18 @@ class EnrollmentRequestPolicy
     {
         return $user->hasRole(config('roles.manager'));
     }
+
+    public function supervise(User $user): bool
+    {
+        return $user->hasRole(config('roles.manager'));
+    }
+
+    public function superviseOne(User $user, EnrollmentRequest $enrollmentRequest): bool
+    {
+        if (! $this->supervise($user)) {
+            return false;
+        }
+
+        return $enrollmentRequest->status !== EnrollmentStatus::AwaitingContactVerification;
+    }
 }

@@ -23,7 +23,7 @@ class EncryptionController extends Controller
     /**
      * Decrypt and display an encrypted enrollment document
      *
-     * Staff reviewers only (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;
+     * Staff reviewers and manager (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;
      * the decrypted content is returned inline with its detected MIME type.
      * 404 when the file does not exist.
      */
