@@ -8,6 +8,8 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class EnrollmentSimilarityService
 {
@@ -30,12 +32,29 @@ class EnrollmentSimilarityService
         $max = (int) config('enrollment.similarity.max_results', 5);
         $matches = collect();
 
-        $approvedUsers = User::query()
-            ->where('status', 'ACTIVE')
-            ->whereHas('identities', fn ($q) => $q->where('status', 'APPROVED'))
-            ->with(['identities' => fn ($q) => $q->where('status', 'APPROVED')])
-            ->limit(200)
-            ->get();
+        $approvedUsers = collect();
+        if ($name !== '' || $firstName !== '' || $nationality !== '' || $documentNumber !== '') {
+            $approvedUsers = User::query()
+                ->where('status', 'ACTIVE')
+                ->whereHas('identities', fn ($q) => $q->where('status', 'APPROVED'))
+                ->where(function (Builder $q) use ($name, $firstName, $nationality, $documentNumber): void {
+                    $this->orEqual($q, 'name', $name);
+                    $this->orEqual($q, 'first_name', $firstName);
+                    $this->orEqual($q, 'nationality', $nationality);
+                    if ($documentNumber !== '') {
+                        $q->orWhereHas('identities', function (Builder $iq) use ($documentNumber): void {
+                            $iq->where('status', 'APPROVED')
+                                ->whereRaw(
+                                    'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof, "$.document_number")))) = ?',
+                                    [$documentNumber]
+                                );
+                        });
+                    }
+                })
+                ->with(['identities' => fn ($q) => $q->where('status', 'APPROVED')])
+                ->limit(200)
+                ->get();
+        }
 
         foreach ($approvedUsers as $user) {
             $score = 0;
@@ -55,9 +74,7 @@ class EnrollmentSimilarityService
             }
 
             foreach ($user->identities as $identity) {
-                $proof = is_string($identity->proof)
-                    ? (json_decode($identity->proof, true) ?: [])
-                    : (array) $identity->proof;
+                $proof = $this->proofArray($identity);
 
                 $idDoc = strtoupper(trim((string) ($proof['document_number'] ?? '')));
                 if ($documentNumber !== '' && $idDoc === $documentNumber) {
@@ -85,15 +102,25 @@ class EnrollmentSimilarityService
             }
         }
 
-        $otherDemandes = EnrollmentRequest::query()
-            ->where('id', '!=', $enrollment->id)
-            ->whereIn('status', [
-                ...EnrollmentStatus::open(),
-                EnrollmentStatus::Approuvee->value,
-            ])
-            ->where('type', 'PERSONNE_PHYSIQUE')
-            ->limit(200)
-            ->get();
+        $otherDemandes = collect();
+        if ($name !== '' || $firstName !== '' || $dob !== '' || $nationality !== '' || $documentNumber !== '') {
+            $otherDemandes = EnrollmentRequest::query()
+                ->where('id', '!=', $enrollment->id)
+                ->whereIn('status', [
+                    ...EnrollmentStatus::open(),
+                    EnrollmentStatus::Approuvee->value,
+                ])
+                ->where('type', 'PERSONNE_PHYSIQUE')
+                ->where(function (Builder $q) use ($name, $firstName, $dob, $nationality, $documentNumber): void {
+                    $this->orJsonEqual($q, 'kyc_data', '$.name', $name);
+                    $this->orJsonEqual($q, 'kyc_data', '$.first_name', $firstName);
+                    $this->orJsonEqual($q, 'kyc_data', '$.date_of_birth', $dob);
+                    $this->orJsonEqual($q, 'kyc_data', '$.nationality', $nationality);
+                    $this->orJsonEqual($q, 'kyc_data', '$.document_number', $documentNumber);
+                })
+                ->limit(200)
+                ->get();
+        }
 
         foreach ($otherDemandes as $other) {
             $otherKyc = $other->kyc_data ?? [];
@@ -152,18 +179,24 @@ class EnrollmentSimilarityService
         $max = (int) config('enrollment.similarity.max_results', 5);
         $matches = collect();
 
-        $approvedIdentities = Identity::query()
-            ->where('type', 'PERSONNE_MORALE')
-            ->where('status', 'APPROVED')
-            ->with('user')
-            ->limit(200)
-            ->get();
+        $approvedIdentities = collect();
+        if ($legalName !== '' || $registrationNumber !== '' || $country !== '') {
+            $approvedIdentities = Identity::query()
+                ->where('type', 'PERSONNE_MORALE')
+                ->where('status', 'APPROVED')
+                ->where(function (Builder $q) use ($legalName, $registrationNumber, $country): void {
+                    $this->orJsonEqual($q, 'proof', '$.company.registration_number', $registrationNumber);
+                    $this->orJsonEqual($q, 'proof', '$.company.legal_name', $legalName);
+                    $this->orJsonEqual($q, 'proof', '$.company.country_of_incorporation', $country);
+                })
+                ->with('user')
+                ->limit(200)
+                ->get();
+        }
 
         foreach ($approvedIdentities as $identity) {
-            $proof = is_string($identity->proof)
-                ? (json_decode($identity->proof, true) ?: [])
-                : (array) $identity->proof;
-            $company = $proof['company'] ?? [];
+            $proof = $this->proofArray($identity);
+            $company = is_array($proof['company'] ?? null) ? $proof['company'] : [];
             $score = 0;
             $matchedFields = [];
 
@@ -192,17 +225,25 @@ class EnrollmentSimilarityService
             }
         }
 
-        $otherDemandes = EnrollmentRequest::query()
-            ->where('id', '!=', $enrollment->id)
-            ->where('type', 'PERSONNE_MORALE')
-            ->whereIn('status', [
-                ...EnrollmentStatus::open(),
-                EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::AwaitingContactVerification->value,
-                EnrollmentStatus::ACorriger->value,
-            ])
-            ->limit(200)
-            ->get();
+        $otherDemandes = collect();
+        if ($legalName !== '' || $registrationNumber !== '' || $country !== '') {
+            $otherDemandes = EnrollmentRequest::query()
+                ->where('id', '!=', $enrollment->id)
+                ->where('type', 'PERSONNE_MORALE')
+                ->whereIn('status', [
+                    ...EnrollmentStatus::open(),
+                    EnrollmentStatus::Approuvee->value,
+                    EnrollmentStatus::AwaitingContactVerification->value,
+                    EnrollmentStatus::ACorriger->value,
+                ])
+                ->where(function (Builder $q) use ($legalName, $registrationNumber, $country): void {
+                    $this->orJsonEqual($q, 'kyc_data', '$.registration_number', $registrationNumber);
+                    $this->orJsonEqual($q, 'kyc_data', '$.legal_name', $legalName);
+                    $this->orJsonEqual($q, 'kyc_data', '$.country_of_incorporation', $country);
+                })
+                ->limit(200)
+                ->get();
+        }
 
         foreach ($otherDemandes as $other) {
             $otherKyc = $other->kyc_data ?? [];
@@ -239,5 +280,44 @@ class EnrollmentSimilarityService
             ->take($max)
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function proofArray(Identity $identity): array
+    {
+        return $identity->proof ?? [];
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     */
+    private function orEqual(Builder $query, string $column, string $value): void
+    {
+        if ($value === '' || ! in_array($column, ['name', 'first_name', 'nationality'], true)) {
+            return;
+        }
+
+        $query->orWhereRaw("UPPER(TRIM({$column})) = ?", [$value]);
+    }
+
+    /**
+     * @param  Builder<Model>  $query
+     */
+    private function orJsonEqual(Builder $query, string $column, string $path, string $value): void
+    {
+        if ($value === '' || ! in_array($column, ['kyc_data', 'proof'], true)) {
+            return;
+        }
+
+        if (preg_match('/^\$(\.[A-Za-z_]+)+$/', $path) !== 1) {
+            return;
+        }
+
+        $query->orWhereRaw(
+            "UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT({$column}, \"{$path}\")))) = ?",
+            [$value]
+        );
     }
 }

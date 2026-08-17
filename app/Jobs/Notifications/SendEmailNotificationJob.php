@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Notifications;
 
 use App\Contracts\NotificationPublisherInterface;
@@ -12,6 +14,8 @@ final class SendEmailNotificationJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 5;
+
+    public int $timeout = 60;
 
     public function __construct(
         public readonly EmailNotificationData $notification,

@@ -433,13 +433,15 @@ class PersonneMoraleEnrollmentService
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', self::ENROLLED_MORALE_STATUSES)
             ->whereDoesntHave('enrolledCompany')
-            ->get()
-            ->contains(function (EnrollmentRequest $row) use ($registrationNumber, $country) {
-                $kyc = $row->kyc_data ?? [];
-
-                return strtoupper(trim((string) ($kyc['registration_number'] ?? ''))) === $registrationNumber
-                    && strtoupper(trim((string) ($kyc['country_of_incorporation'] ?? ''))) === $country;
-            });
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
+                [$registrationNumber]
+            )
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
+                [$country]
+            )
+            ->exists();
     }
 
     /**

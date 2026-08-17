@@ -30,8 +30,10 @@ return [
 
     /*
     | Temporary exception to guidelines §7.2: log every TrustedX HTTP call at
-    | INFO (including password/PIN and access_token). Set false to disable.
+    | INFO (including password/PIN and access_token). Set true to enable.
     */
-    'log_calls' => (bool) env('TRUSTEDX_LOG_CALLS', true),
+    'log_calls' => (bool) env('TRUSTEDX_LOG_CALLS', false),
+
+    'verify_ssl' => (bool) env('TRUSTEDX_VERIFY_SSL', true),
 
 ];

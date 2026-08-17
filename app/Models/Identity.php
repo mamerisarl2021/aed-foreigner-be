@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use OwenIt\Auditing\Contracts\Auditable;
 
+/**
+ * @property array<string, mixed>|null $proof
+ * @property array<string, mixed>|null $analysis_details
+ */
 class Identity extends Model implements Auditable
 {
     use HasFactory;
@@ -32,6 +35,17 @@ class Identity extends Model implements Auditable
 
     protected $appends = ['selfieUrl', 'rectoUrl', 'versoUrl'];
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'proof' => 'array',
+            'analysis_details' => 'array',
+        ];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -39,23 +53,30 @@ class Identity extends Model implements Auditable
 
     public function getSelfieUrlAttribute(): string
     {
-        $proof = json_decode($this->proof, true);
-        Log::debug('Proof: '.json_encode($proof));
+        $path = $this->proofString('selfiePath');
 
-        return isset($proof['selfiePath']) && $proof['selfiePath'] != '' ? Storage::cloud()->temporaryUrl($proof['selfiePath'], Carbon::now()->addDays(3)) : '';
+        return $path !== '' ? Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3)) : '';
     }
 
     public function getRectoUrlAttribute(): string
     {
-        $proof = json_decode($this->proof, true);
+        $path = $this->proofString('rectoPath');
 
-        return isset($proof['rectoPath']) && $proof['rectoPath'] != '' ? Storage::cloud()->temporaryUrl($proof['rectoPath'], Carbon::now()->addDays(3)) : '';
+        return $path !== '' ? Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3)) : '';
     }
 
     public function getVersoUrlAttribute(): string
     {
-        $proof = json_decode($this->proof, true);
+        $path = $this->proofString('versoPath');
 
-        return isset($proof['versoPath']) && $proof['versoPath'] != '' ? Storage::cloud()->temporaryUrl($proof['versoPath'], Carbon::now()->addDays(3)) : '';
+        return $path !== '' ? Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3)) : '';
+    }
+
+    private function proofString(string $key): string
+    {
+        $proof = $this->proof ?? [];
+        $value = $proof[$key] ?? '';
+
+        return is_string($value) ? $value : '';
     }
 }

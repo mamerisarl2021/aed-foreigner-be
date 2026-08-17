@@ -145,7 +145,7 @@ final class SelfieCaptureLeTest extends TestCase
             'type' => 'IN_PERSON',
             'level' => 'ADVANCED',
             'status' => 'APPROVED',
-            'proof' => json_encode(['selfiePath' => '']),
+            'proof' => ['selfiePath' => ''],
         ]);
 
         Sanctum::actingAs($client);

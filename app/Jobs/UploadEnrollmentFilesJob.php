@@ -16,6 +16,16 @@ class UploadEnrollmentFilesJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 180;
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 120];
+    }
+
     /**
      * @param  array<string, string|null>  $localPaths
      */

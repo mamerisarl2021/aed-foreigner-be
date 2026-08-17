@@ -76,7 +76,7 @@ final class KeycloakJwtValidator
         $cacheKey = 'keycloak.jwks.'.sha1($jwksUri);
 
         $jwks = Cache::remember($cacheKey, now()->addHour(), function () use ($jwksUri): array {
-            $response = Http::get($jwksUri);
+            $response = Http::timeout(5)->get($jwksUri);
             $response->throw();
 
             return $response->json();

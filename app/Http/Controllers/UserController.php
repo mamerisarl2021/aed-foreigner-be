@@ -152,12 +152,4 @@ class UserController extends BaseController
             $request->user(),
         ));
     }
-
-    /**
-     * Send a client reset link by NPI (path parameters)
-     */
-    public function sendResetLink(string $npi, string $type): JsonResponse
-    {
-        return $this->respond($this->registration->sendResetLink($npi, $type));
-    }
 }

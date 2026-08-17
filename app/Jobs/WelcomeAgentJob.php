@@ -1,26 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
+use App\Jobs\Concerns\RetriesWithBackoff;
 use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Models\User;
 use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 final class WelcomeAgentJob implements ShouldQueue
 {
     use Queueable;
+    use RetriesWithBackoff;
 
     public function __construct(
-        public readonly mixed $user,
-        public readonly string $defaultPassword,
+        public readonly User $user,
     ) {}
 
     public function handle(): void
     {
+        $defaultPassword = Str::password(12);
+        $this->user->forceFill(['password' => Hash::make($defaultPassword)])->save();
+
         $loginUrl = config('app.frontend_url').'/backoffice/login';
 
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
@@ -31,7 +40,7 @@ final class WelcomeAgentJob implements ShouldQueue
                     'nom' => $this->user->name,
                     'prenom' => $this->user->first_name,
                     'email' => $this->user->email,
-                    'default_password' => $this->defaultPassword,
+                    'default_password' => $defaultPassword,
                     'login_url' => $loginUrl,
                 ]),
             ],
@@ -39,7 +48,7 @@ final class WelcomeAgentJob implements ShouldQueue
                 'nom' => $this->user->name,
                 'prenom' => $this->user->first_name,
                 'email' => $this->user->email,
-                'default_password' => $this->defaultPassword,
+                'default_password' => $defaultPassword,
                 'login_url' => $loginUrl,
             ],
             type: 'WELCOME_AGENT',

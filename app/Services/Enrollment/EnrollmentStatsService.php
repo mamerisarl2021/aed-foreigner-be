@@ -22,17 +22,15 @@ class EnrollmentStatsService
         $received = $summary['received'];
         $rejected = $summary['rejected'];
 
-        $closed = EnrollmentRequest::query()
+        $avgHandlingSeconds = EnrollmentRequest::query()
             ->whereIn('status', [
                 EnrollmentStatus::Approuvee->value,
                 EnrollmentStatus::Enrolee->value,
                 EnrollmentStatus::Rejetee->value,
             ])
-            ->get(['created_at', 'updated_at']);
+            ->avg(DB::raw('TIMESTAMPDIFF(SECOND, created_at, updated_at)'));
 
-        $avgHandlingSeconds = $closed->isEmpty()
-            ? null
-            : $closed->avg(fn (EnrollmentRequest $row) => $row->created_at->diffInSeconds($row->updated_at));
+        $avgHandlingSeconds = $avgHandlingSeconds !== null ? (float) $avgHandlingSeconds : null;
 
         $tauxRejetGlobal = $received > 0 ? round(($rejected / $received) * 100, 1) : 0.0;
 
@@ -119,19 +117,25 @@ class EnrollmentStatsService
     {
         $titles = EnrollmentRejectMotif::query()->pluck('title', 'id');
 
-        return EnrollmentRequest::query()
-            ->where('status', EnrollmentStatus::Rejetee->value)
-            ->whereNotNull('reject_reasons')
-            ->get(['reject_reasons'])
-            ->flatMap(function (EnrollmentRequest $row) {
-                return collect($row->reject_reasons ?? [])->map(fn ($id) => (string) $id);
-            })
-            ->countBy()
-            ->map(function ($count, $id) use ($titles, $rejected) {
-                $total = (int) $count;
+        $rows = DB::select(
+            <<<'SQL'
+            SELECT motifs.motif_id AS id, COUNT(*) AS total
+            FROM enrollment_requests,
+            JSON_TABLE(reject_reasons, '$[*]' COLUMNS(motif_id VARCHAR(64) PATH '$')) AS motifs
+            WHERE status = ?
+              AND reject_reasons IS NOT NULL
+            GROUP BY motifs.motif_id
+            SQL,
+            [EnrollmentStatus::Rejetee->value],
+        );
+
+        return collect($rows)
+            ->map(function (object $row) use ($titles, $rejected): array {
+                $id = (string) $row->id;
+                $total = (int) $row->total;
 
                 return [
-                    'id' => (string) $id,
+                    'id' => $id,
                     'title' => $titles->get($id),
                     'count' => $total,
                     'taux' => $rejected > 0 ? round(($total / $rejected) * 100, 1) : 0.0,
@@ -148,10 +152,15 @@ class EnrollmentStatsService
     {
         [$start, $bucket] = $this->evolutionWindow($granularite);
 
+        $bucketSql = $granularite === 'mois'
+            ? "DATE_FORMAT(created_at, '%Y-%m')"
+            : "DATE_FORMAT(created_at, '%x-W%v')";
+
         $counts = EnrollmentRequest::query()
             ->where('created_at', '>=', $start)
-            ->get(['created_at'])
-            ->countBy(fn (EnrollmentRequest $row) => $bucket($row->created_at));
+            ->selectRaw("{$bucketSql} as bucket, COUNT(*) as total")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('total', 'bucket');
 
         $points = [];
         $cursor = $start->copy();

@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
+use App\Jobs\Concerns\RetriesWithBackoff;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Queue\Queueable;
 final class MoraleEmailVerificationJob implements ShouldQueue
 {
     use Queueable;
+    use RetriesWithBackoff;
 
     public function __construct(
         public readonly string $email,

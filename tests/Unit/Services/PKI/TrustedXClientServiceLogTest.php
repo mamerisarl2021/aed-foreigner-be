@@ -61,4 +61,22 @@ final class TrustedXClientServiceLogTest extends TestCase
             fn (MessageLogged $log): bool => $log->message === 'TrustedX call'
         ));
     }
+
+    #[Test]
+    public function obtain_token_uses_configured_ssl_verify(): void
+    {
+        config([
+            'trustedx.verify_ssl' => true,
+            'trustedx.log_calls' => false,
+        ]);
+
+        Http::fake([
+            '*' => Http::response(['access_token' => 'tok_ssl', 'token_type' => 'Bearer'], 200),
+        ]);
+
+        $result = (new TrustedXClientService)->obtainToken('auth-code');
+
+        $this->assertTrue($result['status']);
+        $this->assertTrue((bool) config('trustedx.verify_ssl'));
+    }
 }

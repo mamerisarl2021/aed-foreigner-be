@@ -28,14 +28,12 @@ final class NpiAllocator
         return DB::transaction(function () {
             $lastNumber = User::query()
                 ->whereNotNull('npi')
+                ->whereRaw('npi REGEXP ?', ['^[0-9]{10}$'])
+                ->whereRaw('CAST(npi AS UNSIGNED) BETWEEN ? AND ?', [self::RANGE_START, self::RANGE_END])
                 ->lockForUpdate()
-                ->pluck('npi')
-                ->filter(fn (string $npi) => preg_match('/^[0-9]{10}$/', $npi) === 1)
-                ->map(fn (string $npi) => (int) $npi)
-                ->filter(fn (int $npi) => $npi >= self::RANGE_START && $npi <= self::RANGE_END)
-                ->max();
+                ->max(DB::raw('CAST(npi AS UNSIGNED)'));
 
-            $next = $lastNumber === null ? self::RANGE_START : $lastNumber + 1;
+            $next = $lastNumber === null ? self::RANGE_START : ((int) $lastNumber) + 1;
 
             if ($next > self::RANGE_END) {
                 throw new RuntimeException('Foreigner NPI sequence exhausted.');

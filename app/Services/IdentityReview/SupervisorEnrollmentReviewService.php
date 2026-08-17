@@ -146,7 +146,7 @@ class SupervisorEnrollmentReviewService
                 'user_id' => $user->id,
                 'type' => 'IN_PERSON',
                 'level' => 'ADVANCED',
-                'proof' => json_encode([
+                'proof' => [
                     'selfiePath' => $enrollment->documents['selfie'] ?? '',
                     'rectoPath' => $enrollment->documents['recto'] ?? '',
                     'versoPath' => $enrollment->documents['verso'] ?? '',
@@ -155,12 +155,12 @@ class SupervisorEnrollmentReviewService
                     'document_type' => $enrollment->kyc_data['document_type'] ?? '',
                     'document_number' => $enrollment->kyc_data['document_number'] ?? '',
                     'nationality' => $enrollment->kyc_data['nationality'] ?? '',
-                ]),
+                ],
                 'status' => 'APPROVED',
                 'risk_score' => $enrollment->risk_score,
                 'analysis_details' => is_array($enrollment->analysis_details)
-                    ? json_encode($enrollment->analysis_details)
-                    : $enrollment->analysis_details,
+                    ? $enrollment->analysis_details
+                    : [],
                 'assigned_agent_id' => $supervisorId,
             ]);
 
@@ -384,7 +384,7 @@ class SupervisorEnrollmentReviewService
                 'user_id' => $representative->id,
                 'type' => 'PERSONNE_MORALE',
                 'level' => 'ADVANCED',
-                'proof' => json_encode([
+                'proof' => [
                     'company' => $kyc,
                     'documents' => $enrollment->documents,
                     'company_email' => $enrollment->email,
@@ -398,7 +398,7 @@ class SupervisorEnrollmentReviewService
                         'prenom' => $representative->first_name,
                         'email' => $representative->email,
                     ],
-                ]),
+                ],
                 'status' => 'APPROVED',
                 'assigned_agent_id' => $supervisorId,
             ]);

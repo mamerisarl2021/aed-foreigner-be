@@ -218,7 +218,7 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 - **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
-**Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `true`). Set `false` to disable; remove `logCall()` and its call sites when debugging is done.
+**Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
 
 ### 7.3 Cache store
 
@@ -444,6 +444,13 @@ Any operation that is slow, external, or retryable **MUST** be a queued job impl
 HTTP responses **MUST NOT** wait on these operations.
 
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
+
+**Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
+
+- KYC / Regula on `POST /kyc/verify` and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
+- Keycloak JWKS fetch on token validation (cached 1 hour per URI)
+- ANIP lookup on `POST /clients/send-otp`
+- TrustedX `obtainToken` / `userInfo` on client login — the token is returned in the same response
 
 Configure sensible `$tries`, `$timeout`, and `$backoff` on jobs.
 
@@ -836,7 +843,6 @@ Before opening or approving a PR, verify:
 | Enrollment parcours (product SoT) | [`txdocs/Parcours d’enrolement des étrangers – vf.pdf`](./txdocs/Parcours%20d’enrolement%20des%20étrangers%20–%20vf.pdf) |
 | UI references | [`pics/`](./pics/) |
 | Internal engineering notes | [`laravel12bestpractices.txt`](./laravel12bestpractices.txt) |
-| Refactor backlog | [`REFACTOR_BACKLOG.md`](./REFACTOR_BACKLOG.md) |
 | TatvaSoft Laravel practices | https://www.tatvasoft.com/outsourcing/2025/09/laravel-best-practices.html |
 | Smithery Laravel 12 skill | https://smithery.ai/skills/matula/laravel-12 |
 | Laravel 12 docs | https://laravel.com/docs/12.x |

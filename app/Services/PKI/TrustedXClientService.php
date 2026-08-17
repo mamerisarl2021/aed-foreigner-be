@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\PKI;
 
 use App\Models\User;
@@ -14,43 +16,46 @@ use Psr\Http\Message\ResponseInterface;
 
 class TrustedXClientService
 {
-    private $TX_CLIENT_ID;
+    private string $TX_CLIENT_ID;
 
-    private $TX_BASE_URL;
+    private string $TX_BASE_URL;
 
-    private $TIMESATAMP_API_BASE_URL;
+    private string $TIMESATAMP_API_BASE_URL;
 
-    private $TIMESATAMP_API_USERNAME;
+    private string $TIMESATAMP_API_USERNAME;
 
-    private $TIMESATAMP_API_PASSWORD;
+    private string $TIMESATAMP_API_PASSWORD;
 
-    private $TX_CLIENTS_LOGGED_AS;
+    private string $TX_CLIENTS_LOGGED_AS;
 
-    private $TX_ADMINS_LOGGED_AS;
+    private string $TX_ADMINS_LOGGED_AS;
 
-    private $TX_CLIENT_SECRET;
+    private string $TX_CLIENT_SECRET;
 
-    private $TX_REDIRECT_URL;
+    private string $TX_REDIRECT_URL;
 
     public function __construct()
     {
-        $this->TX_CLIENT_SECRET = config('trustedx.client_secret');
-        $this->TX_BASE_URL = config('trustedx.base_url');
-        $this->TIMESATAMP_API_BASE_URL = config('trustedx.timestamp.url');
-        $this->TIMESATAMP_API_USERNAME = config('trustedx.timestamp.username');
-        $this->TIMESATAMP_API_PASSWORD = config('trustedx.timestamp.password');
-        $this->TX_CLIENTS_LOGGED_AS = config('trustedx.clients_logged_as');
-        $this->TX_ADMINS_LOGGED_AS = config('trustedx.admins_logged_as');
-        $this->TX_CLIENT_ID = config('trustedx.client_id');
-        $this->TX_REDIRECT_URL = config('trustedx.redirect_url');
+        $this->TX_CLIENT_SECRET = (string) config('trustedx.client_secret');
+        $this->TX_BASE_URL = (string) config('trustedx.base_url');
+        $this->TIMESATAMP_API_BASE_URL = (string) config('trustedx.timestamp.url');
+        $this->TIMESATAMP_API_USERNAME = (string) config('trustedx.timestamp.username');
+        $this->TIMESATAMP_API_PASSWORD = (string) config('trustedx.timestamp.password');
+        $this->TX_CLIENTS_LOGGED_AS = (string) config('trustedx.clients_logged_as');
+        $this->TX_ADMINS_LOGGED_AS = (string) config('trustedx.admins_logged_as');
+        $this->TX_CLIENT_ID = (string) config('trustedx.client_id');
+        $this->TX_REDIRECT_URL = (string) config('trustedx.redirect_url');
     }
 
-    public function obtainToken(string $code)
+    /**
+     * @return array<string, mixed>
+     */
+    public function obtainToken(string $code): array
     {
         $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri={$this->TX_REDIRECT_URL}";
         try {
             $response = Http::withOptions([
-                'verify' => false,
+                'verify' => $this->sslVerify(),
             ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
                 ->post($url);
 
@@ -76,12 +81,15 @@ class TrustedXClientService
         }
     }
 
-    public function obtainMobileToken(string $code)
+    /**
+     * @return array<string, mixed>
+     */
+    public function obtainMobileToken(string $code): array
     {
         $url = "https://{$this->TX_BASE_URL}/trustedx-authserver/oauth/{$this->TX_CLIENTS_LOGGED_AS}/token?grant_type=authorization_code&code={$code}&redirect_uri=com.aed.mobile://auth";
         try {
             $response = Http::withOptions([
-                'verify' => false,
+                'verify' => $this->sslVerify(),
             ])->withBasicAuth((string) $this->TX_CLIENT_ID, (string) $this->TX_CLIENT_SECRET)
                 ->post($url);
 
@@ -107,7 +115,10 @@ class TrustedXClientService
         }
     }
 
-    public function userInfo(string $code)
+    /**
+     * @return array<string, mixed>
+     */
+    public function userInfo(string $code): array
     {
         try {
             $resp = $this->obtainToken($code);
@@ -122,7 +133,7 @@ class TrustedXClientService
             // Use the obtained access token for user info request
             $userInfoUrl = "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me";
             $response = Http::withOptions([
-                'verify' => false,
+                'verify' => $this->sslVerify(),
             ])->withToken($access_token)->get($userInfoUrl);
 
             $this->logCall('userInfo', 'GET', $userInfoUrl, $response->status(), [
@@ -178,7 +189,10 @@ class TrustedXClientService
         }
     }
 
-    public function mobileUserInfo(string $code)
+    /**
+     * @return array<string, mixed>
+     */
+    public function mobileUserInfo(string $code): array
     {
         try {
             $resp = $this->obtainMobileToken($code);
@@ -193,7 +207,7 @@ class TrustedXClientService
             // Use the obtained access token for user info request
             $userInfoUrl = "https://{$this->TX_BASE_URL}/trustedx-resources/openid/v1/users/me";
             $response = Http::withOptions([
-                'verify' => false,
+                'verify' => $this->sslVerify(),
             ])->withToken($access_token)->get($userInfoUrl);
 
             $this->logCall('mobileUserInfo', 'GET', $userInfoUrl, $response->status(), [
@@ -249,7 +263,11 @@ class TrustedXClientService
         }
     }
 
-    public function register(array $user)
+    /**
+     * @param  array<string, mixed>  $user
+     * @return array<string, mixed>
+     */
+    public function register(array $user): array
     {
         try {
             $foundUser = $this->getUserWithNPI($user['data']['npi']);
@@ -297,7 +315,11 @@ class TrustedXClientService
         }
     }
 
-    public function setDefaultPassword(array $user, string $type)
+    /**
+     * @param  array<string, mixed>  $user
+     * @return array<string, mixed>
+     */
+    public function setDefaultPassword(array $user, string $type): array
     {
         try {
             $tokenResponse = $this->getToken('urn:safelayer:eidas:account:user:passwords:manage');
@@ -338,7 +360,10 @@ class TrustedXClientService
         }
     }
 
-    public function getToken(string $scope)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getToken(string $scope): array
     {
         try {
             $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
@@ -383,7 +408,10 @@ class TrustedXClientService
         }
     }
 
-    public function getClientToken(string $scope)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getClientToken(string $scope): array
     {
         try {
             $credentials = base64_encode("{$this->TX_CLIENT_ID}:{$this->TX_CLIENT_SECRET}");
@@ -428,7 +456,10 @@ class TrustedXClientService
         }
     }
 
-    public function getUserWithNPI(string $npi)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getUserWithNPI(string $npi): array
     {
         try {
             $tokenResponse = $this->getToken('urn:safelayer:eidas:account:user:list urn:safelayer:eidas:account:user:attributes:manage urn:safelayer:eidas:account:user:manage');
@@ -465,7 +496,10 @@ class TrustedXClientService
         }
     }
 
-    public function updateUserAttributesByNPI(string $npi, string $newAttributes, int $years)
+    /**
+     * @return array<string, mixed>
+     */
+    public function updateUserAttributesByNPI(string $npi, string $newAttributes, int $years): array
     {
         try {
             // Retrieve the user using the NPI
@@ -527,7 +561,10 @@ class TrustedXClientService
         }
     }
 
-    public function updateCertValidityByNPI(string $npi, int $years)
+    /**
+     * @return array<string, mixed>
+     */
+    public function updateCertValidityByNPI(string $npi, int $years): array
     {
         try {
             // Retrieve the user using the NPI
@@ -594,7 +631,7 @@ class TrustedXClientService
     private function sendRequest(string $operation, Psr7Request $request, array $context = [], array $options = [], bool $shouldLog = true): ResponseInterface
     {
         try {
-            $response = (new Client)->sendAsync($request, $options)->wait();
+            $response = (new Client(['verify' => $this->sslVerify()]))->sendAsync($request, $options)->wait();
             if (! $response instanceof ResponseInterface) {
                 throw new Exception('TrustedX a renvoyé une réponse invalide.');
             }
@@ -611,6 +648,11 @@ class TrustedXClientService
 
             throw $e;
         }
+    }
+
+    private function sslVerify(): bool
+    {
+        return (bool) config('trustedx.verify_ssl', true);
     }
 
     /**

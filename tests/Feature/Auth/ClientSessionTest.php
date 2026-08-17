@@ -60,14 +60,14 @@ final class ClientSessionTest extends TestCase
             'level' => 'ADVANCED',
             'status' => 'APPROVED',
             'date' => '2026-08-01',
-            'proof' => json_encode(['selfiePath' => '']),
+            'proof' => ['selfiePath' => ''],
         ]);
         Identity::query()->create([
             'user_id' => $this->client->id,
             'type' => 'PERSONNE_MORALE',
             'level' => 'ADVANCED',
             'status' => 'APPROVED',
-            'proof' => json_encode(['company' => []]),
+            'proof' => ['company' => []],
         ]);
 
         Sanctum::actingAs($this->client);

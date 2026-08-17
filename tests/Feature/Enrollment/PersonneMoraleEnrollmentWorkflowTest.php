@@ -65,7 +65,7 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
             'type' => 'IN_PERSON',
             'level' => 'ADVANCED',
             'status' => 'APPROVED',
-            'proof' => json_encode(['selfiePath' => '']),
+            'proof' => ['selfiePath' => ''],
         ]);
 
         $this->agent = User::factory()->create(['email' => 'agent-morale@example.com']);

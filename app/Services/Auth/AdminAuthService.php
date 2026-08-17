@@ -7,6 +7,7 @@ use App\Http\Resources\StaffUserDetailResource;
 use App\Http\Resources\StaffUserListResource;
 use App\Jobs\ResetPasswordJob;
 use App\Jobs\WelcomeAgentJob;
+use App\Models\StaffPasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
@@ -15,7 +16,6 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -104,8 +104,6 @@ class AdminAuthService
     public function registerAgent(array $input, ?User $actor = null): ServiceResult
     {
         try {
-            $defaultPassword = Str::password(12);
-
             $user = User::create([
                 'name' => $input['name'],
                 'first_name' => $input['first_name'],
@@ -114,12 +112,12 @@ class AdminAuthService
                 'status' => 'ACTIVE',
                 'must_change_password' => true,
             ]);
-            $user->forceFill(['password' => Hash::make($defaultPassword)])->save();
+            $user->forceFill(['password' => Hash::make(Str::password(64))])->save();
 
             $this->assignRoleFromCode($user, $input['role']);
             $user->load('roles');
 
-            WelcomeAgentJob::dispatch($user, $defaultPassword);
+            WelcomeAgentJob::dispatch($user);
 
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurCree,
@@ -303,7 +301,7 @@ class AdminAuthService
     public function resetPassword(array $validatedData): ServiceResult
     {
         try {
-            $record = DB::table('password_reset_tokens')
+            $record = StaffPasswordResetToken::query()
                 ->where('email', $validatedData['email'])
                 ->first();
 
@@ -326,7 +324,7 @@ class AdminAuthService
             // Revoke every Sanctum token so all sessions must re-authenticate.
             $user->tokens()->delete();
 
-            DB::table('password_reset_tokens')->where('email', $validatedData['email'])->delete();
+            $record->delete();
 
             return ServiceResult::ok('Mot de passe réinitialisé avec succès.', []);
         } catch (Exception $e) {
@@ -349,7 +347,7 @@ class AdminAuthService
 
             $token = Str::random(60);
 
-            DB::table('password_reset_tokens')->updateOrInsert(
+            StaffPasswordResetToken::query()->updateOrCreate(
                 ['email' => $user->email],
                 [
                     'token' => Hash::make($token),
