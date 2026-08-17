@@ -23,6 +23,7 @@ final class EnrollmentTrackingController extends BaseController
      * Guest POST. Proof of ownership: numero_suivi (from submit / confirmation email)
      * plus the enrollment email (physique) or official/demandeur email (morale).
      * Returns demandeur-facing statut_libelle only — no KYC analysis, avis agent, or documents.
+     * Exposes email_verifie / telephone_verifie for physique and morale.
      * Wrong or unknown pair → 404 Demande introuvable.
      */
     public function show(TrackEnrollmentRequest $request): JsonResponse

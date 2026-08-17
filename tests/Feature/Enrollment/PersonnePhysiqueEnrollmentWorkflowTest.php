@@ -85,14 +85,36 @@ final class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
         $this->post($this->api('/enrolements/etrangers'), $this->physiquePayload($email))
             ->assertStatus(202)
-            ->assertJsonPath('data.statut', EnrollmentStatus::EnAttenteAgent->value);
+            ->assertJsonPath('data.statut', EnrollmentStatus::EnAttenteAgent->value)
+            ->assertJsonPath('data.email_verifie', true)
+            ->assertJsonPath('data.telephone_verifie', true);
 
         $enrollment = EnrollmentRequest::query()->where('email', $email)->first();
         $this->assertNotNull($enrollment);
         $this->assertSame('PERSONNE_PHYSIQUE', $enrollment->type);
         $this->assertNotNull($enrollment->tracking_code);
+        $this->assertNotNull($enrollment->email_verified_at);
+        $this->assertNotNull($enrollment->phone_verified_at);
         $this->assertSame($usersBefore, User::query()->count());
         $this->assertDatabaseMissing('users', ['email' => $email]);
+    }
+
+    #[Test]
+    public function otp_verify_exposes_french_and_english_flags(): void
+    {
+        $email = 'physique-otp-flags@example.com';
+        $otp = '123456';
+        Cache::put('enrollment_otp_email_'.$email, hash('sha256', $otp), 300);
+
+        $this->postJson($this->api('/otp/verify'), [
+            'email' => $email,
+            'otp' => $otp,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.email_verified', true)
+            ->assertJsonPath('data.email_verifie', true)
+            ->assertJsonPath('data.phone_verified', false)
+            ->assertJsonPath('data.telephone_verifie', false);
     }
 
     #[Test]
@@ -117,7 +139,11 @@ final class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
 
         $this->patchJson($this->api("/enrolements/{$enrollment->id}/prise-en-charge"))
             ->assertOk()
-            ->assertJsonPath('data.statut', EnrollmentStatus::EnCoursAgent->value);
+            ->assertJsonPath('data.statut', EnrollmentStatus::EnCoursAgent->value)
+            ->assertJsonPath('data.email_verifie', true)
+            ->assertJsonPath('data.telephone_verifie', true)
+            ->assertJsonPath('data.informations.email_verifie', true)
+            ->assertJsonPath('data.informations.telephone_verifie', true);
 
         $this->patchJson($this->api("/enrolements/{$enrollment->id}/instruction"), [
             'avis' => AgentAvis::Favorable->value,

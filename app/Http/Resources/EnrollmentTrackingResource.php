@@ -54,12 +54,9 @@ class EnrollmentTrackingResource extends JsonResource
                     ? ($submitter !== null ? $submitter->first_name : ($kyc['legal_representative_first_name'] ?? null))
                     : ($kyc['first_name'] ?? null),
             ],
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
         ];
-
-        if ($isMorale) {
-            $payload['email_verifie'] = $enrollment->email_verified_at !== null;
-            $payload['telephone_verifie'] = $enrollment->phone_verified_at !== null;
-        }
 
         return $payload;
     }

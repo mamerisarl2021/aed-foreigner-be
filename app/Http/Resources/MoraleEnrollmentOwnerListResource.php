@@ -36,8 +36,8 @@ class MoraleEnrollmentOwnerListResource extends JsonResource
             'forme_juridique' => $kyc['legal_form'] ?? null,
             'pays_origine' => $kyc['country_of_incorporation'] ?? null,
             'date_creation' => $kyc['incorporation_date'] ?? null,
-            'email_verifie' => $enrollment->email_verified_at !== null,
-            'telephone_verifie' => $enrollment->phone_verified_at !== null,
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
         ];
     }
 }

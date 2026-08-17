@@ -51,7 +51,7 @@
     "paths": {
         "/v1/admin/enrolled-persons": {
             "get": {
-                "operationId": "adminEnrolledPerson.index",
+                "operationId": "admin.enrolled-persons.index",
                 "description": "Defaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.",
                 "summary": "List enrolled persons (read-only)",
                 "tags": [
@@ -272,7 +272,7 @@
         },
         "/v1/admin/enrolled-persons/{id}": {
             "get": {
-                "operationId": "adminEnrolledPerson.show",
+                "operationId": "admin.enrolled-persons.show",
                 "summary": "Enrolled person detail (read-only)",
                 "tags": [
                     "Admin"
@@ -342,7 +342,7 @@
         },
         "/v1/admin/activity-logs": {
             "get": {
-                "operationId": "adminActivityLog.index",
+                "operationId": "admin.activity-logs.index",
                 "description": "Optional filters: q, action, from, to, per_page.\nDefaults: per_page=20 (max 100), sorted by created_at desc.\nAdmin only.",
                 "summary": "List business activity logs (journaux)",
                 "tags": [
@@ -595,7 +595,7 @@
         },
         "/v1/admin/activity-logs/{id}": {
             "get": {
-                "operationId": "adminActivityLog.show",
+                "operationId": "admin.activity-logs.show",
                 "summary": "Activity log detail (admin only)",
                 "tags": [
                     "Admin"
@@ -664,7 +664,7 @@
         },
         "/v1/audits": {
             "get": {
-                "operationId": "auditLog.index",
+                "operationId": "audits.index",
                 "description": "Optional filters: event, user_id, auditable_type, auditable_id, ip_address, date range.\nDefaults: per_page=15 (max 100), sorted by created_at desc.",
                 "summary": "List technical audit logs (model change history)",
                 "tags": [
@@ -916,7 +916,7 @@
         },
         "/v1/admin/enrollment-reject-motifs": {
             "post": {
-                "operationId": "enrollmentRejectMotif.store",
+                "operationId": "admin.enrollment-reject-motifs.store",
                 "description": "Body: `{ title, description }`.",
                 "summary": "Create enrollment reject motif (admin only)",
                 "tags": [
@@ -957,7 +957,7 @@
         },
         "/v1/admin/enrollment-reject-motifs/{id}": {
             "get": {
-                "operationId": "enrollmentRejectMotif.show",
+                "operationId": "admin.enrollment-reject-motifs.show",
                 "summary": "Show enrollment reject motif (admin only)",
                 "tags": [
                     "Admin"
@@ -1024,7 +1024,7 @@
                 }
             },
             "patch": {
-                "operationId": "enrollmentRejectMotif.update",
+                "operationId": "admin.enrollment-reject-motifs.update",
                 "description": "Body: `{ title?, description? }`.",
                 "summary": "Update enrollment reject motif (admin only)",
                 "tags": [
@@ -1102,7 +1102,7 @@
                 }
             },
             "delete": {
-                "operationId": "enrollmentRejectMotif.destroy",
+                "operationId": "admin.enrollment-reject-motifs.destroy",
                 "description": "Hard delete \u2014 the motif is permanently removed.",
                 "summary": "Delete enrollment reject motif (admin only)",
                 "tags": [
@@ -1173,7 +1173,7 @@
         },
         "/v1/decrypt/token/file/{filename}": {
             "get": {
-                "operationId": "encryption.decryptAndDisplay",
+                "operationId": "decrypt.token.file",
                 "description": "Staff reviewers and manager (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.",
                 "summary": "Decrypt and display an encrypted enrollment document",
                 "tags": [
@@ -1230,7 +1230,7 @@
         },
         "/v1/management/enrollment-reject-motifs": {
             "get": {
-                "operationId": "enrollmentRejectMotif.index",
+                "operationId": "management.enrollment-reject-motifs.index",
                 "description": "Available to agent, responsable de validation, manager, and administrateur plateforme.\nReturns `{ id, title, description }` \u2014 use `id` in reject payloads (`motif[]` / `reasons[]`).",
                 "summary": "List enrollment reject motifs",
                 "tags": [
@@ -1281,7 +1281,7 @@
         },
         "/v1/agents/register": {
             "post": {
-                "operationId": "auth.registerAgent",
+                "operationId": "agents.register",
                 "summary": "Register a new staff user (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1321,7 +1321,7 @@
         },
         "/v1/agents/{id}": {
             "post": {
-                "operationId": "auth.updateAgent",
+                "operationId": "agents.update",
                 "summary": "Update staff user details (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1402,7 +1402,7 @@
                 }
             },
             "delete": {
-                "operationId": "auth.deleteAgent",
+                "operationId": "agents.destroy",
                 "summary": "Delete a staff user (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1474,7 +1474,7 @@
                 }
             },
             "get": {
-                "operationId": "auth.showAgent",
+                "operationId": "agents.show",
                 "summary": "Staff user detail (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1516,7 +1516,7 @@
         },
         "/v1/agents": {
             "get": {
-                "operationId": "auth.listAgents",
+                "operationId": "agents.index",
                 "description": "Optional role filter. Defaults: per_page=15 (max 100).",
                 "summary": "List staff users (admin only)",
                 "tags": [
@@ -1648,7 +1648,7 @@
         },
         "/v1/admins/logout": {
             "post": {
-                "operationId": "auth.logoutAdmin",
+                "operationId": "admins.logout",
                 "summary": "Admin logout (revokes current token)",
                 "tags": [
                     "Admin Auth"
@@ -1698,7 +1698,7 @@
         },
         "/v1/admin/login": {
             "post": {
-                "operationId": "auth.loginAdmin",
+                "operationId": "admin.login",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 use POST /admin/login/keycloak instead.",
                 "summary": "Admin/Agent login (returns Sanctum token)",
                 "tags": [
@@ -1766,7 +1766,7 @@
         },
         "/v1/admin/login/keycloak": {
             "post": {
-                "operationId": "auth.loginAdminKeycloak",
+                "operationId": "admin.login.keycloak",
                 "description": "Exchange a Keycloak access token (obtained by the frontend through OIDC login)\nfor a Sanctum token. Only available when STAFF_KEYCLOAK_ENABLED=true.",
                 "summary": "Admin/Agent login via Keycloak token exchange (returns Sanctum token)",
                 "tags": [
@@ -1802,7 +1802,7 @@
         },
         "/v1/admin/password/link": {
             "post": {
-                "operationId": "auth.sendPasswordResetLink",
+                "operationId": "admin.password.link",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Send staff password reset link",
                 "tags": [
@@ -1870,7 +1870,7 @@
         },
         "/v1/admin/password/reset": {
             "post": {
-                "operationId": "auth.resetPassword",
+                "operationId": "admin.password.reset",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Reset staff password using an emailed token",
                 "tags": [
@@ -1938,7 +1938,7 @@
         },
         "/v1/admin/password/change": {
             "post": {
-                "operationId": "auth.changePassword",
+                "operationId": "admin.password.change",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Change staff password (authenticated)",
                 "tags": [
@@ -2008,7 +2008,7 @@
         },
         "/v1/me": {
             "get": {
-                "operationId": "singletons.userProfile",
+                "operationId": "me",
                 "summary": "Authenticated user profile",
                 "tags": [
                     "Client Auth"
@@ -2052,7 +2052,7 @@
         },
         "/v1/clients/logout": {
             "post": {
-                "operationId": "clientSecurity.logout",
+                "operationId": "clients.logout",
                 "summary": "Client logout (revokes current Sanctum token)",
                 "tags": [
                     "Client Auth"
@@ -2082,7 +2082,7 @@
         },
         "/v1/clients/password/change": {
             "post": {
-                "operationId": "clientSecurity.changePassword",
+                "operationId": "clients.password.change",
                 "description": "Body: current_password, password, password_confirmation (min 8).\nRevokes all Sanctum tokens; the caller must log in again.",
                 "summary": "Change client TrustedX password (requires current password)",
                 "tags": [
@@ -2123,7 +2123,7 @@
         },
         "/v1/clients/pin/change": {
             "post": {
-                "operationId": "clientSecurity.changePin",
+                "operationId": "clients.pin.change",
                 "description": "Body: current_pin, pin, pin_confirmation \u2014 exactly 4 digits.",
                 "summary": "Change client TrustedX PIN (requires current PIN)",
                 "tags": [
@@ -2164,7 +2164,7 @@
         },
         "/v1/clients/security-questions": {
             "get": {
-                "operationId": "clientSecurity.showSecurityQuestions",
+                "operationId": "clients.security-questions.show",
                 "summary": "List client security questions (answers omitted)",
                 "tags": [
                     "Client Auth"
@@ -2235,7 +2235,7 @@
                 }
             },
             "put": {
-                "operationId": "clientSecurity.updateSecurityQuestions",
+                "operationId": "clients.security-questions.update",
                 "description": "Body: current_password, security_questions (min 2 items with question + answer).",
                 "summary": "Replace client security questions",
                 "tags": [
@@ -2276,7 +2276,7 @@
         },
         "/v1/users/{id}": {
             "post": {
-                "operationId": "user.update",
+                "operationId": "users.update",
                 "summary": "Update own profile (email, profile photo)",
                 "tags": [
                     "Client Auth"
@@ -2328,7 +2328,7 @@
         },
         "/v1/clients/set-password": {
             "post": {
-                "operationId": "user.setPassword",
+                "operationId": "clients.set-password",
                 "summary": "Set a client TrustedX password or PIN (admin only)",
                 "tags": [
                     "Client Auth"
@@ -2368,7 +2368,7 @@
         },
         "/v1/users/search": {
             "get": {
-                "operationId": "user.search",
+                "operationId": "users.search",
                 "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email, name or NPI (staff only)",
                 "tags": [
@@ -2452,7 +2452,7 @@
         },
         "/v1/users-email/search": {
             "post": {
-                "operationId": "user.searchPost",
+                "operationId": "users.search-by-email",
                 "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email (staff only)",
                 "tags": [
@@ -2523,7 +2523,7 @@
         },
         "/v1/management/users/update-status": {
             "post": {
-                "operationId": "user.updateUserStatus",
+                "operationId": "management.users.update-status",
                 "summary": "Bulk update user statuses (staff)",
                 "tags": [
                     "Client Auth"
@@ -2563,7 +2563,7 @@
         },
         "/v1/clients/send-otp": {
             "post": {
-                "operationId": "user.sendOtp",
+                "operationId": "clients.send-otp",
                 "summary": "Send login OTP to a citizen (NPI lookup via ANIP)",
                 "tags": [
                     "Client Auth"
@@ -2598,7 +2598,7 @@
         },
         "/v1/clients/verify-otp": {
             "post": {
-                "operationId": "user.verifyOtp",
+                "operationId": "clients.verify-otp",
                 "summary": "Verify a citizen login OTP",
                 "tags": [
                     "Client Auth"
@@ -2633,7 +2633,7 @@
         },
         "/v1/clients/login": {
             "post": {
-                "operationId": "user.login",
+                "operationId": "clients.login",
                 "summary": "Client login (TrustedX authorization code)",
                 "tags": [
                     "Client Auth"
@@ -2668,7 +2668,7 @@
         },
         "/v1/mobile/login": {
             "post": {
-                "operationId": "user.loginMobile",
+                "operationId": "mobile.login",
                 "summary": "Client mobile login (TrustedX authorization code)",
                 "tags": [
                     "Client Auth"
@@ -2703,7 +2703,7 @@
         },
         "/v1/clients/password/link": {
             "post": {
-                "operationId": "passwordReset.sendResetLink",
+                "operationId": "clients.password.link",
                 "description": "Legacy citizen flow (NPI + TrustedX). Emails a one-time reset link to the account owner.",
                 "summary": "Send client password/PIN reset link",
                 "tags": [
@@ -2739,7 +2739,7 @@
         },
         "/v1/clients/password/reset": {
             "post": {
-                "operationId": "passwordReset.resetPassword",
+                "operationId": "clients.password.reset",
                 "summary": "Reset client password or PIN using a reset token",
                 "tags": [
                     "Client Auth"
@@ -2774,7 +2774,7 @@
         },
         "/v1/clients/some/reset": {
             "post": {
-                "operationId": "passwordReset.resetSome",
+                "operationId": "clients.some.reset",
                 "summary": "Reset client password and/or PIN in one call",
                 "tags": [
                     "Client Auth"
@@ -2809,7 +2809,7 @@
         },
         "/v1/kyc/document/read": {
             "post": {
-                "operationId": "kyc.readDocument",
+                "operationId": "kyc.document.read",
                 "description": "Diagram \u00a72.2, capture screen. Guest, no OTP gate: assists form pre-fill and\nwarns about an unusable photo before the KYC step. Nothing is persisted and\nnothing is enforced \u2014 `POST /kyc/verify` remains the authoritative check and\nreplays the read with the same Regula scenario.\nRuns the scenario configured by REGULA_DOCUMENT_SCENARIO (deployed value: FullAuth).\nAlways answers 200 when the request is well formed: an unreadable photo returns\n`ok: false` with `quality_issues`, not an HTTP error.\ndata: { ok, document_name, fields, quality_issues, portrait }.\n`quality_issues` are stable codes, not sentences \u2014 wording and language belong to\nthe client (same convention as `details.error` on /kyc/verify). Values:\nIMAGE_GLARES, IMAGE_FOCUS, IMAGE_RESOLUTION, IMAGE_COLORNESS, PERSPECTIVE, BOUNDS,\nPORTRAIT, BRIGHTNESS, OCCLUSION, QUALITY_UNKNOWN, UNREADABLE_DOCUMENT (photo the\nuser can retake), READER_UNAVAILABLE (Regula unreachable).\n`fields` keys (all optional, present only when read): nom, prenoms, sexe (M|F),\ndate_naissance, date_expiration (YYYY-MM-DD), numero_piece, nationalite,\nville_naissance, pays_naissance. `portrait` is base64, no `data:` prefix.",
                 "summary": "Assisted document pre-read (OCR + image quality)",
                 "tags": [
@@ -2881,7 +2881,7 @@
         },
         "/v1/management/enrollment-stats": {
             "get": {
-                "operationId": "enrollmentStats.index",
+                "operationId": "management.enrollment-stats.index",
                 "description": "Global counts, rejection rate, average handling time, motifs, evolution, and period trends.\nQuery: granularite=semaine|mois (default semaine).",
                 "summary": "Enrollment dashboard statistics (manager)",
                 "tags": [
@@ -3170,7 +3170,7 @@
         },
         "/v1/management/enrolements/physiques": {
             "get": {
-                "operationId": "managerEnrollment.indexPhysiques",
+                "operationId": "management.enrolements.physiques.index",
                 "description": "Default statut: every listable status (including APPROUVEE / REJETEE / ENROLEE).\nFilters: q, statut (pipe-separated), from, to. Defaults: per_page=20 (max 100).",
                 "summary": "List personne physique enrollments (manager, read-only)",
                 "tags": [
@@ -3432,7 +3432,7 @@
         },
         "/v1/management/enrolements/physiques/{id}": {
             "get": {
-                "operationId": "managerEnrollment.showPhysique",
+                "operationId": "management.enrolements.physiques.show",
                 "description": "Identity fields + pieces_jointes. No KYC analysis and no instruction actions.\n404 when the id is unknown or belongs to a personne morale.",
                 "summary": "Personne physique enrollment detail (manager, read-only)",
                 "tags": [
@@ -3521,7 +3521,7 @@
         },
         "/v1/management/enrolements/morales": {
             "get": {
-                "operationId": "managerEnrollment.indexMorales",
+                "operationId": "management.enrolements.morales.index",
                 "description": "Default statut: every listable status (including APPROUVEE / REJETEE / ENROLEE).\nFilters: q, statut (pipe-separated), from, to. Defaults: per_page=20 (max 100).",
                 "summary": "List personne morale enrollments (manager, read-only)",
                 "tags": [
@@ -3783,7 +3783,7 @@
         },
         "/v1/management/enrolements/morales/{id}": {
             "get": {
-                "operationId": "managerEnrollment.showMorale",
+                "operationId": "management.enrolements.morales.show",
                 "description": "Company fields + pieces_jointes. No KYC analysis and no instruction actions.\n404 when the id is unknown or belongs to a personne physique.",
                 "summary": "Personne morale enrollment detail (manager, read-only)",
                 "tags": [
@@ -3872,7 +3872,7 @@
         },
         "/v1/enrolements/morales": {
             "get": {
-                "operationId": "personneMoraleEnrollment.index",
+                "operationId": "enrolements.morales.index",
                 "description": "Owner only. Includes AWAITING_CONTACT_VERIFICATION. Defaults: per_page=15 (max 100).",
                 "summary": "List the authenticated client's personne morale enrollments",
                 "tags": [
@@ -4046,7 +4046,7 @@
                 }
             },
             "post": {
-                "operationId": "personneMoraleEnrollment.submit",
+                "operationId": "enrolements.morales.store",
                 "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne morale enrollment",
                 "tags": [
@@ -4087,7 +4087,7 @@
         },
         "/v1/enrolements/morales/{id}": {
             "get": {
-                "operationId": "personneMoraleEnrollment.show",
+                "operationId": "enrolements.morales.show",
                 "description": "Company fields, contact verification flags, and pi\u00e8ces jointes (RCCM, statuts, procuration).",
                 "summary": "Morale enrollment detail (owner only)",
                 "tags": [
@@ -4155,7 +4155,7 @@
                 }
             },
             "put": {
-                "operationId": "personneMoraleEnrollment.correct",
+                "operationId": "enrolements.morales.update",
                 "description": "Updates company fields and attachments (not official contacts, not KYC selfie).\nOn success the request returns to EN_ATTENTE_AGENT.",
                 "summary": "Correct a rejected personne morale enrollment (owner, A_CORRIGER only)",
                 "tags": [
@@ -4239,7 +4239,7 @@
         },
         "/v1/enrolements/morales/{id}/send-phone-otp": {
             "post": {
-                "operationId": "personneMoraleEnrollment.sendPhoneOtp",
+                "operationId": "enrolements.morales.send-phone-otp",
                 "summary": "Send SMS OTP for company phone verification",
                 "tags": [
                     "Enrollment - Morale"
@@ -4281,7 +4281,7 @@
         },
         "/v1/enrolements/morales/{id}/verify-phone-otp": {
             "post": {
-                "operationId": "personneMoraleEnrollment.verifyPhoneOtp",
+                "operationId": "enrolements.morales.verify-phone-otp",
                 "description": "May promote the request to EN_ATTENTE_AGENT once both channels are verified.\nConfirmation email is sent to the demandeur only after both verifications.",
                 "summary": "Verify company phone OTP",
                 "tags": [
@@ -4334,7 +4334,7 @@
         },
         "/v1/enrolements/morales/{id}/verify-email": {
             "post": {
-                "operationId": "personneMoraleEnrollment.verifyEmail",
+                "operationId": "enrolements.morales.verify-email",
                 "description": "May promote the request to EN_ATTENTE_AGENT if the phone is also verified.",
                 "summary": "Verify company email (public token link)",
                 "tags": [
@@ -4418,7 +4418,7 @@
         "/v1/otp/verify": {
             "post": {
                 "operationId": "otp.verify",
-                "description": "Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each\ncall so the response reflects both cache flags; only the OTP matching one channel is consumed.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each\ncall so the response reflects both cache flags; only the OTP matching one channel is consumed.\nSuccess data includes email_verified / phone_verified and the French aliases\nemail_verifie / telephone_verifie (same keys as personne morale).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Verify OTP for one channel (email or phone)",
                 "tags": [
                     "Enrollment - OTP"
@@ -4453,8 +4453,8 @@
         },
         "/v1/enrolements/etrangers": {
             "post": {
-                "operationId": "enrollment.storeEtranger",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "operationId": "enrolements.etrangers.store",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT,\nemail_verifie and telephone_verifie (always true: both OTPs are required before submit).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne physique enrollment",
                 "tags": [
                     "Enrollment - Physique"
@@ -4489,7 +4489,7 @@
         },
         "/v1/enrolements/finalisation": {
             "get": {
-                "operationId": "finalisation.show",
+                "operationId": "enrolements.finalisation.show",
                 "description": "Open the secure link from the approval email (`?token=`). Optional `npi` (legacy links)\nmust match the invitation when present; digits only. Success data: demande_id, numero_suivi, email, statut.\nThe applicant then types the generated NPI (not numero_suivi) on the form.\nToken TTL: 60 minutes from issuance.",
                 "summary": "Validate finalisation invitation token",
                 "tags": [
@@ -4536,7 +4536,7 @@
                 "security": []
             },
             "post": {
-                "operationId": "finalisation.store",
+                "operationId": "enrolements.finalisation.store",
                 "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN and sets TrustedX password/PIN in this request\n(explicit exception to \u00a710.1: ENROLEE is returned only after TrustedX credentials exist).\nSuccess 200: statut ENROLEE, npi, numero_suivi, demande_id.",
                 "summary": "Complete enrollment (password + security questions)",
                 "tags": [
@@ -4572,7 +4572,7 @@
         },
         "/v1/enrolements/finalisation/otp/send": {
             "post": {
-                "operationId": "finalisation.sendOtp",
+                "operationId": "enrolements.finalisation.otp.send",
                 "description": "Body: npi (typed digits, generated NPI) + token (from the invitation link).\nThe NPI must match the invitation. Demand must be APPROUVEE.\nSends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).\nGuest-capable: no Sanctum token required; an existing session does not block the call.",
                 "summary": "Send finalisation email OTP",
                 "tags": [
@@ -4608,7 +4608,7 @@
         },
         "/v1/enrolements/finalisation/otp/verify": {
             "post": {
-                "operationId": "finalisation.verifyOtp",
+                "operationId": "enrolements.finalisation.otp.verify",
                 "description": "Body: npi (digits), token, otp (6 digits). On success stores a short-lived OTP proof (~15 min)\nrequired before POST /enrolements/finalisation.\nSuccess data: npi, demande_id, otp_verified=true.",
                 "summary": "Verify finalisation email OTP",
                 "tags": [
@@ -4644,7 +4644,7 @@
         },
         "/v1/enrolements": {
             "get": {
-                "operationId": "enrollment.index",
+                "operationId": "enrolements.index",
                 "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).\nDefault EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE\nfor responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is\ncarried by its own field and no longer by the status.\nEvery row exposes `statut` (machine, positional) and `statut_libelle`, worded for the\ncaller's role: a request awaiting the responsable never reads as approved or rejected.\nPersonne morale rows also expose `raison_sociale`, `pays_origine`, and `numero_suivi`\n(null on physique except `numero_suivi` when a tracking code exists).\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List enrollment requests",
                 "tags": [
@@ -4942,7 +4942,7 @@
         },
         "/v1/enrolements/{id}/prise-en-charge": {
             "patch": {
-                "operationId": "enrollment.priseEnCharge",
+                "operationId": "enrolements.prise-en-charge",
                 "description": "Agent only. EN_ATTENTE_AGENT and unassigned requests only; moves the request\nto EN_COURS_AGENT so the queue shows it as taken.",
                 "summary": "Agent self-assign (prise en charge)",
                 "tags": [
@@ -5006,7 +5006,7 @@
         },
         "/v1/enrolements/{id}/prise-en-charge-validation": {
             "patch": {
-                "operationId": "enrollment.priseEnChargeValidation",
+                "operationId": "enrolements.prise-en-charge-validation",
                 "description": "Responsable only. EN_ATTENTE_RESPONSABLE and unassigned decisions only; moves the\nrequest to EN_COURS_RESPONSABLE, which is what unlocks PATCH .../validation.",
                 "summary": "Responsable self-assign (prise en charge d\u00e9cision)",
                 "tags": [
@@ -5070,7 +5070,7 @@
         },
         "/v1/enrolements/{id}/instruction": {
             "patch": {
-                "operationId": "enrollment.instruction",
+                "operationId": "enrolements.instruction",
                 "description": "Diagram \u00a73.1. From EN_COURS_AGENT to EN_ATTENTE_RESPONSABLE, recording the agent's\n`avis` (FAVORABLE|DEFAVORABLE) in its own field. The agent gives an opinion, not a\nverdict: the request is never approved or rejected at this step.\nAgent must have prise en charge first. `motif[]` (UUIDs) is required when avis=DEFAVORABLE.",
                 "summary": "Agent instruction (avis favorable or d\u00e9favorable)",
                 "tags": [
@@ -5123,7 +5123,7 @@
         },
         "/v1/enrolements/{id}/validation": {
             "patch": {
-                "operationId": "enrollment.validation",
+                "operationId": "enrolements.validation",
                 "description": "Diagram \u00a73.2. Requires EN_COURS_RESPONSABLE (prise en charge validation) first.\navis_agent=FAVORABLE: APPROUVEE or RETOUR_AGENT.\navis_agent=DEFAVORABLE: REJET_CONFIRME or RETOUR_AGENT.\nRETOUR_AGENT clears the agent's avis: the request goes back to EN_ATTENTE_AGENT\nwith no decision at any level.",
                 "summary": "Responsable validation decision",
                 "tags": [
@@ -5225,7 +5225,7 @@
         },
         "/v1/enrolements/{id}": {
             "get": {
-                "operationId": "enrollment.show",
+                "operationId": "enrolements.show",
                 "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR only \u2014 every\nextracted text field, never form `kyc_data`; `verifie` is true only when\n`doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (ISO-8601 instant of the\nselfie / liveness capture from `enrollment_requests.selfie_captured_at`: client\n`capture_le` within the KYC window, else verification time),\nand `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
@@ -5292,8 +5292,8 @@
         },
         "/v1/enrolements/suivi": {
             "post": {
-                "operationId": "enrollmentTracking.show",
-                "description": "Guest POST. Proof of ownership: numero_suivi (from submit / confirmation email)\nplus the enrollment email (physique) or official/demandeur email (morale).\nReturns demandeur-facing statut_libelle only \u2014 no KYC analysis, avis agent, or documents.\nWrong or unknown pair \u2192 404 Demande introuvable.",
+                "operationId": "enrolements.suivi",
+                "description": "Guest POST. Proof of ownership: numero_suivi (from submit / confirmation email)\nplus the enrollment email (physique) or official/demandeur email (morale).\nReturns demandeur-facing statut_libelle only \u2014 no KYC analysis, avis agent, or documents.\nExposes email_verifie / telephone_verifie for physique and morale.\nWrong or unknown pair \u2192 404 Demande introuvable.",
                 "summary": "Track an enrollment by numero_suivi and email",
                 "tags": [
                     "Enrollment - Suivi"
@@ -5355,7 +5355,7 @@
         },
         "/v1/health": {
             "get": {
-                "operationId": "singletons.healthCheck",
+                "operationId": "health",
                 "description": "Public. Returns `{\"status\": \"UP\"}` (200) when the database is reachable,\n`{\"status\": \"DOWN\"}` (503) otherwise. Used by Consul and load balancers.",
                 "summary": "Service health check",
                 "tags": [
@@ -5414,57 +5414,13 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "action_code": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "actor_user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "enrollment_request_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "action_code",
-                    "description",
-                    "actor_user_id",
-                    "enrollment_request_id",
-                    "metadata",
-                    "ip_address",
-                    "created_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "ActivityLog"
             },
             "ActivityLogDetailResource": {
@@ -5480,8 +5436,7 @@
                         "type": "string"
                     },
                     "date": {
-                        "type": "string",
-                        "format": "date-time"
+                        "type": "string"
                     },
                     "actor": {
                         "type": [
@@ -5516,23 +5471,13 @@
                         ]
                     },
                     "enrollment_request_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
+                        "type": "string"
                     },
                     "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -5606,101 +5551,13 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "user_type": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "event": {
-                        "type": "string"
-                    },
-                    "auditable_type": {
-                        "type": "string"
-                    },
-                    "auditable_id": {
-                        "type": "string"
-                    },
-                    "old_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "new_values": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "ip_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "user_agent": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "tags": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    }
+                "type": "array",
+                "items": {
+                    "type": "string"
                 },
-                "required": [
-                    "id",
-                    "user_type",
-                    "user_id",
-                    "event",
-                    "auditable_type",
-                    "auditable_id",
-                    "old_values",
-                    "new_values",
-                    "url",
-                    "ip_address",
-                    "user_agent",
-                    "tags",
-                    "created_at",
-                    "updated_at"
-                ],
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false,
                 "title": "Audit"
             },
             "ChangeClientPasswordRequest": {
@@ -6127,6 +5984,12 @@
                                     "prenom"
                                 ]
                             },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
                             "peut_prendre_en_charge": {
                                 "type": "string"
                             },
@@ -6166,6 +6029,12 @@
                                             "null"
                                         ]
                                     },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
                                     "sexe": {
                                         "type": "string"
                                     },
@@ -6191,6 +6060,8 @@
                                     "numero_piece",
                                     "email",
                                     "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
                                     "sexe",
                                     "date_naissance",
                                     "pays_residence",
@@ -6333,6 +6204,8 @@
                             "date_soumission",
                             "decision_agent",
                             "responsable",
+                            "email_verifie",
+                            "telephone_verifie",
                             "peut_prendre_en_charge",
                             "peut_valider",
                             "similar_enrollments",
@@ -6454,6 +6327,12 @@
                                     "prenom"
                                 ]
                             },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
                             "demandeur": {
                                 "type": "object",
                                 "properties": {
@@ -6482,6 +6361,12 @@
                                             "null"
                                         ]
                                     },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
                                     "sexe": {
                                         "type": "string"
                                     },
@@ -6507,6 +6392,8 @@
                                     "numero_piece",
                                     "email",
                                     "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
                                     "sexe",
                                     "date_naissance",
                                     "pays_residence",
@@ -6559,6 +6446,8 @@
                             "delai_ecoule_jours",
                             "agent",
                             "responsable",
+                            "email_verifie",
+                            "telephone_verifie",
                             "demandeur",
                             "informations",
                             "pieces_jointes"
@@ -6976,6 +6865,12 @@
                                     null
                                 ]
                             },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
                             "peut_prendre_en_charge": {
                                 "type": "string"
                             },
@@ -7015,6 +6910,12 @@
                                             "null"
                                         ]
                                     },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
                                     "sexe": {
                                         "type": "string"
                                     },
@@ -7040,6 +6941,8 @@
                                     "numero_piece",
                                     "email",
                                     "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
                                     "sexe",
                                     "date_naissance",
                                     "pays_residence",
@@ -7183,6 +7086,8 @@
                             "agent_responsable",
                             "avis_agent",
                             "avis_agent_libelle",
+                            "email_verifie",
+                            "telephone_verifie",
                             "peut_prendre_en_charge",
                             "peut_instruire",
                             "similar_enrollments",

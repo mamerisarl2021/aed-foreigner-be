@@ -538,13 +538,13 @@ POST /otp/send              { email, phonenumber }
 POST /otp/verify            { email|phonenumber|both, otp }
 POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
 POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate; optional `capture_le` (ISO-8601 instant with timezone, within last 60 min / next 5 min; default = verification time)
-POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT }
+POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT, email_verifie, telephone_verifie }
 POST /enrolements/suivi     { numero_suivi, email }  (guest tracking; 404 if the pair does not match)
 ```
 
 Business rules:
 
-- Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
+- Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2). Persist `email_verified_at` / `phone_verified_at` on the demande at submit. Expose `email_verifie` / `telephone_verifie` on submit 202, `POST /enrolements/suivi`, and agent/responsable/manager detail (same keys as personne morale).
 - Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE_AGENT`, and a unique **`numero_suivi`** (`tracking_code`, format `PK…`) shown on the success screen.
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.

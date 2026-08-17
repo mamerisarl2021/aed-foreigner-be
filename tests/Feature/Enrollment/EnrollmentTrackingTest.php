@@ -61,6 +61,8 @@ final class EnrollmentTrackingTest extends TestCase
             ->assertJsonPath('data.finalisation_disponible', false)
             ->assertJsonPath('data.demandeur.nom', 'KOTO')
             ->assertJsonPath('data.demandeur.prenom', 'Ada')
+            ->assertJsonPath('data.email_verifie', true)
+            ->assertJsonPath('data.telephone_verifie', true)
             ->assertJsonPath('data.motifs', null)
             ->assertJsonMissingPath('data.analyse_kyc')
             ->assertJsonMissingPath('data.avis_agent')

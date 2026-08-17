@@ -15,6 +15,7 @@ trait MapsEnrollmentApplicantDetail
     protected function physiqueDetail(): array
     {
         $kyc = $this->kyc_data ?? [];
+        $enrollment = $this->resource instanceof EnrollmentRequest ? $this->resource : null;
 
         return [
             'demandeur' => [
@@ -27,6 +28,8 @@ trait MapsEnrollmentApplicantDetail
                 'numero_piece' => $kyc['document_number'] ?? null,
                 'email' => $this->email,
                 'telephone' => $this->phonenumber,
+                'email_verifie' => $enrollment?->isEmailVerified() ?? false,
+                'telephone_verifie' => $enrollment?->isPhoneVerified() ?? false,
                 'sexe' => $kyc['sexe'] ?? $kyc['sex'] ?? null,
                 'date_naissance' => $kyc['date_of_birth'] ?? null,
                 'pays_residence' => $kyc['country_of_residence'] ?? null,

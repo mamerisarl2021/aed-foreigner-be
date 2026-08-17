@@ -42,7 +42,8 @@ final class EnrollmentController extends BaseController
      * (selfie, recto; verso optional) are required at submit time.
      * Optional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on
      * selfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.
-     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT.
+     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT,
+     * email_verifie and telephone_verifie (always true: both OTPs are required before submit).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse

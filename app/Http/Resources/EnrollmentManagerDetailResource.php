@@ -44,6 +44,8 @@ class EnrollmentManagerDetailResource extends JsonResource
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
         ];
 
         if ($this->isPersonneMorale()) {

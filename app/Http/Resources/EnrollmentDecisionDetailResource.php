@@ -47,6 +47,8 @@ class EnrollmentDecisionDetailResource extends JsonResource
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
             'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteResponsable
                 && $this->assigned_responsable_id === null,
             'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable

@@ -25,6 +25,8 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property list<string>|null $reject_reasons
  * @property list<string>|null $return_reasons
  * @property Carbon|null $selfie_captured_at
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $phone_verified_at
  * @property Carbon|null $returned_at
  * @property Carbon|null $agent_decided_at
  * @property Carbon|null $sla_deadline_at
@@ -141,6 +143,30 @@ class EnrollmentRequest extends Model implements Auditable
     public function isPersonneMorale(): bool
     {
         return $this->type === 'PERSONNE_MORALE';
+    }
+
+    public function isPersonnePhysique(): bool
+    {
+        return $this->type === 'PERSONNE_PHYSIQUE';
+    }
+
+    public function isEmailVerified(): bool
+    {
+        if ($this->email_verified_at !== null) {
+            return true;
+        }
+
+        // Physique submit is gated on both OTPs; rows created before timestamps were stored still count as verified.
+        return $this->isPersonnePhysique();
+    }
+
+    public function isPhoneVerified(): bool
+    {
+        if ($this->phone_verified_at !== null) {
+            return true;
+        }
+
+        return $this->isPersonnePhysique();
     }
 
     public function applicantDisplayName(): string
