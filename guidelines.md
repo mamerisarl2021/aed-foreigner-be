@@ -530,7 +530,7 @@ Canonical HTTP flow:
 POST /otp/send              { email, phonenumber }
 POST /otp/verify            { email|phonenumber|both, otp }
 POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
-POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
+POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate; optional `capture_le` (ISO-8601 instant with timezone, within last 60 min / next 5 min; default = verification time)
 POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT }
 POST /enrolements/suivi     { numero_suivi, email }  (guest tracking; 404 if the pair does not match)
 ```
@@ -543,6 +543,7 @@ Business rules:
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
 - After submit the demandeur tracks with **`POST /enrolements/suivi`** `{ numero_suivi, email }` (body, not query string). Email must match the enrollment row (physique) or the official company email **or** `submitted_by` email (morale). Same 404 (`Demande introuvable`) for unknown code and wrong email. Response uses demandeur `statut_libelle` only — no `analyse_kyc`, avis agent, or documents. `finalisation_disponible` is true only when physique is `APPROUVEE`. `motifs` on `A_CORRIGER` / `REJETEE` is `{ id, title, description }[]` resolved from UUID reject motifs. Throttle `enrollment-suivi` (10/min per IP + numero_suivi).
+- Optional `capture_le` on `POST /kyc/verify` (and as submit fallback): ISO-8601 instant with timezone, within the last 60 minutes and at most 5 minutes in the future. Omitted → KYC verification time. Persisted on `enrollment_requests.selfie_captured_at` (not inside Regula `analysis_details`). Agent/responsable detail exposes it as `analyse_kyc.selfie.capture_le`.
 - `POST /kyc/document/read` is **assistive only**: it pre-fills the identity form and warns about an unusable photo on the capture screen. No OTP gate, nothing persisted, always 200 when well formed (`ok: false` + `quality_issues` on an unreadable photo). It exists so the browser never calls the Regula server directly — that would require opening the Regula server's CORS and would let any visitor burn licensed transactions outside our API. `POST /kyc/verify` stays the authoritative check and replays the read with the same scenario.
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
@@ -578,7 +579,7 @@ PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOU
 
 `motif[]` values are **UUID ids** from `GET /management/enrollment-reject-motifs` (not string codes).
 
-`GET /enrolements/{id}` `analyse_kyc.document_identite` is **OCR-only** (never form `kyc_data`). After a successful `POST /kyc/verify`, OCR is stored in `analysis_details.document.ocr` (every Regula text container, recto + verso, first-wins). Canonical keys: `type_piece`, `pays`, `verifie`, `numero_document`, `nom`, `prenoms`, `date_naissance`, `nationalite`, `date_expiration`, `sexe`, `date_emission`, `lieu_naissance`, `autorite`, `numero_personnel`, `nom_complet`. Any other extracted Regula text field is merged on the same object, including MRZ, address, checksums, and check digits. `informations` / `informations_entreprise` remain the declared form. The identity panel is empty only when no identity OCR bag exists — it does not fall back to the form.
+`GET /enrolements/{id}` `analyse_kyc.document_identite` is **OCR-only** (never form `kyc_data`). After a successful `POST /kyc/verify`, OCR is stored in `analysis_details.document.ocr` (every Regula text container, recto + verso, first-wins). Canonical keys: `type_piece`, `pays`, `verifie`, `numero_document`, `nom`, `prenoms`, `date_naissance`, `nationalite`, `date_expiration`, `sexe`, `date_emission`, `lieu_naissance`, `autorite`, `numero_personnel`, `nom_complet`. Any other extracted Regula text field is merged on the same object, including MRZ, address, checksums, and check digits. `informations` / `informations_entreprise` remain the declared form. The identity panel is empty only when no identity OCR bag exists — it does not fall back to the form. `analyse_kyc.selfie.capture_le` is the ISO-8601 value of `enrollment_requests.selfie_captured_at`.
 
 **Libellés contextuels.** Toute ressource de demande expose `statut` (machine) **et** `statut_libelle`, calculé par `EnrollmentStatusPresenter` selon le rôle de l'appelant. Le statut machine est unique ; seul le mot change :
 
@@ -676,7 +677,7 @@ Canonical HTTP flow:
 
 ```
 POST /kyc/document/read                                (assistive OCR; no OTP)
-POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first)
+POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first; optional capture_le)
 POST /enrolements/morales                              (auth:sanctum + client; returns numero_suivi PKI…)
 GET  /enrolements/morales                              (owner list — Mes entreprises)
 GET  /enrolements/morales/{id}                         (owner only: company fields + pièces jointes)

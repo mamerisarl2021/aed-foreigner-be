@@ -40,7 +40,8 @@ final class EnrollmentController extends BaseController
      *
      * Diagram §2.4. Requires OTP + KYC gates. Full identity data and documents
      * (selfie, recto; verso optional) are required at submit time.
-     * Optional capture_le (ISO-8601) is stored for analyse_kyc.selfie.capture_le if omitted at KYC.
+     * Optional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on
+     * selfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.
      * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
@@ -93,7 +94,8 @@ final class EnrollmentController extends BaseController
      * extracted text field, never form `kyc_data`; `verifie` is true only when
      * `doc_validity` is true and `details.error` is absent),
      * `selfie.url` (temporary cloud URL) / `selfie.capture_le` (ISO-8601 instant of the
-     * selfie / liveness capture, from client `capture_le` or KYC verification time),
+     * selfie / liveness capture from `enrollment_requests.selfie_captured_at`: client
+     * `capture_le` within the KYC window, else verification time),
      * and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API
      * confirmed liveness (status `0`). `etapes.visage_compare` is a boolean.
      */

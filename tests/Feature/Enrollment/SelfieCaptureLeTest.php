@@ -48,9 +48,10 @@ final class SelfieCaptureLeTest extends TestCase
     public function physique_kyc_persists_the_client_capture_instant_on_the_demande(): void
     {
         Bus::fake();
+        $this->freezeTime();
         $this->markOtpVerified('physique-capture@example.com', '+2290162405472');
 
-        $capturedAt = '2026-03-06T14:30:00+01:00';
+        $capturedAt = now()->subMinutes(2)->toIso8601String();
 
         $this->post($this->api('/kyc/verify'), [
             'email' => 'physique-capture@example.com',
@@ -60,28 +61,15 @@ final class SelfieCaptureLeTest extends TestCase
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
 
-        $this->post($this->api('/enrolements/etrangers'), [
-            'email' => 'physique-capture@example.com',
-            'phonenumber' => '+2290162405472',
-            'name' => 'KOTO',
-            'first_name' => 'Ada',
-            'sexe' => 'F',
-            'date_of_birth' => '1990-05-12',
-            'place_of_birth' => 'Cotonou',
-            'nationality' => 'BJ',
-            'country_of_residence' => 'BJ',
-            'address' => 'Cotonou',
-            'document_type' => 'PASSPORT',
-            'document_number' => 'BJ1234567',
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
-            'recto' => UploadedFile::fake()->image('recto.jpg'),
-        ])->assertStatus(202);
+        $this->post($this->api('/enrolements/etrangers'), $this->physiquePayload('physique-capture@example.com'))
+            ->assertStatus(202);
 
         $enrollment = EnrollmentRequest::query()->where('email', 'physique-capture@example.com')->first();
         $this->assertNotNull($enrollment);
+        $this->assertNotNull($enrollment->selfie_captured_at);
         $this->assertTrue(
-            Carbon::parse((string) ($enrollment->analysis_details['selfie_captured_at'] ?? null))
-                ->equalTo(Carbon::parse($capturedAt))
+            $enrollment->selfie_captured_at->startOfSecond()
+                ->equalTo(Carbon::parse($capturedAt)->startOfSecond())
         );
 
         $agent = User::factory()->create(['email' => 'agent-capture@example.com']);
@@ -90,7 +78,7 @@ final class SelfieCaptureLeTest extends TestCase
 
         $this->getJson($this->api("/enrolements/{$enrollment->id}"))
             ->assertOk()
-            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $enrollment->analysis_details['selfie_captured_at']);
+            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $enrollment->selfie_captured_at->toIso8601String());
     }
 
     #[Test]
@@ -107,32 +95,43 @@ final class SelfieCaptureLeTest extends TestCase
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
 
-        $this->post($this->api('/enrolements/etrangers'), [
-            'email' => 'physique-default@example.com',
-            'phonenumber' => '+2290162405472',
-            'name' => 'KOTO',
-            'first_name' => 'Ada',
-            'sexe' => 'F',
-            'date_of_birth' => '1990-05-12',
-            'place_of_birth' => 'Cotonou',
-            'nationality' => 'BJ',
-            'country_of_residence' => 'BJ',
-            'address' => 'Cotonou',
-            'document_type' => 'PASSPORT',
-            'document_number' => 'BJ1234567',
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
-            'recto' => UploadedFile::fake()->image('recto.jpg'),
-        ])->assertStatus(202);
+        $this->post($this->api('/enrolements/etrangers'), $this->physiquePayload('physique-default@example.com'))
+            ->assertStatus(202);
 
         $enrollment = EnrollmentRequest::query()->where('email', 'physique-default@example.com')->first();
         $this->assertNotNull($enrollment);
-        $this->assertSame(now()->toIso8601String(), $enrollment->analysis_details['selfie_captured_at'] ?? null);
+        $this->assertNotNull($enrollment->selfie_captured_at);
+        $this->assertTrue($enrollment->selfie_captured_at->startOfSecond()->equalTo(now()->startOfSecond()));
+    }
+
+    #[Test]
+    public function kyc_rejects_an_invalid_or_out_of_window_capture_le(): void
+    {
+        $this->freezeTime();
+        $this->markOtpVerified('physique-bad-capture@example.com', '+2290162405472');
+
+        $base = [
+            'email' => 'physique-bad-capture@example.com',
+            'phonenumber' => '+2290162405472',
+            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ];
+
+        $this->post($this->api('/kyc/verify'), [...$base, 'capture_le' => 'not-a-date'])
+            ->assertStatus(422);
+        $this->post($this->api('/kyc/verify'), [...$base, 'capture_le' => '2026-03-06'])
+            ->assertStatus(422);
+        $this->post($this->api('/kyc/verify'), [...$base, 'capture_le' => now()->subHours(2)->toIso8601String()])
+            ->assertStatus(422);
+        $this->post($this->api('/kyc/verify'), [...$base, 'capture_le' => now()->addDay()->toIso8601String()])
+            ->assertStatus(422);
     }
 
     #[Test]
     public function morale_kyc_persists_capture_le_on_the_demande(): void
     {
         Bus::fake();
+        $this->freezeTime();
         Role::firstOrCreate(['name' => config('roles.demandeur_authentifie'), 'guard_name' => 'web']);
 
         $client = User::factory()->create([
@@ -151,7 +150,7 @@ final class SelfieCaptureLeTest extends TestCase
 
         Sanctum::actingAs($client);
 
-        $capturedAt = '2026-04-01T09:15:00+01:00';
+        $capturedAt = now()->subMinutes(1)->toIso8601String();
         $this->post($this->api('/kyc/verify'), [
             'email' => $client->email,
             'phonenumber' => $client->phonenumber,
@@ -174,21 +173,22 @@ final class SelfieCaptureLeTest extends TestCase
             'trade_register_extract' => UploadedFile::fake()->create('rccm.pdf', 100, 'application/pdf'),
             'selfie' => UploadedFile::fake()->image('selfie.jpg'),
             'recto' => UploadedFile::fake()->image('recto.jpg'),
-            'capture_le' => $capturedAt,
         ])->assertOk();
 
         $enrollment = EnrollmentRequest::query()->where('type', 'PERSONNE_MORALE')->first();
         $this->assertNotNull($enrollment);
+        $this->assertNotNull($enrollment->selfie_captured_at);
         $this->assertTrue(
-            Carbon::parse((string) ($enrollment->analysis_details['selfie_captured_at'] ?? null))
-                ->equalTo(Carbon::parse($capturedAt))
+            $enrollment->selfie_captured_at->startOfSecond()
+                ->equalTo(Carbon::parse($capturedAt)->startOfSecond())
         );
     }
 
     #[Test]
     public function regula_reanalysis_keeps_the_stored_selfie_capture_instant(): void
     {
-        $capturedAt = '2026-03-06T14:30:00+01:00';
+        $this->freezeTime();
+        $capturedAt = now()->subMinutes(3);
         Storage::disk('s3')->put('selfies/face.jpg', 'selfie');
         Storage::disk('s3')->put('images/recto.jpg', 'recto');
 
@@ -202,8 +202,8 @@ final class SelfieCaptureLeTest extends TestCase
                 'selfie' => 'selfies/face.jpg',
                 'recto' => 'images/recto.jpg',
             ],
+            'selfie_captured_at' => $capturedAt,
             'analysis_details' => [
-                'selfie_captured_at' => $capturedAt,
                 'legacy' => true,
             ],
         ]);
@@ -211,9 +211,32 @@ final class SelfieCaptureLeTest extends TestCase
         (new RegulaAnalysisJob($enrollment->id))->handle($this->app->make(RegulaService::class));
 
         $enrollment->refresh();
-        $this->assertSame($capturedAt, $enrollment->analysis_details['selfie_captured_at'] ?? null);
+        $this->assertTrue($enrollment->selfie_captured_at?->startOfSecond()->equalTo($capturedAt->startOfSecond()));
         $this->assertArrayNotHasKey('legacy', $enrollment->analysis_details ?? []);
         $this->assertTrue($enrollment->analysis_details['mock'] ?? false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function physiquePayload(string $email): array
+    {
+        return [
+            'email' => $email,
+            'phonenumber' => '+2290162405472',
+            'name' => 'KOTO',
+            'first_name' => 'Ada',
+            'sexe' => 'F',
+            'date_of_birth' => '1990-05-12',
+            'place_of_birth' => 'Cotonou',
+            'nationality' => 'BJ',
+            'country_of_residence' => 'BJ',
+            'address' => 'Cotonou',
+            'document_type' => 'PASSPORT',
+            'document_number' => 'BJ1234567',
+            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ];
     }
 
     private function markOtpVerified(string $email, string $phone): void

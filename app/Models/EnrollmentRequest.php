@@ -24,6 +24,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property AgentAvis|null $agent_avis
  * @property list<string>|null $reject_reasons
  * @property list<string>|null $return_reasons
+ * @property Carbon|null $selfie_captured_at
  * @property Carbon|null $returned_at
  * @property Carbon|null $agent_decided_at
  * @property Carbon|null $sla_deadline_at
@@ -54,6 +55,7 @@ class EnrollmentRequest extends Model implements Auditable
         'similarity',
         'risk_score',
         'analysis_details',
+        'selfie_captured_at',
         'status',
         'agent_avis',
         'assigned_agent_id',
@@ -85,6 +87,7 @@ class EnrollmentRequest extends Model implements Auditable
             'kyc_data' => 'array',
             'documents' => 'array',
             'analysis_details' => 'array',
+            'selfie_captured_at' => 'datetime',
             'reject_reasons' => 'array',
             'return_reasons' => 'array',
             'status' => EnrollmentStatus::class,

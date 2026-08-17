@@ -112,10 +112,10 @@ class PersonneMoraleEnrollmentService
                 'liveness' => $this->stringOrNull($kycSession['liveness'] ?? null),
                 'similarity' => $this->stringOrNull($kycSession['similarity'] ?? null),
                 'risk_score' => $this->stringOrNull($kycSession['risk_score'] ?? null),
-                'analysis_details' => $this->kycVerification->analysisDetailsWithSelfieCapture(
-                    is_array($kycSession['analysis_details'] ?? null) ? $kycSession['analysis_details'] : null,
-                    $capturedAt,
-                ),
+                'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
+                    ? $kycSession['analysis_details']
+                    : null,
+                'selfie_captured_at' => $capturedAt,
                 'status' => 'AWAITING_CONTACT_VERIFICATION',
                 'type' => 'PERSONNE_MORALE',
                 'submitted_by_user_id' => $user->id,

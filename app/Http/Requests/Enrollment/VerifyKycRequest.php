@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Rules\Enrollment\Iso8601Instant;
 use App\Rules\PhoneNumber;
 
 class VerifyKycRequest extends ApiFormRequest
@@ -29,8 +30,8 @@ class VerifyKycRequest extends ApiFormRequest
             'selfie' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'recto' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            // Instant the selfie / liveness was captured (ISO-8601). Defaults to KYC verification time.
-            'capture_le' => ['nullable', 'date'],
+            // Instant ISO-8601 of the selfie / liveness capture (TZ required). Window: last 60 min / next 5 min. Defaults to KYC verification time.
+            'capture_le' => ['nullable', 'string', new Iso8601Instant],
         ];
     }
 

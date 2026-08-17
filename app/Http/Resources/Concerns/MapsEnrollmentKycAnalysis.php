@@ -76,7 +76,7 @@ trait MapsEnrollmentKycAnalysis
             'similarity' => $similarity,
             'similarity_percent' => $this->similarityPercent($similarity),
             'risk_score' => $enrollment->risk_score,
-            'details' => $this->publicAnalysisDetails($details),
+            'details' => $details,
             'document_identite' => $this->documentIdentiteFromOcr($ocr, $documentName, $details),
             'selfie' => $this->kycSelfieBlock($enrollment, $documents),
             'etapes' => [
@@ -270,28 +270,7 @@ trait MapsEnrollmentKycAnalysis
 
     private function kycSelfieCapturedAt(EnrollmentRequest $enrollment): ?string
     {
-        $details = $this->asStringKeyedArray($enrollment->analysis_details);
-
-        return $this->nullableIsoString($details['selfie_captured_at'] ?? null);
-    }
-
-    /**
-     * Strip the internal capture timestamp from the raw Regula bag.
-     */
-    private function publicAnalysisDetails(mixed $details): mixed
-    {
-        if (! is_array($details)) {
-            return $details;
-        }
-
-        unset($details['selfie_captured_at']);
-
-        return $details;
-    }
-
-    private function nullableIsoString(mixed $value): ?string
-    {
-        return is_string($value) && $value !== '' ? $value : null;
+        return $enrollment->selfie_captured_at?->toIso8601String();
     }
 
     /**

@@ -73,10 +73,10 @@ final class ForeignerEnrollmentService
                 'liveness' => $kycSession['liveness'] ?? $request->input('liveness'),
                 'similarity' => $kycSession['similarity'] ?? $request->input('similarity'),
                 'risk_score' => $kycSession['risk_score'] ?? null,
-                'analysis_details' => $this->kycVerification->analysisDetailsWithSelfieCapture(
-                    is_array($kycSession['analysis_details'] ?? null) ? $kycSession['analysis_details'] : null,
-                    $capturedAt,
-                ),
+                'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
+                    ? $kycSession['analysis_details']
+                    : null,
+                'selfie_captured_at' => $capturedAt,
                 'status' => EnrollmentStatus::EnAttenteAgent->value,
                 'type' => 'PERSONNE_PHYSIQUE',
                 'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),

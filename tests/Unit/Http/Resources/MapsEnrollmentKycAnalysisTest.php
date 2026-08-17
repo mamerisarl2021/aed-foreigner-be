@@ -7,6 +7,7 @@ namespace Tests\Unit\Http\Resources;
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Http\Resources\Concerns\MapsEnrollmentKycAnalysis;
 use App\Models\EnrollmentRequest;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -66,23 +67,24 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
     }
 
     #[Test]
-    public function it_exposes_selfie_capture_le_from_analysis_details(): void
+    public function it_exposes_selfie_capture_le_from_the_enrollment_column(): void
     {
+        $capturedAt = Carbon::parse('2026-03-06T14:30:00+01:00');
         $enrollment = new EnrollmentRequest([
             'documents' => [
                 'recto' => 'docs/recto.jpg',
                 'selfie' => 'selfies/face.jpg',
             ],
+            'selfie_captured_at' => $capturedAt,
             'analysis_details' => [
                 'doc_validity' => true,
-                'selfie_captured_at' => '2026-03-06T14:30:00+01:00',
                 'document' => ['ocr' => ['nom' => 'KOTO']],
             ],
         ]);
 
         $payload = (new KycAnalysisMapperHarness)->map($enrollment);
 
-        $this->assertSame('2026-03-06T14:30:00+01:00', $payload['selfie']['capture_le']);
+        $this->assertSame($enrollment->selfie_captured_at?->toIso8601String(), $payload['selfie']['capture_le']);
         $this->assertArrayNotHasKey('selfie_captured_at', $payload['details']);
         $this->assertTrue($payload['details']['doc_validity']);
     }

@@ -77,10 +77,7 @@ final class KycVerificationService
             'liveness' => $analysis['liveness'] ?? null,
             'similarity' => $analysis['similarity'] ?? null,
             'risk_score' => $analysis['risk_score'] ?? null,
-            'analysis_details' => $this->analysisDetailsWithSelfieCapture(
-                is_array($analysis['details'] ?? null) ? $analysis['details'] : null,
-                $capturedAt,
-            ),
+            'analysis_details' => $analysis['details'] ?? null,
         ];
 
         Cache::put(
@@ -158,18 +155,6 @@ final class KycVerificationService
             ?? $this->normalizeCaptureLe($session['selfie_captured_at'] ?? null)
             ?? $this->normalizeCaptureLe($session['verified_at'] ?? null)
             ?? now()->toIso8601String();
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $details
-     * @return array<string, mixed>
-     */
-    public function analysisDetailsWithSelfieCapture(?array $details, string $capturedAt): array
-    {
-        $details ??= [];
-        $details['selfie_captured_at'] = $capturedAt;
-
-        return $details;
     }
 
     public function authenticatedClient(Request $request): ?User

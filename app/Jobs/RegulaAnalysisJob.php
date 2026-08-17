@@ -21,6 +21,16 @@ class RegulaAnalysisJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public int $timeout = 180;
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 120];
+    }
+
     public function __construct(
         public readonly string $enrollmentRequestId,
     ) {}
@@ -75,10 +85,7 @@ class RegulaAnalysisJob implements ShouldQueue
             if (array_key_exists('liveness', $result) && $result['liveness'] !== null) {
                 $enrollment->liveness = (string) $result['liveness'];
             }
-            $enrollment->analysis_details = $this->mergeAnalysisDetails(
-                $enrollment->analysis_details,
-                $result['details'] ?? $result,
-            );
+            $enrollment->analysis_details = $result['details'] ?? $result;
             $enrollment->save();
 
             if (($result['status'] ?? '') === 'OK') {
@@ -98,25 +105,5 @@ class RegulaAnalysisJob implements ShouldQueue
                 }
             }
         }
-    }
-
-    /**
-     * Keep the KYC selfie capture instant across re-analysis (Regula details replace the rest).
-     *
-     * @param  array<string, mixed>|null  $existing
-     * @return array<string, mixed>
-     */
-    private function mergeAnalysisDetails(?array $existing, mixed $incoming): array
-    {
-        $existing ??= [];
-        $merged = is_array($incoming) ? $incoming : [];
-        unset($merged['selfie_captured_at']);
-
-        $capturedAt = $existing['selfie_captured_at'] ?? null;
-        if (is_string($capturedAt) && $capturedAt !== '') {
-            $merged['selfie_captured_at'] = $capturedAt;
-        }
-
-        return $merged;
     }
 }

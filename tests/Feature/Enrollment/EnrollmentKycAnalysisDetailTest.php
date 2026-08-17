@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -88,11 +89,11 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
     #[Test]
     public function the_agent_detail_exposes_the_stored_selfie_capture_instant(): void
     {
-        $capturedAt = '2026-03-06T14:30:00+01:00';
+        $capturedAt = Carbon::parse('2026-03-06T14:30:00+01:00');
         $enrollment = $this->createPhysiqueEnrollment([
+            'selfie_captured_at' => $capturedAt,
             'analysis_details' => [
                 'doc_validity' => true,
-                'selfie_captured_at' => $capturedAt,
                 'document' => ['ocr' => ['nom' => 'KOUASSI']],
             ],
         ]);
@@ -101,7 +102,7 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
 
         $this->getJson($this->api("/enrolements/{$enrollment->id}"))
             ->assertOk()
-            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $capturedAt)
+            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $enrollment->selfie_captured_at?->toIso8601String())
             ->assertJsonMissingPath('data.analyse_kyc.details.selfie_captured_at');
     }
 
