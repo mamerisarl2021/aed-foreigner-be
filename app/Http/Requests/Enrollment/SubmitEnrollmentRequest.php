@@ -34,6 +34,8 @@ class SubmitEnrollmentRequest extends ApiFormRequest
             'profile' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'liveness' => ['nullable', 'string'],
             'similarity' => ['nullable', 'string'],
+            // Instant the selfie / liveness was captured (ISO-8601). Fallback if omitted at /kyc/verify.
+            'capture_le' => ['nullable', 'date'],
         ];
     }
 

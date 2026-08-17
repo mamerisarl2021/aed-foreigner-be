@@ -55,6 +55,7 @@ class PersonneMoraleEnrollmentController extends BaseController
      *
      * Requires authenticated client with finalized physique enrollment and a prior
      * POST /kyc/verify session (OTP skipped for ACTIVE clients).
+     * Optional capture_le (ISO-8601) is stored for analyse_kyc.selfie.capture_le.
      * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK…).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */

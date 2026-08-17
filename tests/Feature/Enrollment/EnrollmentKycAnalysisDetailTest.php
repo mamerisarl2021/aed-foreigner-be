@@ -86,6 +86,26 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
     }
 
     #[Test]
+    public function the_agent_detail_exposes_the_stored_selfie_capture_instant(): void
+    {
+        $capturedAt = '2026-03-06T14:30:00+01:00';
+        $enrollment = $this->createPhysiqueEnrollment([
+            'analysis_details' => [
+                'doc_validity' => true,
+                'selfie_captured_at' => $capturedAt,
+                'document' => ['ocr' => ['nom' => 'KOUASSI']],
+            ],
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api("/enrolements/{$enrollment->id}"))
+            ->assertOk()
+            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $capturedAt)
+            ->assertJsonMissingPath('data.analyse_kyc.details.selfie_captured_at');
+    }
+
+    #[Test]
     public function failed_liveness_is_not_shown_as_effectue_on_agent_or_responsable_detail(): void
     {
         $enrollment = $this->createPhysiqueEnrollment([

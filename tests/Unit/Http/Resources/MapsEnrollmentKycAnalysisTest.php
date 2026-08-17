@@ -66,6 +66,28 @@ final class MapsEnrollmentKycAnalysisTest extends TestCase
     }
 
     #[Test]
+    public function it_exposes_selfie_capture_le_from_analysis_details(): void
+    {
+        $enrollment = new EnrollmentRequest([
+            'documents' => [
+                'recto' => 'docs/recto.jpg',
+                'selfie' => 'selfies/face.jpg',
+            ],
+            'analysis_details' => [
+                'doc_validity' => true,
+                'selfie_captured_at' => '2026-03-06T14:30:00+01:00',
+                'document' => ['ocr' => ['nom' => 'KOTO']],
+            ],
+        ]);
+
+        $payload = (new KycAnalysisMapperHarness)->map($enrollment);
+
+        $this->assertSame('2026-03-06T14:30:00+01:00', $payload['selfie']['capture_le']);
+        $this->assertArrayNotHasKey('selfie_captured_at', $payload['details']);
+        $this->assertTrue($payload['details']['doc_validity']);
+    }
+
+    #[Test]
     public function it_uses_every_ocr_field_and_ignores_declared_kyc(): void
     {
         $enrollment = new EnrollmentRequest([

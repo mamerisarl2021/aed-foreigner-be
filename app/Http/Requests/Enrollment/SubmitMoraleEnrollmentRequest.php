@@ -42,6 +42,8 @@ class SubmitMoraleEnrollmentRequest extends ApiFormRequest
             'selfie' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'recto' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            // Instant the selfie / liveness was captured (ISO-8601). Fallback if omitted at /kyc/verify.
+            'capture_le' => ['nullable', 'date'],
         ];
     }
 }

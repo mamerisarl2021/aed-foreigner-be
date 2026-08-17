@@ -88,6 +88,7 @@ class PersonneMoraleEnrollmentService
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
         $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
+        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
 
         DB::beginTransaction();
         try {
@@ -111,9 +112,10 @@ class PersonneMoraleEnrollmentService
                 'liveness' => $this->stringOrNull($kycSession['liveness'] ?? null),
                 'similarity' => $this->stringOrNull($kycSession['similarity'] ?? null),
                 'risk_score' => $this->stringOrNull($kycSession['risk_score'] ?? null),
-                'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
-                    ? $kycSession['analysis_details']
-                    : null,
+                'analysis_details' => $this->kycVerification->analysisDetailsWithSelfieCapture(
+                    is_array($kycSession['analysis_details'] ?? null) ? $kycSession['analysis_details'] : null,
+                    $capturedAt,
+                ),
                 'status' => 'AWAITING_CONTACT_VERIFICATION',
                 'type' => 'PERSONNE_MORALE',
                 'submitted_by_user_id' => $user->id,

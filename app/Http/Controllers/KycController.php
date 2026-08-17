@@ -28,6 +28,8 @@ final class KycController extends BaseController
      * Optional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).
      * Client similarity is ignored for the OK/KO gate; scores come from Face /api/match.
      * Success caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.
+     * Optional capture_le (ISO-8601): when the selfie / liveness was captured. Stored on the
+     * demande and returned as analyse_kyc.selfie.capture_le. Defaults to verification time.
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyKycRequest $request): JsonResponse

@@ -2846,7 +2846,7 @@
         "/v1/kyc/verify": {
             "post": {
                 "operationId": "kyc.verify",
-                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nOptional capture_le (ISO-8601): when the selfie / liveness was captured. Stored on the\ndemande and returned as analyse_kyc.selfie.capture_le. Defaults to verification time.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Sync KYC verification (Document Reader + Face match)",
                 "tags": [
                     "Enrollment - KYC"
@@ -4047,7 +4047,7 @@
             },
             "post": {
                 "operationId": "personneMoraleEnrollment.submit",
-                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nOptional capture_le (ISO-8601) is stored for analyse_kyc.selfie.capture_le.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne morale enrollment",
                 "tags": [
                     "Enrollment - Morale"
@@ -4454,7 +4454,7 @@
         "/v1/enrolements/etrangers": {
             "post": {
                 "operationId": "enrollment.storeEtranger",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601) is stored for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne physique enrollment",
                 "tags": [
                     "Enrollment - Physique"
@@ -5226,7 +5226,7 @@
         "/v1/enrolements/{id}": {
             "get": {
                 "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR only \u2014 every\nextracted text field, never form `kyc_data`; `verifie` is true only when\n`doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR only \u2014 every\nextracted text field, never form `kyc_data`; `verifie` is true only when\n`doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (ISO-8601 instant of the\nselfie / liveness capture, from client `capture_le` or KYC verification time),\nand `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -6259,11 +6259,18 @@
                                         ]
                                     },
                                     "details": {
-                                        "type": [
-                                            "object",
-                                            "null"
-                                        ],
-                                        "additionalProperties": {}
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": {}
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -7103,11 +7110,18 @@
                                         ]
                                     },
                                     "details": {
-                                        "type": [
-                                            "object",
-                                            "null"
-                                        ],
-                                        "additionalProperties": {}
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": {}
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -7940,6 +7954,14 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Instant the selfie / liveness was captured (ISO-8601). Fallback if omitted at /kyc/verify."
                     }
                 },
                 "required": [
@@ -8061,6 +8083,14 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Instant the selfie / liveness was captured (ISO-8601). Fallback if omitted at /kyc/verify."
                     }
                 },
                 "required": [
@@ -8591,6 +8621,14 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "Instant the selfie / liveness was captured (ISO-8601). Defaults to KYC verification time."
                     }
                 },
                 "required": [

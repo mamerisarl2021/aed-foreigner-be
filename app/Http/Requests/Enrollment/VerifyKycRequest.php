@@ -29,6 +29,8 @@ class VerifyKycRequest extends ApiFormRequest
             'selfie' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'recto' => [$fileRequired, 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'verso' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            // Instant the selfie / liveness was captured (ISO-8601). Defaults to KYC verification time.
+            'capture_le' => ['nullable', 'date'],
         ];
     }
 
