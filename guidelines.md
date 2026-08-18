@@ -220,6 +220,8 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 
 **Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
 
+**Exception — temporary Keycloak / Consul ACL call logging.** `ConsulTokenService` and `KeycloakJwtValidator` log outbound Keycloak token + JWKS calls and Consul `/v1/acl/login` at INFO (`Keycloak call` / `Consul ACL login`). They never log `client_secret`, `access_token`, or `SecretID`. Kill switch: `KEYCLOAK_LOG_CALLS` (`config('keycloak.log_calls')`, default `false`). Set `true` only while debugging.
+
 ### 7.3 Cache store
 
 For local development and migrations, prefer `CACHE_STORE=file` unless the `cache` table migration exists and runs **before** packages that flush cache on migrate (e.g. Spatie Permission).

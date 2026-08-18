@@ -2,6 +2,13 @@
 
 return [
     /*
+    | Temporary: log outbound Keycloak HTTP (token + JWKS) and Consul ACL login
+    | at INFO. Never includes client_secret, access_token, or SecretID.
+    | Set KEYCLOAK_LOG_CALLS=true only while debugging.
+    */
+    'log_calls' => (bool) env('KEYCLOAK_LOG_CALLS', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Staff authentication via Keycloak (token exchange)
     |--------------------------------------------------------------------------
