@@ -54,6 +54,9 @@ class User extends Authenticatable implements Auditable
     /** @var array<int, string> */
     protected $appends = ['link'];
 
+    /** @var array<string, mixed> */
+    protected array $trustedxProfile = [];
+
     /** @var array<int, string> */
     protected $hidden = [
         'password',
@@ -77,6 +80,30 @@ class User extends Authenticatable implements Auditable
     public function identities(): HasMany
     {
         return $this->hasMany(Identity::class);
+    }
+
+    /**
+     * Identity attributes returned by TrustedX, exposed on serialization only.
+     *
+     * They are deliberately kept out of the attribute bag: `last_name` and
+     * `pki_id` have no column on `users`, so writing them as attributes makes
+     * the next save() emit an UPDATE on unknown columns.
+     *
+     * @param  array<string, mixed>  $profile
+     */
+    public function withTrustedxProfile(array $profile): static
+    {
+        $this->trustedxProfile = $profile;
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return array_merge(parent::toArray(), $this->trustedxProfile);
     }
 
     public function getLinkAttribute(): string

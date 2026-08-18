@@ -159,10 +159,12 @@ class TrustedXClientService
             }
 
             $token = $existingUser->createToken($existingUser->email.'-'.now())->plainTextToken;
-            $existingUser['first_name'] = $response['first_name'];
-            $existingUser['last_name'] = $response['last_name'];
-            $existingUser['name'] = $response['name'];
-            $existingUser['pki_id'] = $response['sub'];
+            $existingUser->withTrustedxProfile([
+                'first_name' => $response['first_name'],
+                'last_name' => $response['last_name'],
+                'name' => $response['name'],
+                'pki_id' => $response['sub'],
+            ]);
 
             if ($token) {
                 $data = [
@@ -233,10 +235,12 @@ class TrustedXClientService
             }
 
             $token = $existingUser->createToken($existingUser->email.'-'.now())->plainTextToken;
-            $existingUser['first_name'] = $response['first_name'];
-            $existingUser['last_name'] = $response['last_name'];
-            $existingUser['name'] = $response['name'];
-            $existingUser['pki_id'] = $response['sub'];
+            $existingUser->withTrustedxProfile([
+                'first_name' => $response['first_name'],
+                'last_name' => $response['last_name'],
+                'name' => $response['name'],
+                'pki_id' => $response['sub'],
+            ]);
 
             if ($token) {
                 $data = [
