@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -58,6 +59,8 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
                         'nom' => 'KOUASSI',
                         'prenoms' => 'YAO',
                         'numero_piece' => 'CI999',
+                        'sexe' => 'M',
+                        'date_emission' => '2016-10-17',
                     ],
                 ],
             ],
@@ -71,6 +74,8 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
             ->assertJsonPath('data.analyse_kyc.document_identite.nom', 'KOUASSI')
             ->assertJsonPath('data.analyse_kyc.document_identite.pays', 'Côte d\'Ivoire')
             ->assertJsonPath('data.analyse_kyc.document_identite.verifie', true)
+            ->assertJsonPath('data.analyse_kyc.document_identite.sexe', 'M')
+            ->assertJsonPath('data.analyse_kyc.document_identite.date_emission', '2016-10-17')
             ->assertJsonPath('data.analyse_kyc.etapes.liveness_effectue', true)
             ->assertJsonPath('data.analyse_kyc.etapes.visage_compare', true)
             ->assertJsonPath('data.analyse_kyc.etapes.document_ajoute', true)
@@ -79,6 +84,26 @@ final class EnrollmentKycAnalysisDetailTest extends TestCase
         $selfieUrl = $this->getJson($this->api("/enrolements/{$enrollment->id}"))->json('data.analyse_kyc.selfie.url');
         $this->assertIsString($selfieUrl);
         $this->assertNotSame('', $selfieUrl);
+    }
+
+    #[Test]
+    public function the_agent_detail_exposes_the_stored_selfie_capture_instant(): void
+    {
+        $capturedAt = Carbon::parse('2026-03-06T14:30:00+01:00');
+        $enrollment = $this->createPhysiqueEnrollment([
+            'selfie_captured_at' => $capturedAt,
+            'analysis_details' => [
+                'doc_validity' => true,
+                'document' => ['ocr' => ['nom' => 'KOUASSI']],
+            ],
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api("/enrolements/{$enrollment->id}"))
+            ->assertOk()
+            ->assertJsonPath('data.analyse_kyc.selfie.capture_le', $enrollment->selfie_captured_at?->toIso8601String())
+            ->assertJsonMissingPath('data.analyse_kyc.details.selfie_captured_at');
     }
 
     #[Test]

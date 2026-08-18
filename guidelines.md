@@ -218,6 +218,10 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 - **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
+**Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
+
+**Exception — temporary Keycloak / Consul ACL call logging.** `ConsulTokenService` and `KeycloakJwtValidator` log outbound Keycloak token + JWKS calls and Consul `/v1/acl/login` at INFO (`Keycloak call` / `Consul ACL login`). They never log `client_secret`, `access_token`, or `SecretID`. Kill switch: `KEYCLOAK_LOG_CALLS` (`config('keycloak.log_calls')`, default `false`). Set `true` only while debugging.
+
 ### 7.3 Cache store
 
 For local development and migrations, prefer `CACHE_STORE=file` unless the `cache` table migration exists and runs **before** packages that flush cache on migrate (e.g. Spatie Permission).
@@ -437,9 +441,18 @@ Any operation that is slow, external, or retryable **MUST** be a queued job impl
 
 - Email/SMS/notifications (via Kafka jobs)
 - File upload to cloud storage, Regula analysis
-- Third-party API calls (TrustedX, etc.)
+- Third-party API calls that can complete after the HTTP response
 
 HTTP responses **MUST NOT** wait on these operations.
+
+**Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
+
+**Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
+
+- KYC / Regula on `POST /kyc/verify` and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
+- Keycloak JWKS fetch on token validation (cached 1 hour per URI)
+- ANIP lookup on `POST /clients/send-otp`
+- TrustedX `obtainToken` / `userInfo` on client login — the token is returned in the same response
 
 Configure sensible `$tries`, `$timeout`, and `$backoff` on jobs.
 
@@ -526,17 +539,20 @@ Canonical HTTP flow:
 POST /otp/send              { email, phonenumber }
 POST /otp/verify            { email|phonenumber|both, otp }
 POST /kyc/document/read     multipart recto (+ verso?) — assisted pre-read, no gate
-POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate
-POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT }
+POST /kyc/verify            multipart selfie + recto (+ verso?) after OTP gate; optional `capture_le` (ISO-8601 instant with timezone, within last 60 min / next 5 min; default = verification time)
+POST /enrolements/etrangers multipart KYC + documents → 202 { demande_id, numero_suivi, statut: EN_ATTENTE_AGENT, email_verifie, telephone_verifie }
+POST /enrolements/suivi     { numero_suivi, email }  (guest tracking; 404 if the pair does not match)
 ```
 
 Business rules:
 
-- Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2).
+- Email **and** phone are mandatory and **both** must be OTP-verified before submit (PDF §2). Persist `email_verified_at` / `phone_verified_at` on the demande at submit. Expose `email_verifie` / `telephone_verifie` on submit 202, `POST /enrolements/suivi`, and agent/responsable/manager detail (same keys as personne morale).
 - Submit creates `enrollment_requests` with `type = PERSONNE_PHYSIQUE`, `status = EN_ATTENTE_AGENT`, and a unique **`numero_suivi`** (`tracking_code`, format `PK…`) shown on the success screen.
 - Do **not** create `User` / `Identity` / NPI at submit time.
 - After submit: queue cloud upload + Regula analysis; send confirmation email including `numero_suivi`.
 - Guest endpoints; no Sanctum token required for OTP/enroll.
+- After submit the demandeur tracks with **`POST /enrolements/suivi`** `{ numero_suivi, email }` (body, not query string). Email must match the enrollment row (physique) or the official company email **or** `submitted_by` email (morale). Same 404 (`Demande introuvable`) for unknown code and wrong email. Response uses demandeur `statut_libelle` only — no `analyse_kyc`, avis agent, or documents. `finalisation_disponible` is true only when physique is `APPROUVEE`. `motifs` on `A_CORRIGER` / `REJETEE` is `{ id, title, description }[]` resolved from UUID reject motifs. Throttle `enrollment-suivi` (10/min per IP + numero_suivi).
+- Optional `capture_le` on `POST /kyc/verify` (and as submit fallback): ISO-8601 instant with timezone, within the last 60 minutes and at most 5 minutes in the future. Omitted → KYC verification time. Persisted on `enrollment_requests.selfie_captured_at` (not inside Regula `analysis_details`). Agent/responsable detail exposes it as `analyse_kyc.selfie.capture_le`.
 - `POST /kyc/document/read` is **assistive only**: it pre-fills the identity form and warns about an unusable photo on the capture screen. No OTP gate, nothing persisted, always 200 when well formed (`ok: false` + `quality_issues` on an unreadable photo). It exists so the browser never calls the Regula server directly — that would require opening the Regula server's CORS and would let any visitor burn licensed transactions outside our API. `POST /kyc/verify` stays the authoritative check and replays the read with the same scenario.
 
 ### 13.2 Agent / responsable review (diagram §§3.1–3.2)
@@ -571,6 +587,8 @@ PATCH /enrolements/{id}/validation    { decision: APPROUVEE|REJET_CONFIRME|RETOU
 ```
 
 `motif[]` values are **UUID ids** from `GET /management/enrollment-reject-motifs` (not string codes).
+
+`GET /enrolements/{id}` `analyse_kyc.document_identite` is **OCR-only** (never form `kyc_data`). After a successful `POST /kyc/verify`, OCR is stored in `analysis_details.document.ocr` (every Regula text container, recto + verso, first-wins). Canonical keys: `type_piece`, `pays`, `verifie`, `numero_document`, `nom`, `prenoms`, `date_naissance`, `nationalite`, `date_expiration`, `sexe`, `date_emission`, `lieu_naissance`, `autorite`, `numero_personnel`, `nom_complet`. Any other extracted Regula text field is merged on the same object, including MRZ, address, checksums, and check digits. `informations` / `informations_entreprise` remain the declared form. The identity panel is empty only when no identity OCR bag exists — it does not fall back to the form. `analyse_kyc.selfie.capture_le` is the ISO-8601 value of `enrollment_requests.selfie_captured_at`.
 
 **Libellés contextuels.** Toute ressource de demande expose `statut` (machine) **et** `statut_libelle`, calculé par `EnrollmentStatusPresenter` selon le rôle de l'appelant. Le statut machine est unique ; seul le mot change :
 
@@ -620,10 +638,21 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `EN_ATTENTE_RESPONSABLE`, then moves the request to `EN_COURS_RESPONSABLE`. No assign-to-other.
 - **Instruction:** agent must be the assigned agent and the request must be `EN_COURS_AGENT`; `avis=DEFAVORABLE` requires validated `motif[]` + optional `commentaire`; sets `agent_avis`, `reject_stage=AGENT` and `agent_decided_at`. L'agent rend un **avis**, il ne tranche pas.
 - **Validation:** responsable must be the assigned responsable and the request must be `EN_COURS_RESPONSABLE`; `RETOUR_AGENT` requires validated `motif[]` + optional `commentaire`; sets `return_reasons`, `reject_stage=RESPONSABLE`, clears `assigned_agent_id`, `assigned_responsable_id`, `agent_avis` et `agent_decided_at` — le retour annule l'avis rendu.
-- Responsable `APPROUVEE`: local User + **NPI (must start with a digit)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/enrolements/finalisation?token=`).
+- Responsable `APPROUVEE`: local User + **NPI (10 digits, sequential in `1000000001`–`1999999999`; starts with a digit, no `F-` prefix)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/etranger/finalisation?token=`). The NPI is in the email body, not the URL. After opening the link the applicant **types the generated NPI** (not `numero_suivi` / demande code).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
-- Manager: `GET /management/enrollment-stats` only; SLA level 3 notifies `manager`.
+- Manager (read-only supervision; SLA level 3 notifies `manager`):
+
+```
+GET /management/enrollment-stats                         (?granularite=semaine|mois)
+GET /management/enrollment-reject-motifs
+GET /management/enrolements/physiques
+GET /management/enrolements/physiques/{id}
+GET /management/enrolements/morales
+GET /management/enrolements/morales/{id}
+```
+
+  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged.
 - Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`; agent and responsable detail resources expose it (PDF §5.1 morale cross-check; physique uses the same key).
 - SLA: `enrollment:check-sla` hourly.
@@ -631,21 +660,21 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 
 ### 13.3 Finalization (diagram §4)
 
-FE-aligned flow after invitation email (secure link opens the finalisation UI; applicant enters `numero_suivi` then email OTP, then password + security questions):
+FE-aligned flow after invitation email (secure link opens the finalisation UI; applicant **types the generated NPI**, then email OTP, then password + security questions):
 
 ```
-GET  /enrolements/finalisation?token=                 (éligibilité; returns demande_id, numero_suivi, npi, email, statut)
-POST /enrolements/finalisation/otp/send               { numero_suivi }
-POST /enrolements/finalisation/otp/verify             { numero_suivi, otp }
-POST /enrolements/{id}/finalisation                   { token?, numero_suivi?, password, security_questions }
+GET  /enrolements/finalisation?token=[&npi=]          (éligibilité; npi optional/legacy, must match token; returns demande_id, numero_suivi, email, statut — not npi)
+POST /enrolements/finalisation/otp/send               { npi, token }
+POST /enrolements/finalisation/otp/verify             { npi, token, otp }
+POST /enrolements/finalisation                        { npi, token, password, security_questions }
 ```
 
 Rules:
 
 - Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
-- `POST …/otp/send` / `…/otp/verify`: guest; email OTP for finalisation (AED), distinct from TrustedX login MFA.
-- After successful OTP verify: short-lived cache proof (like KYC gate).
-- Finalize requires valid invitation `token` **and/or** `numero_suivi` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN for TrustedX.
+- `POST …/otp/send` / `…/otp/verify` / `POST /enrolements/finalisation`: **guest-capable** (no Sanctum required; an existing session does not block). **NPI + invitation token** required together (sequential NPIs must not send OTP alone). `npi` is digits only; `otp` is 6 digits. Email OTP is AED, distinct from TrustedX login MFA. Typed NPI must match the invitation — `numero_suivi` is not accepted.
+- After successful OTP verify: short-lived cache proof keyed by NPI (like KYC gate).
+- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1).
 - Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
 - Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
@@ -657,10 +686,11 @@ Canonical HTTP flow:
 
 ```
 POST /kyc/document/read                                (assistive OCR; no OTP)
-POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first)
+POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first; optional capture_le)
 POST /enrolements/morales                              (auth:sanctum + client; returns numero_suivi PKI…)
 GET  /enrolements/morales                              (owner list — Mes entreprises)
 GET  /enrolements/morales/{id}                         (owner only: company fields + pièces jointes)
+POST /enrolements/suivi                                (guest: numero_suivi + email — physique or morale)
 PUT  /enrolements/morales/{id}                         (owner, statut A_CORRIGER: corriger champs + pièces)
 POST /enrolements/morales/{id}/verify-email            (token from email link, public)
 POST /enrolements/morales/{id}/send-phone-otp            (owner only)
@@ -669,7 +699,7 @@ POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 
 After **both** company contacts verified → `EN_ATTENTE_AGENT` and confirmation email to the **demandeur** (`submittedBy.email`) with `numero_suivi`. The 24h verification link goes to the official company email at submit. Same instruction/validation contract as physique afterwards.
 
-**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Client tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}` only.
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Authenticated owner tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}`. Guest tracking (numero_suivi + email) uses `POST /enrolements/suivi` for both types.
 
 On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
 
@@ -815,7 +845,6 @@ Before opening or approving a PR, verify:
 | Enrollment parcours (product SoT) | [`txdocs/Parcours d’enrolement des étrangers – vf.pdf`](./txdocs/Parcours%20d’enrolement%20des%20étrangers%20–%20vf.pdf) |
 | UI references | [`pics/`](./pics/) |
 | Internal engineering notes | [`laravel12bestpractices.txt`](./laravel12bestpractices.txt) |
-| Refactor backlog | [`REFACTOR_BACKLOG.md`](./REFACTOR_BACKLOG.md) |
 | TatvaSoft Laravel practices | https://www.tatvasoft.com/outsourcing/2025/09/laravel-best-practices.html |
 | Smithery Laravel 12 skill | https://smithery.ai/skills/matula/laravel-12 |
 | Laravel 12 docs | https://laravel.com/docs/12.x |

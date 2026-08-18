@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\User;
 
 /**
@@ -55,6 +56,29 @@ final readonly class EnrollmentListFilters
                 ? (string) ($validated['order_by'] ?? 'created_at')
                 : 'created_at',
             orderDir: strtolower((string) ($validated['order_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc',
+        );
+    }
+
+    /**
+     * Manager supervision lists: type is forced by the route, default statut is every listable status.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    public static function forManager(array $validated, ?User $actor, string $type): self
+    {
+        $filters = self::fromValidated($validated, $actor);
+
+        return new self(
+            actor: $filters->actor,
+            statuses: $filters->statuses ?? EnrollmentStatus::listable(),
+            avis: null,
+            type: $type,
+            q: $filters->q,
+            from: $filters->from,
+            to: $filters->to,
+            perPage: min(max((int) ($validated['per_page'] ?? 20), 1), 100),
+            orderBy: $filters->orderBy,
+            orderDir: $filters->orderDir,
         );
     }
 }

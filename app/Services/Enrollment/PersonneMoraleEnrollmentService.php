@@ -88,6 +88,7 @@ class PersonneMoraleEnrollmentService
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
         $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
+        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
 
         DB::beginTransaction();
         try {
@@ -114,6 +115,7 @@ class PersonneMoraleEnrollmentService
                 'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
                     ? $kycSession['analysis_details']
                     : null,
+                'selfie_captured_at' => $capturedAt,
                 'status' => 'AWAITING_CONTACT_VERIFICATION',
                 'type' => 'PERSONNE_MORALE',
                 'submitted_by_user_id' => $user->id,
@@ -431,13 +433,15 @@ class PersonneMoraleEnrollmentService
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', self::ENROLLED_MORALE_STATUSES)
             ->whereDoesntHave('enrolledCompany')
-            ->get()
-            ->contains(function (EnrollmentRequest $row) use ($registrationNumber, $country) {
-                $kyc = $row->kyc_data ?? [];
-
-                return strtoupper(trim((string) ($kyc['registration_number'] ?? ''))) === $registrationNumber
-                    && strtoupper(trim((string) ($kyc['country_of_incorporation'] ?? ''))) === $country;
-            });
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
+                [$registrationNumber]
+            )
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
+                [$country]
+            )
+            ->exists();
     }
 
     /**

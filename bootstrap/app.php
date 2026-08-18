@@ -25,7 +25,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -41,11 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         apiPrefix: 'api/v1',
-        then: function (): void {
-            Route::middleware('api')
-                ->prefix('api/v1')
-                ->group(base_path('routes/auth.php'));
-        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append([

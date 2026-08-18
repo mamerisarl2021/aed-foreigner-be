@@ -39,9 +39,9 @@ final class ForeignerFinalizationService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    public function showByToken(string $token): ServiceResult
+    public function showByToken(string $token, ?string $npi = null): ServiceResult
     {
-        $resolved = $this->resolveToken($token);
+        $resolved = $this->resolveInvite($token, $npi, npiRequired: false);
         if ($resolved instanceof ServiceResult) {
             return $resolved;
         }
@@ -52,26 +52,27 @@ final class ForeignerFinalizationService
             'demande_id' => $enrollment->id,
             'numero_suivi' => $enrollment->tracking_code,
             'statut' => $enrollment->status->value,
-            'npi' => $user->npi,
             'email' => $user->email,
         ]);
     }
 
-    public function sendOtp(string $numeroSuivi): ServiceResult
+    public function sendOtp(string $npi, string $token): ServiceResult
     {
-        $enrollment = $this->findApprouveeByTracking($numeroSuivi);
-        if ($enrollment instanceof ServiceResult) {
-            return $enrollment;
+        $resolved = $this->resolveInvite($token, $npi, npiRequired: true);
+        if ($resolved instanceof ServiceResult) {
+            return $resolved;
         }
 
-        $code = strtoupper(trim($numeroSuivi));
-        if ($this->tooManyOtpAttempts($code)) {
+        [$user, $enrollment] = $resolved;
+        $npiKey = (string) $user->npi;
+
+        if ($this->tooManyOtpAttempts($npiKey)) {
             return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
         }
 
         $otp = (string) random_int(100000, 999999);
-        Cache::put($this->otpKey($code), hash('sha256', $otp), now()->addMinutes(self::OTP_TTL_MINUTES));
-        Cache::forget($this->otpAttemptsKey($code));
+        Cache::put($this->otpKey($npiKey), hash('sha256', $otp), now()->addMinutes(self::OTP_TTL_MINUTES));
+        Cache::forget($this->otpAttemptsKey($npiKey));
 
         SendEmailNotificationJob::dispatch(new EmailNotificationData(
             subject: 'Votre code OTP de finalisation AED',
@@ -79,6 +80,7 @@ final class ForeignerFinalizationService
             recipients: [NotificationRecipient::email($enrollment->email, ['otp' => $otp])],
             variables: [
                 'otp' => $otp,
+                'npi' => $npiKey,
                 'numero_suivi' => $enrollment->tracking_code,
             ],
             type: 'FINALISATION_OTP_SEND',
@@ -87,52 +89,54 @@ final class ForeignerFinalizationService
 
         $this->activityLog->record(
             ActivityLogAction::OtpEnvoye,
-            sprintf('OTP de finalisation envoyé pour %s.', $enrollment->tracking_code),
+            sprintf('OTP de finalisation envoyé pour le NPI %s.', $npiKey),
             null,
             $enrollment->id,
             ['context' => 'finalisation'],
         );
 
         return ServiceResult::ok('OTP de finalisation envoyé.', [
-            'numero_suivi' => $enrollment->tracking_code,
+            'npi' => $npiKey,
             'demande_id' => $enrollment->id,
             'email' => $enrollment->email,
         ]);
     }
 
-    public function verifyOtp(string $numeroSuivi, string $otp): ServiceResult
+    public function verifyOtp(string $npi, string $otp, string $token): ServiceResult
     {
-        $enrollment = $this->findApprouveeByTracking($numeroSuivi);
-        if ($enrollment instanceof ServiceResult) {
-            return $enrollment;
+        $resolved = $this->resolveInvite($token, $npi, npiRequired: true);
+        if ($resolved instanceof ServiceResult) {
+            return $resolved;
         }
 
-        $code = strtoupper(trim($numeroSuivi));
-        if ($this->tooManyOtpAttempts($code)) {
+        [$user, $enrollment] = $resolved;
+        $npiKey = (string) $user->npi;
+
+        if ($this->tooManyOtpAttempts($npiKey)) {
             return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
         }
 
-        $expected = Cache::get($this->otpKey($code));
+        $expected = Cache::get($this->otpKey($npiKey));
         if (! is_string($expected) || ! hash_equals($expected, hash('sha256', $otp))) {
-            $this->recordOtpAttempt($code);
+            $this->recordOtpAttempt($npiKey);
 
             return ServiceResult::fail('OTP invalide ou expiré.', null, 400);
         }
 
-        Cache::forget($this->otpKey($code));
-        Cache::forget($this->otpAttemptsKey($code));
-        Cache::put($this->otpVerifiedKey($code), true, now()->addMinutes(self::OTP_PROOF_MINUTES));
+        Cache::forget($this->otpKey($npiKey));
+        Cache::forget($this->otpAttemptsKey($npiKey));
+        Cache::put($this->otpVerifiedKey($npiKey), true, now()->addMinutes(self::OTP_PROOF_MINUTES));
 
         $this->activityLog->record(
             ActivityLogAction::OtpVerifie,
-            sprintf('OTP de finalisation vérifié pour %s.', $enrollment->tracking_code),
+            sprintf('OTP de finalisation vérifié pour le NPI %s.', $npiKey),
             null,
             $enrollment->id,
             ['context' => 'finalisation'],
         );
 
         return ServiceResult::ok('OTP de finalisation valide.', [
-            'numero_suivi' => $enrollment->tracking_code,
+            'npi' => $npiKey,
             'demande_id' => $enrollment->id,
             'otp_verified' => true,
         ]);
@@ -142,47 +146,25 @@ final class ForeignerFinalizationService
      * @param  array<int, array{question: string, answer: string}>  $securityQuestions
      */
     public function finalize(
-        string $demandeId,
+        string $npi,
+        string $token,
         string $password,
         array $securityQuestions,
-        ?string $token = null,
-        ?string $numeroSuivi = null,
     ): ServiceResult {
-        $enrollment = EnrollmentRequest::findOrFail($demandeId);
+        $resolved = $this->resolveInvite($token, $npi, npiRequired: true);
+        if ($resolved instanceof ServiceResult) {
+            return $resolved;
+        }
+
+        [$user, $enrollment] = $resolved;
+        $npiKey = (string) $user->npi;
+
         if ($enrollment->status !== EnrollmentStatus::Approuvee) {
             return ServiceResult::fail('Demande non éligible à la finalisation.', null, 422);
         }
 
-        $user = null;
-
-        if (is_string($token) && $token !== '') {
-            $resolved = $this->resolveToken($token);
-            if ($resolved instanceof ServiceResult) {
-                return $resolved;
-            }
-            [$user, $tokenEnrollment] = $resolved;
-            if ($tokenEnrollment->id !== $enrollment->id) {
-                return ServiceResult::fail('Token de finalisation ne correspond pas à la demande.', null, 422);
-            }
-        }
-
-        $tracking = $numeroSuivi !== null && trim($numeroSuivi) !== ''
-            ? strtoupper(trim($numeroSuivi))
-            : strtoupper((string) $enrollment->tracking_code);
-
-        if ($tracking === '' || strtoupper((string) $enrollment->tracking_code) !== $tracking) {
-            return ServiceResult::fail('Numéro de suivi invalide.', null, 422);
-        }
-
-        if (! Cache::get($this->otpVerifiedKey($tracking))) {
+        if (! Cache::get($this->otpVerifiedKey($npiKey))) {
             return ServiceResult::fail('Veuillez d\'abord vérifier l\'OTP de finalisation.', null, 400);
-        }
-
-        if ($user === null) {
-            $user = User::where('email', $enrollment->email)->first();
-        }
-        if (! $user) {
-            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
         }
 
         if ($user->trustedx_registered_at === null) {
@@ -193,39 +175,33 @@ final class ForeignerFinalizationService
             return ServiceResult::fail('Deux questions de sécurité sont requises.', null, 422);
         }
 
+        $lookup = $this->trustedXClient->getUserWithNPI($user->npi);
+        if (! ($lookup['status'] ?? false)) {
+            return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
+        }
+
+        $trustedXUserId = $lookup['data']['id'] ?? null;
+        if ((! is_string($trustedXUserId) && ! is_int($trustedXUserId)) || $trustedXUserId === '') {
+            return ServiceResult::fail('Identifiant TrustedX introuvable.', null, 400);
+        }
+
         $generatedPin = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+
+        $passwordOutput = $this->trustedXClient->setDefaultPassword(
+            ['id' => $trustedXUserId, 'password' => $password],
+            'password'
+        );
+        $pinOutput = $this->trustedXClient->setDefaultPassword(
+            ['id' => $trustedXUserId, 'password' => $generatedPin],
+            'pin'
+        );
+
+        if (! ($passwordOutput['status'] ?? false) || ! ($pinOutput['status'] ?? false)) {
+            return ServiceResult::fail('Échec de la définition du mot de passe / PIN.', null, 400);
+        }
 
         DB::beginTransaction();
         try {
-            $lookup = $this->trustedXClient->getUserWithNPI($user->npi);
-            if (! ($lookup['status'] ?? false)) {
-                DB::rollBack();
-
-                return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
-            }
-
-            $trustedXUserId = $lookup['data']['id'] ?? null;
-            if (! $trustedXUserId) {
-                DB::rollBack();
-
-                return ServiceResult::fail('Identifiant TrustedX introuvable.', null, 400);
-            }
-
-            $passwordOutput = $this->trustedXClient->setDefaultPassword(
-                ['id' => $trustedXUserId, 'password' => $password],
-                'password'
-            );
-            $pinOutput = $this->trustedXClient->setDefaultPassword(
-                ['id' => $trustedXUserId, 'password' => $generatedPin],
-                'pin'
-            );
-
-            if (! ($passwordOutput['status'] ?? false) || ! ($pinOutput['status'] ?? false)) {
-                DB::rollBack();
-
-                return ServiceResult::fail('Échec de la définition du mot de passe / PIN.', null, 400);
-            }
-
             ClientLocalCredentials::apply($user, 'password', $password);
             ClientLocalCredentials::apply($user, 'pin', $generatedPin);
             $user->security_questions = $securityQuestions;
@@ -235,13 +211,8 @@ final class ForeignerFinalizationService
             $enrollment->status = EnrollmentStatus::Enrolee;
             $enrollment->save();
 
-            if (is_string($token) && $token !== '') {
-                PasswordResetToken::where('token', hash('sha256', $token))->delete();
-            } else {
-                PasswordResetToken::where('npi', $user->npi)->where('type', 'finalisation')->delete();
-            }
-
-            Cache::forget($this->otpVerifiedKey($tracking));
+            PasswordResetToken::where('npi', $npiKey)->where('type', 'finalisation')->delete();
+            Cache::forget($this->otpVerifiedKey($npiKey));
 
             $this->events->publish('completed', [
                 'demande_id' => $enrollment->id,
@@ -266,14 +237,43 @@ final class ForeignerFinalizationService
                 'demande_id' => $enrollment->id,
                 'numero_suivi' => $enrollment->tracking_code,
                 'statut' => $enrollment->status->value,
-                'npi' => $user->npi,
+                'npi' => $npiKey,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Foreigner finalization failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Foreigner finalization failed: '.$e->getMessage(), [
+                'enrollment_request_id' => $enrollment->id,
+            ]);
 
             return ServiceResult::fail('Erreur lors de la finalisation.', null, 500);
         }
+    }
+
+    /**
+     * @return array{0: User, 1: EnrollmentRequest}|ServiceResult
+     */
+    private function resolveInvite(string $token, ?string $npi, bool $npiRequired): array|ServiceResult
+    {
+        $resolved = $this->resolveToken($token);
+        if ($resolved instanceof ServiceResult) {
+            return $resolved;
+        }
+
+        [$user, $enrollment] = $resolved;
+        $typed = $npi !== null ? trim($npi) : '';
+
+        if ($npiRequired && $typed === '') {
+            return ServiceResult::fail('Le NPI est obligatoire.', null, 422);
+        }
+
+        if ($typed !== '') {
+            $expected = (string) $user->npi;
+            if ($expected === '' || ! hash_equals($expected, $typed)) {
+                return ServiceResult::fail('Lien de finalisation invalide.', null, 404);
+            }
+        }
+
+        return [$user, $enrollment];
     }
 
     /**
@@ -308,48 +308,29 @@ final class ForeignerFinalizationService
         return [$user, $enrollment];
     }
 
-    private function findApprouveeByTracking(string $numeroSuivi): EnrollmentRequest|ServiceResult
+    private function otpKey(string $npi): string
     {
-        $code = strtoupper(trim($numeroSuivi));
-        if ($code === '') {
-            return ServiceResult::fail('Numéro de suivi requis.', null, 422);
-        }
-
-        $enrollment = EnrollmentRequest::query()
-            ->where('tracking_code', $code)
-            ->where('status', EnrollmentStatus::Approuvee->value)
-            ->first();
-
-        if (! $enrollment) {
-            return ServiceResult::fail('Demande introuvable ou non éligible à la finalisation.', null, 404);
-        }
-
-        return $enrollment;
+        return 'finalisation_otp_'.$npi;
     }
 
-    private function otpKey(string $trackingCode): string
+    private function otpVerifiedKey(string $npi): string
     {
-        return 'finalisation_otp_'.$trackingCode;
+        return 'finalisation_otp_verified_'.$npi;
     }
 
-    private function otpVerifiedKey(string $trackingCode): string
+    private function otpAttemptsKey(string $npi): string
     {
-        return 'finalisation_otp_verified_'.$trackingCode;
+        return 'finalisation_otp_attempts_'.$npi;
     }
 
-    private function otpAttemptsKey(string $trackingCode): string
+    private function tooManyOtpAttempts(string $npi): bool
     {
-        return 'finalisation_otp_attempts_'.$trackingCode;
+        return (int) Cache::get($this->otpAttemptsKey($npi), 0) >= self::OTP_MAX_ATTEMPTS;
     }
 
-    private function tooManyOtpAttempts(string $trackingCode): bool
+    private function recordOtpAttempt(string $npi): void
     {
-        return (int) Cache::get($this->otpAttemptsKey($trackingCode), 0) >= self::OTP_MAX_ATTEMPTS;
-    }
-
-    private function recordOtpAttempt(string $trackingCode): void
-    {
-        $key = $this->otpAttemptsKey($trackingCode);
+        $key = $this->otpAttemptsKey($npi);
         Cache::add($key, 0, now()->addMinutes(self::OTP_TTL_MINUTES));
         Cache::increment($key);
     }

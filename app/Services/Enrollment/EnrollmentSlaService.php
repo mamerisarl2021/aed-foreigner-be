@@ -173,7 +173,10 @@ class EnrollmentSlaService
             return;
         }
 
-        $recipients = User::role($roles)->get();
+        $recipients = collect();
+        User::role($roles)->chunkById(100, function ($users) use ($recipients): void {
+            $recipients->push(...$users);
+        });
         if ($recipients->isEmpty()) {
             Log::info('Enrollment SLA alert: no users for roles', [
                 'level' => $level,
@@ -260,15 +263,17 @@ class EnrollmentSlaService
                 'numero_suivi' => $enrollment->tracking_code,
             ]);
         } else {
-            foreach (User::role(config('roles.agent'))->get() as $user) {
-                if ($user->email === '') {
-                    continue;
+            User::role(config('roles.agent'))->chunkById(100, function ($users) use (&$recipients, $enrollment): void {
+                foreach ($users as $user) {
+                    if ($user->email === '') {
+                        continue;
+                    }
+                    $recipients[] = NotificationRecipient::email($user->email, [
+                        'enrollment_id' => $enrollment->id,
+                        'numero_suivi' => $enrollment->tracking_code,
+                    ]);
                 }
-                $recipients[] = NotificationRecipient::email($user->email, [
-                    'enrollment_id' => $enrollment->id,
-                    'numero_suivi' => $enrollment->tracking_code,
-                ]);
-            }
+            });
         }
 
         if ($recipients === []) {

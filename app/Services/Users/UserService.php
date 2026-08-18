@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -64,9 +65,15 @@ final class UserService
     public function updateStatuses(array $users, ?string $actorUserId = null): ServiceResult
     {
         try {
-            DB::transaction(function () use ($users) {
+            DB::transaction(function () use ($users): void {
+                $ids = array_values(array_unique(array_column($users, 'id')));
+                $models = User::query()->whereIn('id', $ids)->get()->keyBy('id');
+
                 foreach ($users as $userData) {
-                    $user = User::findOrFail($userData['id']);
+                    $user = $models->get($userData['id']);
+                    if ($user === null) {
+                        throw (new ModelNotFoundException)->setModel(User::class, [$userData['id']]);
+                    }
                     $user->update(['status' => $userData['status']]);
                 }
             });
@@ -80,6 +87,8 @@ final class UserService
             );
 
             return ServiceResult::ok("Le statut de l'utilisateur à bien été mis à jour", $users);
+        } catch (ModelNotFoundException) {
+            return ServiceResult::fail('Utilisateur introuvable.', null, 404);
         } catch (Exception $e) {
             Log::error('Failed to update user statuses: '.$e->getMessage());
 

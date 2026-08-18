@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\ANIP;
 
-use GuzzleHttp\Exception\ClientException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AnipSimulatorService
 {
@@ -21,10 +23,11 @@ class AnipSimulatorService
     public function getUserData(string $npi): array
     {
         try {
-            $response = Http::withBasicAuth(
-                (string) config('trustedx.anip_username'),
-                (string) config('trustedx.anip_password'),
-            )->get("{$this->baseUrl}/api/user/{$npi}");
+            $response = Http::timeout(10)
+                ->withBasicAuth(
+                    (string) config('trustedx.anip_username'),
+                    (string) config('trustedx.anip_password'),
+                )->get("{$this->baseUrl}/api/user/{$npi}");
 
             if ($response->successful()) {
                 return [
@@ -40,7 +43,7 @@ class AnipSimulatorService
                 'status' => false,
                 'message' => 'Ce NPI ne correspond à aucun utilisateur.',
             ];
-        } catch (ClientException $e) {
+        } catch (Throwable $e) {
             Log::error($e->getMessage(), $e->getTrace());
 
             return ['status' => false, 'message' => 'Service ANIP indisponible.'];

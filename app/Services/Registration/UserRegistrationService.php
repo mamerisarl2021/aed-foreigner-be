@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Registration;
 
 use App\Enums\ActivityLogAction;
-use App\Jobs\SendInitLinkJob;
 use App\Jobs\SendOTPJob;
 use App\Models\OTP;
-use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ANIP\AnipSimulatorService;
@@ -22,7 +20,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class UserRegistrationService
 {
@@ -194,32 +191,6 @@ class UserRegistrationService
         return ServiceResult::ok(
             'Votre mot de passe a bien été mis à jour.',
             [...$user['data'], ...$output['data']]
-        );
-    }
-
-    public function sendResetLink(string $npi, string $type): ServiceResult
-    {
-        $token = Str::random(60);
-
-        PasswordResetToken::updateOrCreate(
-            ['npi' => $npi, 'type' => $type],
-            ['token' => hash('sha256', $token), 'created_at' => Carbon::now(), 'type' => $type]
-        );
-
-        $user = $this->trustedXClient->getUserWithNPI($npi);
-        if (! $user['status']) {
-            return ServiceResult::fail($user['message'], null, 400);
-        }
-
-        $link = config('app.frontend_url')."/reset/{$type}/$token/$npi";
-        $typeLabel = $type === 'password' ? 'mot de passe' : 'pin';
-        $email = User::whereNpi($npi)->first()->email;
-
-        SendInitLinkJob::dispatch($email, $link, $typeLabel);
-
-        return ServiceResult::ok(
-            "Un lien vous a été envoyé par MAIL consultez le pour mettre à jour votre $typeLabel.",
-            []
         );
     }
 

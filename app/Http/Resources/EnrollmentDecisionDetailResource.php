@@ -9,8 +9,8 @@ use App\Enums\EnrollmentStatus;
 use App\Http\Resources\Concerns\FormatsEnrollmentDocuments;
 use App\Http\Resources\Concerns\MapsEnrollmentApplicantDetail;
 use App\Http\Resources\Concerns\MapsEnrollmentKycAnalysis;
-use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
+use App\Support\EnrollmentMotifs;
 use App\Support\EnrollmentStatusPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -47,6 +47,8 @@ class EnrollmentDecisionDetailResource extends JsonResource
             'responsable' => $this->relationLoaded('assignedResponsable')
                 ? $this->formatAgent($this->assignedResponsable)
                 : null,
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
             'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteResponsable
                 && $this->assigned_responsable_id === null,
             'peut_valider' => $this->status === EnrollmentStatus::EnCoursResponsable
@@ -85,41 +87,8 @@ class EnrollmentDecisionDetailResource extends JsonResource
                 ? $this->formatAgent($this->assignedAgent)
                 : null,
             'date' => $enrollment->agent_decided_at,
-            'motifs' => $avis === AgentAvis::Defavorable ? $this->resolveMotifs($this->reject_reasons) : [],
+            'motifs' => $avis === AgentAvis::Defavorable ? EnrollmentMotifs::resolve($enrollment->reject_reasons) : [],
             'description' => $this->review_comments,
         ];
-    }
-
-    /**
-     * @param  list<string>|null  $ids
-     * @return list<array{id: string, title: string, description: string}>
-     */
-    private function resolveMotifs(?array $ids): array
-    {
-        if ($ids === null || $ids === []) {
-            return [];
-        }
-
-        $normalized = [];
-        foreach ($ids as $id) {
-            $normalized[] = (string) $id;
-        }
-
-        $motifs = EnrollmentRejectMotif::query()
-            ->whereIn('id', $normalized)
-            ->get()
-            ->keyBy('id');
-
-        $resolved = [];
-        foreach ($normalized as $id) {
-            $motif = $motifs->get($id);
-            $resolved[] = [
-                'id' => $id,
-                'title' => $motif !== null ? $motif->title : $id,
-                'description' => $motif !== null ? $motif->description : '',
-            ];
-        }
-
-        return $resolved;
     }
 }

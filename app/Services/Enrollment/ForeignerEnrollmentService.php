@@ -47,8 +47,9 @@ final class ForeignerEnrollmentService
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
-        $kycSession = $this->kycVerification->consumeVerification($email, $phone);
+        $kycSession = $this->kycVerification->consumeVerification($email, $phone) ?? [];
         $uploadedFiles = $this->uploadEnrollmentFiles($request);
+        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
 
         DB::beginTransaction();
         try {
@@ -72,7 +73,12 @@ final class ForeignerEnrollmentService
                 'liveness' => $kycSession['liveness'] ?? $request->input('liveness'),
                 'similarity' => $kycSession['similarity'] ?? $request->input('similarity'),
                 'risk_score' => $kycSession['risk_score'] ?? null,
-                'analysis_details' => $kycSession['analysis_details'] ?? null,
+                'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
+                    ? $kycSession['analysis_details']
+                    : null,
+                'selfie_captured_at' => $capturedAt,
+                'email_verified_at' => now(),
+                'phone_verified_at' => now(),
                 'status' => EnrollmentStatus::EnAttenteAgent->value,
                 'type' => 'PERSONNE_PHYSIQUE',
                 'sla_deadline_at' => now()->addHours((int) config('enrollment.sla.max_hours', 72)),
@@ -121,6 +127,8 @@ final class ForeignerEnrollmentService
                 'demande_id' => $enrollmentRequest->id,
                 'numero_suivi' => $enrollmentRequest->tracking_code,
                 'statut' => $enrollmentRequest->status->value,
+                'email_verifie' => true,
+                'telephone_verifie' => true,
             ], 202);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -37,6 +37,8 @@ final class OtpController extends BaseController
      *
      * Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each
      * call so the response reflects both cache flags; only the OTP matching one channel is consumed.
+     * Success data includes email_verified / phone_verified and the French aliases
+     * email_verifie / telephone_verifie (same keys as personne morale).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function verify(VerifyOtpRequest $request): JsonResponse

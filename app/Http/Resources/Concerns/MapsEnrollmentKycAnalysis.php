@@ -8,7 +8,7 @@ use App\Models\EnrollmentRequest;
 
 /**
  * Shapes `analyse_kyc` for agent/responsable detail views.
- * Physique uses declared KYC as OCR fallback; morale uses OCR/selfie only.
+ * `document_identite` is OCR-only (form `kyc_data` is never mixed in).
  *
  * @mixin FormatsEnrollmentDocuments
  */
@@ -20,100 +20,49 @@ trait MapsEnrollmentKycAnalysis
     private const LIVENESS_CONFIRMED = '0';
 
     /**
-     * @return array{
-     *     liveness: mixed,
-     *     similarity: mixed,
-     *     similarity_percent: int|null,
-     *     risk_score: mixed,
-     *     details: mixed,
-     *     document_identite: array{
-     *         type_piece: mixed,
-     *         pays: mixed,
-     *         verifie: bool,
-     *         numero_document: mixed,
-     *         nom: mixed,
-     *         prenoms: mixed,
-     *         date_naissance: mixed,
-     *         nationalite: mixed,
-     *         date_expiration: mixed
-     *     },
-     *     selfie: array{url: string|null, capture_le: string|null},
-     *     etapes: array{
-     *         document_ajoute: bool,
-     *         informations_extraites: bool,
-     *         liveness_effectue: bool,
-     *         visage_compare: bool
-     *     }
-     * }
+     * Keys that mean `ocr_data` is document OCR, not mock metadata (email, liveness, …).
+     *
+     * @var list<string>
+     */
+    private const IDENTITY_OCR_KEYS = [
+        'nom',
+        'name',
+        'prenoms',
+        'prenom',
+        'first_name',
+        'numero_piece',
+        'numero_document',
+        'document_number',
+        'numero_passeport',
+        'numero_cni',
+        'date_naissance',
+        'date_of_birth',
+        'nationalite',
+        'nationality',
+    ];
+
+    /**
+     * @return array<string, mixed>
      */
     protected function analyseKycPhysique(EnrollmentRequest $enrollment): array
     {
-        return $this->analyseKycFromDocument($enrollment, $this->asStringKeyedArray($enrollment->kyc_data));
+        return $this->analyseKycFromDocument($enrollment);
     }
 
     /**
      * Morale KYC is the demandeur's identity document, not company kyc_data.
      *
-     * @return array{
-     *     liveness: mixed,
-     *     similarity: mixed,
-     *     similarity_percent: int|null,
-     *     risk_score: mixed,
-     *     details: mixed,
-     *     document_identite: array{
-     *         type_piece: mixed,
-     *         pays: mixed,
-     *         verifie: bool,
-     *         numero_document: mixed,
-     *         nom: mixed,
-     *         prenoms: mixed,
-     *         date_naissance: mixed,
-     *         nationalite: mixed,
-     *         date_expiration: mixed
-     *     },
-     *     selfie: array{url: string|null, capture_le: string|null},
-     *     etapes: array{
-     *         document_ajoute: bool,
-     *         informations_extraites: bool,
-     *         liveness_effectue: bool,
-     *         visage_compare: bool
-     *     }
-     * }
+     * @return array<string, mixed>
      */
     protected function analyseKycMorale(EnrollmentRequest $enrollment): array
     {
-        return $this->analyseKycFromDocument($enrollment, []);
+        return $this->analyseKycFromDocument($enrollment);
     }
 
     /**
-     * @param  array<string, mixed>  $declaredKyc
-     * @return array{
-     *     liveness: mixed,
-     *     similarity: mixed,
-     *     similarity_percent: int|null,
-     *     risk_score: mixed,
-     *     details: mixed,
-     *     document_identite: array{
-     *         type_piece: mixed,
-     *         pays: mixed,
-     *         verifie: bool,
-     *         numero_document: mixed,
-     *         nom: mixed,
-     *         prenoms: mixed,
-     *         date_naissance: mixed,
-     *         nationalite: mixed,
-     *         date_expiration: mixed
-     *     },
-     *     selfie: array{url: string|null, capture_le: string|null},
-     *     etapes: array{
-     *         document_ajoute: bool,
-     *         informations_extraites: bool,
-     *         liveness_effectue: bool,
-     *         visage_compare: bool
-     *     }
-     * }
+     * @return array<string, mixed>
      */
-    private function analyseKycFromDocument(EnrollmentRequest $enrollment, array $declaredKyc): array
+    private function analyseKycFromDocument(EnrollmentRequest $enrollment): array
     {
         $documents = $this->asStringKeyedArray($enrollment->documents);
         $details = $enrollment->analysis_details;
@@ -128,11 +77,11 @@ trait MapsEnrollmentKycAnalysis
             'similarity_percent' => $this->similarityPercent($similarity),
             'risk_score' => $enrollment->risk_score,
             'details' => $details,
-            'document_identite' => $this->documentIdentiteFromKyc($declaredKyc, $ocr, $documentName, $details),
-            'selfie' => $this->kycSelfieBlock($documents),
+            'document_identite' => $this->documentIdentiteFromOcr($ocr, $documentName, $details),
+            'selfie' => $this->kycSelfieBlock($enrollment, $documents),
             'etapes' => [
                 'document_ajoute' => $this->hasDocumentSlot($documents, 'recto'),
-                'informations_extraites' => $this->hasExtractedIdentityInfo($declaredKyc, $ocr),
+                'informations_extraites' => $this->hasExtractedIdentityInfo($ocr),
                 'liveness_effectue' => $this->isLivenessConfirmed($liveness),
                 'visage_compare' => $this->hasSimilarityScore($similarity),
             ],
@@ -140,52 +89,71 @@ trait MapsEnrollmentKycAnalysis
     }
 
     /**
-     * OCR wins over declared KYC so the review panel shows what the document said.
+     * Review panel: every OCR field, never the enrollment form.
      *
-     * @param  array<string, mixed>  $kyc
      * @param  array<string, mixed>  $ocr
-     * @return array{
-     *     type_piece: mixed,
-     *     pays: mixed,
-     *     verifie: bool,
-     *     numero_document: mixed,
-     *     nom: mixed,
-     *     prenoms: mixed,
-     *     date_naissance: mixed,
-     *     nationalite: mixed,
-     *     date_expiration: mixed
-     * }
+     * @return array<string, mixed>
      */
-    private function documentIdentiteFromKyc(array $kyc, array $ocr, ?string $documentName, mixed $details): array
+    private function documentIdentiteFromOcr(array $ocr, ?string $documentName, mixed $details): array
     {
         [$namePays, $nameType] = $this->splitDocumentName($documentName);
 
-        $pick = function (array $ocrKeys, array $kycKeys) use ($kyc, $ocr): mixed {
-            foreach ($ocrKeys as $key) {
+        $pick = function (array $keys) use ($ocr): mixed {
+            foreach ($keys as $key) {
                 if (array_key_exists($key, $ocr) && $ocr[$key] !== null && $ocr[$key] !== '') {
                     return $ocr[$key];
-                }
-            }
-            foreach ($kycKeys as $key) {
-                if (array_key_exists($key, $kyc) && $kyc[$key] !== null && $kyc[$key] !== '') {
-                    return $kyc[$key];
                 }
             }
 
             return null;
         };
 
-        return [
-            'type_piece' => $pick(['type_piece', 'document_type'], ['document_type', 'type_piece']) ?? $nameType,
-            'pays' => $pick(['pays', 'issuing_state'], ['issuing_state']) ?? $namePays ?? $pick([], ['country_of_residence', 'pays']),
+        $identite = [
+            'type_piece' => $pick(['type_piece', 'document_type', 'classe_document']) ?? $nameType,
+            'pays' => $pick(['pays', 'pays_emission', 'issuing_state', 'etat_emetteur']) ?? $namePays,
             'verifie' => $this->isDocumentVerified($details),
-            'numero_document' => $pick(['numero_piece', 'numero_document', 'document_number'], ['document_number', 'numero_piece']),
-            'nom' => $pick(['nom', 'name'], ['name', 'nom']),
-            'prenoms' => $pick(['prenoms', 'prenom', 'first_name'], ['first_name', 'prenoms', 'prenom']),
-            'date_naissance' => $pick(['date_naissance', 'date_of_birth'], ['date_of_birth', 'date_naissance']),
-            'nationalite' => $pick(['nationalite', 'nationality'], ['nationality', 'nationalite']),
-            'date_expiration' => $pick(['date_expiration', 'expiry_date', 'date_of_expiry'], ['date_expiration', 'expiry_date', 'date_of_expiry']),
+            'numero_document' => $pick(['numero_document', 'numero_piece', 'document_number', 'numero_passeport', 'numero_cni']),
+            'nom' => $pick(['nom', 'name']),
+            'prenoms' => $pick(['prenoms', 'prenom', 'first_name']),
+            'date_naissance' => $pick(['date_naissance', 'date_of_birth']),
+            'nationalite' => $pick(['nationalite', 'nationality']),
+            'date_expiration' => $pick(['date_expiration', 'expiry_date', 'date_of_expiry']),
+            'sexe' => $pick(['sexe', 'sex']),
+            'date_emission' => $pick(['date_emission', 'date_of_issue']),
+            'lieu_naissance' => $pick(['lieu_naissance', 'ville_naissance', 'place_of_birth']),
+            'autorite' => $pick(['autorite', 'authority']),
+            'numero_personnel' => $pick(['numero_personnel', 'personal_number']),
+            'nom_complet' => $pick(['nom_complet']),
         ];
+
+        $aliases = [
+            'type_piece', 'document_type', 'classe_document',
+            'pays', 'pays_emission', 'issuing_state', 'etat_emetteur',
+            'numero_document', 'numero_piece', 'document_number', 'numero_passeport', 'numero_cni',
+            'nom', 'name',
+            'prenoms', 'prenom', 'first_name',
+            'date_naissance', 'date_of_birth',
+            'nationalite', 'nationality',
+            'date_expiration', 'expiry_date', 'date_of_expiry',
+            'sexe', 'sex',
+            'date_emission', 'date_of_issue',
+            'lieu_naissance', 'ville_naissance', 'place_of_birth',
+            'autorite', 'authority',
+            'numero_personnel', 'personal_number',
+            'nom_complet',
+        ];
+
+        foreach ($ocr as $key => $value) {
+            if ($key === '' || array_key_exists($key, $identite) || in_array($key, $aliases, true)) {
+                continue;
+            }
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $identite[$key] = $value;
+        }
+
+        return $identite;
     }
 
     /**
@@ -214,7 +182,7 @@ trait MapsEnrollmentKycAnalysis
             return [];
         }
 
-        if (isset($details['ocr_data']) && is_array($details['ocr_data'])) {
+        if (isset($details['ocr_data']) && is_array($details['ocr_data']) && $this->looksLikeIdentityOcr($details['ocr_data'])) {
             return $details['ocr_data'];
         }
 
@@ -230,6 +198,24 @@ trait MapsEnrollmentKycAnalysis
         }
 
         return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $bag
+     */
+    private function looksLikeIdentityOcr(array $bag): bool
+    {
+        foreach (self::IDENTITY_OCR_KEYS as $key) {
+            if (! array_key_exists($key, $bag)) {
+                continue;
+            }
+            $value = $bag[$key];
+            if ($value !== null && $value !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function documentNameFromDetails(mixed $details): ?string
@@ -266,11 +252,11 @@ trait MapsEnrollmentKycAnalysis
      * @param  array<string, mixed>  $documents
      * @return array{url: string|null, capture_le: string|null}
      */
-    private function kycSelfieBlock(array $documents): array
+    private function kycSelfieBlock(EnrollmentRequest $enrollment, array $documents): array
     {
         return [
             'url' => $this->kycSelfieUrl($documents),
-            'capture_le' => $this->kycSelfieCapturedAt(),
+            'capture_le' => $this->kycSelfieCapturedAt($enrollment),
         ];
     }
 
@@ -282,14 +268,9 @@ trait MapsEnrollmentKycAnalysis
         return $this->documentUrl($documents, 'selfie');
     }
 
-    private function kycSelfieCapturedAt(): ?string
+    private function kycSelfieCapturedAt(EnrollmentRequest $enrollment): ?string
     {
-        return $this->nullableIsoString(null);
-    }
-
-    private function nullableIsoString(mixed $value): ?string
-    {
-        return is_string($value) && $value !== '' ? $value : null;
+        return $enrollment->selfie_captured_at?->toIso8601String();
     }
 
     /**
@@ -309,13 +290,12 @@ trait MapsEnrollmentKycAnalysis
     }
 
     /**
-     * @param  array<string, mixed>  $kyc
      * @param  array<string, mixed>  $ocr
      */
-    private function hasExtractedIdentityInfo(array $kyc, array $ocr): bool
+    private function hasExtractedIdentityInfo(array $ocr): bool
     {
-        foreach (['numero_piece', 'document_number', 'nom', 'name'] as $key) {
-            if (($ocr[$key] ?? '') !== '' || ($kyc[$key] ?? '') !== '') {
+        foreach (['numero_piece', 'numero_document', 'document_number', 'nom', 'name', 'prenoms'] as $key) {
+            if (($ocr[$key] ?? '') !== '') {
                 return true;
             }
         }

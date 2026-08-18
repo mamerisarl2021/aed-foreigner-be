@@ -40,7 +40,10 @@ final class EnrollmentController extends BaseController
      *
      * Diagram §2.4. Requires OTP + KYC gates. Full identity data and documents
      * (selfie, recto; verso optional) are required at submit time.
-     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT.
+     * Optional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on
+     * selfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.
+     * Success 202 data: demande_id (UUID), numero_suivi (tracking code PK…), statut EN_ATTENTE_AGENT,
+     * email_verifie and telephone_verifie (always true: both OTPs are required before submit).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse
@@ -88,10 +91,13 @@ final class EnrollmentController extends BaseController
      * Responsable detail also exposes `numero_suivi` for the breadcrumb.
      *
      * Personne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`
-     * plus `similarity_percent` (0–100 or null), `document_identite` (OCR preferred over declared
-     * KYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),
-     * `selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp
-     * is stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API
+     * plus `similarity_percent` (0–100 or null), `document_identite` (OCR only — every
+     * extracted text field, never form `kyc_data`; `verifie` is true only when
+     * `doc_validity` is true and `details.error` is absent),
+     * `selfie.url` (temporary cloud URL) / `selfie.capture_le` (ISO-8601 instant of the
+     * selfie / liveness capture from `enrollment_requests.selfie_captured_at`: client
+     * `capture_le` within the KYC window, else verification time),
+     * and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API
      * confirmed liveness (status `0`). `etapes.visage_compare` is a boolean.
      */
     #[PathParameter('id', description: 'Enrollment request UUID.', type: 'string', format: 'uuid')]

@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\DataTransferObjects\SmsNotificationData;
 use App\Enums\NotificationPlatform;
+use App\Jobs\Concerns\RetriesWithBackoff;
 use App\Jobs\Notifications\SendSmsNotificationJob;
 use App\Support\NotificationRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,6 +15,7 @@ use Illuminate\Foundation\Queue\Queueable;
 final class SendSmsJob implements ShouldQueue
 {
     use Queueable;
+    use RetriesWithBackoff;
 
     public function __construct(
         public readonly string $phoneNumber,

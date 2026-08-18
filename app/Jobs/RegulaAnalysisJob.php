@@ -21,6 +21,16 @@ class RegulaAnalysisJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public int $timeout = 180;
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 120];
+    }
+
     public function __construct(
         public readonly string $enrollmentRequestId,
     ) {}

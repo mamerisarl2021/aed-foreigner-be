@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Rules\Enrollment\Iso8601Instant;
 use App\Rules\PhoneNumber;
 
 class SubmitEnrollmentRequest extends ApiFormRequest
@@ -34,6 +35,8 @@ class SubmitEnrollmentRequest extends ApiFormRequest
             'profile' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'liveness' => ['nullable', 'string'],
             'similarity' => ['nullable', 'string'],
+            // Instant ISO-8601 of the selfie / liveness capture (TZ required). Fallback if omitted at /kyc/verify.
+            'capture_le' => ['nullable', 'string', new Iso8601Instant],
         ];
     }
 

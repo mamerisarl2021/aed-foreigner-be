@@ -47,6 +47,8 @@ class EnrollmentRequestAgentDetailResource extends JsonResource
             // Avis déjà rendu par le niveau agent, `null` tant qu'il ne l'a pas été.
             'avis_agent' => $enrollment->agent_avis?->value,
             'avis_agent_libelle' => $enrollment->avisAgent()?->label(),
+            'email_verifie' => $enrollment->isEmailVerified(),
+            'telephone_verifie' => $enrollment->isPhoneVerified(),
             'peut_prendre_en_charge' => $this->status === EnrollmentStatus::EnAttenteAgent
                 && $this->assigned_agent_id === null,
             'peut_instruire' => $this->status === EnrollmentStatus::EnCoursAgent

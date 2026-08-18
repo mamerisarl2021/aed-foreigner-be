@@ -28,6 +28,9 @@
             "name": "Admin"
         },
         {
+            "name": "Enrollment - Manager"
+        },
+        {
             "name": "Enrollment - OTP"
         },
         {
@@ -35,6 +38,9 @@
         },
         {
             "name": "Enrollment - Physique"
+        },
+        {
+            "name": "Enrollment - Suivi"
         }
     ],
     "security": [
@@ -45,7 +51,7 @@
     "paths": {
         "/v1/admin/enrolled-persons": {
             "get": {
-                "operationId": "adminEnrolledPerson.index",
+                "operationId": "admin.enrolled-persons.index",
                 "description": "Defaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.",
                 "summary": "List enrolled persons (read-only)",
                 "tags": [
@@ -266,7 +272,7 @@
         },
         "/v1/admin/enrolled-persons/{id}": {
             "get": {
-                "operationId": "adminEnrolledPerson.show",
+                "operationId": "admin.enrolled-persons.show",
                 "summary": "Enrolled person detail (read-only)",
                 "tags": [
                     "Admin"
@@ -336,7 +342,7 @@
         },
         "/v1/admin/activity-logs": {
             "get": {
-                "operationId": "adminActivityLog.index",
+                "operationId": "admin.activity-logs.index",
                 "description": "Optional filters: q, action, from, to, per_page.\nDefaults: per_page=20 (max 100), sorted by created_at desc.\nAdmin only.",
                 "summary": "List business activity logs (journaux)",
                 "tags": [
@@ -589,7 +595,7 @@
         },
         "/v1/admin/activity-logs/{id}": {
             "get": {
-                "operationId": "adminActivityLog.show",
+                "operationId": "admin.activity-logs.show",
                 "summary": "Activity log detail (admin only)",
                 "tags": [
                     "Admin"
@@ -658,7 +664,7 @@
         },
         "/v1/audits": {
             "get": {
-                "operationId": "auditLog.index",
+                "operationId": "audits.index",
                 "description": "Optional filters: event, user_id, auditable_type, auditable_id, ip_address, date range.\nDefaults: per_page=15 (max 100), sorted by created_at desc.",
                 "summary": "List technical audit logs (model change history)",
                 "tags": [
@@ -910,7 +916,7 @@
         },
         "/v1/admin/enrollment-reject-motifs": {
             "post": {
-                "operationId": "enrollmentRejectMotif.store",
+                "operationId": "admin.enrollment-reject-motifs.store",
                 "description": "Body: `{ title, description }`.",
                 "summary": "Create enrollment reject motif (admin only)",
                 "tags": [
@@ -951,7 +957,7 @@
         },
         "/v1/admin/enrollment-reject-motifs/{id}": {
             "get": {
-                "operationId": "enrollmentRejectMotif.show",
+                "operationId": "admin.enrollment-reject-motifs.show",
                 "summary": "Show enrollment reject motif (admin only)",
                 "tags": [
                     "Admin"
@@ -1018,7 +1024,7 @@
                 }
             },
             "patch": {
-                "operationId": "enrollmentRejectMotif.update",
+                "operationId": "admin.enrollment-reject-motifs.update",
                 "description": "Body: `{ title?, description? }`.",
                 "summary": "Update enrollment reject motif (admin only)",
                 "tags": [
@@ -1096,7 +1102,7 @@
                 }
             },
             "delete": {
-                "operationId": "enrollmentRejectMotif.destroy",
+                "operationId": "admin.enrollment-reject-motifs.destroy",
                 "description": "Hard delete \u2014 the motif is permanently removed.",
                 "summary": "Delete enrollment reject motif (admin only)",
                 "tags": [
@@ -1167,8 +1173,8 @@
         },
         "/v1/decrypt/token/file/{filename}": {
             "get": {
-                "operationId": "encryption.decryptAndDisplay",
-                "description": "Staff reviewers only (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.",
+                "operationId": "decrypt.token.file",
+                "description": "Staff reviewers and manager (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.",
                 "summary": "Decrypt and display an encrypted enrollment document",
                 "tags": [
                     "Admin"
@@ -1224,8 +1230,8 @@
         },
         "/v1/management/enrollment-reject-motifs": {
             "get": {
-                "operationId": "enrollmentRejectMotif.index",
-                "description": "Available to agent, responsable de validation, and administrateur plateforme.\nReturns `{ id, title, description }` \u2014 use `id` in reject payloads (`motif[]` / `reasons[]`).",
+                "operationId": "management.enrollment-reject-motifs.index",
+                "description": "Available to agent, responsable de validation, manager, and administrateur plateforme.\nReturns `{ id, title, description }` \u2014 use `id` in reject payloads (`motif[]` / `reasons[]`).",
                 "summary": "List enrollment reject motifs",
                 "tags": [
                     "Admin"
@@ -1273,126 +1279,9 @@
                 }
             }
         },
-        "/v1/management/enrollment-stats": {
-            "get": {
-                "operationId": "enrollmentStats.index",
-                "summary": "Enrollment dashboard statistics",
-                "tags": [
-                    "Admin"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "counts": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "received": {
-                                                            "type": "integer"
-                                                        },
-                                                        "in_progress": {
-                                                            "type": "integer"
-                                                        },
-                                                        "approved": {
-                                                            "type": "integer"
-                                                        },
-                                                        "rejected": {
-                                                            "type": "integer"
-                                                        },
-                                                        "by_status": {
-                                                            "type": "object",
-                                                            "additionalProperties": {}
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "received",
-                                                        "in_progress",
-                                                        "approved",
-                                                        "rejected",
-                                                        "by_status"
-                                                    ]
-                                                },
-                                                "average_handling_seconds": {
-                                                    "type": [
-                                                        "number",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "average_handling_hours": {
-                                                    "type": [
-                                                        "number",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "reject_rate_by_motif": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "motif_id": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer"
-                                                                    },
-                                                                    {
-                                                                        "type": "string"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "count": {
-                                                                "type": "integer"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "motif_id",
-                                                            "count"
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "counts",
-                                                "average_handling_seconds",
-                                                "average_handling_hours",
-                                                "reject_rate_by_motif"
-                                            ]
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Statistiques d'enr\u00f4lement."
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "data",
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/v1/agents/register": {
             "post": {
-                "operationId": "auth.registerAgent",
+                "operationId": "agents.register",
                 "summary": "Register a new staff user (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1432,7 +1321,7 @@
         },
         "/v1/agents/{id}": {
             "post": {
-                "operationId": "auth.updateAgent",
+                "operationId": "agents.update",
                 "summary": "Update staff user details (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1513,7 +1402,7 @@
                 }
             },
             "delete": {
-                "operationId": "auth.deleteAgent",
+                "operationId": "agents.destroy",
                 "summary": "Delete a staff user (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1585,7 +1474,7 @@
                 }
             },
             "get": {
-                "operationId": "auth.showAgent",
+                "operationId": "agents.show",
                 "summary": "Staff user detail (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1627,7 +1516,7 @@
         },
         "/v1/agents": {
             "get": {
-                "operationId": "auth.listAgents",
+                "operationId": "agents.index",
                 "description": "Optional role filter. Defaults: per_page=15 (max 100).",
                 "summary": "List staff users (admin only)",
                 "tags": [
@@ -1759,7 +1648,7 @@
         },
         "/v1/admins/logout": {
             "post": {
-                "operationId": "auth.logoutAdmin",
+                "operationId": "admins.logout",
                 "summary": "Admin logout (revokes current token)",
                 "tags": [
                     "Admin Auth"
@@ -1809,7 +1698,7 @@
         },
         "/v1/admin/login": {
             "post": {
-                "operationId": "auth.loginAdmin",
+                "operationId": "admin.login",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 use POST /admin/login/keycloak instead.",
                 "summary": "Admin/Agent login (returns Sanctum token)",
                 "tags": [
@@ -1877,7 +1766,7 @@
         },
         "/v1/admin/login/keycloak": {
             "post": {
-                "operationId": "auth.loginAdminKeycloak",
+                "operationId": "admin.login.keycloak",
                 "description": "Exchange a Keycloak access token (obtained by the frontend through OIDC login)\nfor a Sanctum token. Only available when STAFF_KEYCLOAK_ENABLED=true.",
                 "summary": "Admin/Agent login via Keycloak token exchange (returns Sanctum token)",
                 "tags": [
@@ -1913,7 +1802,7 @@
         },
         "/v1/admin/password/link": {
             "post": {
-                "operationId": "auth.sendPasswordResetLink",
+                "operationId": "admin.password.link",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Send staff password reset link",
                 "tags": [
@@ -1981,7 +1870,7 @@
         },
         "/v1/admin/password/reset": {
             "post": {
-                "operationId": "auth.resetPassword",
+                "operationId": "admin.password.reset",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Reset staff password using an emailed token",
                 "tags": [
@@ -2049,7 +1938,7 @@
         },
         "/v1/admin/password/change": {
             "post": {
-                "operationId": "auth.changePassword",
+                "operationId": "admin.password.change",
                 "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
                 "summary": "Change staff password (authenticated)",
                 "tags": [
@@ -2119,7 +2008,7 @@
         },
         "/v1/me": {
             "get": {
-                "operationId": "singletons.userProfile",
+                "operationId": "me",
                 "summary": "Authenticated user profile",
                 "tags": [
                     "Client Auth"
@@ -2163,7 +2052,7 @@
         },
         "/v1/clients/logout": {
             "post": {
-                "operationId": "clientSecurity.logout",
+                "operationId": "clients.logout",
                 "summary": "Client logout (revokes current Sanctum token)",
                 "tags": [
                     "Client Auth"
@@ -2193,7 +2082,7 @@
         },
         "/v1/clients/password/change": {
             "post": {
-                "operationId": "clientSecurity.changePassword",
+                "operationId": "clients.password.change",
                 "description": "Body: current_password, password, password_confirmation (min 8).\nRevokes all Sanctum tokens; the caller must log in again.",
                 "summary": "Change client TrustedX password (requires current password)",
                 "tags": [
@@ -2234,7 +2123,7 @@
         },
         "/v1/clients/pin/change": {
             "post": {
-                "operationId": "clientSecurity.changePin",
+                "operationId": "clients.pin.change",
                 "description": "Body: current_pin, pin, pin_confirmation \u2014 exactly 4 digits.",
                 "summary": "Change client TrustedX PIN (requires current PIN)",
                 "tags": [
@@ -2275,7 +2164,7 @@
         },
         "/v1/clients/security-questions": {
             "get": {
-                "operationId": "clientSecurity.showSecurityQuestions",
+                "operationId": "clients.security-questions.show",
                 "summary": "List client security questions (answers omitted)",
                 "tags": [
                     "Client Auth"
@@ -2346,7 +2235,7 @@
                 }
             },
             "put": {
-                "operationId": "clientSecurity.updateSecurityQuestions",
+                "operationId": "clients.security-questions.update",
                 "description": "Body: current_password, security_questions (min 2 items with question + answer).",
                 "summary": "Replace client security questions",
                 "tags": [
@@ -2387,7 +2276,7 @@
         },
         "/v1/users/{id}": {
             "post": {
-                "operationId": "user.update",
+                "operationId": "users.update",
                 "summary": "Update own profile (email, profile photo)",
                 "tags": [
                     "Client Auth"
@@ -2439,7 +2328,7 @@
         },
         "/v1/clients/set-password": {
             "post": {
-                "operationId": "user.setPassword",
+                "operationId": "clients.set-password",
                 "summary": "Set a client TrustedX password or PIN (admin only)",
                 "tags": [
                     "Client Auth"
@@ -2479,7 +2368,7 @@
         },
         "/v1/users/search": {
             "get": {
-                "operationId": "user.search",
+                "operationId": "users.search",
                 "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email, name or NPI (staff only)",
                 "tags": [
@@ -2563,7 +2452,7 @@
         },
         "/v1/users-email/search": {
             "post": {
-                "operationId": "user.searchPost",
+                "operationId": "users.search-by-email",
                 "description": "Defaults: limit=10 (max 100).",
                 "summary": "Search users by email (staff only)",
                 "tags": [
@@ -2634,7 +2523,7 @@
         },
         "/v1/management/users/update-status": {
             "post": {
-                "operationId": "user.updateUserStatus",
+                "operationId": "management.users.update-status",
                 "summary": "Bulk update user statuses (staff)",
                 "tags": [
                     "Client Auth"
@@ -2674,7 +2563,7 @@
         },
         "/v1/clients/send-otp": {
             "post": {
-                "operationId": "user.sendOtp",
+                "operationId": "clients.send-otp",
                 "summary": "Send login OTP to a citizen (NPI lookup via ANIP)",
                 "tags": [
                     "Client Auth"
@@ -2709,7 +2598,7 @@
         },
         "/v1/clients/verify-otp": {
             "post": {
-                "operationId": "user.verifyOtp",
+                "operationId": "clients.verify-otp",
                 "summary": "Verify a citizen login OTP",
                 "tags": [
                     "Client Auth"
@@ -2744,7 +2633,7 @@
         },
         "/v1/clients/login": {
             "post": {
-                "operationId": "user.login",
+                "operationId": "clients.login",
                 "summary": "Client login (TrustedX authorization code)",
                 "tags": [
                     "Client Auth"
@@ -2779,7 +2668,7 @@
         },
         "/v1/mobile/login": {
             "post": {
-                "operationId": "user.loginMobile",
+                "operationId": "mobile.login",
                 "summary": "Client mobile login (TrustedX authorization code)",
                 "tags": [
                     "Client Auth"
@@ -2814,7 +2703,7 @@
         },
         "/v1/clients/password/link": {
             "post": {
-                "operationId": "passwordReset.sendResetLink",
+                "operationId": "clients.password.link",
                 "description": "Legacy citizen flow (NPI + TrustedX). Emails a one-time reset link to the account owner.",
                 "summary": "Send client password/PIN reset link",
                 "tags": [
@@ -2850,7 +2739,7 @@
         },
         "/v1/clients/password/reset": {
             "post": {
-                "operationId": "passwordReset.resetPassword",
+                "operationId": "clients.password.reset",
                 "summary": "Reset client password or PIN using a reset token",
                 "tags": [
                     "Client Auth"
@@ -2885,7 +2774,7 @@
         },
         "/v1/clients/some/reset": {
             "post": {
-                "operationId": "passwordReset.resetSome",
+                "operationId": "clients.some.reset",
                 "summary": "Reset client password and/or PIN in one call",
                 "tags": [
                     "Client Auth"
@@ -2920,7 +2809,7 @@
         },
         "/v1/kyc/document/read": {
             "post": {
-                "operationId": "kyc.readDocument",
+                "operationId": "kyc.document.read",
                 "description": "Diagram \u00a72.2, capture screen. Guest, no OTP gate: assists form pre-fill and\nwarns about an unusable photo before the KYC step. Nothing is persisted and\nnothing is enforced \u2014 `POST /kyc/verify` remains the authoritative check and\nreplays the read with the same Regula scenario.\nRuns the scenario configured by REGULA_DOCUMENT_SCENARIO (deployed value: FullAuth).\nAlways answers 200 when the request is well formed: an unreadable photo returns\n`ok: false` with `quality_issues`, not an HTTP error.\ndata: { ok, document_name, fields, quality_issues, portrait }.\n`quality_issues` are stable codes, not sentences \u2014 wording and language belong to\nthe client (same convention as `details.error` on /kyc/verify). Values:\nIMAGE_GLARES, IMAGE_FOCUS, IMAGE_RESOLUTION, IMAGE_COLORNESS, PERSPECTIVE, BOUNDS,\nPORTRAIT, BRIGHTNESS, OCCLUSION, QUALITY_UNKNOWN, UNREADABLE_DOCUMENT (photo the\nuser can retake), READER_UNAVAILABLE (Regula unreachable).\n`fields` keys (all optional, present only when read): nom, prenoms, sexe (M|F),\ndate_naissance, date_expiration (YYYY-MM-DD), numero_piece, nationalite,\nville_naissance, pays_naissance. `portrait` is base64, no `data:` prefix.",
                 "summary": "Assisted document pre-read (OCR + image quality)",
                 "tags": [
@@ -2957,7 +2846,7 @@
         "/v1/kyc/verify": {
             "post": {
                 "operationId": "kyc.verify",
-                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nOptional capture_le (ISO-8601 with timezone, e.g. 2026-08-17T14:30:00+01:00):\nwhen the selfie / liveness was captured. Must be within the last 60 minutes\n(and at most 5 minutes in the future). Stored on enrollment_requests.selfie_captured_at\nand returned as analyse_kyc.selfie.capture_le. Defaults to verification time.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Sync KYC verification (Document Reader + Face match)",
                 "tags": [
                     "Enrollment - KYC"
@@ -2990,9 +2879,1000 @@
                 "security": []
             }
         },
+        "/v1/management/enrollment-stats": {
+            "get": {
+                "operationId": "management.enrollment-stats.index",
+                "description": "Global counts, rejection rate, average handling time, motifs, evolution, and period trends.\nQuery: granularite=semaine|mois (default semaine).",
+                "summary": "Enrollment dashboard statistics (manager)",
+                "tags": [
+                    "Enrollment - Manager"
+                ],
+                "parameters": [
+                    {
+                        "name": "granularite",
+                        "in": "query",
+                        "description": "Granularit\u00e9 de la courbe d'\u00e9volution et des tendances. D\u00e9faut: semaine.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "semaine",
+                                "mois",
+                                null
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "counts": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "received": {
+                                                            "type": "integer"
+                                                        },
+                                                        "in_progress": {
+                                                            "type": "integer"
+                                                        },
+                                                        "approved": {
+                                                            "type": "integer"
+                                                        },
+                                                        "rejected": {
+                                                            "type": "integer"
+                                                        },
+                                                        "by_status": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "received",
+                                                        "in_progress",
+                                                        "approved",
+                                                        "rejected",
+                                                        "by_status"
+                                                    ]
+                                                },
+                                                "taux_rejet_global": {
+                                                    "type": "number"
+                                                },
+                                                "average_handling_seconds": {
+                                                    "type": [
+                                                        "number",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "average_handling_hours": {
+                                                    "type": [
+                                                        "number",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "average_handling_days": {
+                                                    "type": [
+                                                        "number",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "reject_rate_by_motif": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            },
+                                                            "title": {},
+                                                            "count": {
+                                                                "type": "integer"
+                                                            },
+                                                            "taux": {
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "title",
+                                                            "count",
+                                                            "taux"
+                                                        ]
+                                                    }
+                                                },
+                                                "evolution": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "granularite": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "mois",
+                                                                "semaine"
+                                                            ]
+                                                        },
+                                                        "points": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "periode": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "count": {
+                                                                        "type": "integer"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "periode",
+                                                                    "count"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "granularite",
+                                                        "points"
+                                                    ]
+                                                },
+                                                "tendances": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "received": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "valeur": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "variation_pct": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "valeur",
+                                                                "variation_pct"
+                                                            ]
+                                                        },
+                                                        "in_progress": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "valeur": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "variation_pct": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "valeur",
+                                                                "variation_pct"
+                                                            ]
+                                                        },
+                                                        "approved": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "valeur": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "variation_pct": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "valeur",
+                                                                "variation_pct"
+                                                            ]
+                                                        },
+                                                        "rejected": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "valeur": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "variation_pct": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "valeur",
+                                                                "variation_pct"
+                                                            ]
+                                                        },
+                                                        "taux_rejet_global": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "valeur": {
+                                                                    "type": "number"
+                                                                },
+                                                                "variation_pct": {
+                                                                    "type": [
+                                                                        "number",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "valeur",
+                                                                "variation_pct"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "received",
+                                                        "in_progress",
+                                                        "approved",
+                                                        "rejected",
+                                                        "taux_rejet_global"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "counts",
+                                                "taux_rejet_global",
+                                                "average_handling_seconds",
+                                                "average_handling_hours",
+                                                "average_handling_days",
+                                                "reject_rate_by_motif",
+                                                "evolution",
+                                                "tendances"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Statistiques d'enr\u00f4lement."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/management/enrolements/physiques": {
+            "get": {
+                "operationId": "management.enrolements.physiques.index",
+                "description": "Default statut: every listable status (including APPROUVEE / REJETEE / ENROLEE).\nFilters: q, statut (pipe-separated), from, to. Defaults: per_page=20 (max 100).",
+                "summary": "List personne physique enrollments (manager, read-only)",
+                "tags": [
+                    "Enrollment - Manager"
+                ],
+                "parameters": [
+                    {
+                        "name": "statut",
+                        "in": "query",
+                        "description": "Statut(s) \u00e0 filtrer. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: tous les statuts listables.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Alias anglais de \"statut\". M\u00eames valeurs.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 255
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "D\u00e9faut: 20. Maximum: 100.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "D\u00e9faut: created_at.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "created_at",
+                                "id",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "D\u00e9faut: desc.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "asc",
+                                "desc",
+                                null
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/EnrollmentRequest"
+                                                    }
+                                                },
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "data",
+                                                "first_page_url",
+                                                "from",
+                                                "last_page_url",
+                                                "last_page",
+                                                "links",
+                                                "next_page_url",
+                                                "path",
+                                                "per_page",
+                                                "prev_page_url",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Liste des demandes."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/management/enrolements/physiques/{id}": {
+            "get": {
+                "operationId": "management.enrolements.physiques.show",
+                "description": "Identity fields + pieces_jointes. No KYC analysis and no instruction actions.\n404 when the id is unknown or belongs to a personne morale.",
+                "summary": "Personne physique enrollment detail (manager, read-only)",
+                "tags": [
+                    "Enrollment - Manager"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Enrollment request UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentManagerDetailResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "D\u00e9tail de la demande."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Demande introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/management/enrolements/morales": {
+            "get": {
+                "operationId": "management.enrolements.morales.index",
+                "description": "Default statut: every listable status (including APPROUVEE / REJETEE / ENROLEE).\nFilters: q, statut (pipe-separated), from, to. Defaults: per_page=20 (max 100).",
+                "summary": "List personne morale enrollments (manager, read-only)",
+                "tags": [
+                    "Enrollment - Manager"
+                ],
+                "parameters": [
+                    {
+                        "name": "statut",
+                        "in": "query",
+                        "description": "Statut(s) \u00e0 filtrer. Plusieurs valeurs s\u00e9par\u00e9es par \"|\". D\u00e9faut: tous les statuts listables.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Alias anglais de \"statut\". M\u00eames valeurs.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE)(\\|(EN_ATTENTE_AGENT|EN_COURS_AGENT|EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE|A_CORRIGER|APPROUVEE|REJETEE|ENROLEE))*$"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 255
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "D\u00e9faut: 20. Maximum: 100.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "D\u00e9faut: created_at.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "created_at",
+                                "id",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "D\u00e9faut: desc.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "asc",
+                                "desc",
+                                null
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/EnrollmentRequest"
+                                                    }
+                                                },
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "data",
+                                                "first_page_url",
+                                                "from",
+                                                "last_page_url",
+                                                "last_page",
+                                                "links",
+                                                "next_page_url",
+                                                "path",
+                                                "per_page",
+                                                "prev_page_url",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Liste des demandes."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/management/enrolements/morales/{id}": {
+            "get": {
+                "operationId": "management.enrolements.morales.show",
+                "description": "Company fields + pieces_jointes. No KYC analysis and no instruction actions.\n404 when the id is unknown or belongs to a personne physique.",
+                "summary": "Personne morale enrollment detail (manager, read-only)",
+                "tags": [
+                    "Enrollment - Manager"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Enrollment request UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentManagerDetailResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "D\u00e9tail de la demande."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Demande introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/enrolements/morales": {
             "get": {
-                "operationId": "personneMoraleEnrollment.index",
+                "operationId": "enrolements.morales.index",
                 "description": "Owner only. Includes AWAITING_CONTACT_VERIFICATION. Defaults: per_page=15 (max 100).",
                 "summary": "List the authenticated client's personne morale enrollments",
                 "tags": [
@@ -3166,8 +4046,8 @@
                 }
             },
             "post": {
-                "operationId": "personneMoraleEnrollment.submit",
-                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "operationId": "enrolements.morales.store",
+                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne morale enrollment",
                 "tags": [
                     "Enrollment - Morale"
@@ -3207,7 +4087,7 @@
         },
         "/v1/enrolements/morales/{id}": {
             "get": {
-                "operationId": "personneMoraleEnrollment.show",
+                "operationId": "enrolements.morales.show",
                 "description": "Company fields, contact verification flags, and pi\u00e8ces jointes (RCCM, statuts, procuration).",
                 "summary": "Morale enrollment detail (owner only)",
                 "tags": [
@@ -3275,7 +4155,7 @@
                 }
             },
             "put": {
-                "operationId": "personneMoraleEnrollment.correct",
+                "operationId": "enrolements.morales.update",
                 "description": "Updates company fields and attachments (not official contacts, not KYC selfie).\nOn success the request returns to EN_ATTENTE_AGENT.",
                 "summary": "Correct a rejected personne morale enrollment (owner, A_CORRIGER only)",
                 "tags": [
@@ -3359,7 +4239,7 @@
         },
         "/v1/enrolements/morales/{id}/send-phone-otp": {
             "post": {
-                "operationId": "personneMoraleEnrollment.sendPhoneOtp",
+                "operationId": "enrolements.morales.send-phone-otp",
                 "summary": "Send SMS OTP for company phone verification",
                 "tags": [
                     "Enrollment - Morale"
@@ -3401,7 +4281,7 @@
         },
         "/v1/enrolements/morales/{id}/verify-phone-otp": {
             "post": {
-                "operationId": "personneMoraleEnrollment.verifyPhoneOtp",
+                "operationId": "enrolements.morales.verify-phone-otp",
                 "description": "May promote the request to EN_ATTENTE_AGENT once both channels are verified.\nConfirmation email is sent to the demandeur only after both verifications.",
                 "summary": "Verify company phone OTP",
                 "tags": [
@@ -3454,7 +4334,7 @@
         },
         "/v1/enrolements/morales/{id}/verify-email": {
             "post": {
-                "operationId": "personneMoraleEnrollment.verifyEmail",
+                "operationId": "enrolements.morales.verify-email",
                 "description": "May promote the request to EN_ATTENTE_AGENT if the phone is also verified.",
                 "summary": "Verify company email (public token link)",
                 "tags": [
@@ -3538,7 +4418,7 @@
         "/v1/otp/verify": {
             "post": {
                 "operationId": "otp.verify",
-                "description": "Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each\ncall so the response reflects both cache flags; only the OTP matching one channel is consumed.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Call twice before POST /kyc/verify. Prefer sending both email and phonenumber on each\ncall so the response reflects both cache flags; only the OTP matching one channel is consumed.\nSuccess data includes email_verified / phone_verified and the French aliases\nemail_verifie / telephone_verifie (same keys as personne morale).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Verify OTP for one channel (email or phone)",
                 "tags": [
                     "Enrollment - OTP"
@@ -3573,8 +4453,8 @@
         },
         "/v1/enrolements/etrangers": {
             "post": {
-                "operationId": "enrollment.storeEtranger",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "operationId": "enrolements.etrangers.store",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT,\nemail_verifie and telephone_verifie (always true: both OTPs are required before submit).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne physique enrollment",
                 "tags": [
                     "Enrollment - Physique"
@@ -3609,8 +4489,8 @@
         },
         "/v1/enrolements/finalisation": {
             "get": {
-                "operationId": "finalisation.show",
-                "description": "Open the secure link from the approval email (`?token=`).\nSuccess data: demande_id, numero_suivi (PK\u2026), npi, email, statut (APPROUVEE).\nToken TTL: 60 minutes from issuance.",
+                "operationId": "enrolements.finalisation.show",
+                "description": "Open the secure link from the approval email (`?token=`). Optional `npi` (legacy links)\nmust match the invitation when present; digits only. Success data: demande_id, numero_suivi, email, statut.\nThe applicant then types the generated NPI (not numero_suivi) on the form.\nToken TTL: 60 minutes from issuance.",
                 "summary": "Validate finalisation invitation token",
                 "tags": [
                     "Enrollment - Physique"
@@ -3624,8 +4504,54 @@
                             "type": "string",
                             "maxLength": 100
                         }
+                    },
+                    {
+                        "name": "npi",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^[0-9]+$",
+                            "maxLength": 50
+                        }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            },
+            "post": {
+                "operationId": "enrolements.finalisation.store",
+                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN and sets TrustedX password/PIN in this request\n(explicit exception to \u00a710.1: ENROLEE is returned only after TrustedX credentials exist).\nSuccess 200: statut ENROLEE, npi, numero_suivi, demande_id.",
+                "summary": "Complete enrollment (password + security questions)",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreFinalisationRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -3646,8 +4572,8 @@
         },
         "/v1/enrolements/finalisation/otp/send": {
             "post": {
-                "operationId": "finalisation.sendOtp",
-                "description": "Body: numero_suivi (required) \u2014 tracking code from submit / invitation email.\nDemand must be APPROUVEE. Sends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).",
+                "operationId": "enrolements.finalisation.otp.send",
+                "description": "Body: npi (typed digits, generated NPI) + token (from the invitation link).\nThe NPI must match the invitation. Demand must be APPROUVEE.\nSends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).\nGuest-capable: no Sanctum token required; an existing session does not block the call.",
                 "summary": "Send finalisation email OTP",
                 "tags": [
                     "Enrollment - Physique"
@@ -3682,8 +4608,8 @@
         },
         "/v1/enrolements/finalisation/otp/verify": {
             "post": {
-                "operationId": "finalisation.verifyOtp",
-                "description": "Body: numero_suivi, otp (6 digits). On success stores a short-lived OTP proof (~15 min) required before POST \u2026/finalisation.\nSuccess data: numero_suivi, demande_id, otp_verified=true.",
+                "operationId": "enrolements.finalisation.otp.verify",
+                "description": "Body: npi (digits), token, otp (6 digits). On success stores a short-lived OTP proof (~15 min)\nrequired before POST /enrolements/finalisation.\nSuccess data: npi, demande_id, otp_verified=true.",
                 "summary": "Verify finalisation email OTP",
                 "tags": [
                     "Enrollment - Physique"
@@ -3716,57 +4642,9 @@
                 "security": []
             }
         },
-        "/v1/enrolements/{id}/finalisation": {
-            "post": {
-                "operationId": "finalisation.store",
-                "description": "Path `{id}` = demande_id. Requires prior POST \u2026/finalisation/otp/verify for the same numero_suivi.\nBody: password (min 8), security_questions (min 2 items with question + answer),\nnumero_suivi (required for FE flow; must match the demand), token (optional invitation token from the email link).\nNo client PIN \u2014 server generates a 4-digit PIN for TrustedX.\nSuccess: statut ENROLEE, npi, numero_suivi, demande_id.",
-                "summary": "Complete enrollment (password + security questions)",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "description": "Enrollment request UUID (demande_id).",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreFinalisationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
         "/v1/enrolements": {
             "get": {
-                "operationId": "enrollment.index",
+                "operationId": "enrolements.index",
                 "description": "Diagram \u00a73.1/\u00a73.2. Filter by statut (supports pipe: EN_ATTENTE_AGENT|EN_COURS_AGENT).\nDefault EN_ATTENTE_AGENT|EN_COURS_AGENT for agent; EN_ATTENTE_RESPONSABLE|EN_COURS_RESPONSABLE\nfor responsable. `avis` (FAVORABLE|DEFAVORABLE) filters on the agent's opinion, which is\ncarried by its own field and no longer by the status.\nEvery row exposes `statut` (machine, positional) and `statut_libelle`, worded for the\ncaller's role: a request awaiting the responsable never reads as approved or rejected.\nPersonne morale rows also expose `raison_sociale`, `pays_origine`, and `numero_suivi`\n(null on physique except `numero_suivi` when a tracking code exists).\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List enrollment requests",
                 "tags": [
@@ -4064,7 +4942,7 @@
         },
         "/v1/enrolements/{id}/prise-en-charge": {
             "patch": {
-                "operationId": "enrollment.priseEnCharge",
+                "operationId": "enrolements.prise-en-charge",
                 "description": "Agent only. EN_ATTENTE_AGENT and unassigned requests only; moves the request\nto EN_COURS_AGENT so the queue shows it as taken.",
                 "summary": "Agent self-assign (prise en charge)",
                 "tags": [
@@ -4128,7 +5006,7 @@
         },
         "/v1/enrolements/{id}/prise-en-charge-validation": {
             "patch": {
-                "operationId": "enrollment.priseEnChargeValidation",
+                "operationId": "enrolements.prise-en-charge-validation",
                 "description": "Responsable only. EN_ATTENTE_RESPONSABLE and unassigned decisions only; moves the\nrequest to EN_COURS_RESPONSABLE, which is what unlocks PATCH .../validation.",
                 "summary": "Responsable self-assign (prise en charge d\u00e9cision)",
                 "tags": [
@@ -4192,7 +5070,7 @@
         },
         "/v1/enrolements/{id}/instruction": {
             "patch": {
-                "operationId": "enrollment.instruction",
+                "operationId": "enrolements.instruction",
                 "description": "Diagram \u00a73.1. From EN_COURS_AGENT to EN_ATTENTE_RESPONSABLE, recording the agent's\n`avis` (FAVORABLE|DEFAVORABLE) in its own field. The agent gives an opinion, not a\nverdict: the request is never approved or rejected at this step.\nAgent must have prise en charge first. `motif[]` (UUIDs) is required when avis=DEFAVORABLE.",
                 "summary": "Agent instruction (avis favorable or d\u00e9favorable)",
                 "tags": [
@@ -4245,7 +5123,7 @@
         },
         "/v1/enrolements/{id}/validation": {
             "patch": {
-                "operationId": "enrollment.validation",
+                "operationId": "enrolements.validation",
                 "description": "Diagram \u00a73.2. Requires EN_COURS_RESPONSABLE (prise en charge validation) first.\navis_agent=FAVORABLE: APPROUVEE or RETOUR_AGENT.\navis_agent=DEFAVORABLE: REJET_CONFIRME or RETOUR_AGENT.\nRETOUR_AGENT clears the agent's avis: the request goes back to EN_ATTENTE_AGENT\nwith no decision at any level.",
                 "summary": "Responsable validation decision",
                 "tags": [
@@ -4347,8 +5225,8 @@
         },
         "/v1/enrolements/{id}": {
             "get": {
-                "operationId": "enrollment.show",
-                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR preferred over declared\nKYC; `verifie` is true only when `doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (null until a capture timestamp\nis stored), and `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
+                "operationId": "enrolements.show",
+                "description": "Agent: EnrollmentRequestAgentDetailResource. Responsable: EnrollmentDecisionDetailResource\nwith a decision_agent block whose `avis` is null until the agent has actually ruled.\nSame route for physique and morale.\n\nPersonne morale detail includes `similar_enrollments` (cross-check already computed on show)\nand `numero_suivi`. The same `similar_enrollments` key is present on physique detail (often empty).\nResponsable detail also exposes `numero_suivi` for the breadcrumb.\n\nPersonne physique `analyse_kyc`: legacy `liveness`, `similarity`, `risk_score`, `details`\nplus `similarity_percent` (0\u2013100 or null), `document_identite` (OCR only \u2014 every\nextracted text field, never form `kyc_data`; `verifie` is true only when\n`doc_validity` is true and `details.error` is absent),\n`selfie.url` (temporary cloud URL) / `selfie.capture_le` (ISO-8601 instant of the\nselfie / liveness capture from `enrollment_requests.selfie_captured_at`: client\n`capture_le` within the KYC window, else verification time),\nand `etapes` booleans. `etapes.liveness_effectue` is true only when Face API\nconfirmed liveness (status `0`). `etapes.visage_compare` is a boolean.",
                 "summary": "Enrollment request detail (agent / responsable backoffice)",
                 "tags": [
                     "Enrollment - Physique"
@@ -4412,9 +5290,72 @@
                 }
             }
         },
+        "/v1/enrolements/suivi": {
+            "post": {
+                "operationId": "enrolements.suivi",
+                "description": "Guest POST. Proof of ownership: numero_suivi (from submit / confirmation email)\nplus the enrollment email (physique) or official/demandeur email (morale).\nReturns demandeur-facing statut_libelle only \u2014 no KYC analysis, avis agent, or documents.\nExposes email_verifie / telephone_verifie for physique and morale.\nWrong or unknown pair \u2192 404 Demande introuvable.",
+                "summary": "Track an enrollment by numero_suivi and email",
+                "tags": [
+                    "Enrollment - Suivi"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TrackEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EnrollmentTrackingResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Suivi de la demande.",
+                                                        "Demande introuvable."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/v1/health": {
             "get": {
-                "operationId": "singletons.healthCheck",
+                "operationId": "health",
                 "description": "Public. Returns `{\"status\": \"UP\"}` (200) when the database is reachable,\n`{\"status\": \"DOWN\"}` (503) otherwise. Used by Consul and load balancers.",
                 "summary": "Service health check",
                 "tags": [
@@ -4550,6 +5491,15 @@
                     "ip_address"
                 ],
                 "title": "ActivityLogDetailResource"
+            },
+            "AgentAvis": {
+                "type": "string",
+                "description": "Avis rendu par l'agent de traitement \u00e0 l'issue de l'instruction. C'est une **proposition** au responsable de validation, jamais une d\u00e9cision finale : elle est port\u00e9e par une colonne d\u00e9di\u00e9e pour qu'aucun statut de demande ne puisse la faire passer pour un verdict \u00e0 un autre niveau.\n",
+                "enum": [
+                    "FAVORABLE",
+                    "DEFAVORABLE"
+                ],
+                "title": "AgentAvis"
             },
             "App.Http.Requests.Foreigner.SendOtpRequest": {
                 "type": "object",
@@ -4875,7 +5825,10 @@
                                 "type": "string"
                             },
                             "numero_suivi": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "identifiant": {
                                 "type": [
@@ -4981,17 +5934,7 @@
                                                     "type": "string"
                                                 },
                                                 "description": {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "string"
-                                                        },
-                                                        {
-                                                            "type": "string",
-                                                            "enum": [
-                                                                ""
-                                                            ]
-                                                        }
-                                                    ]
+                                                    "type": "string"
                                                 }
                                             },
                                             "required": [
@@ -5041,6 +5984,12 @@
                                     "prenom"
                                 ]
                             },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
                             "peut_prendre_en_charge": {
                                 "type": "string"
                             },
@@ -5080,6 +6029,12 @@
                                             "null"
                                         ]
                                     },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
                                     "sexe": {
                                         "type": "string"
                                     },
@@ -5105,6 +6060,8 @@
                                     "numero_piece",
                                     "email",
                                     "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
                                     "sexe",
                                     "date_naissance",
                                     "pays_residence",
@@ -5181,30 +6138,7 @@
                                     },
                                     "document_identite": {
                                         "type": "object",
-                                        "properties": {
-                                            "type_piece": {},
-                                            "pays": {},
-                                            "verifie": {
-                                                "type": "boolean"
-                                            },
-                                            "numero_document": {},
-                                            "nom": {},
-                                            "prenoms": {},
-                                            "date_naissance": {},
-                                            "nationalite": {},
-                                            "date_expiration": {}
-                                        },
-                                        "required": [
-                                            "type_piece",
-                                            "pays",
-                                            "verifie",
-                                            "numero_document",
-                                            "nom",
-                                            "prenoms",
-                                            "date_naissance",
-                                            "nationalite",
-                                            "date_expiration"
-                                        ]
+                                        "additionalProperties": {}
                                     },
                                     "selfie": {
                                         "type": "object",
@@ -5216,10 +6150,7 @@
                                                 ]
                                             },
                                             "capture_le": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
+                                                "type": "null"
                                             }
                                         },
                                         "required": [
@@ -5273,6 +6204,8 @@
                             "date_soumission",
                             "decision_agent",
                             "responsable",
+                            "email_verifie",
+                            "telephone_verifie",
                             "peut_prendre_en_charge",
                             "peut_valider",
                             "similar_enrollments",
@@ -5288,6 +6221,244 @@
                     }
                 ],
                 "title": "EnrollmentDecisionDetailResource"
+            },
+            "EnrollmentManagerDetailResource": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "numero_suivi": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "identifiant": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "statut": {
+                                "type": "string"
+                            },
+                            "statut_libelle": {
+                                "type": "string",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "En attente de correction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "\u00c0 corriger",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
+                            "date_soumission": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "delai_ecoule_jours": {
+                                "type": "integer"
+                            },
+                            "agent": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "nom": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "prenom": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ]
+                            },
+                            "responsable": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "nom": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "prenom": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ]
+                            },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
+                            "demandeur": {
+                                "type": "object",
+                                "properties": {
+                                    "nom": {},
+                                    "prenom": {}
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ]
+                            },
+                            "informations": {
+                                "type": "object",
+                                "properties": {
+                                    "nom": {},
+                                    "prenoms": {},
+                                    "numero_piece": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "telephone": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "sexe": {
+                                        "type": "string"
+                                    },
+                                    "date_naissance": {
+                                        "type": "string"
+                                    },
+                                    "pays_residence": {
+                                        "type": "string"
+                                    },
+                                    "type_piece": {
+                                        "type": "string"
+                                    },
+                                    "lieu_naissance": {
+                                        "type": "string"
+                                    },
+                                    "nationalite": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenoms",
+                                    "numero_piece",
+                                    "email",
+                                    "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
+                                    "sexe",
+                                    "date_naissance",
+                                    "pays_residence",
+                                    "type_piece",
+                                    "lieu_naissance",
+                                    "nationalite"
+                                ]
+                            },
+                            "pieces_jointes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "url": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "url_telechargement": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "type",
+                                        "label",
+                                        "url",
+                                        "url_telechargement"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "numero_suivi",
+                            "identifiant",
+                            "type",
+                            "statut",
+                            "statut_libelle",
+                            "date_soumission",
+                            "delai_ecoule_jours",
+                            "agent",
+                            "responsable",
+                            "email_verifie",
+                            "telephone_verifie",
+                            "demandeur",
+                            "informations",
+                            "pieces_jointes"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {}
+                    }
+                ],
+                "title": "EnrollmentManagerDetailResource"
             },
             "EnrollmentRejectMotifResource": {
                 "type": "object",
@@ -5328,6 +6499,12 @@
                 "properties": {
                     "id": {
                         "type": "string"
+                    },
+                    "tracking_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "email": {
                         "type": "string"
@@ -5377,14 +6554,44 @@
                         ],
                         "additionalProperties": {}
                     },
+                    "selfie_captured_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
                     "status": {
                         "$ref": "#/components/schemas/EnrollmentStatus"
+                    },
+                    "agent_avis": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AgentAvis"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "assigned_agent_id": {
                         "type": [
                             "string",
                             "null"
                         ]
+                    },
+                    "assigned_responsable_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agent_decided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "reject_stage": {
                         "type": [
@@ -5410,6 +6617,102 @@
                     "type": {
                         "type": "string"
                     },
+                    "submitted_by_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verification_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "email_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "phone_verified_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "verification_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "visio_requested_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "visio_completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "returned_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "return_reasons": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sla_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "sla_alert_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "correction_deadline_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "correction_reminder_sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -5427,6 +6730,7 @@
                 },
                 "required": [
                     "id",
+                    "tracking_code",
                     "email",
                     "phonenumber",
                     "kyc_data",
@@ -5435,12 +6739,30 @@
                     "similarity",
                     "risk_score",
                     "analysis_details",
+                    "selfie_captured_at",
                     "status",
+                    "agent_avis",
                     "assigned_agent_id",
+                    "assigned_responsable_id",
+                    "agent_decided_at",
                     "reject_stage",
                     "reject_reasons",
                     "review_comments",
                     "type",
+                    "submitted_by_user_id",
+                    "email_verification_token",
+                    "email_verified_at",
+                    "phone_verified_at",
+                    "verification_deadline_at",
+                    "visio_notes",
+                    "visio_requested_at",
+                    "visio_completed_at",
+                    "returned_at",
+                    "return_reasons",
+                    "sla_deadline_at",
+                    "sla_alert_level",
+                    "correction_deadline_at",
+                    "correction_reminder_sent_at",
                     "created_at",
                     "updated_at"
                 ],
@@ -5455,7 +6777,10 @@
                                 "type": "string"
                             },
                             "numero_suivi": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "Code de suivi communiqu\u00e9 au demandeur : c'est par lui qu'on\nd\u00e9signe un dossier, l'UUID ne circulant qu'entre machines."
                             },
                             "identifiant": {
@@ -5540,6 +6865,12 @@
                                     null
                                 ]
                             },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            },
                             "peut_prendre_en_charge": {
                                 "type": "string"
                             },
@@ -5579,6 +6910,12 @@
                                             "null"
                                         ]
                                     },
+                                    "email_verifie": {
+                                        "type": "boolean"
+                                    },
+                                    "telephone_verifie": {
+                                        "type": "boolean"
+                                    },
                                     "sexe": {
                                         "type": "string"
                                     },
@@ -5604,6 +6941,8 @@
                                     "numero_piece",
                                     "email",
                                     "telephone",
+                                    "email_verifie",
+                                    "telephone_verifie",
                                     "sexe",
                                     "date_naissance",
                                     "pays_residence",
@@ -5680,30 +7019,7 @@
                                     },
                                     "document_identite": {
                                         "type": "object",
-                                        "properties": {
-                                            "type_piece": {},
-                                            "pays": {},
-                                            "verifie": {
-                                                "type": "boolean"
-                                            },
-                                            "numero_document": {},
-                                            "nom": {},
-                                            "prenoms": {},
-                                            "date_naissance": {},
-                                            "nationalite": {},
-                                            "date_expiration": {}
-                                        },
-                                        "required": [
-                                            "type_piece",
-                                            "pays",
-                                            "verifie",
-                                            "numero_document",
-                                            "nom",
-                                            "prenoms",
-                                            "date_naissance",
-                                            "nationalite",
-                                            "date_expiration"
-                                        ]
+                                        "additionalProperties": {}
                                     },
                                     "selfie": {
                                         "type": "object",
@@ -5715,10 +7031,7 @@
                                                 ]
                                             },
                                             "capture_le": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
+                                                "type": "null"
                                             }
                                         },
                                         "required": [
@@ -5773,6 +7086,8 @@
                             "agent_responsable",
                             "avis_agent",
                             "avis_agent_libelle",
+                            "email_verifie",
+                            "telephone_verifie",
                             "peut_prendre_en_charge",
                             "peut_instruire",
                             "similar_enrollments",
@@ -5804,6 +7119,166 @@
                     "ENROLEE"
                 ],
                 "title": "EnrollmentStatus"
+            },
+            "EnrollmentTrackingResource": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "numero_suivi": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "statut": {
+                                "type": "string"
+                            },
+                            "statut_libelle": {
+                                "type": "string",
+                                "enum": [
+                                    "V\u00e9rification des contacts",
+                                    "\u00c0 traiter",
+                                    "En cours d'instruction",
+                                    "En attente de correction",
+                                    "Transmise au responsable",
+                                    "En instruction",
+                                    "\u00c0 valider",
+                                    "En cours de validation",
+                                    "En attente d'un agent",
+                                    "En attente du responsable",
+                                    "V\u00e9rification de vos contacts",
+                                    "\u00c0 corriger",
+                                    "En cours de traitement",
+                                    "Approuv\u00e9e",
+                                    "Rejet\u00e9e",
+                                    "Enr\u00f4l\u00e9e"
+                                ]
+                            },
+                            "date_soumission": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "finalisation_disponible": {
+                                "type": "string"
+                            },
+                            "identifiant": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "correction_deadline_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "motifs": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "title",
+                                        "description"
+                                    ]
+                                }
+                            },
+                            "raison_sociale": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "demandeur": {
+                                "type": "object",
+                                "properties": {
+                                    "nom": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "prenom": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ]
+                            },
+                            "email_verifie": {
+                                "type": "boolean"
+                            },
+                            "telephone_verifie": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "numero_suivi",
+                            "type",
+                            "statut",
+                            "statut_libelle",
+                            "date_soumission",
+                            "finalisation_disponible",
+                            "identifiant",
+                            "correction_deadline_at",
+                            "motifs",
+                            "raison_sociale",
+                            "demandeur",
+                            "email_verifie",
+                            "telephone_verifie"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 0,
+                        "maxItems": 0,
+                        "additionalItems": false
+                    }
+                ],
+                "title": "EnrollmentTrackingResource"
             },
             "InstructionEnrollmentRequest": {
                 "type": "object",
@@ -6140,13 +7615,19 @@
             "SendFinalisationOtpRequest": {
                 "type": "object",
                 "properties": {
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     }
                 },
                 "required": [
-                    "numero_suivi"
+                    "npi",
+                    "token"
                 ],
                 "title": "SendFinalisationOtpRequest"
             },
@@ -6223,18 +7704,14 @@
             "StoreFinalisationRequest": {
                 "type": "object",
                 "properties": {
-                    "token": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Invitation token from email link (optional if numero_suivi + OTP proof are used).",
-                        "maxLength": 100
-                    },
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "description": "Tracking code PK\u2026 from submit / invitation email (required for the FE finalisation flow).",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "password": {
                         "type": "string",
@@ -6264,7 +7741,8 @@
                     }
                 },
                 "required": [
-                    "numero_suivi",
+                    "npi",
+                    "token",
                     "password",
                     "security_questions"
                 ],
@@ -6369,6 +7847,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Instant ISO-8601 of the selfie / liveness capture (TZ required). Fallback if omitted at /kyc/verify."
                     }
                 },
                 "required": [
@@ -6490,6 +7975,13 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Instant ISO-8601 of the selfie / liveness capture (TZ required). Fallback if omitted at /kyc/verify."
                     }
                 },
                 "required": [
@@ -6508,6 +8000,27 @@
                     "recto"
                 ],
                 "title": "SubmitMoraleEnrollmentRequest"
+            },
+            "TrackEnrollmentRequest": {
+                "type": "object",
+                "properties": {
+                    "numero_suivi": {
+                        "type": "string",
+                        "description": "Code communiqu\u00e9 \u00e0 la soumission et dans l'email de confirmation (PK\u2026).",
+                        "maxLength": 32
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email de la demande (physique) ou email officiel / demandeur (morale).",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "numero_suivi",
+                    "email"
+                ],
+                "title": "TrackEnrollmentRequest"
             },
             "UpdateAgentRequest": {
                 "type": "object",
@@ -6664,6 +8177,12 @@
                             "null"
                         ]
                     },
+                    "sexe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "email": {
                         "type": "string"
                     },
@@ -6691,8 +8210,32 @@
                             "null"
                         ]
                     },
+                    "trustedx_registered_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "security_questions": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
                     "status": {
                         "type": "string"
+                    },
+                    "must_change_password": {
+                        "type": "boolean"
+                    },
+                    "last_login_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     },
                     "email_verified_at": {
                         "type": [
@@ -6723,12 +8266,17 @@
                     "id",
                     "name",
                     "first_name",
+                    "sexe",
                     "email",
                     "phonenumber",
                     "nationality",
                     "profile",
                     "npi",
+                    "trustedx_registered_at",
+                    "security_questions",
                     "status",
+                    "must_change_password",
+                    "last_login_at",
                     "email_verified_at",
                     "created_at",
                     "updated_at",
@@ -6761,7 +8309,10 @@
                         ]
                     },
                     "sexe": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "nationality": {
                         "type": [
@@ -6887,18 +8438,22 @@
             "VerifyFinalisationOtpRequest": {
                 "type": "object",
                 "properties": {
-                    "numero_suivi": {
+                    "npi": {
                         "type": "string",
-                        "maxLength": 32
+                        "pattern": "^[0-9]+$",
+                        "maxLength": 50
+                    },
+                    "token": {
+                        "type": "string",
+                        "maxLength": 100
                     },
                     "otp": {
-                        "type": "string",
-                        "minLength": 6,
-                        "maxLength": 6
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "numero_suivi",
+                    "npi",
+                    "token",
                     "otp"
                 ],
                 "title": "VerifyFinalisationOtpRequest"
@@ -6957,6 +8512,13 @@
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
                         "description": "Maximum file size: 5120 kilobytes."
+                    },
+                    "capture_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Instant ISO-8601 of the selfie / liveness capture (TZ required). Window: last 60 min / next 5 min. Defaults to KYC verification time."
                     }
                 },
                 "required": [

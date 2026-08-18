@@ -1,6 +1,18 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Console/Commands/ConsulStatus.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Console/Commands/ConsulStatus.php
+
+		-
 			message: '#^Method App\\Console\\Commands\\GenerateKeyPair\:\:deleteDirectory\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -71,60 +83,6 @@ parameters:
 			identifier: missingType.parameter
 			count: 1
 			path: app/Console/Commands/GenerateKeyPair.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:createAdmin\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:createAdmin\(\) has parameter \$email with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:createAdmin\(\) has parameter \$name with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:createAdmin\(\) has parameter \$password with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:updateAdmin\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:updateAdmin\(\) has parameter \$email with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:updateAdmin\(\) has parameter \$name with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\ManageAdmin\:\:updateAdmin\(\) has parameter \$password with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Console/Commands/ManageAdmin.php
 
 		-
 			message: '#^Method App\\Contracts\\ConsulClientInterface\:\:register\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
@@ -199,10 +157,10 @@ parameters:
 			path: app/Exceptions/TransactionException.php
 
 		-
-			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
-			identifier: argument.type
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Http/Controllers/Auth/VerifyEmailController.php
+			path: app/Http/Controllers/AuthController.php
 
 		-
 			message: '#^Method App\\Http\\Controllers\\BaseController\:\:sendPaginatedResponse\(\) has parameter \$data with no type specified\.$#'
@@ -221,78 +179,6 @@ parameters:
 			identifier: missingType.property
 			count: 1
 			path: app/Http/Controllers/BaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:deleteDirectory\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:deleteDirectory\(\) has parameter \$folderTemporary with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:getEncFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:getKey\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeEncFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeEncFile\(\) has parameter \$fileName with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeEncFile\(\) has parameter \$filePath with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeEncFile\(\) has parameter \$folder with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeFile\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeFile\(\) has parameter \$fileName with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeFile\(\) has parameter \$filePath with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\EncryptionController\:\:storeFile\(\) has parameter \$folder with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/EncryptionController.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\Auth\\ChangeStaffPasswordRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -325,12 +211,6 @@ parameters:
 			path: app/Http/Requests/Auth/SendPasswordResetLinkRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Auth\\UpdateAgentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/UpdateAgentRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\Enrollment\\InstructionEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -355,24 +235,6 @@ parameters:
 			path: app/Http/Requests/Foreigner/VerifyOtpRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\IdentityReview\\RejectIdentityRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/IdentityReview/RejectIdentityRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\IdentityReview\\RequestVisioEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/IdentityReview/RequestVisioEnrollmentRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\IdentityReview\\SupervisorReturnEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/IdentityReview/SupervisorReturnEnrollmentRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\User\\LoginWithCodeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -395,6 +257,30 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/User/VerifyOtpRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ActivityLogDetailResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ActivityLogDetailResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ActivityLogDetailResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ActivityLogDetailResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\ActivityLogListResource\:\:\$action_code\.$#'
@@ -511,169 +397,13 @@ parameters:
 			path: app/Http/Resources/EnrolledPersonListResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assignedAgent\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assignedResponsable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$assigned_responsable_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$documents\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$phonenumber\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$reject_reasons\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$reject_stage\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$review_comments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$submittedBy\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:\$updated_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:isPersonneMorale\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionDetailResource\:\:relationLoaded\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Parameter \#1 \$array \(non\-empty\-list\<array\{code\: string, label\: string\}\>\) of array_values is already a list, call has no effect\.$#'
-			identifier: arrayValues.list
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>label_fr" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$assignedAgent\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$assignedResponsable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentDecisionListResource\:\:\$updated_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentDecisionListResource\:\:relationLoaded\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentDecisionListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$active\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$created_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/EnrollmentRejectMotifResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$code\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$description\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/EnrollmentRejectMotifResource.php
@@ -685,172 +415,16 @@ parameters:
 			path: app/Http/Resources/EnrollmentRejectMotifResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$label_fr\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$title\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/EnrollmentRejectMotifResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$stage\.$#'
+			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRejectMotifResource\:\:\$updated_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Resources/EnrollmentRejectMotifResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$assignedAgent\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$assigned_agent_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$documents\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$phonenumber\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$submittedBy\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:isPersonneMorale\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestAgentDetailResource\:\:relationLoaded\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestAgentDetailResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$assignedAgent\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$submittedBy\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\EnrollmentRequestListResource\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestListResource\:\:isPersonneMorale\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Call to an undefined method App\\Http\\Resources\\EnrollmentRequestListResource\:\:relationLoaded\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Resources/EnrollmentRequestListResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$email_verified_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$phone_verified_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$type\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
-
-		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\MoraleEnrollmentOwnerResource\:\:\$verification_deadline_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/MoraleEnrollmentOwnerResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$email\.$#'
@@ -941,12 +515,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Jobs/Notifications/SendSmsNotificationJob.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$documents \(string\|null\) does not accept array\<string, string\|null\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Jobs/UploadEnrollmentFilesJob.php
 
 		-
 			message: '#^Method App\\Mail\\ForeignerFinalized\:\:build\(\) has no return type specified\.$#'
@@ -1195,18 +763,6 @@ parameters:
 			path: app/Models/ActivityLog.php
 
 		-
-			message: '#^Method App\\Models\\EnrollmentRejectMotif\:\:scopeActive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EnrollmentRejectMotif.php
-
-		-
-			message: '#^Method App\\Models\\EnrollmentRejectMotif\:\:scopeActive\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/EnrollmentRejectMotif.php
-
-		-
 			message: '#^Method App\\Models\\EnrollmentRequest\:\:assignedAgent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1243,18 +799,6 @@ parameters:
 			path: app/Models/OTP.php
 
 		-
-			message: '#^PHPDoc type array of property App\\Models\\PasswordResetToken\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
-			identifier: property.phpDocType
-			count: 1
-			path: app/Models/PasswordResetToken.php
-
-		-
-			message: '#^Property App\\Models\\PasswordResetToken\:\:\$fillable type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Models/PasswordResetToken.php
-
-		-
 			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
@@ -1285,72 +829,6 @@ parameters:
 			path: app/Models/User.php
 
 		-
-			message: '#^Call to function in_array\(\) with arguments ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'', array\{''VALIDATION_AGENT'', ''REJET_AGENT''\} and true will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 2
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 2
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''AWAITING_CONTACT…'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 2
-			path: app/Policies/EnrollmentRequestPolicy.php
-
-		-
-			message: '#^Method App\\Rules\\UniqueTypePerUser\:\:__construct\(\) has parameter \$level with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Rules/UniqueTypePerUser.php
-
-		-
-			message: '#^Method App\\Rules\\UniqueTypePerUser\:\:__construct\(\) has parameter \$userId with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Rules/UniqueTypePerUser.php
-
-		-
-			message: '#^Method App\\Rules\\UniqueTypePerUser\:\:message\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Rules/UniqueTypePerUser.php
-
-		-
-			message: '#^Property App\\Rules\\UniqueTypePerUser\:\:\$level has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Rules/UniqueTypePerUser.php
-
-		-
-			message: '#^Property App\\Rules\\UniqueTypePerUser\:\:\$userId has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Rules/UniqueTypePerUser.php
-
-		-
 			message: '#^Method App\\Services\\ActivityLog\\ActivityLogService\:\:list\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
@@ -1367,6 +845,12 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Services/Admin/EnrolledPersonService.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 3
+			path: app/Services/Auth/AdminAuthService.php
 
 		-
 			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:flattenPagination\(\) has parameter \$paginator with generic class Illuminate\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
@@ -1399,112 +883,94 @@ parameters:
 			path: app/Services/Consul/ConsulClient.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$proof\.$#'
-			identifier: property.notFound
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:deleteDirectory\(\) has no return type specified\.$#'
+			identifier: missingType.return
 			count: 1
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+			path: app/Services/Encryption/DocumentDecryptService.php
 
 		-
-			message: '#^Offset ''country_of…'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:deleteDirectory\(\) has parameter \$folderTemporary with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
 
 		-
-			message: '#^Offset ''date_of_birth'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:getEncFile\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
 
 		-
-			message: '#^Offset ''document_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:getKey\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
 
 		-
-			message: '#^Offset ''first_name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeEncFile\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
 
 		-
-			message: '#^Offset ''legal_name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeEncFile\(\) has parameter \$fileName with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeEncFile\(\) has parameter \$filePath with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeEncFile\(\) has parameter \$folder with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeFile\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeFile\(\) has parameter \$fileName with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeFile\(\) has parameter \$filePath with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Method App\\Services\\Encryption\\DocumentDecryptService\:\:storeFile\(\) has parameter \$folder with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Services/Encryption/DocumentDecryptService.php
+
+		-
+			message: '#^Parameter \#1 \$query of method App\\Services\\Enrollment\\EnrollmentSimilarityService\:\:orEqual\(\) expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\> given\.$#'
+			identifier: argument.type
 			count: 3
 			path: app/Services/Enrollment/EnrollmentSimilarityService.php
 
 		-
-			message: '#^Offset ''name'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
+			message: '#^Parameter \#1 \$query of method App\\Services\\Enrollment\\EnrollmentSimilarityService\:\:orJsonEqual\(\) expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\EnrollmentRequest\> given\.$#'
+			identifier: argument.type
+			count: 8
 			path: app/Services/Enrollment/EnrollmentSimilarityService.php
 
 		-
-			message: '#^Offset ''nationality'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
+			message: '#^Parameter \#1 \$query of method App\\Services\\Enrollment\\EnrollmentSimilarityService\:\:orJsonEqual\(\) expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Identity\> given\.$#'
+			identifier: argument.type
+			count: 3
 			path: app/Services/Enrollment/EnrollmentSimilarityService.php
-
-		-
-			message: '#^Offset ''registration_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between '''' and '''' will always evaluate to false\.$#'
-			identifier: notIdentical.alwaysFalse
-			count: 1
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between '''' and \*NEVER\* will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/Enrollment/EnrollmentSimilarityService.php
-
-		-
-			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$activityLog is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
-
-		-
-			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$events is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
-
-		-
-			message: '#^Property App\\Services\\Enrollment\\ForeignerFinalizationService\:\:\$trustedXClient is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
-
-		-
-			message: '#^Result of \|\| is always true\.$#'
-			identifier: booleanOr.alwaysTrue
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''APPROUVEE'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: app/Services/Enrollment/ForeignerFinalizationService.php
 
 		-
 			message: '#^Method App\\Services\\Enrollment\\KafkaEnrollmentEventPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
@@ -1537,24 +1003,6 @@ parameters:
 			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
 
 		-
-			message: '#^Offset ''country_of…'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
-			message: '#^Offset ''legal_name'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
-			message: '#^Offset ''registration_number'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
 			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$email_verified_at \(string\|null\) does not accept Illuminate\\Support\\Carbon\.$#'
 			identifier: assign.propertyType
 			count: 1
@@ -1567,250 +1015,10 @@ parameters:
 			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
 
 		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''AWAITING_CONTACT…'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between array\{App\\Jobs\\ForeignerFinalizedJob\}\|array\{App\\Jobs\\UploadEnrollmentFilesJob, App\\Jobs\\ForeignerFinalizedJob\} and array\{\} will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: app/Services/Enrollment/PersonneMoraleEnrollmentService.php
-
-		-
-			message: '#^Call to function in_array\(\) with arguments ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'', array\{''VALIDATION_AGENT'', ''REJET_AGENT''\} and true will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 2
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:agentReject\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:agentValidate\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:instruction\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:list\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:supervisorApproveMorale\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:supervisorReturnToAgent\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\IdentityReview\\IdentityReviewService\:\:validation\(\) has parameter \$motif with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Offset ''legal_name'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Offset ''name'' on string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Services\\ActivityLog\\ActivityLogService\:\:actorLabel\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$agent_decided_at \(string\|null\) does not accept Illuminate\\Support\\Carbon\.$#'
-			identifier: assign.propertyType
-			count: 2
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$reject_reasons \(string\|null\) does not accept list\<string\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''APPROUVEE''\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''REJET_AGENT''\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Models\\EnrollmentRequest\:\:\$status \(''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED''\) does not accept ''VALIDATION_AGENT''\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Property App\\Services\\IdentityReview\\IdentityReviewService\:\:\$trustedXClient is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''EN_ATTENTE'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 2
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''REJET_AGENT'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between ''APPROVED''\|''APPROVED_BY_AGENT''\|''FINALIZED''\|''PENDING''\|''REJECTED''\|''REJECTED_BY_AGENT''\|''RETURNED_TO_AGENT''\|''VISIO_REQUESTED'' and ''VALIDATION_AGENT'' will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 6
-			path: app/Services/IdentityReview/IdentityReviewService.php
-
-		-
-			message: '#^Method App\\Services\\MockRegulaService\:\:analyzeIdentity\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MockRegulaService.php
-
-		-
-			message: '#^Method App\\Services\\MockRegulaService\:\:analyzeIdentity\(\) has parameter \$files with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MockRegulaService.php
-
-		-
-			message: '#^Method App\\Services\\MockRegulaService\:\:analyzeIdentity\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MockRegulaService.php
-
-		-
 			message: '#^Method App\\Services\\Notifications\\KafkaNotificationPublisher\:\:publish\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/Notifications/KafkaNotificationPublisher.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:getClientToken\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:getToken\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:getUserWithNPI\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:mobileUserInfo\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:obtainMobileToken\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:obtainToken\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:register\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:register\(\) has parameter \$user with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:setDefaultPassword\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:setDefaultPassword\(\) has parameter \$user with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:updateCertValidityByNPI\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:updateUserAttributesByNPI\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\PKI\\TrustedXClientService\:\:userInfo\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
 
 		-
 			message: '#^Parameter \#2 \$flags of function json_encode expects int, true given\.$#'
@@ -1819,20 +1027,8 @@ parameters:
 			path: app/Services/PKI/TrustedXClientService.php
 
 		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TIMESATAMP_API_BASE_URL has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
 			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TIMESATAMP_API_BASE_URL is never read, only written\.$#'
 			identifier: property.onlyWritten
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TIMESATAMP_API_PASSWORD has no type specified\.$#'
-			identifier: missingType.property
 			count: 1
 			path: app/Services/PKI/TrustedXClientService.php
 
@@ -1843,70 +1039,28 @@ parameters:
 			path: app/Services/PKI/TrustedXClientService.php
 
 		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TIMESATAMP_API_USERNAME has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
 			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TIMESATAMP_API_USERNAME is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
 			path: app/Services/PKI/TrustedXClientService.php
 
 		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_ADMINS_LOGGED_AS has no type specified\.$#'
-			identifier: missingType.property
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
+			path: app/Services/Regula/DocumentReaderClient.php
 
 		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_BASE_URL has no type specified\.$#'
-			identifier: missingType.property
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
 			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
+			path: app/Services/Regula/DocumentReaderClient.php
 
 		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_CLIENTS_LOGGED_AS has no type specified\.$#'
-			identifier: missingType.property
+			message: '#^Parameter \#1 \$array \(list\<array\{type\: int, path\?\: string, data\?\: string, index\?\: int\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
 			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_CLIENT_ID has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_CLIENT_SECRET has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$TX_REDIRECT_URL has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Services/PKI/TrustedXClientService.php
-
-		-
-			message: '#^Method App\\Services\\RegulaService\:\:analyzeIdentity\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/RegulaService.php
-
-		-
-			message: '#^Method App\\Services\\RegulaService\:\:analyzeIdentity\(\) has parameter \$files with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/RegulaService.php
-
-		-
-			message: '#^Method App\\Services\\RegulaService\:\:analyzeIdentity\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/RegulaService.php
+			path: app/Services/Regula/FaceApiClient.php
 
 		-
 			message: '#^Method App\\Support\\NotificationRecipient\:\:email\(\) has parameter \$personalVariables with no value type specified in iterable type array\.$#'
@@ -1931,9 +1085,3 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Support/NotificationRecipient.php
-
-		-
-			message: '#^Trait App\\Traits\\AuditTrait is used zero times and is not analysed\.$#'
-			identifier: trait.unused
-			count: 1
-			path: app/Traits/AuditTrait.php

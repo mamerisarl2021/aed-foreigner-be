@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Regula;
 
 /**
- * Pulls document name + text fields from a Document Reader `/api/process` payload.
- * Field keys match the assisted-read form (`nom`, `prenoms`, `numero_piece`, …).
+ * Pulls document name + every text field from Document Reader `/api/process`.
+ * Known TextFieldType ids get French keys for the review panel; other fields
+ * keep a slug of `fieldName`. Assisted form prefill stays a separate whitelist
+ * in DocumentReadService.
  */
 final class RegulaDocumentOcr
 {
@@ -16,15 +18,48 @@ final class RegulaDocumentOcr
 
     /** @var array<int, string> */
     private const TEXT_FIELDS = [
+        1 => 'code_etat_emetteur',
+        2 => 'numero_piece',
+        3 => 'date_expiration',
+        4 => 'date_emission',
+        5 => 'date_naissance',
+        6 => 'lieu_naissance',
+        7 => 'numero_personnel',
         8 => 'nom',
         9 => 'prenoms',
-        12 => 'sexe',
-        5 => 'date_naissance',
-        3 => 'date_expiration',
-        2 => 'numero_piece',
+        10 => 'nom_mere',
         11 => 'nationalite',
-        6 => 'ville_naissance',
-        38 => 'pays_naissance',
+        12 => 'sexe',
+        13 => 'taille',
+        17 => 'adresse',
+        24 => 'autorite',
+        25 => 'nom_complet',
+        26 => 'code_nationalite',
+        27 => 'numero_passeport',
+        37 => 'classe_document',
+        38 => 'pays_emission',
+        39 => 'lieu_emission',
+        51 => 'mrz',
+        56 => 'serie_document',
+        40 => 'checksum_numero_piece',
+        41 => 'checksum_date_naissance',
+        42 => 'checksum_date_expiration',
+        43 => 'checksum_numero_personnel',
+        44 => 'checksum_final',
+        45 => 'checksum_numero_passeport',
+        48 => 'checksum_nom_complet',
+        54 => 'checksum_date_emission',
+        55 => 'check_digit_date_emission',
+        80 => 'check_digit_numero_piece',
+        81 => 'check_digit_date_naissance',
+        82 => 'check_digit_date_expiration',
+        83 => 'check_digit_numero_personnel',
+        84 => 'check_digit_final',
+        88 => 'check_digit_nom_complet',
+        126 => 'nom_famille',
+        129 => 'nom_pere',
+        142 => 'numero_cni',
+        185 => 'age',
     ];
 
     /**
@@ -72,36 +107,125 @@ final class RegulaDocumentOcr
      */
     private function extractFields(array $containers): array
     {
-        $text = $this->firstOfType($containers, self::RESULT_TEXT);
-        $textBlock = is_array($text) ? ($text['Text'] ?? null) : null;
-        $list = is_array($textBlock) ? ($textBlock['fieldList'] ?? null) : null;
-        if (! is_array($list)) {
-            return [];
+        $fields = [];
+        foreach ($containers as $container) {
+            if ((int) ($container['result_type'] ?? -1) !== self::RESULT_TEXT) {
+                continue;
+            }
+
+            $textBlock = $container['Text'] ?? null;
+            $list = is_array($textBlock) ? ($textBlock['fieldList'] ?? null) : null;
+            if (! is_array($list)) {
+                continue;
+            }
+
+            $this->mergeFieldList($list, $fields);
         }
 
-        $fields = [];
+        return $fields;
+    }
+
+    /**
+     * First-wins per key across recto + verso text containers.
+     *
+     * @param  list<mixed>  $list
+     * @param  array<string, string>  $fields
+     */
+    private function mergeFieldList(array $list, array &$fields): void
+    {
         foreach ($list as $field) {
             if (! is_array($field)) {
                 continue;
             }
 
-            $key = self::TEXT_FIELDS[(int) ($field['fieldType'] ?? -1)] ?? null;
-            $value = $field['value'] ?? null;
-            if ($key === null || ! is_string($value) || trim($value) === '') {
+            $type = (int) ($field['fieldType'] ?? $field['FieldType'] ?? -1);
+            $fieldName = $this->stringValue($field['fieldName'] ?? $field['FieldName'] ?? null);
+
+            $value = $this->fieldValue($field);
+            if ($value === null) {
                 continue;
             }
 
-            $normalized = match ($key) {
-                'date_naissance', 'date_expiration' => $this->toIsoDate($value),
-                default => trim($value),
-            };
+            $key = self::TEXT_FIELDS[$type] ?? $this->slugFieldName($fieldName);
+            if ($key === '') {
+                $key = 'field_'.$type;
+            }
 
+            if (array_key_exists($key, $fields)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeValue($key, $value);
             if ($normalized !== '') {
                 $fields[$key] = $normalized;
             }
         }
+    }
 
-        return $fields;
+    /**
+     * @param  array<string, mixed>  $field
+     */
+    private function fieldValue(array $field): ?string
+    {
+        $direct = $this->stringValue($field['value'] ?? $field['Value'] ?? null);
+        if ($direct !== null) {
+            return $direct;
+        }
+
+        $valueList = $field['valueList'] ?? $field['ValueList'] ?? null;
+        if (! is_array($valueList)) {
+            return null;
+        }
+
+        foreach ($valueList as $item) {
+            $candidate = is_array($item)
+                ? ($item['value'] ?? $item['Value'] ?? null)
+                : $item;
+            $value = $this->stringValue($candidate);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function slugFieldName(?string $fieldName): string
+    {
+        if ($fieldName === null || $fieldName === '') {
+            return '';
+        }
+
+        $slug = strtolower($fieldName);
+        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug) ?? '';
+
+        return trim($slug, '_');
+    }
+
+    private function normalizeValue(string $key, string $value): string
+    {
+        if ($key === 'sexe') {
+            $first = strtoupper(substr($value, 0, 1));
+
+            return in_array($first, ['M', 'F'], true) ? $first : strtoupper(trim($value));
+        }
+
+        if ($key === 'date_naissance' || $key === 'date_expiration' || $key === 'date_emission' || str_starts_with($key, 'date_')) {
+            return $this->toIsoDate($value);
+        }
+
+        return $value;
     }
 
     /**

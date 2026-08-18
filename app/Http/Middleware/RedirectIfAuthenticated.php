@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 final class RedirectIfAuthenticated
@@ -14,7 +13,15 @@ final class RedirectIfAuthenticated
         $guards = $guards === [] ? [null] : $guards;
 
         foreach ($guards as $guard) {
-            if (Auth::guard($guard)->check()) {
+            if ($request->user($guard) !== null) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Déjà authentifié.',
+                        'status' => 409,
+                    ], 409);
+                }
+
                 return redirect(config('app.home'));
             }
         }

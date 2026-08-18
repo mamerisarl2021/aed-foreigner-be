@@ -9,9 +9,12 @@ use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Regula\RegulaService;
 use App\Services\ServiceResult;
+use Carbon\Carbon;
+use DateTimeInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\PersonalAccessToken;
+use Throwable;
 
 final class KycVerificationService
 {
@@ -66,8 +69,11 @@ final class KycVerificationService
             return ServiceResult::fail('Échec de la vérification KYC.', $analysis, 422);
         }
 
+        $capturedAt = $this->selfieCapturedAt($request);
+
         $session = [
             'verified_at' => now()->toIso8601String(),
+            'selfie_captured_at' => $capturedAt,
             'liveness' => $analysis['liveness'] ?? null,
             'similarity' => $analysis['similarity'] ?? null,
             'risk_score' => $analysis['risk_score'] ?? null,
@@ -135,6 +141,22 @@ final class KycVerificationService
         return is_array($data) ? $data : null;
     }
 
+    /**
+     * ISO-8601 instant for `analyse_kyc.selfie.capture_le`.
+     * Uses the client `capture_le` when valid, otherwise the KYC verification time.
+     *
+     * @param  array<string, mixed>|null  $session
+     */
+    public function selfieCapturedAt(Request $request, ?array $session = null): string
+    {
+        $session ??= [];
+
+        return $this->normalizeCaptureLe($request->input('capture_le'))
+            ?? $this->normalizeCaptureLe($session['selfie_captured_at'] ?? null)
+            ?? $this->normalizeCaptureLe($session['verified_at'] ?? null)
+            ?? now()->toIso8601String();
+    }
+
     public function authenticatedClient(Request $request): ?User
     {
         $user = $request->user();
@@ -174,5 +196,22 @@ final class KycVerificationService
     private function userCacheKey(string $userId): string
     {
         return 'enrollment_kyc_verified_user_'.$userId;
+    }
+
+    private function normalizeCaptureLe(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return Carbon::parse($value)->toIso8601String();
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->toIso8601String();
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

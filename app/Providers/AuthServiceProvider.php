@@ -50,6 +50,7 @@ class AuthServiceProvider extends ServiceProvider
             config('roles.administrateur_plateforme'),
             config('roles.agent'),
             config('roles.responsable_de_validation'),
+            config('roles.manager'),
         ]));
         Gate::define('viewApiDocs', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));
 

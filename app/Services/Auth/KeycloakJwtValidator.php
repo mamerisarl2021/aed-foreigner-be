@@ -6,6 +6,7 @@ namespace App\Services\Auth;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 final class KeycloakJwtValidator
@@ -74,13 +75,29 @@ final class KeycloakJwtValidator
 
         // Cache per URI so infra and staff realms never share stale keys.
         $cacheKey = 'keycloak.jwks.'.sha1($jwksUri);
+        $cacheHit = Cache::has($cacheKey);
 
-        $jwks = Cache::remember($cacheKey, now()->addHour(), function () use ($jwksUri): array {
-            $response = Http::get($jwksUri);
+        if ($cacheHit) {
+            $this->logKeycloakCall('jwks', 'GET', $jwksUri, 200, [
+                'kid' => $kid,
+                'cache_hit' => true,
+            ]);
+            $jwks = Cache::get($cacheKey);
+        } else {
+            $response = Http::timeout(5)->get($jwksUri);
+            $this->logKeycloakCall('jwks', 'GET', $jwksUri, $response->status(), [
+                'kid' => $kid,
+                'cache_hit' => false,
+            ]);
             $response->throw();
+            $jwks = $response->json();
+            Cache::put($cacheKey, $jwks, now()->addHour());
+        }
 
-            return $response->json();
-        });
+        if (! is_array($jwks)) {
+            Cache::forget($cacheKey);
+            throw new RuntimeException('JWKS illisible pour '.$configPrefix.'.');
+        }
 
         foreach ($jwks['keys'] ?? [] as $key) {
             if (($key['kid'] ?? null) !== $kid) {
@@ -98,6 +115,23 @@ final class KeycloakJwtValidator
 
         Cache::forget($cacheKey);
         throw new RuntimeException('Clé JWKS introuvable.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function logKeycloakCall(string $operation, string $method, string $url, int $statusCode, array $context = []): void
+    {
+        if (! config('keycloak.log_calls')) {
+            return;
+        }
+
+        Log::info('Keycloak call', array_merge([
+            'operation' => $operation,
+            'method' => $method,
+            'url' => $url,
+            'status' => $statusCode,
+        ], $context));
     }
 
     /**

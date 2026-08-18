@@ -170,4 +170,13 @@ trait FormatsEnrollmentDocuments
             'pays_origine' => $estPersonneMorale ? ($kyc['country_of_incorporation'] ?? null) : null,
         ];
     }
+
+    protected function delaiEcouleJours(?Carbon $createdAt): int
+    {
+        if ($createdAt === null) {
+            return 0;
+        }
+
+        return max(0, (int) $createdAt->copy()->startOfDay()->diffInDays(now()->copy()->startOfDay()));
+    }
 }

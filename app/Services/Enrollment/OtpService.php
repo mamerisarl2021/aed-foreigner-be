@@ -175,6 +175,8 @@ final class OtpService
         return ServiceResult::ok('OTP valide.', [
             'email_verified' => $email !== null && (bool) Cache::get($this->verifiedEmailKey($email)),
             'phone_verified' => $phone !== null && (bool) Cache::get($this->verifiedPhoneKey($phone)),
+            'email_verifie' => $email !== null && (bool) Cache::get($this->verifiedEmailKey($email)),
+            'telephone_verifie' => $phone !== null && (bool) Cache::get($this->verifiedPhoneKey($phone)),
         ]);
     }
 
