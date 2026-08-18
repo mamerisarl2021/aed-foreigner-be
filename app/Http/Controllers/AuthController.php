@@ -52,8 +52,10 @@ class AuthController extends BaseController
     /**
      * Admin/Agent login via Keycloak token exchange (returns Sanctum token)
      *
-     * Exchange a Keycloak access token (obtained by the frontend through OIDC login)
-     * for a Sanctum token. Only available when STAFF_KEYCLOAK_ENABLED=true.
+     * Exchange a Keycloak access token from realm pki-portal / client
+     * backoffice-stranger (issuer KC_STAFF_ISSUER) for a Sanctum token.
+     * The local user must already exist (email match); Spatie staff roles are
+     * synced from the JWT. Only available when STAFF_KEYCLOAK_ENABLED=true.
      */
     public function loginAdminKeycloak(KeycloakLoginRequest $request): JsonResponse
     {

@@ -1767,7 +1767,7 @@
         "/v1/admin/login/keycloak": {
             "post": {
                 "operationId": "admin.login.keycloak",
-                "description": "Exchange a Keycloak access token (obtained by the frontend through OIDC login)\nfor a Sanctum token. Only available when STAFF_KEYCLOAK_ENABLED=true.",
+                "description": "Exchange a Keycloak access token from realm pki-portal / client\nbackoffice-stranger (issuer KC_STAFF_ISSUER) for a Sanctum token.\nThe local user must already exist (email match); Spatie staff roles are\nsynced from the JWT. Only available when STAFF_KEYCLOAK_ENABLED=true.",
                 "summary": "Admin/Agent login via Keycloak token exchange (returns Sanctum token)",
                 "tags": [
                     "Admin Auth"

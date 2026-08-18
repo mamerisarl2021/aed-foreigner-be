@@ -615,11 +615,14 @@ Staff auth:
 
 ```
 POST /admin/login              { email, password } → access_token + must_change_password
+POST /admin/login/keycloak     { access_token }    → Sanctum token (STAFF_KEYCLOAK_ENABLED=true)
 POST /admin/password/change    { current_password, password, password_confirmation }  (auth)
 POST /agents/register          { name, first_name, email, phonenumber, role }  (admin)
 ```
 
-Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`.
+Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Policies remain the authorization SoT.
+
+Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When Keycloak staff login is on, also create the same email in realm `pki-portal` with the matching realm role.
 
 Role mapping (PDF → Spatie):
 
@@ -765,7 +768,8 @@ PUT  /clients/security-questions         { current_password, security_questions 
 Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, not `POST /agents/register`).
 
 ```
-POST /admin/login
+POST /admin/login                        { email, password }  (403 if STAFF_KEYCLOAK_ENABLED)
+POST /admin/login/keycloak               { access_token }     (realm pki-portal / backoffice-stranger)
 GET  /agents? q, role, per_page          → StaffUserListResource
 GET  /agents/{id}                        → StaffUserDetailResource
 POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER)
@@ -783,6 +787,7 @@ GET  /audits                                               → journal OwenIt te
 ```
 
 - Login sets `users.last_login_at`.
+- **Keycloak staff** (`STAFF_KEYCLOAK_ENABLED`, default false): OIDC on `pki-portal` / `backoffice-stranger`, then `POST /admin/login/keycloak`. Existing local user only; Spatie roles replaced from the JWT. `KC_STAFF_*` must not fall back to `KC_INFRA_*`.
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
 - **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.

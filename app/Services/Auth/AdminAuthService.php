@@ -11,6 +11,7 @@ use App\Models\StaffPasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\StaffKeycloakRoleMapper;
 use App\Support\StaffRoleMapper;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -176,9 +177,9 @@ class AdminAuthService
     }
 
     /**
-     * Exchange a Keycloak access token (frontend OIDC login) for a Sanctum token.
-     * The local users table stays the source of truth: the account must exist
-     * locally with a staff role; Keycloak only proves identity.
+     * Exchange a Keycloak access token (frontend OIDC on realm pki-portal /
+     * client backoffice-stranger) for a Sanctum token. The local user must
+     * already exist (email match); Spatie staff roles are replaced from the JWT.
      */
     public function loginWithKeycloak(string $accessToken): ServiceResult
     {
@@ -203,6 +204,18 @@ class AdminAuthService
         if (! $user) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
         }
+
+        if ($user->status !== 'ACTIVE') {
+            return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
+        }
+
+        $slugs = StaffKeycloakRoleMapper::slugsFromJwt($payload);
+        if ($slugs === []) {
+            return ServiceResult::fail('Aucun rôle staff Keycloak n\'est associé à ce compte.', null, 403);
+        }
+
+        $user->syncRoles($slugs);
+        $user->load('roles');
 
         return $this->loginDirect($user, requirePassword: false);
     }
