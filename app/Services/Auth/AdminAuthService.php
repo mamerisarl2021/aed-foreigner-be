@@ -7,7 +7,6 @@ namespace App\Services\Auth;
 use App\Enums\ActivityLogAction;
 use App\Exceptions\StaffKeycloakAdminException;
 use App\Http\Resources\StaffUserDetailResource;
-use App\Http\Resources\StaffUserListResource;
 use App\Jobs\ResetPasswordJob;
 use App\Jobs\WelcomeAgentJob;
 use App\Models\StaffPasswordResetToken;
@@ -18,7 +17,6 @@ use App\Support\StaffKeycloakRoleMapper;
 use App\Support\StaffRoleMapper;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -87,7 +85,7 @@ class AdminAuthService
                 ['target_user_id' => $user->id],
             );
 
-            return ServiceResult::ok('Agent mis à jour avec succès.', (new StaffUserDetailResource($user))->resolve());
+            return ServiceResult::ok('Agent mis à jour avec succès.', $user);
         } catch (StaffKeycloakAdminException $e) {
             Log::error('Failed to sync agent to Keycloak: '.$e->getMessage());
 
@@ -191,7 +189,7 @@ class AdminAuthService
                 is_string($actor?->id) ? $actor->id : null,
             );
 
-            return ServiceResult::ok('Agent enregistré avec succès', (new StaffUserDetailResource($user))->resolve());
+            return ServiceResult::ok('Agent enregistré avec succès', $user);
         } catch (Exception $e) {
             Log::error('Failed to register agent: '.$e->getMessage());
 
@@ -304,6 +302,42 @@ class AdminAuthService
         return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
 
+    public function logout(User $user): ServiceResult
+    {
+        $this->activityLog->record(
+            ActivityLogAction::DeconnexionAdmin,
+            sprintf('%s s\'est déconnecté(e) de l\'espace staff.', ActivityLogService::actorLabel($user)),
+            $user->id,
+        );
+
+        $user->currentAccessToken()?->delete();
+
+        return ServiceResult::ok('Déconnexion réussie.', []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    public function updateAgentById(string $id, array $input, ?User $actor = null): ServiceResult
+    {
+        $user = User::query()->find($id);
+        if (! $user) {
+            return ServiceResult::fail('Agent introuvable.', null, 404);
+        }
+
+        return $this->updateAgent($user, $input, $actor);
+    }
+
+    public function deleteAgentById(string $id, ?User $actor = null): ServiceResult
+    {
+        $user = User::query()->find($id);
+        if (! $user) {
+            return ServiceResult::fail('Agent introuvable.', null, 404);
+        }
+
+        return $this->deleteAgent($user, $actor);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */
@@ -339,12 +373,7 @@ class AdminAuthService
             $orderDir = strtolower((string) ($filters['order_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
             $query->orderBy($orderBy, $orderDir);
 
-            $agents = $query->paginate($perPage);
-            $agents->getCollection()->transform(
-                fn (User $user) => (new StaffUserListResource($user))->resolve()
-            );
-
-            return ServiceResult::ok('Liste des agents.', $this->flattenPagination($agents));
+            return ServiceResult::ok('Liste des agents.', $query->paginate($perPage));
         } catch (Exception $e) {
             Log::error('Impossible de récupérer les agents: '.$e->getMessage());
 
@@ -359,7 +388,7 @@ class AdminAuthService
                 $query->whereIn('name', StaffRoleMapper::listableSlugs());
             })->with('roles')->findOrFail($id);
 
-            return ServiceResult::ok('Agent récupéré avec succès', (new StaffUserDetailResource($agent))->resolve());
+            return ServiceResult::ok('Agent récupéré avec succès', $agent);
         } catch (ModelNotFoundException $e) {
             Log::error('Agent not found: '.$e->getMessage());
 
@@ -465,17 +494,5 @@ class AdminAuthService
         }
 
         return null;
-    }
-
-    /**
-     * @return array{data: mixed, pagination: array<string, mixed>}
-     */
-    private function flattenPagination(LengthAwarePaginator $paginator): array
-    {
-        $flattenedData = $paginator->toArray();
-        $data = $flattenedData['data'];
-        unset($flattenedData['data']);
-
-        return array_merge(['data' => $data], ['pagination' => $flattenedData]);
     }
 }

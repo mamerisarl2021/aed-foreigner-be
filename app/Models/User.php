@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
@@ -20,8 +19,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $id
  * @property string|null $pin_hash
  * @property array<int, mixed>|null $security_questions
- * @property \Illuminate\Support\Carbon|null $last_login_at
- * @property \Illuminate\Support\Carbon|null $trustedx_registered_at
+ * @property Carbon|null $last_login_at
+ * @property Carbon|null $trustedx_registered_at
  *
  * @use HasFactory<UserFactory>
  */
@@ -60,9 +59,6 @@ class User extends Authenticatable implements Auditable
         'security_questions',
         'pin_hash',
     ];
-
-    /** @var list<string> */
-    protected $appends = ['link'];
 
     /** @var array<string, mixed> */
     protected array $trustedxProfile = [];
@@ -115,12 +111,5 @@ class User extends Authenticatable implements Auditable
     public function toArray(): array
     {
         return array_merge(parent::toArray(), $this->trustedxProfile);
-    }
-
-    public function getLinkAttribute(): string
-    {
-        return $this->profile
-            ? Storage::cloud()->temporaryUrl($this->profile, Carbon::now()->addDays(3))
-            : '';
     }
 }

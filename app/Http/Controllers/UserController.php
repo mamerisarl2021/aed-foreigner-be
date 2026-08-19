@@ -6,17 +6,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\User\ClientLoginRequest;
 use App\Http\Requests\User\LoginWithCodeRequest;
-use App\Http\Requests\User\SearchUsersByEmailRequest;
-use App\Http\Requests\User\SearchUsersRequest;
 use App\Http\Requests\User\SendOtpRequest;
-use App\Http\Requests\User\SetClientPasswordRequest;
 use App\Http\Requests\User\UpdateUserProfileRequest;
-use App\Http\Requests\User\UpdateUserStatusRequest;
 use App\Http\Requests\User\VerifyOtpRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
-use App\Services\Users\UserService;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +21,6 @@ class UserController extends BaseController
 {
     public function __construct(
         private readonly UserRegistrationService $registration,
-        private readonly UserService $users,
     ) {}
 
     /**
@@ -68,57 +62,13 @@ class UserController extends BaseController
     }
 
     /**
-     * Search users by email, name or NPI (staff only)
-     *
-     * Defaults: limit=10 (max 100).
-     */
-    public function search(SearchUsersRequest $request): JsonResponse
-    {
-        $this->authorize('search', User::class);
-
-        $result = $this->users->search(
-            (string) $request->input('query'),
-            (int) $request->input('limit', 10),
-            (string) $request->user()?->id,
-        );
-
-        if (! $result->success) {
-            return $this->respond($result);
-        }
-
-        return $this->sendResponse($result->message, UserResource::collection($result->data));
-    }
-
-    /**
-     * Search users by email (staff only)
-     *
-     * Defaults: limit=10 (max 100).
-     */
-    public function searchPost(SearchUsersByEmailRequest $request): JsonResponse
-    {
-        $this->authorize('search', User::class);
-
-        $result = $this->users->searchByEmail(
-            (string) $request->input('email'),
-            (int) $request->input('limit', 10),
-            (string) $request->user()?->id,
-        );
-
-        if (! $result->success) {
-            return $this->respond($result);
-        }
-
-        return $this->sendResponse($result->message, UserResource::collection($result->data));
-    }
-
-    /**
      * Update own profile (email, profile photo)
      */
     #[PathParameter('id', description: 'User UUID.', type: 'string', format: 'uuid')]
     public function update(UpdateUserProfileRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $target = User::findOrFail($id);
+        $target = User::query()->findOrFail($id);
         $this->authorize('update', $target);
 
         $result = $this->registration->updateUser(
@@ -127,33 +77,14 @@ class UserController extends BaseController
             $request->file('profile'),
         );
 
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        if ($result->data instanceof User) {
+            return $this->sendResponse($result->message, new UserResource($result->data), $result->code);
+        }
+
         return $this->respond($result);
-    }
-
-    /**
-     * Bulk update user statuses (staff)
-     */
-    public function updateUserStatus(UpdateUserStatusRequest $request): JsonResponse
-    {
-        $this->authorize('updateStatus', User::class);
-
-        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
-
-        return $this->respond($this->users->updateStatuses($request->input('users'), $actorId));
-    }
-
-    /**
-     * Set a client TrustedX password or PIN (admin only)
-     */
-    public function setPassword(SetClientPasswordRequest $request): JsonResponse
-    {
-        $this->authorize('setClientPassword', User::class);
-
-        return $this->respond($this->registration->setPassword(
-            $request->input('npi'),
-            $request->input('password'),
-            $request->input('type'),
-            $request->user(),
-        ));
     }
 }

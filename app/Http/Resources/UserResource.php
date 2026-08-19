@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\User;
 use App\Support\ClientLocalCredentials;
+use App\Support\CloudTemporaryUrl;
 use App\Support\StaffRoleMapper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -34,7 +35,7 @@ class UserResource extends JsonResource
             'phonenumber' => $this->phonenumber,
             'status' => $this->status,
             'role' => StaffRoleMapper::codeFromUser($user),
-            'link' => $this->link,
+            'link' => CloudTemporaryUrl::make(is_string($this->profile) ? $this->profile : null),
             'created_at' => $this->created_at?->toIso8601String(),
             'identites' => $this->relationLoaded('identities')
                 ? ClientIdentityResource::collection($this->identities)

@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\DataTransferObjects\SmsNotificationData;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationPlatform;
 use App\Enums\NotificationTemplate;
 use App\Jobs\MoraleEmailVerificationJob;
 use App\Jobs\Notifications\SendEmailNotificationJob;
-use App\Jobs\SendSmsJob;
+use App\Jobs\Notifications\SendSmsNotificationJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrolledCompany;
 use App\Models\EnrollmentRequest;
@@ -281,12 +282,7 @@ class PersonneMoraleEnrollmentService
         }
 
         if ($enrollment->email_verified_at !== null) {
-            return ServiceResult::ok('Email déjà vérifié.', [
-                'enrollment_request_id' => $enrollment->id,
-                'email_verified' => true,
-                'phone_verified' => $enrollment->phone_verified_at !== null,
-                'status' => $enrollment->status->value,
-            ]);
+            return ServiceResult::ok('Email déjà vérifié.', $this->contactVerificationPayload($enrollment));
         }
 
         if ($enrollment->verification_deadline_at !== null && $enrollment->verification_deadline_at->isPast()) {
@@ -311,12 +307,7 @@ class PersonneMoraleEnrollmentService
             ['context' => 'morale_email'],
         );
 
-        return ServiceResult::ok('Email officiel vérifié.', [
-            'enrollment_request_id' => $enrollment->id,
-            'email_verified' => true,
-            'phone_verified' => $enrollment->phone_verified_at !== null,
-            'status' => $enrollment->fresh()->status->value,
-        ]);
+        return ServiceResult::ok('Email officiel vérifié.', $this->contactVerificationPayload($enrollment->fresh() ?? $enrollment));
     }
 
     public function sendPhoneOtp(User $user, string $id): ServiceResult
@@ -332,9 +323,8 @@ class PersonneMoraleEnrollmentService
         }
 
         if ($enrollment->phone_verified_at !== null) {
-            return ServiceResult::ok('Téléphone déjà vérifié.', [
+            return ServiceResult::ok('Téléphone déjà vérifié.', $this->contactVerificationPayload($enrollment) + [
                 'phonenumber' => $enrollment->phonenumber,
-                'phone_verified' => true,
             ]);
         }
 
@@ -343,10 +333,12 @@ class PersonneMoraleEnrollmentService
 
         Cache::put("morale_otp_phone_{$enrollment->id}", hash('sha256', $otp), now()->addMinutes($ttl));
         Cache::forget("morale_otp_phone_attempts_{$enrollment->id}");
-        SendSmsJob::dispatch(
-            $enrollment->phonenumber,
-            "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes)."
-        );
+        SendSmsNotificationJob::dispatch(new SmsNotificationData(
+            subject: "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes).",
+            recipients: [NotificationRecipient::phone($enrollment->phonenumber)],
+            type: 'GENERIC_SMS',
+            platform: NotificationPlatform::from(config('notifications.platform')),
+        ));
 
         $this->activityLog->record(
             ActivityLogAction::OtpEnvoye,
@@ -402,10 +394,7 @@ class PersonneMoraleEnrollmentService
             ['context' => 'morale_phone'],
         );
 
-        return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', [
-            'enrollment_request_id' => $enrollment->id,
-            'status' => $enrollment->fresh()->status->value,
-        ]);
+        return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', $this->contactVerificationPayload($enrollment->fresh() ?? $enrollment));
     }
 
     private function hasOpenMoraleRequest(User $user): bool
@@ -553,6 +542,26 @@ class PersonneMoraleEnrollmentService
                 Storage::disk('local')->delete($path);
             }
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function contactVerificationPayload(EnrollmentRequest $enrollment): array
+    {
+        $emailVerified = $enrollment->email_verified_at !== null;
+        $phoneVerified = $enrollment->phone_verified_at !== null;
+        $status = $enrollment->status->value;
+
+        return [
+            'enrollment_request_id' => $enrollment->id,
+            'email_verified' => $emailVerified,
+            'email_verifie' => $emailVerified,
+            'phone_verified' => $phoneVerified,
+            'telephone_verifie' => $phoneVerified,
+            'status' => $status,
+            'statut' => $status,
+        ];
     }
 
     private function stringOrNull(mixed $value): ?string

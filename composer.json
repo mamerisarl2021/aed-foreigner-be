@@ -8,8 +8,6 @@
         "php": "^8.4",
         "dedoc/scramble": "^0.13.36",
         "guzzlehttp/guzzle": "^7.2",
-        "kkiapay/kkiapay-php": "dev-master",
-        "laravel/breeze": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10",
@@ -18,10 +16,7 @@
         "opcodesio/log-viewer": "^3.19",
         "owen-it/laravel-auditing": "^14.0",
         "phpseclib/phpseclib": "^3.0",
-        "setasign/fpdf": "^1.8",
-        "setasign/fpdi": "^2.6",
-        "spatie/laravel-permission": "^6.9",
-        "twilio/sdk": "^8.2"
+        "spatie/laravel-permission": "^6.9"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
@@ -31,8 +26,7 @@
         "laravel/sail": "^1.63",
         "mockery/mockery": "^1.6.12",
         "nunomaduro/collision": "^8.5",
-        "phpunit/phpunit": "^11.5",
-        "spatie/laravel-ray": "^1.43"
+        "phpunit/phpunit": "^11.5"
     },
     "autoload": {
         "psr-4": {

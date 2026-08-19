@@ -5,19 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\Contracts\EnrollmentEventPublisherInterface;
-use App\DataTransferObjects\EmailNotificationData;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
-use App\Enums\NotificationPlatform;
-use App\Enums\NotificationTemplate;
 use App\Jobs\ForeignerFinalizedJob;
-use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Jobs\RegulaAnalysisJob;
 use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
-use App\Support\NotificationRecipient;
 use App\Support\TrackingCodeAllocator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -107,22 +102,6 @@ final class ForeignerEnrollmentService
                 $enrollmentRequest->id,
             );
 
-            SendEmailNotificationJob::dispatch(new EmailNotificationData(
-                subject: 'Confirmation de soumission — enrôlement AED',
-                template: NotificationTemplate::ForeignerFinalized,
-                recipients: [NotificationRecipient::email($email, [
-                    'name' => $request->input('name'),
-                    'numero_suivi' => $enrollmentRequest->tracking_code,
-                ])],
-                variables: [
-                    'name' => $request->input('name'),
-                    'demande_id' => $enrollmentRequest->id,
-                    'numero_suivi' => $enrollmentRequest->tracking_code,
-                ],
-                type: 'ENROLEMENT_SUBMITTED',
-                platform: NotificationPlatform::from(config('notifications.platform')),
-            ));
-
             return ServiceResult::ok('Demande acceptée.', [
                 'demande_id' => $enrollmentRequest->id,
                 'numero_suivi' => $enrollmentRequest->tracking_code,
@@ -163,8 +142,16 @@ final class ForeignerEnrollmentService
      */
     private function dispatchPostSubmissionJobs(EnrollmentRequest $enrollmentRequest, array $uploadedFiles): void
     {
+        $kyc = $enrollmentRequest->kyc_data;
+        $confirmation = new ForeignerFinalizedJob(
+            $enrollmentRequest->email,
+            'PERSONNE_PHYSIQUE',
+            is_array($kyc) ? (string) ($kyc['name'] ?? '') : '',
+            $enrollmentRequest->tracking_code,
+        );
+
         if ($uploadedFiles === []) {
-            ForeignerFinalizedJob::dispatch($enrollmentRequest->email, 'PERSONNE_PHYSIQUE');
+            Bus::dispatch($confirmation);
 
             return;
         }
@@ -172,7 +159,7 @@ final class ForeignerEnrollmentService
         Bus::chain([
             new UploadEnrollmentFilesJob($enrollmentRequest->id, $uploadedFiles),
             new RegulaAnalysisJob($enrollmentRequest->id),
-            new ForeignerFinalizedJob($enrollmentRequest->email, 'PERSONNE_PHYSIQUE'),
+            $confirmation,
         ])->dispatch();
     }
 

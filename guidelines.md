@@ -194,7 +194,15 @@ Static analysis with **Larastan** at **level 6 or higher**:
 
 Use **named routes** and the `route()` helper where applicable.
 
-Prefer `Route::resource()` or grouped routes over scattered one-offs in `routes/api.php`.
+Staff queue `GET/PATCH /enrolements/{id}*` constrains `{id}` as UUID so `GET /enrolements/finalisation` is not captured by the Sanctum show route.
+
+**Historical public paths (do not rename — SPA contract).** Keep these URIs and names; `/admin/logout` is an alias of `/admins/logout`:
+
+- `POST /admins/logout` and `POST /admin/logout`
+- `POST /users-email/search`
+- `POST /clients/some/reset`
+- `POST /agents/{id}` (update, not PUT/PATCH)
+- `POST /users/{id}` (profile update)
 
 ---
 
@@ -215,7 +223,7 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 ### 7.2 Secrets
 
 - **Never** hardcode API keys, tokens, or passwords
-- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation
+- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
 **Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
@@ -323,6 +331,8 @@ Standard success envelope:
 Use appropriate HTTP status codes; validation errors return **422**.
 
 **Exception — Consul health.** `GET /api/v1/health` returns `{"status":"UP"}` (200) or `{"status":"DOWN"}` (503) **without** this envelope. Consul and load balancers require that contract.
+
+**Exception — encrypted document download.** `GET /decrypt/token/file/{filename}` returns raw file bytes (detected `Content-Type`) on success. Failures use `abort()` JSON, not the `{success,message,data}` envelope.
 
 ### 9.3 Authorization (policies first — P10-04)
 

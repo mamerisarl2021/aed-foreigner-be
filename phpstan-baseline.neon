@@ -67,30 +67,6 @@ parameters:
 			path: app/DataTransferObjects/WebsocketNotificationData.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\BaseController\:\:sendPaginatedResponse\(\) has parameter \$data with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/BaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\BaseController\:\:sendResponse\(\) has parameter \$data with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/BaseController.php
-
-		-
-			message: '#^Property App\\Http\\Controllers\\BaseController\:\:\$data has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Http/Controllers/BaseController.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Auth\\ChangeStaffPasswordRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/ChangeStaffPasswordRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\Auth\\RegisterAgentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -487,12 +463,6 @@ parameters:
 			path: app/Services/Auth/AdminAuthService.php
 
 		-
-			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:flattenPagination\(\) has parameter \$paginator with generic class Illuminate\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Services/Auth/AdminAuthService.php
-
-		-
 			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:registerAgent\(\) has parameter \$input with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -501,6 +471,12 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:updateAgent\(\) has parameter \$input with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Auth/AdminAuthService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/Auth/AdminAuthService.php
 
@@ -557,6 +533,12 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/Notifications/KafkaNotificationPublisher.php
+
+		-
+			message: '#^Property App\\Services\\PKI\\TrustedXClientService\:\:\$redirectUrl is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/PKI/TrustedXClientService.php
 
 		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'

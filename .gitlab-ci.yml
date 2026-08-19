@@ -1,0 +1,59 @@
+stages:
+  - quality
+
+variables:
+  MYSQL_ROOT_PASSWORD: password
+  MYSQL_DATABASE: my_database
+  FF_NETWORK_PER_BUILD: "true"
+
+pint:
+  stage: quality
+  image: php:8.4-cli
+  script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libzip-dev
+    - docker-php-ext-install zip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install --prefer-dist --no-interaction --no-progress --ignore-platform-reqs
+    - vendor/bin/pint --test
+  rules:
+    - if: $CI_PIPELINE_SOURCE
+
+phpstan:
+  stage: quality
+  image: php:8.4-cli
+  script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libzip-dev
+    - docker-php-ext-install zip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install --prefer-dist --no-interaction --no-progress --ignore-platform-reqs
+    - vendor/bin/phpstan analyse --memory-limit=512M
+  rules:
+    - if: $CI_PIPELINE_SOURCE
+
+phpunit:
+  stage: quality
+  image: php:8.4-cli
+  services:
+    - name: mysql:8.0
+      alias: mysql
+  variables:
+    APP_ENV: testing
+    DB_CONNECTION: mysql
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_DATABASE: my_database
+    DB_USERNAME: root
+    DB_PASSWORD: password
+    CACHE_STORE: array
+    QUEUE_CONNECTION: sync
+    SESSION_DRIVER: array
+    MYSQL_ROOT_PASSWORD: password
+    MYSQL_DATABASE: my_database
+  script:
+    - apt-get update -qq && apt-get install -y -qq git unzip libzip-dev default-mysql-client
+    - docker-php-ext-install zip pdo_mysql
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install --prefer-dist --no-interaction --no-progress --ignore-platform-reqs
+    - php artisan test
+  rules:
+    - if: $CI_PIPELINE_SOURCE

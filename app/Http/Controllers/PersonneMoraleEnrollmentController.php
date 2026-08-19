@@ -11,11 +11,13 @@ use App\Http\Requests\Enrollment\ShowMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\VerifyMoraleEmailRequest;
 use App\Http\Requests\Enrollment\VerifyMoralePhoneOtpRequest;
+use App\Http\Resources\EnrollmentSubmitResource;
 use App\Http\Resources\MoraleEnrollmentCorrectionResource;
 use App\Http\Resources\MoraleEnrollmentOwnerListResource;
 use App\Http\Resources\MoraleEnrollmentOwnerResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
+use App\Services\ServiceResult;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
@@ -69,7 +71,12 @@ class PersonneMoraleEnrollmentController extends BaseController
 
         $this->authorize('submitMorale', EnrollmentRequest::class);
 
-        return $this->respond($this->moraleEnrollment->submit($user, $request));
+        $result = $this->moraleEnrollment->submit($user, $request);
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new EnrollmentSubmitResource($result->data), $result->code);
     }
 
     /**
@@ -131,7 +138,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]
     public function verifyEmail(VerifyMoraleEmailRequest $request): JsonResponse
     {
-        return $this->respond($this->moraleEnrollment->verifyEmail(
+        return $this->respondPayload($this->moraleEnrollment->verifyEmail(
             (string) $request->validated('id'),
             $request->input('token'),
         ));
@@ -152,7 +159,7 @@ class PersonneMoraleEnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 
-        return $this->respond($this->moraleEnrollment->sendPhoneOtp($user, $id));
+        return $this->respondPayload($this->moraleEnrollment->sendPhoneOtp($user, $id));
     }
 
     /**
@@ -173,6 +180,15 @@ class PersonneMoraleEnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 
-        return $this->respond($this->moraleEnrollment->verifyPhoneOtp($user, $id, $request->input('otp')));
+        return $this->respondPayload($this->moraleEnrollment->verifyPhoneOtp($user, $id, $request->input('otp')));
+    }
+
+    private function respondPayload(ServiceResult $result): JsonResponse
+    {
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new EnrollmentSubmitResource($result->data), $result->code);
     }
 }

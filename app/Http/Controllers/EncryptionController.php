@@ -11,7 +11,6 @@ use Dedoc\Scramble\Attributes\Header;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Gate;
 
 #[Group('Admin')]
 class EncryptionController extends Controller
@@ -23,9 +22,10 @@ class EncryptionController extends Controller
     /**
      * Decrypt and display an encrypted enrollment document
      *
-     * Staff reviewers and manager (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;
+     * Staff reviewers and manager (`viewEncryptedDocuments` policy). `filename` is the stored encrypted file name;
      * the decrypted content is returned inline with its detected MIME type.
      * 404 when the file does not exist.
+     * Exception to the JSON `{success,message,data}` envelope (§9.2): success is raw file bytes.
      */
     #[PathParameter('filename', description: 'Stored encrypted file name (basename only; no path segments).', type: 'string')]
     #[ScrambleResponse(
@@ -39,7 +39,7 @@ class EncryptionController extends Controller
     #[Header('Content-Disposition', description: 'inline; filename="<basename>"', type: 'string')]
     public function decryptAndDisplay(DecryptDocumentRequest $request): Response
     {
-        Gate::authorize('viewEncryptedDocuments');
+        $this->authorize('viewEncryptedDocuments');
 
         $result = $this->decryptService->decryptAndDisplay(
             (string) $request->validated('filename'),

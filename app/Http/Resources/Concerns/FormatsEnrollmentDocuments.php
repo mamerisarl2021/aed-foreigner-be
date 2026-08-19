@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Concerns;
 
+use App\Support\CloudTemporaryUrl;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 trait FormatsEnrollmentDocuments
@@ -51,7 +51,7 @@ trait FormatsEnrollmentDocuments
      */
     private function cloudTemporaryUrl(string $path, array $options = []): string
     {
-        return Storage::cloud()->temporaryUrl($path, Carbon::now()->addDays(3), $options);
+        return CloudTemporaryUrl::make($path, $options);
     }
 
     /**

@@ -6,6 +6,10 @@ namespace Tests\Feature\Enrollment;
 
 use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
+use App\Jobs\ForeignerFinalizedJob;
+use App\Jobs\Notifications\SendEmailNotificationJob;
+use App\Jobs\RegulaAnalysisJob;
+use App\Jobs\UploadEnrollmentFilesJob;
 use App\Models\EnrollmentRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,6 +101,13 @@ final class PersonnePhysiqueEnrollmentWorkflowTest extends TestCase
         $this->assertNotNull($enrollment->phone_verified_at);
         $this->assertSame($usersBefore, User::query()->count());
         $this->assertDatabaseMissing('users', ['email' => $email]);
+
+        Bus::assertChained([
+            UploadEnrollmentFilesJob::class,
+            RegulaAnalysisJob::class,
+            ForeignerFinalizedJob::class,
+        ]);
+        Bus::assertNotDispatched(SendEmailNotificationJob::class);
     }
 
     #[Test]

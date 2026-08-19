@@ -78,6 +78,12 @@ final class PolicyFirstAccessTest extends TestCase
         $this->getJson($this->api('/stats'))->assertForbidden();
         $this->getJson($this->api('/users/search?query=test'))->assertForbidden();
         $this->getJson($this->api('/decrypt/token/file/dummy.enc'))->assertForbidden();
+        $this->postJson($this->api('/admin/password/change'), [
+            'current_password' => 'password',
+            'password' => 'NewSecret1!',
+            'password_confirmation' => 'NewSecret1!',
+        ])->assertForbidden();
+        $this->postJson($this->api('/admins/logout'))->assertForbidden();
         $this->postJson($this->api('/management/users/update-status'), [
             'users' => [
                 ['id' => $this->client->id, 'status' => 'INACTIVE'],
@@ -86,7 +92,7 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
-    public function agent_can_access_stats_and_search_via_gates(): void
+    public function agent_can_access_stats_and_search_via_policies(): void
     {
         Sanctum::actingAs($this->agent);
 
