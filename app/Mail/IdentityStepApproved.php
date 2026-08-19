@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -11,14 +13,11 @@ class IdentityStepApproved extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public string $name;
+    public function __construct(
+        public string $name,
+    ) {}
 
-    public function __construct(string $name)
-    {
-        $this->name = $name;
-    }
-
-    public function build()
+    public function build(): static
     {
         return $this->subject("Votre demande a passé l'étape agent")
             ->view('emails.identity.step_approved')

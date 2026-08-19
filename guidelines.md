@@ -322,6 +322,8 @@ Standard success envelope:
 
 Use appropriate HTTP status codes; validation errors return **422**.
 
+**Exception — Consul health.** `GET /api/v1/health` returns `{"status":"UP"}` (200) or `{"status":"DOWN"}` (503) **without** this envelope. Consul and load balancers require that contract.
+
 ### 9.3 Authorization (policies first — P10-04)
 
 **Source of truth for “can this user do this action on this resource?” is Laravel Policies**, not duplicated `role:` middleware lists.
@@ -447,6 +449,10 @@ HTTP responses **MUST NOT** wait on these operations.
 
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
+**Exception — TrustedX password / PIN / client reset.** Admin `setPassword`, client password or PIN change, and client reset call TrustedX `setDefaultPassword` **in the HTTP request** so the remote secret exists before `200`. Same logging exception as above.
+
+**Exception — Keycloak Admin API on staff CRUD.** When `STAFF_KEYCLOAK_ENABLED=true`, `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API **in the request** (timeout + TLS verify on). Create rolls back the local user on Keycloak failure (fail closed). The operator must not see success before Keycloak is consistent.
+
 **Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
 
 - KYC / Regula on `POST /kyc/verify` and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
@@ -506,7 +512,7 @@ Monitor and fix N+1 queries and slow endpoints before scaling hardware.
 
 ### 11.3 Test database
 
-- Prefer a dedicated MySQL test database (`.env.testing` or `phpunit.xml`)
+- Prefer a dedicated MySQL test database (`.env.testing`). Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
 - Seed only what each test needs; avoid depending on production-like fixtures
 - Spatie permission tables **must** exist via migrations (do not publish migrations ad hoc inside tests)
 

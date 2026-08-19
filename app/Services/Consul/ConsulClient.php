@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Consul;
 
 use App\Contracts\ConsulClientInterface;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -12,6 +15,7 @@ final class ConsulClient implements ConsulClientInterface
         private readonly ConsulTokenService $tokenService,
     ) {}
 
+    /** @param  array<string, mixed>  $payload */
     public function register(array $payload): Response
     {
         return $this->request()->put($this->url('/v1/agent/service/register'), $payload);
@@ -27,9 +31,9 @@ final class ConsulClient implements ConsulClientInterface
         return $this->request()->get($this->url('/v1/agent/checks'));
     }
 
-    private function request()
+    private function request(): PendingRequest
     {
-        $request = Http::withHeaders([
+        $request = Http::timeout($this->timeoutSeconds())->withHeaders([
             'X-Consul-Token' => $this->tokenService->getToken(),
             'Content-Type' => 'application/json',
         ]);
@@ -39,6 +43,13 @@ final class ConsulClient implements ConsulClientInterface
         }
 
         return $request;
+    }
+
+    private function timeoutSeconds(): int
+    {
+        $timeout = (int) config('consul.timeout', 10);
+
+        return $timeout > 0 ? $timeout : 10;
     }
 
     private function url(string $path): string

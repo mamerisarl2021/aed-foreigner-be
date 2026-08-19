@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -11,20 +13,13 @@ class SendInitLink extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public $code;
+    public function __construct(
+        public mixed $code,
+        public string $email,
+        public string $type,
+    ) {}
 
-    public $email;
-
-    public $type;
-
-    public function __construct($code, $email, $type)
-    {
-        $this->code = $code;
-        $this->email = $email;
-        $this->type = $type;
-    }
-
-    public function build()
+    public function build(): static
     {
         return $this->from('collabone@qualitycorporate.com')
             ->subject('Demande du lien de mise à jour')->view('emails.send_init_link')->with([

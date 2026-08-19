@@ -1,26 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Traits;
 
 use Illuminate\Support\Facades\Storage;
 use phpseclib3\Crypt\RSA;
+use RuntimeException;
 
 trait EncryptionTrait
 {
     /**
      * The storage location of the encryption keys.
-     *
-     * @var string
      */
-    public static $keyPath;
+    public static ?string $keyPath = null;
 
     /**
      * The location of the encryption keys.
-     *
-     * @param  string  $file
-     * @return string
      */
-    public static function keyPath($file)
+    public static function keyPath(string $file): string
     {
         $file = ltrim($file, '/\\');
 
@@ -29,12 +27,7 @@ trait EncryptionTrait
             : storage_path($file);
     }
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function generate()
+    public function generate(): int
     {
         [$publicKey, $privateKey] = [
             $this->keyPath('aed-public.key'),
@@ -45,49 +38,59 @@ trait EncryptionTrait
         file_put_contents($publicKey, (string) $key->getPublicKey());
         file_put_contents($privateKey, (string) $key);
 
-        echo 'Clés générées avec succès';
-
         return 0;
     }
 
-    public function getKey()
+    public function getKey(): int
     {
         return $this->generate();
     }
 
-    public function storeEncFile($fileName, $filePath, $folder)
+    public function storeEncFile(string $fileName, string $filePath, string $folder): string
     {
         $content = file_get_contents($filePath);
+        if ($content === false) {
+            throw new RuntimeException("Unable to read file: {$filePath}");
+        }
+
         $key = $this->encryptionKey();
         $method = 'AES-256-CBC';
-        // Random IV per file, prepended to the ciphertext (new format).
         $iv = random_bytes(16);
         $encryptedData = openssl_encrypt($content, $method, $key, OPENSSL_RAW_DATA, $iv);
+        if ($encryptedData === false) {
+            throw new RuntimeException('Unable to encrypt file.');
+        }
+
         $path = Storage::path("public/$folder/$fileName");
         file_put_contents($path, $iv.$encryptedData);
 
         return $fileName;
     }
 
-    public function storeFile($fileName, $filePath, $folder)
+    public function storeFile(string $fileName, string $filePath, string $folder): string
     {
-        // Lire le contenu du fichier
         $content = file_get_contents($filePath);
+        if ($content === false) {
+            throw new RuntimeException("Unable to read file: {$filePath}");
+        }
+
         $path = Storage::path("public/$folder/$fileName");
         file_put_contents($path, $content);
 
         return $fileName;
     }
 
-    public function getEncFile(string $filename, string $folder)
+    public function getEncFile(string $filename, string $folder): string
     {
         $encryptedFileFullPath = Storage::path("public/$folder/$filename");
         $encryptedContent = file_get_contents($encryptedFileFullPath);
+        if ($encryptedContent === false) {
+            return '';
+        }
 
         $key = $this->encryptionKey();
         $method = 'AES-256-CBC';
 
-        // New format: the first 16 bytes are the random IV.
         if (strlen($encryptedContent) > 16) {
             $iv = substr($encryptedContent, 0, 16);
             $decryptedContent = openssl_decrypt(substr($encryptedContent, 16), $method, $key, OPENSSL_RAW_DATA, $iv);
@@ -96,7 +99,6 @@ trait EncryptionTrait
             }
         }
 
-        // Legacy format: whole file encrypted with a fixed IV (files stored before the crypto fix).
         $decryptedContent = openssl_decrypt($encryptedContent, $method, $key, OPENSSL_RAW_DATA, '4921a67c51de4c8b');
 
         return base64_encode($decryptedContent === false ? '' : $decryptedContent);
@@ -104,10 +106,15 @@ trait EncryptionTrait
 
     private function encryptionKey(): string
     {
-        return (string) file_get_contents(storage_path('aed-public.key'));
+        $key = file_get_contents(storage_path('aed-public.key'));
+        if ($key === false) {
+            throw new RuntimeException('Encryption key missing.');
+        }
+
+        return $key;
     }
 
-    public function deleteDirectory($folderTemporary)
+    public function deleteDirectory(string $folderTemporary): bool
     {
         return Storage::deleteDirectory("public/$folderTemporary");
     }

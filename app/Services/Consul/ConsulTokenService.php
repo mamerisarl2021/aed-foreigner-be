@@ -31,7 +31,7 @@ final class ConsulTokenService
     private function getKeycloakToken(): string
     {
         $url = (string) config('consul.keycloak.token_uri');
-        $response = Http::asForm()->post(
+        $response = Http::asForm()->timeout($this->timeoutSeconds())->post(
             $url,
             [
                 'grant_type' => 'client_credentials',
@@ -59,7 +59,7 @@ final class ConsulTokenService
     private function exchangeForConsulToken(string $keycloakToken): string
     {
         $url = rtrim((string) config('consul.url'), '/').'/v1/acl/login';
-        $request = Http::withHeaders(['Content-Type' => 'application/json']);
+        $request = Http::timeout($this->timeoutSeconds())->withHeaders(['Content-Type' => 'application/json']);
 
         if ($cacert = config('consul.cacert')) {
             $request = $request->withOptions(['verify' => $cacert]);
@@ -91,5 +91,12 @@ final class ConsulTokenService
         }
 
         return $secretId;
+    }
+
+    private function timeoutSeconds(): int
+    {
+        $timeout = (int) config('consul.timeout', 10);
+
+        return $timeout > 0 ? $timeout : 10;
     }
 }

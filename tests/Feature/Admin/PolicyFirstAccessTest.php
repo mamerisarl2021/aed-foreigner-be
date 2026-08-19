@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
@@ -100,5 +101,46 @@ final class PolicyFirstAccessTest extends TestCase
 
         $this->getJson($this->api('/agents'))->assertOk();
         $this->getJson($this->api('/admin/enrolled-persons'))->assertOk();
+    }
+
+    #[Test]
+    public function listing_agents_rejects_administrateur_plateforme_role_filter(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->getJson($this->api('/agents?role=ADMINISTRATEUR_PLATEFORME'))
+            ->assertUnprocessable();
+    }
+
+    #[Test]
+    public function search_eager_loads_roles_instead_of_querying_per_user(): void
+    {
+        foreach (range(1, 5) as $i) {
+            $user = User::factory()->create([
+                'email' => "search-hit-{$i}@example.com",
+                'name' => 'SearchHit',
+            ]);
+            $user->assignRole(config('roles.client'));
+        }
+
+        Sanctum::actingAs($this->agent);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->getJson($this->api('/users/search?query=SearchHit&limit=5'))->assertOk();
+
+        $roleQueries = array_values(array_filter(
+            DB::getQueryLog(),
+            static function (array $query): bool {
+                $sql = strtolower($query['query']);
+
+                return str_contains($sql, 'model_has_roles')
+                    || str_contains($sql, 'from `roles`')
+                    || str_contains($sql, 'from "roles"');
+            }
+        ));
+
+        $this->assertLessThanOrEqual(3, count($roleQueries));
     }
 }

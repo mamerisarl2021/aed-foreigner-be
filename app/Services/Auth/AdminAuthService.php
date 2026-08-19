@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Auth;
 
 use App\Enums\ActivityLogAction;
@@ -16,7 +18,6 @@ use App\Support\StaffKeycloakRoleMapper;
 use App\Support\StaffRoleMapper;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -299,23 +300,27 @@ class AdminAuthService
         return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
 
-    public function listAgents(Request $request): ServiceResult
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    public function listAgents(array $filters): ServiceResult
     {
         try {
-            $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
-            $roleFilter = StaffRoleMapper::slugFromCode($request->input('role'));
+            $perPage = min((int) ($filters['per_page'] ?? 15), 100);
+            $roleFilter = StaffRoleMapper::slugFromCode(
+                isset($filters['role']) && is_string($filters['role']) ? $filters['role'] : null
+            );
             $allowedRoles = StaffRoleMapper::listableSlugs();
 
             $query = User::query()->whereHas('roles', function ($sub) use ($roleFilter, $allowedRoles) {
-                if ($roleFilter) {
+                $sub->whereIn('name', $allowedRoles);
+                if ($roleFilter !== null && in_array($roleFilter, $allowedRoles, true)) {
                     $sub->where('name', $roleFilter);
-                } else {
-                    $sub->whereIn('name', $allowedRoles);
                 }
             })->with('roles');
 
-            if ($request->filled('q')) {
-                $q = $request->input('q');
+            $q = $filters['q'] ?? null;
+            if (is_string($q) && $q !== '') {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('first_name', 'like', "%{$q}%")
@@ -323,11 +328,11 @@ class AdminAuthService
                 });
             }
 
-            $orderBy = $request->input('order_by', 'created_at');
+            $orderBy = $filters['order_by'] ?? 'created_at';
             if (! in_array($orderBy, ['created_at', 'name', 'email', 'last_login_at'], true)) {
                 $orderBy = 'created_at';
             }
-            $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $orderDir = strtolower((string) ($filters['order_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
             $query->orderBy($orderBy, $orderDir);
 
             $agents = $query->paginate($perPage);

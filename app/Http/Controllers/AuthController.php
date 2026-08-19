@@ -126,7 +126,7 @@ class AuthController extends BaseController
         $this->activityLog->record(
             ActivityLogAction::DeconnexionAdmin,
             sprintf('%s s\'est déconnecté(e) de l\'espace staff.', ActivityLogService::actorLabel($user)),
-            is_string($user->id) ? $user->id : null,
+            $user->id,
         );
 
         return $this->sendResponse('Déconnexion réussie.', []);
@@ -145,13 +145,14 @@ class AuthController extends BaseController
     /**
      * List staff users (admin only)
      *
-     * Optional role filter. Defaults: per_page=15 (max 100).
+     * Optional role filter (`AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`).
+     * Defaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.
      */
     public function listAgents(ListAgentsRequest $request): JsonResponse
     {
         $this->authorize('manageStaff', User::class);
 
-        return $this->respondPaginated($this->adminAuth->listAgents($request));
+        return $this->respondPaginated($this->adminAuth->listAgents($request->validated()));
     }
 
     /**

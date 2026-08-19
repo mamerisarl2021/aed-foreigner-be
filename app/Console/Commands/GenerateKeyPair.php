@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Traits\EncryptionTrait;
@@ -23,13 +25,11 @@ class GenerateKeyPair extends Command
      */
     protected $description = 'Cette commande génère les pairs de clés';
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function handle()
+    public function handle(): int
     {
-        return $this->getKey();
+        $result = $this->generate();
+        $this->info('Clés générées avec succès');
+
+        return $result;
     }
 }

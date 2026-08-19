@@ -36,4 +36,6 @@ return [
 
     'verify_ssl' => (bool) env('TRUSTEDX_VERIFY_SSL', true),
 
+    'timeout' => (int) env('TRUSTEDX_TIMEOUT', 15),
+
 ];

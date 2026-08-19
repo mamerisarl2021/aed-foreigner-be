@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -17,7 +19,7 @@ class ForeignerOtp extends Mailable
         $this->subject('Votre code OTP');
     }
 
-    public function build()
+    public function build(): static
     {
         return $this->view('emails.foreigner.otp')
             ->with(['otp' => $this->otp, 'ttl' => $this->ttlMinutes]);

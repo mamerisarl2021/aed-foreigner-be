@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Carbon\Carbon;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,10 +22,17 @@ use Spatie\Permission\Traits\HasRoles;
  * @property array<int, mixed>|null $security_questions
  * @property \Illuminate\Support\Carbon|null $last_login_at
  * @property \Illuminate\Support\Carbon|null $trustedx_registered_at
+ *
+ * @use HasFactory<UserFactory>
  */
 class User extends Authenticatable implements Auditable
 {
-    use HasApiTokens, HasFactory, HasRoles, HasUuids, Notifiable;
+    use HasApiTokens;
+
+    /** @use HasFactory<UserFactory> */
+    use HasFactory;
+
+    use HasRoles, HasUuids, Notifiable;
     use \OwenIt\Auditing\Auditable;
 
     /** @var list<string> */
@@ -33,7 +43,7 @@ class User extends Authenticatable implements Auditable
         'security_questions',
     ];
 
-    /** @var array<int, string> */
+    /** @var list<string> */
     protected $fillable = [
         'name',
         'first_name',
@@ -51,13 +61,13 @@ class User extends Authenticatable implements Auditable
         'pin_hash',
     ];
 
-    /** @var array<int, string> */
+    /** @var list<string> */
     protected $appends = ['link'];
 
     /** @var array<string, mixed> */
     protected array $trustedxProfile = [];
 
-    /** @var array<int, string> */
+    /** @var list<string> */
     protected $hidden = [
         'password',
         'pin_hash',
@@ -77,6 +87,7 @@ class User extends Authenticatable implements Auditable
         ];
     }
 
+    /** @return HasMany<Identity, $this> */
     public function identities(): HasMany
     {
         return $this->hasMany(Identity::class);
