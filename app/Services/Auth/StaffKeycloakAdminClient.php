@@ -97,17 +97,46 @@ final class StaffKeycloakAdminClient
     {
         try {
             $url = $this->adminBase().'/users/'.$keycloakUserId.'/execute-actions-email';
-            $response = Http::withToken($this->token())->acceptJson()->timeout(10)
+            $query = array_filter([
+                'client_id' => $this->stringConfig('keycloak.staff.client_id'),
+                'redirect_uri' => $this->actionsRedirectUri(),
+            ], fn (?string $value): bool => is_string($value) && $value !== '');
+
+            $request = Http::withToken($this->token())->acceptJson()->timeout(10);
+            if ($query !== []) {
+                $request = $request->withQueryParameters($query);
+            }
+
+            $response = $request
                 ->withBody(json_encode(['UPDATE_PASSWORD'], JSON_THROW_ON_ERROR), 'application/json')
                 ->put($url);
-            KeycloakCallLogger::keycloak('admin_execute_actions_email', 'PUT', $url, $response->status());
+
+            KeycloakCallLogger::keycloak('admin_execute_actions_email', 'PUT', $url, $response->status(), [
+                'client_id' => $query['client_id'] ?? null,
+                'redirect_present' => isset($query['redirect_uri']),
+            ]);
 
             if ($response->failed()) {
-                Log::warning('Keycloak execute-actions-email failed.', ['status' => $response->status()]);
+                Log::warning('Keycloak execute-actions-email failed.', [
+                    'status' => $response->status(),
+                    'error' => $this->responseError($response),
+                ]);
             }
         } catch (\Throwable $e) {
             Log::warning('Keycloak execute-actions-email failed: '.$e->getMessage());
         }
+    }
+
+    public function setPasswordByEmail(string $email, string $password): void
+    {
+        $this->assertReady();
+
+        $id = $this->findUserId(strtolower(trim($email)));
+        if ($id === null) {
+            throw new StaffKeycloakAdminException('Utilisateur Keycloak introuvable pour le mot de passe.', 502);
+        }
+
+        $this->setPassword($id, $password);
     }
 
     private function findUserId(string $email): ?string
@@ -166,6 +195,31 @@ final class StaffKeycloakAdminClient
         }
 
         throw new StaffKeycloakAdminException('Création utilisateur Keycloak : identifiant manquant.', 502);
+    }
+
+    private function stringConfig(string $key): ?string
+    {
+        $value = config($key);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function actionsRedirectUri(): ?string
+    {
+        return $this->stringConfig('keycloak.staff.actions_redirect_uri')
+            ?? $this->stringConfig('app.frontend_url');
+    }
+
+    private function responseError(Response $response): string
+    {
+        foreach (['error_description', 'errorMessage', 'error'] as $key) {
+            $value = $response->json($key);
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return mb_substr($response->body(), 0, 300);
     }
 
     /**

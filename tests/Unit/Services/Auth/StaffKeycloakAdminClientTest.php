@@ -38,6 +38,8 @@ final class StaffKeycloakAdminClientTest extends TestCase
             'keycloak.staff.token_uri' => self::TOKEN_URI,
             'keycloak.staff.admin_client_id' => 'backoffice-staff-admin',
             'keycloak.staff.admin_client_secret' => 'admin-secret-must-not-appear',
+            'keycloak.staff.client_id' => 'backoffice-stranger',
+            'keycloak.staff.actions_redirect_uri' => 'http://localhost:4200',
         ]);
     }
 
@@ -115,12 +117,40 @@ final class StaffKeycloakAdminClientTest extends TestCase
     #[Test]
     public function send_update_password_email_does_not_throw_on_failure(): void
     {
+        $recorded = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$recorded): void {
+            $recorded[] = $event;
+        });
+
         $this->fakeAdminApi(executeActionsStatus: 500);
 
         (new StaffKeycloakAdminClient)->sendUpdatePasswordEmail(self::USER_ID);
 
         Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
-            && str_contains($this->path($request), 'execute-actions-email'));
+            && str_contains($this->path($request), 'execute-actions-email')
+            && str_contains($request->url(), 'client_id=backoffice-stranger')
+            && str_contains($request->url(), 'redirect_uri='.rawurlencode('http://localhost:4200')));
+
+        $warning = collect($recorded)->first(
+            fn (MessageLogged $log): bool => $log->level === 'warning'
+                && str_contains($log->message, 'execute-actions-email')
+        );
+        $this->assertNotNull($warning);
+        $this->assertSame(500, $warning->context['status'] ?? null);
+        $this->assertSame('Failed to send execute actions email', $warning->context['error'] ?? null);
+    }
+
+    #[Test]
+    public function set_password_by_email_calls_reset_password(): void
+    {
+        $this->fakeAdminApi(existing: true);
+
+        (new StaffKeycloakAdminClient)->setPasswordByEmail('ada.koto@example.com', 'TempPass1!');
+
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
+            && str_ends_with($this->path($request), '/reset-password')
+            && $request['value'] === 'TempPass1!'
+            && $request['temporary'] === false);
     }
 
     #[Test]
@@ -204,7 +234,10 @@ final class StaffKeycloakAdminClientTest extends TestCase
             }
 
             if ($method === 'PUT' && str_ends_with($path, '/execute-actions-email')) {
-                return Http::response([], $executeActionsStatus);
+                return Http::response(
+                    ['error_description' => 'Failed to send execute actions email'],
+                    $executeActionsStatus
+                );
             }
 
             if ($method === 'PUT' && str_ends_with($path, '/reset-password')) {

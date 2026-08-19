@@ -37,5 +37,10 @@ return [
         'token_uri' => env('KC_STAFF_TOKEN_URI'),
         'admin_client_id' => env('KC_STAFF_ADMIN_CLIENT_ID', 'backoffice-staff-admin'),
         'admin_client_secret' => env('KC_STAFF_ADMIN_SECRET'),
+        // Must be a Valid Redirect URI of the SPA client (backoffice-stranger).
+        'actions_redirect_uri' => env('KC_STAFF_ACTIONS_REDIRECT_URI'),
+        // Keycloak realm SMTP. Leave false until pki-portal Email is configured:
+        // Laravel then emails the initial password via WelcomeAgentJob (log/kafka).
+        'execute_actions_email' => (bool) env('KC_STAFF_EXECUTE_ACTIONS_EMAIL', false),
     ],
 ];

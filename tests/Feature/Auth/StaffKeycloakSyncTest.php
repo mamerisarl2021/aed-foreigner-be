@@ -53,11 +53,13 @@ final class StaffKeycloakSyncTest extends TestCase
             'keycloak.staff.token_uri' => self::TOKEN_URI,
             'keycloak.staff.admin_client_id' => 'backoffice-staff-admin',
             'keycloak.staff.admin_client_secret' => 'test-admin-secret',
+            'keycloak.staff.client_id' => 'backoffice-stranger',
+            'app.frontend_url' => 'http://localhost:4200',
         ]);
     }
 
     #[Test]
-    public function register_pushes_user_to_keycloak_and_skips_welcome_job(): void
+    public function register_pushes_user_to_keycloak_and_dispatches_welcome_job(): void
     {
         Bus::fake();
         $this->fakeAdminApi();
@@ -69,9 +71,11 @@ final class StaffKeycloakSyncTest extends TestCase
             ->assertJsonPath('data.email', 'ada.koto@example.com');
 
         $this->assertDatabaseHas('users', ['email' => 'ada.koto@example.com']);
-        Bus::assertNotDispatched(WelcomeAgentJob::class);
+        Bus::assertDispatched(WelcomeAgentJob::class);
         Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
             && $this->path($request) === '/admin/realms/pki-portal/users');
+        Http::assertNotSent(fn (Request $request): bool => $request->method() === 'PUT'
+            && str_contains($this->path($request), 'execute-actions-email'));
     }
 
     #[Test]
@@ -158,6 +162,22 @@ final class StaffKeycloakSyncTest extends TestCase
 
         Bus::assertDispatched(WelcomeAgentJob::class);
         Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function register_sends_keycloak_actions_email_when_flag_is_on(): void
+    {
+        config(['keycloak.staff.execute_actions_email' => true]);
+        Bus::fake();
+        $this->fakeAdminApi();
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson($this->api('/agents/register'), $this->agentPayload())
+            ->assertOk();
+
+        Bus::assertNotDispatched(WelcomeAgentJob::class);
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
+            && str_contains($this->path($request), 'execute-actions-email'));
     }
 
     /**

@@ -163,7 +163,11 @@ class AdminAuthService
                         'name' => $user->name,
                         'role' => $roleSlug,
                     ]);
-                    $this->staffKeycloakAdmin->sendUpdatePasswordEmail($keycloakId);
+                    if ((bool) config('keycloak.staff.execute_actions_email')) {
+                        $this->staffKeycloakAdmin->sendUpdatePasswordEmail($keycloakId);
+                    } else {
+                        WelcomeAgentJob::dispatch($user);
+                    }
                 } catch (StaffKeycloakAdminException $e) {
                     $user->roles()->detach();
                     $user->delete();
