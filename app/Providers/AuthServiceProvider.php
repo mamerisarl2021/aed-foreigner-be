@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Models\ActivityLog;
@@ -13,6 +15,7 @@ use App\Policies\AuthorizationPolicy;
 use App\Policies\EnrolledPersonPolicy;
 use App\Policies\EnrollmentRejectMotifPolicy;
 use App\Policies\EnrollmentRequestPolicy;
+use App\Policies\PlatformPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -35,24 +38,12 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        $enrolledPersonPolicy = new EnrolledPersonPolicy;
-        Gate::define('viewAnyEnrolledPerson', fn ($user) => $enrolledPersonPolicy->viewAny($user));
-        Gate::define('viewEnrolledPerson', fn ($user) => $enrolledPersonPolicy->view($user));
-
-        Gate::define('viewStats', fn (User $user) => $user->hasAnyRole([
-            config('roles.administrateur_plateforme'),
-            config('roles.agent'),
-            config('roles.responsable_de_validation'),
-            config('roles.manager'),
-        ]));
-        Gate::define('viewAudits', fn (User $user) => $user->hasRole(config('roles.administrateur_plateforme')));
-        Gate::define('viewEncryptedDocuments', fn (User $user) => $user->hasAnyRole([
-            config('roles.administrateur_plateforme'),
-            config('roles.agent'),
-            config('roles.responsable_de_validation'),
-            config('roles.manager'),
-        ]));
-        Gate::define('viewApiDocs', fn (User $user) => $user->hasAnyRole(config('roles.staff', [])));
+        Gate::define('viewAnyEnrolledPerson', [EnrolledPersonPolicy::class, 'viewAny']);
+        Gate::define('viewEnrolledPerson', [EnrolledPersonPolicy::class, 'view']);
+        Gate::define('viewStats', [PlatformPolicy::class, 'viewStats']);
+        Gate::define('viewAudits', [PlatformPolicy::class, 'viewAudits']);
+        Gate::define('viewEncryptedDocuments', [PlatformPolicy::class, 'viewEncryptedDocuments']);
+        Gate::define('viewApiDocs', [PlatformPolicy::class, 'viewApiDocs']);
 
         LogViewer::auth(fn ($request) => $request->user()?->hasRole(config('roles.administrateur_plateforme')) ?? false);
 

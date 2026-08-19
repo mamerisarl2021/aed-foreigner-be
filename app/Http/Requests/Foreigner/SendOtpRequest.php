@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Foreigner;
 
 use App\Http\Requests\ApiFormRequest;

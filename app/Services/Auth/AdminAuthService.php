@@ -1,21 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Auth;
 
 use App\Enums\ActivityLogAction;
+use App\Exceptions\StaffKeycloakAdminException;
 use App\Http\Resources\StaffUserDetailResource;
-use App\Http\Resources\StaffUserListResource;
 use App\Jobs\ResetPasswordJob;
 use App\Jobs\WelcomeAgentJob;
 use App\Models\StaffPasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\StaffKeycloakRoleMapper;
 use App\Support\StaffRoleMapper;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -25,6 +26,7 @@ class AdminAuthService
     public function __construct(
         private readonly ActivityLogService $activityLog,
         private readonly KeycloakJwtValidator $keycloakJwtValidator,
+        private readonly StaffKeycloakAdminClient $staffKeycloakAdmin,
     ) {}
 
     public static function staffKeycloakEnabled(): bool
@@ -41,6 +43,20 @@ class AdminAuthService
     public function updateAgent(User $user, array $input, ?User $actor = null): ServiceResult
     {
         try {
+            if (self::staffKeycloakEnabled()) {
+                $roleSlug = $this->staffSlugForSync($user, $input['role'] ?? null);
+                if ($roleSlug === null) {
+                    return ServiceResult::fail('Rôle staff invalide.', null, 400);
+                }
+
+                $this->staffKeycloakAdmin->syncUser($user->email, [
+                    'email' => $input['email'] ?? $user->email,
+                    'first_name' => $input['first_name'] ?? $user->first_name,
+                    'name' => $input['name'] ?? $user->name,
+                    'role' => $roleSlug,
+                ]);
+            }
+
             $user->update([
                 'name' => $input['name'] ?? $user->name,
                 'first_name' => $input['first_name'] ?? $user->first_name,
@@ -69,7 +85,11 @@ class AdminAuthService
                 ['target_user_id' => $user->id],
             );
 
-            return ServiceResult::ok('Agent mis à jour avec succès.', (new StaffUserDetailResource($user))->resolve());
+            return ServiceResult::ok('Agent mis à jour avec succès.', $user);
+        } catch (StaffKeycloakAdminException $e) {
+            Log::error('Failed to sync agent to Keycloak: '.$e->getMessage());
+
+            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
         } catch (Exception $e) {
             Log::error('Failed to update agent: '.$e->getMessage());
 
@@ -80,6 +100,10 @@ class AdminAuthService
     public function deleteAgent(User $user, ?User $actor = null): ServiceResult
     {
         try {
+            if (self::staffKeycloakEnabled()) {
+                $this->staffKeycloakAdmin->deleteByEmail((string) $user->email);
+            }
+
             $label = trim(($user->first_name ?? '').' '.($user->name ?? '')).' ('.$user->email.')';
             $targetId = $user->id;
             $user->roles()->detach();
@@ -94,6 +118,10 @@ class AdminAuthService
             );
 
             return ServiceResult::ok('Agent supprimé avec succès.', null);
+        } catch (StaffKeycloakAdminException $e) {
+            Log::error('Failed to delete agent on Keycloak: '.$e->getMessage());
+
+            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
         } catch (Exception $e) {
             Log::error('Failed to delete agent: '.$e->getMessage());
 
@@ -117,7 +145,37 @@ class AdminAuthService
             $this->assignRoleFromCode($user, $input['role']);
             $user->load('roles');
 
-            WelcomeAgentJob::dispatch($user);
+            if (self::staffKeycloakEnabled()) {
+                try {
+                    $roleSlug = $this->staffSlugForSync($user, $input['role']);
+                    if ($roleSlug === null) {
+                        $user->roles()->detach();
+                        $user->delete();
+
+                        return ServiceResult::fail('Rôle staff invalide.', null, 400);
+                    }
+
+                    $keycloakId = $this->staffKeycloakAdmin->syncUser($user->email, [
+                        'email' => $user->email,
+                        'first_name' => $user->first_name,
+                        'name' => $user->name,
+                        'role' => $roleSlug,
+                    ]);
+                    if ((bool) config('keycloak.staff.execute_actions_email')) {
+                        $this->staffKeycloakAdmin->sendUpdatePasswordEmail($keycloakId);
+                    } else {
+                        WelcomeAgentJob::dispatch($user);
+                    }
+                } catch (StaffKeycloakAdminException $e) {
+                    $user->roles()->detach();
+                    $user->delete();
+                    Log::error('Failed to sync new agent to Keycloak: '.$e->getMessage());
+
+                    return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
+                }
+            } else {
+                WelcomeAgentJob::dispatch($user);
+            }
 
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurCree,
@@ -131,7 +189,7 @@ class AdminAuthService
                 is_string($actor?->id) ? $actor->id : null,
             );
 
-            return ServiceResult::ok('Agent enregistré avec succès', (new StaffUserDetailResource($user))->resolve());
+            return ServiceResult::ok('Agent enregistré avec succès', $user);
         } catch (Exception $e) {
             Log::error('Failed to register agent: '.$e->getMessage());
 
@@ -176,9 +234,9 @@ class AdminAuthService
     }
 
     /**
-     * Exchange a Keycloak access token (frontend OIDC login) for a Sanctum token.
-     * The local users table stays the source of truth: the account must exist
-     * locally with a staff role; Keycloak only proves identity.
+     * Exchange a Keycloak access token (frontend OIDC on realm pki-portal /
+     * client backoffice-stranger) for a Sanctum token. The local user must
+     * already exist (email match); Spatie staff roles are replaced from the JWT.
      */
     public function loginWithKeycloak(string $accessToken): ServiceResult
     {
@@ -203,6 +261,18 @@ class AdminAuthService
         if (! $user) {
             return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
         }
+
+        if ($user->status !== 'ACTIVE') {
+            return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
+        }
+
+        $slugs = StaffKeycloakRoleMapper::slugsFromJwt($payload);
+        if ($slugs === []) {
+            return ServiceResult::fail('Aucun rôle staff Keycloak n\'est associé à ce compte.', null, 403);
+        }
+
+        $user->syncRoles($slugs);
+        $user->load('roles');
 
         return $this->loginDirect($user, requirePassword: false);
     }
@@ -232,23 +302,63 @@ class AdminAuthService
         return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
 
-    public function listAgents(Request $request): ServiceResult
+    public function logout(User $user): ServiceResult
+    {
+        $this->activityLog->record(
+            ActivityLogAction::DeconnexionAdmin,
+            sprintf('%s s\'est déconnecté(e) de l\'espace staff.', ActivityLogService::actorLabel($user)),
+            $user->id,
+        );
+
+        $user->currentAccessToken()?->delete();
+
+        return ServiceResult::ok('Déconnexion réussie.', []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    public function updateAgentById(string $id, array $input, ?User $actor = null): ServiceResult
+    {
+        $user = User::query()->find($id);
+        if (! $user) {
+            return ServiceResult::fail('Agent introuvable.', null, 404);
+        }
+
+        return $this->updateAgent($user, $input, $actor);
+    }
+
+    public function deleteAgentById(string $id, ?User $actor = null): ServiceResult
+    {
+        $user = User::query()->find($id);
+        if (! $user) {
+            return ServiceResult::fail('Agent introuvable.', null, 404);
+        }
+
+        return $this->deleteAgent($user, $actor);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    public function listAgents(array $filters): ServiceResult
     {
         try {
-            $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
-            $roleFilter = StaffRoleMapper::slugFromCode($request->input('role'));
+            $perPage = min((int) ($filters['per_page'] ?? 15), 100);
+            $roleFilter = StaffRoleMapper::slugFromCode(
+                isset($filters['role']) && is_string($filters['role']) ? $filters['role'] : null
+            );
             $allowedRoles = StaffRoleMapper::listableSlugs();
 
             $query = User::query()->whereHas('roles', function ($sub) use ($roleFilter, $allowedRoles) {
-                if ($roleFilter) {
+                $sub->whereIn('name', $allowedRoles);
+                if ($roleFilter !== null && in_array($roleFilter, $allowedRoles, true)) {
                     $sub->where('name', $roleFilter);
-                } else {
-                    $sub->whereIn('name', $allowedRoles);
                 }
             })->with('roles');
 
-            if ($request->filled('q')) {
-                $q = $request->input('q');
+            $q = $filters['q'] ?? null;
+            if (is_string($q) && $q !== '') {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('first_name', 'like', "%{$q}%")
@@ -256,19 +366,14 @@ class AdminAuthService
                 });
             }
 
-            $orderBy = $request->input('order_by', 'created_at');
+            $orderBy = $filters['order_by'] ?? 'created_at';
             if (! in_array($orderBy, ['created_at', 'name', 'email', 'last_login_at'], true)) {
                 $orderBy = 'created_at';
             }
-            $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $orderDir = strtolower((string) ($filters['order_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
             $query->orderBy($orderBy, $orderDir);
 
-            $agents = $query->paginate($perPage);
-            $agents->getCollection()->transform(
-                fn (User $user) => (new StaffUserListResource($user))->resolve()
-            );
-
-            return ServiceResult::ok('Liste des agents.', $this->flattenPagination($agents));
+            return ServiceResult::ok('Liste des agents.', $query->paginate($perPage));
         } catch (Exception $e) {
             Log::error('Impossible de récupérer les agents: '.$e->getMessage());
 
@@ -283,7 +388,7 @@ class AdminAuthService
                 $query->whereIn('name', StaffRoleMapper::listableSlugs());
             })->with('roles')->findOrFail($id);
 
-            return ServiceResult::ok('Agent récupéré avec succès', (new StaffUserDetailResource($agent))->resolve());
+            return ServiceResult::ok('Agent récupéré avec succès', $agent);
         } catch (ModelNotFoundException $e) {
             Log::error('Agent not found: '.$e->getMessage());
 
@@ -372,15 +477,22 @@ class AdminAuthService
         $user->assignRole($slug);
     }
 
-    /**
-     * @return array{data: mixed, pagination: array<string, mixed>}
-     */
-    private function flattenPagination(LengthAwarePaginator $paginator): array
+    private function staffSlugForSync(User $user, mixed $roleCode = null): ?string
     {
-        $flattenedData = $paginator->toArray();
-        $data = $flattenedData['data'];
-        unset($flattenedData['data']);
+        $staff = self::staffRoles();
 
-        return array_merge(['data' => $data], ['pagination' => $flattenedData]);
+        if (is_string($roleCode) && $roleCode !== '') {
+            $slug = StaffRoleMapper::slugFromCode($roleCode);
+
+            return is_string($slug) && in_array($slug, $staff, true) ? $slug : null;
+        }
+
+        foreach ($staff as $slug) {
+            if ($user->hasRole($slug)) {
+                return $slug;
+            }
+        }
+
+        return null;
     }
 }

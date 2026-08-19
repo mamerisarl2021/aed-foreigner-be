@@ -25,6 +25,7 @@ final class EnrollmentRejectMotifService
     {
         return EnrollmentRejectMotif::query()
             ->orderBy('title')
+            ->limit(500)
             ->get();
     }
 

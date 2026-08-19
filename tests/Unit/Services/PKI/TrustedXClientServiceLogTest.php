@@ -13,6 +13,8 @@ use Tests\TestCase;
 
 final class TrustedXClientServiceLogTest extends TestCase
 {
+    private const REDIRECT_URI = 'http://localhost:4200/etranger/connexion/callback';
+
     #[Test]
     public function obtain_token_logs_the_trustedx_call_when_flag_is_on(): void
     {
@@ -27,7 +29,7 @@ final class TrustedXClientServiceLogTest extends TestCase
             '*' => Http::response(['access_token' => 'tok_test', 'token_type' => 'Bearer'], 200),
         ]);
 
-        $result = (new TrustedXClientService)->obtainToken('auth-code');
+        $result = (new TrustedXClientService)->obtainToken('auth-code', self::REDIRECT_URI);
 
         $this->assertTrue($result['status']);
 
@@ -38,6 +40,9 @@ final class TrustedXClientServiceLogTest extends TestCase
 
         $this->assertNotNull($match);
         $this->assertSame('tok_test', $match->context['access_token'] ?? null);
+        // The caller's redirect_uri must reach TrustedX untouched: it is
+        // compared literally against the one used at /authorize.
+        $this->assertStringContainsString('redirect_uri='.self::REDIRECT_URI, $match->context['url'] ?? '');
     }
 
     #[Test]

@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Exceptions;
 
 use Exception;
+use Throwable;
 
 class TransactionException extends Exception
 {
-    // TODO: resolver implicit null marking of parameter deprecation warning
-    public function __construct($message = "Erreur en cours d'opération", $code = 0, ?Exception $previous = null)
+    public function __construct(string $message = "Erreur en cours d'opération", int $code = 0, ?Throwable $previous = null)
     {
         parent::__construct($message, $code, $previous);
     }

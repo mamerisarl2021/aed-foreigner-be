@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Consul;
 
 use App\Exceptions\ConsulException;
+use App\Support\KeycloakCallLogger;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 final class ConsulTokenService
 {
@@ -29,7 +31,7 @@ final class ConsulTokenService
     private function getKeycloakToken(): string
     {
         $url = (string) config('consul.keycloak.token_uri');
-        $response = Http::asForm()->post(
+        $response = Http::asForm()->timeout($this->timeoutSeconds())->post(
             $url,
             [
                 'grant_type' => 'client_credentials',
@@ -39,7 +41,7 @@ final class ConsulTokenService
         );
 
         $accessToken = $response->json('access_token');
-        $this->logKeycloakCall('token', 'POST', $url, $response->status(), [
+        KeycloakCallLogger::keycloak('token', 'POST', $url, $response->status(), [
             'grant_type' => 'client_credentials',
             'client_id' => config('consul.keycloak.client_id'),
             'token_returned' => is_string($accessToken) && $accessToken !== '',
@@ -57,7 +59,7 @@ final class ConsulTokenService
     private function exchangeForConsulToken(string $keycloakToken): string
     {
         $url = rtrim((string) config('consul.url'), '/').'/v1/acl/login';
-        $request = Http::withHeaders(['Content-Type' => 'application/json']);
+        $request = Http::timeout($this->timeoutSeconds())->withHeaders(['Content-Type' => 'application/json']);
 
         if ($cacert = config('consul.cacert')) {
             $request = $request->withOptions(['verify' => $cacert]);
@@ -73,9 +75,14 @@ final class ConsulTokenService
         );
 
         $secretId = $response->json('SecretID');
-        $this->logConsulAclLogin($url, $response->status(), is_string($authMethod) ? $authMethod : '', [
-            'secret_returned' => is_string($secretId) && $secretId !== '',
-        ]);
+        KeycloakCallLogger::consulAclLogin(
+            $url,
+            $response->status(),
+            is_string($authMethod) ? $authMethod : '',
+            [
+                'secret_returned' => is_string($secretId) && $secretId !== '',
+            ],
+        );
 
         $response->throw();
 
@@ -86,38 +93,10 @@ final class ConsulTokenService
         return $secretId;
     }
 
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function logKeycloakCall(string $operation, string $method, string $url, int $statusCode, array $context = []): void
+    private function timeoutSeconds(): int
     {
-        if (! config('keycloak.log_calls')) {
-            return;
-        }
+        $timeout = (int) config('consul.timeout', 10);
 
-        Log::info('Keycloak call', array_merge([
-            'operation' => $operation,
-            'method' => $method,
-            'url' => $url,
-            'status' => $statusCode,
-        ], $context));
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function logConsulAclLogin(string $url, int $statusCode, string $authMethod, array $context = []): void
-    {
-        if (! config('keycloak.log_calls')) {
-            return;
-        }
-
-        Log::info('Consul ACL login', array_merge([
-            'operation' => 'acl_login',
-            'method' => 'POST',
-            'url' => $url,
-            'status' => $statusCode,
-            'auth_method' => $authMethod,
-        ], $context));
+        return $timeout > 0 ? $timeout : 10;
     }
 }

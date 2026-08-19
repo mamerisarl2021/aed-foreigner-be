@@ -77,4 +77,27 @@ class EnrollmentReviewQueryService
 
         return ServiceResult::ok('Détail de la demande.', $enrollment);
     }
+
+    public function showForManager(string $id, string $type): ?EnrollmentRequest
+    {
+        $enrollment = EnrollmentRequest::query()
+            ->where('id', $id)
+            ->where('type', $type)
+            ->first();
+
+        if ($enrollment === null) {
+            return null;
+        }
+
+        $enrollment->loadMissing(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany']);
+
+        return $enrollment;
+    }
+
+    public function reloadForDecision(string $id): EnrollmentRequest
+    {
+        return EnrollmentRequest::query()
+            ->with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])
+            ->findOrFail($id);
+    }
 }

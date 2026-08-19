@@ -194,7 +194,15 @@ Static analysis with **Larastan** at **level 6 or higher**:
 
 Use **named routes** and the `route()` helper where applicable.
 
-Prefer `Route::resource()` or grouped routes over scattered one-offs in `routes/api.php`.
+Staff queue `GET/PATCH /enrolements/{id}*` constrains `{id}` as UUID so `GET /enrolements/finalisation` is not captured by the Sanctum show route.
+
+**Historical public paths (do not rename — SPA contract).** Keep these URIs and names; `/admin/logout` is an alias of `/admins/logout`:
+
+- `POST /admins/logout` and `POST /admin/logout`
+- `POST /users-email/search`
+- `POST /clients/some/reset`
+- `POST /agents/{id}` (update, not PUT/PATCH)
+- `POST /users/{id}` (profile update)
 
 ---
 
@@ -215,12 +223,12 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 ### 7.2 Secrets
 
 - **Never** hardcode API keys, tokens, or passwords
-- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation
+- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
 **Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
 
-**Exception — temporary Keycloak / Consul ACL call logging.** `ConsulTokenService` and `KeycloakJwtValidator` log outbound Keycloak token + JWKS calls and Consul `/v1/acl/login` at INFO (`Keycloak call` / `Consul ACL login`). They never log `client_secret`, `access_token`, or `SecretID`. Kill switch: `KEYCLOAK_LOG_CALLS` (`config('keycloak.log_calls')`, default `false`). Set `true` only while debugging.
+**Exception — temporary Keycloak / Consul ACL call logging.** `KeycloakCallLogger` (used by `ConsulTokenService` and `KeycloakJwtValidator`) logs outbound Keycloak token + JWKS calls and Consul `/v1/acl/login` at INFO (`Keycloak call` / `Consul ACL login`). They never log `client_secret`, `access_token`, or `SecretID`. Kill switch: `KEYCLOAK_LOG_CALLS` (`config('keycloak.log_calls')`, default `false`). Set `true` only while debugging.
 
 ### 7.3 Cache store
 
@@ -321,6 +329,10 @@ Standard success envelope:
 ```
 
 Use appropriate HTTP status codes; validation errors return **422**.
+
+**Exception — Consul health.** `GET /api/v1/health` returns `{"status":"UP"}` (200) or `{"status":"DOWN"}` (503) **without** this envelope. Consul and load balancers require that contract.
+
+**Exception — encrypted document download.** `GET /decrypt/token/file/{filename}` returns raw file bytes (detected `Content-Type`) on success. Failures use `abort()` JSON, not the `{success,message,data}` envelope.
 
 ### 9.3 Authorization (policies first — P10-04)
 
@@ -447,6 +459,10 @@ HTTP responses **MUST NOT** wait on these operations.
 
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
+**Exception — TrustedX password / PIN / client reset.** Admin `setPassword`, client password or PIN change, and client reset call TrustedX `setDefaultPassword` **in the HTTP request** so the remote secret exists before `200`. Same logging exception as above.
+
+**Exception — Keycloak Admin API on staff CRUD.** When `STAFF_KEYCLOAK_ENABLED=true`, `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API **in the request** (timeout + TLS verify on). Create rolls back the local user on Keycloak failure (fail closed). The operator must not see success before Keycloak is consistent.
+
 **Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
 
 - KYC / Regula on `POST /kyc/verify` and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
@@ -506,7 +522,7 @@ Monitor and fix N+1 queries and slow endpoints before scaling hardware.
 
 ### 11.3 Test database
 
-- Prefer a dedicated MySQL test database (`.env.testing` or `phpunit.xml`)
+- Prefer a dedicated MySQL test database (`.env.testing`). Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
 - Seed only what each test needs; avoid depending on production-like fixtures
 - Spatie permission tables **must** exist via migrations (do not publish migrations ad hoc inside tests)
 
@@ -615,11 +631,14 @@ Staff auth:
 
 ```
 POST /admin/login              { email, password } → access_token + must_change_password
+POST /admin/login/keycloak     { access_token }    → Sanctum token (STAFF_KEYCLOAK_ENABLED=true)
 POST /admin/password/change    { current_password, password, password_confirmation }  (auth)
 POST /agents/register          { name, first_name, email, phonenumber, role }  (admin)
 ```
 
-Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`.
+Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Subsequent staff API calls (`GET /enrolements`, prise en charge, instruction, validation, `/agents`, `/me`, …) use **that Sanctum token** and `auth:sanctum` — they are **not** behind the infra `keycloak` middleware (one `Authorization` header cannot be both a Sanctum token and an infra JWT). Policies remain the authorization SoT.
+
+Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When `STAFF_KEYCLOAK_ENABLED=true`, `POST /agents/register` / update / delete and `php artisan manage:admin` push the user to realm `pki-portal` (Admin API, confidential client `backoffice-staff-admin`). Default: **no Keycloak SMTP** — `WelcomeAgentJob` still runs (log/kafka driver) and writes a Keycloak-compatible password (16 chars, mixed case, digit, `!@#$%&*-_`) via `reset-password`. Set `KC_STAFF_EXECUTE_ACTIONS_EMAIL=true` only when realm Email is configured; then Laravel skips the job and Keycloak sends `UPDATE_PASSWORD`. `execute-actions-email` 500 without SMTP is expected. Requires `KC_STAFF_ADMIN_SECRET`. Keycloak-only users are still not imported.
 
 Role mapping (PDF → Spatie):
 
@@ -765,7 +784,8 @@ PUT  /clients/security-questions         { current_password, security_questions 
 Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, not `POST /agents/register`).
 
 ```
-POST /admin/login
+POST /admin/login                        { email, password }  (403 if STAFF_KEYCLOAK_ENABLED)
+POST /admin/login/keycloak               { access_token }     (realm pki-portal / backoffice-stranger)
 GET  /agents? q, role, per_page          → StaffUserListResource
 GET  /agents/{id}                        → StaffUserDetailResource
 POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER)
@@ -783,6 +803,9 @@ GET  /audits                                               → journal OwenIt te
 ```
 
 - Login sets `users.last_login_at`.
+- **Keycloak staff** (`STAFF_KEYCLOAK_ENABLED`, default false): OIDC on `pki-portal` / `backoffice-stranger`, then `POST /admin/login/keycloak`. Existing local user only; Spatie roles replaced from the JWT. `KC_STAFF_*` must not fall back to `KC_INFRA_*`.
+- **Keycloak staff sync** (same flag): `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API (`KC_STAFF_ADMIN_CLIENT_ID` / `KC_STAFF_ADMIN_SECRET`, not the public SPA). Failure → 502/503 and no orphan Laravel row on create. WelcomeAgentJob runs unless `KC_STAFF_EXECUTE_ACTIONS_EMAIL=true` (Keycloak SMTP).
+- Checklist Keycloak: confidential client `backoffice-staff-admin`, service account, realm-management roles `manage-users`, `view-users`, `query-users`, `view-realm`, plus role assign (`manage-realm` or `query-roles`).
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
 - **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
@@ -807,6 +830,7 @@ Do not pretend these exist in code without implementing them:
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
+- **`KEYCLOAK_ENABLED`** (default true, set `false` locally): infra gateway JWT on **guest** routes only (`/otp/*`, `/kyc/*`, `POST /enrolements/etrangers`, suivi, finalisation). Staff queue `GET/PATCH /enrolements*` is Sanctum + policy.
 
 ### 13.9 Legacy code
 

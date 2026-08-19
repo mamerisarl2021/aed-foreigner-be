@@ -12,7 +12,6 @@ use App\Services\Admin\EnrolledPersonService;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 
 #[Group('Admin')]
 final class AdminEnrolledPersonController extends BaseController
@@ -28,7 +27,7 @@ final class AdminEnrolledPersonController extends BaseController
      */
     public function index(ListEnrolledPersonsRequest $request): JsonResponse
     {
-        Gate::authorize('viewAnyEnrolledPerson');
+        $this->authorize('viewAnyEnrolledPerson');
 
         $paginator = $this->enrolledPersonService->list($request);
         $paginator->getCollection()->transform(fn ($item) => new EnrolledPersonListResource($item));
@@ -42,7 +41,7 @@ final class AdminEnrolledPersonController extends BaseController
     #[PathParameter('id', description: 'Enrolled person (user) UUID.', type: 'string', format: 'uuid')]
     public function show(ShowEnrolledPersonRequest $request): JsonResponse
     {
-        Gate::authorize('viewEnrolledPerson');
+        $this->authorize('viewEnrolledPerson');
 
         $result = $this->enrolledPersonService->show((string) $request->validated('id'));
         if (! $result->success) {

@@ -27,13 +27,13 @@
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="3306"/>
         <env name="DB_DATABASE" value="my_database"/>
-        <env name="DB_USERNAME" value="davieddee"/>
-        <env name="DB_PASSWORD" value="mysqlAllow-alex@123"/>
+        <!-- DB_USERNAME / DB_PASSWORD: use .env or .env.testing — never commit secrets here. -->
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="STAFF_KEYCLOAK_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>

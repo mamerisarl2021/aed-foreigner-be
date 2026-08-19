@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -10,6 +12,9 @@ class IdentityRejected extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * @param  list<string>  $reasons
+     */
     public function __construct(
         public string $name,
         public string $stage,
@@ -17,7 +22,7 @@ class IdentityRejected extends Mailable
         public ?string $comments = null
     ) {}
 
-    public function build()
+    public function build(): static
     {
         return $this->subject('Votre demande d\'identité a été rejetée')
             ->view('emails.identity.rejected')

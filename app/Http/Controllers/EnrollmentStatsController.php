@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Enrollment\DashboardEnrollmentStatsRequest;
+use App\Http\Resources\EnrollmentDashboardStatsResource;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\EnrollmentStatsService;
 use Dedoc\Scramble\Attributes\Group;
@@ -31,7 +32,7 @@ class EnrollmentStatsController extends BaseController
 
         return $this->sendResponse(
             'Statistiques d\'enrôlement.',
-            $this->statsService->dashboard($granularite)
+            new EnrollmentDashboardStatsResource($this->statsService->dashboard($granularite))
         );
     }
 }

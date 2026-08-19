@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\PlatformStatsRequest;
+use App\Http\Resources\PlatformStatsResource;
 use App\Services\Stats\StatsService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 
 #[Group('Admin')]
 class StatsController extends BaseController
@@ -21,10 +22,12 @@ class StatsController extends BaseController
      *
      * Totals per entity, users per role, and enrollment requests per status.
      */
-    public function index(): JsonResponse
+    public function index(PlatformStatsRequest $request): JsonResponse
     {
-        Gate::authorize('viewStats');
+        $this->authorize('viewStats');
 
-        return $this->respond($this->stats->overview());
+        $result = $this->stats->overview();
+
+        return $this->sendResponse($result->message, new PlatformStatsResource($result->data));
     }
 }

@@ -6,12 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Services\ServiceResult;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
 class BaseController extends Controller
 {
-    protected $data = null;
-
     protected function respond(ServiceResult $result): JsonResponse
     {
         if ($result->success) {
@@ -30,7 +29,7 @@ class BaseController extends Controller
         return $this->sendError($result->message, $result->data, $result->code);
     }
 
-    public function sendResponse(string $message, $data = null, int $code = 200): JsonResponse
+    public function sendResponse(string $message, mixed $data = null, int $code = 200): JsonResponse
     {
         $response = [
             'success' => true,
@@ -41,12 +40,15 @@ class BaseController extends Controller
         return response()->json($response, $code);
     }
 
-    public function sendPaginatedResponse(string $message, $data = null): JsonResponse
+    /**
+     * @param  array{data: mixed, pagination: array<string, mixed>}|null  $data
+     */
+    public function sendPaginatedResponse(string $message, ?array $data = null): JsonResponse
     {
         $response = [
             'success' => true,
-            'data' => $data['data'],
-            'pagination' => $data['pagination'],
+            'data' => $data['data'] ?? null,
+            'pagination' => $data['pagination'] ?? null,
             'message' => $message,
         ];
 
@@ -70,5 +72,18 @@ class BaseController extends Controller
         }
 
         return response()->json($response, $code);
+    }
+
+    /**
+     * @param  LengthAwarePaginator<int, mixed>  $paginator
+     * @return array{data: mixed, pagination: array<string, mixed>}
+     */
+    protected function flattenPagination(LengthAwarePaginator $paginator): array
+    {
+        $flattenedData = $paginator->toArray();
+        $data = $flattenedData['data'];
+        unset($flattenedData['data']);
+
+        return ['data' => $data, 'pagination' => $flattenedData];
     }
 }

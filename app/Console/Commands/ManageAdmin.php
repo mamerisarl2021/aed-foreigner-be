@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Exceptions\StaffKeycloakAdminException;
 use App\Models\User;
+use App\Services\Auth\AdminAuthService;
+use App\Services\Auth\StaffKeycloakAdminClient;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Role;
 
@@ -77,6 +80,13 @@ class ManageAdmin extends Command
         $admin->forceFill(['password' => $password])->save();
         $admin->syncRoles([$role]);
 
+        if (! $this->syncAdminToKeycloak($admin, $password, lookupEmail: $email)) {
+            $admin->roles()->detach();
+            $admin->delete();
+
+            return self::FAILURE;
+        }
+
         $this->info("Administrator created successfully (role: {$role}).");
 
         return self::SUCCESS;
@@ -95,6 +105,10 @@ class ManageAdmin extends Command
         $role = (string) config('roles.administrateur_plateforme');
         Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
 
+        if (! $this->syncAdminToKeycloak($admin, $password, lookupEmail: $admin->email, name: $name)) {
+            return self::FAILURE;
+        }
+
         $admin->forceFill([
             'name' => $name,
             'password' => $password,
@@ -105,5 +119,30 @@ class ManageAdmin extends Command
         $this->info("Administrator updated successfully (role: {$role}).");
 
         return self::SUCCESS;
+    }
+
+    private function syncAdminToKeycloak(User $admin, string $password, string $lookupEmail, ?string $name = null): bool
+    {
+        if (! AdminAuthService::staffKeycloakEnabled()) {
+            return true;
+        }
+
+        $role = (string) config('roles.administrateur_plateforme');
+
+        try {
+            app(StaffKeycloakAdminClient::class)->syncUser($lookupEmail, [
+                'email' => $admin->email,
+                'first_name' => $admin->first_name,
+                'name' => $name ?? (string) $admin->name,
+                'role' => $role,
+                'password' => $password,
+            ]);
+        } catch (StaffKeycloakAdminException $e) {
+            $this->error('Keycloak sync failed: '.$e->getMessage());
+
+            return false;
+        }
+
+        return true;
     }
 }

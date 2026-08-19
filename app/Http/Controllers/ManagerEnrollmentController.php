@@ -84,19 +84,12 @@ final class ManagerEnrollmentController extends BaseController
     {
         $this->authorize('supervise', EnrollmentRequest::class);
 
-        $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::query()
-            ->where('id', $id)
-            ->where('type', $type)
-            ->first();
-
+        $enrollment = $this->reviewQuery->showForManager((string) $request->validated('id'), $type);
         if ($enrollment === null) {
             return $this->sendError('Demande introuvable.', null, 404);
         }
 
         $this->authorize('superviseOne', $enrollment);
-
-        $enrollment->loadMissing(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany']);
 
         return $this->sendResponse('Détail de la demande.', new EnrollmentManagerDetailResource($enrollment));
     }

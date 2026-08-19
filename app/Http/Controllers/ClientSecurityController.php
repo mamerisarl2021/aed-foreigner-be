@@ -9,6 +9,7 @@ use App\Http\Requests\User\ChangeClientPinRequest;
 use App\Http\Requests\User\LogoutClientRequest;
 use App\Http\Requests\User\ShowClientSecurityQuestionsRequest;
 use App\Http\Requests\User\UpdateClientSecurityQuestionsRequest;
+use App\Http\Resources\ClientSecurityQuestionsResource;
 use App\Models\User;
 use App\Services\Auth\ClientSecurityService;
 use Dedoc\Scramble\Attributes\Group;
@@ -83,7 +84,7 @@ class ClientSecurityController extends BaseController
         /** @var User $user */
         $user = $request->user();
 
-        return $this->sendResponse('Questions de sécurité.', $this->security->listSecurityQuestions($user));
+        return $this->sendResponse('Questions de sécurité.', new ClientSecurityQuestionsResource($this->security->listSecurityQuestions($user)));
     }
 
     /**

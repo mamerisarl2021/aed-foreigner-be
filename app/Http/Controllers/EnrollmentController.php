@@ -13,14 +13,15 @@ use App\Http\Requests\Enrollment\ShowEnrollmentRequest;
 use App\Http\Requests\Enrollment\SubmitEnrollmentRequest;
 use App\Http\Requests\Enrollment\ValidationEnrollmentRequest;
 use App\Http\Resources\EnrollmentDecisionDetailResource;
-use App\Http\Resources\EnrollmentDecisionListResource;
 use App\Http\Resources\EnrollmentRequestAgentDetailResource;
-use App\Http\Resources\EnrollmentRequestListResource;
+use App\Http\Resources\EnrollmentSubmitResource;
 use App\Models\EnrollmentRequest;
+use App\Models\User;
 use App\Services\Enrollment\ForeignerEnrollmentService;
 use App\Services\IdentityReview\AgentEnrollmentReviewService;
 use App\Services\IdentityReview\EnrollmentReviewQueryService;
 use App\Services\IdentityReview\SupervisorEnrollmentReviewService;
+use App\Support\EnrollmentReviewResources;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
@@ -48,7 +49,12 @@ final class EnrollmentController extends BaseController
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse
     {
-        return $this->respond($this->foreignerEnrollment->submitEnrollment($request));
+        $result = $this->foreignerEnrollment->submitEnrollment($request);
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new EnrollmentSubmitResource($result->data), $result->code);
     }
 
     /**
@@ -70,10 +76,9 @@ final class EnrollmentController extends BaseController
         $paginator = $this->reviewQuery->list(
             EnrollmentListFilters::fromValidated($request->validated(), $request->user())
         );
+        /** @var User $user */
         $user = $request->user();
-        $resourceClass = $user && $user->hasRole(config('roles.responsable_de_validation'))
-            ? EnrollmentDecisionListResource::class
-            : EnrollmentRequestListResource::class;
+        $resourceClass = EnrollmentReviewResources::listClass($user);
         $paginator->getCollection()->transform(fn ($item) => new $resourceClass($item));
 
         return $this->sendResponse('Liste des demandes.', $paginator);
@@ -104,15 +109,14 @@ final class EnrollmentController extends BaseController
     public function show(ShowEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->findOrFail($id);
         $this->authorize('view', $enrollment);
         $result = $this->reviewQuery->show($enrollment);
-        $user = $request->user();
-        $resource = $user && $user->hasRole(config('roles.responsable_de_validation'))
-            ? new EnrollmentDecisionDetailResource($result->data)
-            : new EnrollmentRequestAgentDetailResource($result->data);
 
-        return $this->sendResponse($result->message, $resource);
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->sendResponse($result->message, EnrollmentReviewResources::detail($user, $result->data));
     }
 
     /**
@@ -125,7 +129,7 @@ final class EnrollmentController extends BaseController
     public function priseEnCharge(ClaimEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->findOrFail($id);
         $this->authorize('claim', $enrollment);
 
         $result = $this->agentReview->claim($enrollment, (string) $request->user()?->id);
@@ -143,7 +147,7 @@ final class EnrollmentController extends BaseController
     public function priseEnChargeValidation(ClaimValidationEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->findOrFail($id);
         $this->authorize('claimValidation', $enrollment);
 
         $result = $this->supervisorReview->claimValidation($enrollment, (string) $request->user()?->id);
@@ -163,17 +167,21 @@ final class EnrollmentController extends BaseController
     public function instruction(InstructionEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->findOrFail($id);
         $this->authorize('instruction', $enrollment);
 
         $validated = $request->validated();
-
-        return $this->respond($this->agentReview->instruction(
+        $result = $this->agentReview->instruction(
             $enrollment,
             (string) $validated['avis'],
             $validated['motif'] ?? null,
             $validated['commentaire'] ?? null,
-        ));
+        );
+        if (! $result->success) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new EnrollmentSubmitResource($result->data));
     }
 
     /**
@@ -189,7 +197,7 @@ final class EnrollmentController extends BaseController
     public function validation(ValidationEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::findOrFail($id);
+        $enrollment = EnrollmentRequest::query()->findOrFail($id);
         $this->authorize('validation', $enrollment);
 
         $validated = $request->validated();
@@ -206,7 +214,7 @@ final class EnrollmentController extends BaseController
             return $this->respond($result);
         }
 
-        $enrollment = EnrollmentRequest::with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])->findOrFail($id);
+        $enrollment = $this->reviewQuery->reloadForDecision($id);
 
         return $this->sendResponse($result->message, new EnrollmentDecisionDetailResource($enrollment));
     }

@@ -29,6 +29,7 @@ final class UserService
                     ->orWhere('name', 'LIKE', "%{$query}%")
                     ->orWhere('npi', 'LIKE', "%{$query}%");
             })
+                ->with('roles')
                 ->where('id', '!=', $excludeUserId)
                 ->limit($limit)
                 ->get();
@@ -47,6 +48,7 @@ final class UserService
             $limit = min(max($limit, 1), 100);
 
             $users = User::where('email', 'LIKE', "%{$email}%")
+                ->with('roles')
                 ->where('id', '!=', $excludeUserId)
                 ->limit($limit)
                 ->get();

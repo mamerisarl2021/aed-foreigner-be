@@ -18,6 +18,8 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
 use App\Http\Controllers\Singletons\HealthCheckController;
 use App\Http\Controllers\Singletons\UserProfileController;
+use App\Http\Controllers\StaffAgentController;
+use App\Http\Controllers\StaffDirectoryController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -62,15 +64,15 @@ Route::group([], function () {
 
         Route::post('users/{id}', [UserController::class, 'update'])->name('users.update');
 
-        Route::post('/agents/register', [AuthController::class, 'registerAgent'])->name('agents.register');
-        Route::post('/agents/{id}', [AuthController::class, 'updateAgent'])->name('agents.update');
-        Route::delete('/agents/{id}', [AuthController::class, 'deleteAgent'])->name('agents.destroy');
-        Route::get('/agents', [AuthController::class, 'listAgents'])->name('agents.index');
-        Route::get('/agents/{id}', [AuthController::class, 'showAgent'])->name('agents.show');
+        Route::post('/agents/register', [StaffAgentController::class, 'register'])->name('agents.register');
+        Route::post('/agents/{id}', [StaffAgentController::class, 'update'])->name('agents.update');
+        Route::delete('/agents/{id}', [StaffAgentController::class, 'destroy'])->name('agents.destroy');
+        Route::get('/agents', [StaffAgentController::class, 'index'])->name('agents.index');
+        Route::get('/agents/{id}', [StaffAgentController::class, 'show'])->name('agents.show');
 
         Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index'])->name('admin.enrolled-persons.index');
         Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show'])->name('admin.enrolled-persons.show');
-        Route::post('/clients/set-password', [UserController::class, 'setPassword'])->name('clients.set-password');
+        Route::post('/clients/set-password', [StaffDirectoryController::class, 'setClientPassword'])->name('clients.set-password');
 
         Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index'])->name('admin.activity-logs.index');
         Route::get('/admin/activity-logs/{id}', [AdminActivityLogController::class, 'show'])->name('admin.activity-logs.show');
@@ -82,10 +84,10 @@ Route::group([], function () {
         Route::delete('/admin/enrollment-reject-motifs/{id}', [EnrollmentRejectMotifController::class, 'destroy'])->name('admin.enrollment-reject-motifs.destroy');
 
         Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
-        Route::get('/users/search', [UserController::class, 'search'])->name('users.search');
-        Route::post('/users-email/search', [UserController::class, 'searchPost'])->name('users.search-by-email');
+        Route::get('/users/search', [StaffDirectoryController::class, 'search'])->name('users.search');
+        Route::post('/users-email/search', [StaffDirectoryController::class, 'searchByEmail'])->name('users.search-by-email');
         Route::get('/decrypt/token/file/{filename}', [EncryptionController::class, 'decryptAndDisplay'])->name('decrypt.token.file');
-        Route::post('/management/users/update-status', [UserController::class, 'updateUserStatus'])->name('management.users.update-status');
+        Route::post('/management/users/update-status', [StaffDirectoryController::class, 'updateStatus'])->name('management.users.update-status');
 
         Route::get('/management/enrollment-reject-motifs', [EnrollmentRejectMotifController::class, 'index'])->name('management.enrollment-reject-motifs.index');
         Route::get('/management/enrollment-stats', [EnrollmentStatsController::class, 'index'])->name('management.enrollment-stats.index');
@@ -93,6 +95,26 @@ Route::group([], function () {
         Route::get('/management/enrolements/physiques/{id}', [ManagerEnrollmentController::class, 'showPhysique'])->name('management.enrolements.physiques.show');
         Route::get('/management/enrolements/morales', [ManagerEnrollmentController::class, 'indexMorales'])->name('management.enrolements.morales.index');
         Route::get('/management/enrolements/morales/{id}', [ManagerEnrollmentController::class, 'showMorale'])->name('management.enrolements.morales.show');
+
+        // Agent/responsable queue — Sanctum only. Do not nest under `keycloak`
+        // (infra gateway JWT). Staff BO sends the Sanctum token from
+        // POST /admin/login/keycloak; KEYCLOAK_ENABLED is the guest/gateway flag.
+        Route::get('/enrolements', [EnrollmentController::class, 'index'])->name('enrolements.index');
+        Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge'])
+            ->whereUuid('id')
+            ->name('enrolements.prise-en-charge');
+        Route::patch('/enrolements/{id}/prise-en-charge-validation', [EnrollmentController::class, 'priseEnChargeValidation'])
+            ->whereUuid('id')
+            ->name('enrolements.prise-en-charge-validation');
+        Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction'])
+            ->whereUuid('id')
+            ->name('enrolements.instruction');
+        Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation'])
+            ->whereUuid('id')
+            ->name('enrolements.validation');
+        Route::get('/enrolements/{id}', [EnrollmentController::class, 'show'])
+            ->whereUuid('id')
+            ->name('enrolements.show');
     });
 
     Route::middleware(['keycloak'])->group(function () {
@@ -122,15 +144,6 @@ Route::group([], function () {
         Route::post('/enrolements/finalisation', [FinalisationController::class, 'store'])
             ->middleware(['throttle:password-reset'])
             ->name('enrolements.finalisation.store');
-
-        Route::middleware(['auth:sanctum'])->group(function () {
-            Route::get('/enrolements', [EnrollmentController::class, 'index'])->name('enrolements.index');
-            Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge'])->name('enrolements.prise-en-charge');
-            Route::patch('/enrolements/{id}/prise-en-charge-validation', [EnrollmentController::class, 'priseEnChargeValidation'])->name('enrolements.prise-en-charge-validation');
-            Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction'])->name('enrolements.instruction');
-            Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation'])->name('enrolements.validation');
-            Route::get('/enrolements/{id}', [EnrollmentController::class, 'show'])->name('enrolements.show');
-        });
     });
 
     Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail'])
@@ -162,6 +175,9 @@ Route::group([], function () {
     Route::post('/admins/logout', [AuthController::class, 'logoutAdmin'])
         ->middleware('auth:sanctum')
         ->name('admins.logout');
+    Route::post('/admin/logout', [AuthController::class, 'logoutAdmin'])
+        ->middleware('auth:sanctum')
+        ->name('admin.logout');
     Route::post('/admin/login', [AuthController::class, 'loginAdmin'])
         ->middleware('throttle:auth-login')
         ->name('admin.login');

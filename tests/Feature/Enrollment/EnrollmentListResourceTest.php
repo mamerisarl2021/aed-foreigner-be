@@ -83,7 +83,7 @@ final class EnrollmentListResourceTest extends TestCase
         Sanctum::actingAs($this->agent);
 
         $this->getJson($this->api('/enrolements/not-a-uuid'))
-            ->assertStatus(422);
+            ->assertNotFound();
     }
 
     #[Test]

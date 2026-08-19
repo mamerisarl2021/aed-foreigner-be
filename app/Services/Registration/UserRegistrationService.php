@@ -111,9 +111,9 @@ class UserRegistrationService
         }
     }
 
-    public function login(string $code): ServiceResult
+    public function login(string $code, ?string $redirectUri = null): ServiceResult
     {
-        $response = $this->trustedXClient->userInfo($code);
+        $response = $this->trustedXClient->userInfo($code, $redirectUri);
 
         if ($response['status']) {
             $actorId = $this->touchClientLogin($response['data']['user'] ?? null);

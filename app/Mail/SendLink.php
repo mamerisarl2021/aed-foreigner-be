@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -11,17 +13,12 @@ class SendLink extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public $code;
+    public function __construct(
+        public mixed $code,
+        public string $email,
+    ) {}
 
-    public $email;
-
-    public function __construct($code, $email)
-    {
-        $this->code = $code;
-        $this->email = $email;
-    }
-
-    public function build()
+    public function build(): static
     {
         return $this->from('collabone@qualitycorporate.com')
             ->subject('Demande du lien de mise à jour')->view('emails.send_link')->with([

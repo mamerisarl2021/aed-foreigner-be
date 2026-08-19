@@ -10,11 +10,13 @@ use App\Enums\NotificationTemplate;
 use App\Jobs\Concerns\RetriesWithBackoff;
 use App\Jobs\Notifications\SendEmailNotificationJob;
 use App\Models\User;
+use App\Services\Auth\AdminAuthService;
+use App\Services\Auth\StaffKeycloakAdminClient;
 use App\Support\NotificationRecipient;
+use App\Support\StaffPasswordGenerator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 final class WelcomeAgentJob implements ShouldQueue
 {
@@ -27,8 +29,15 @@ final class WelcomeAgentJob implements ShouldQueue
 
     public function handle(): void
     {
-        $defaultPassword = Str::password(12);
+        $defaultPassword = StaffPasswordGenerator::generate($this->user->email);
         $this->user->forceFill(['password' => Hash::make($defaultPassword)])->save();
+
+        if (AdminAuthService::staffKeycloakEnabled()) {
+            app(StaffKeycloakAdminClient::class)->setPasswordByEmail(
+                (string) $this->user->email,
+                $defaultPassword,
+            );
+        }
 
         $loginUrl = config('app.frontend_url').'/backoffice/login';
 
