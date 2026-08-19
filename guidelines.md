@@ -622,7 +622,7 @@ POST /agents/register          { name, first_name, email, phonenumber, role }  (
 
 Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Policies remain the authorization SoT.
 
-Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When Keycloak staff login is on, also create the same email in realm `pki-portal` with the matching realm role.
+Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When `STAFF_KEYCLOAK_ENABLED=true`, `POST /agents/register` / update / delete and `php artisan manage:admin` push the user to realm `pki-portal` (Admin API, confidential client `backoffice-staff-admin`). WelcomeAgentJob is skipped; Keycloak sends `UPDATE_PASSWORD` (realm SMTP) or the operator sets the password in Keycloak. Requires `KC_STAFF_ADMIN_SECRET`. Keycloak-only users are still not imported.
 
 Role mapping (PDF → Spatie):
 
@@ -788,6 +788,8 @@ GET  /audits                                               → journal OwenIt te
 
 - Login sets `users.last_login_at`.
 - **Keycloak staff** (`STAFF_KEYCLOAK_ENABLED`, default false): OIDC on `pki-portal` / `backoffice-stranger`, then `POST /admin/login/keycloak`. Existing local user only; Spatie roles replaced from the JWT. `KC_STAFF_*` must not fall back to `KC_INFRA_*`.
+- **Keycloak staff sync** (same flag): `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API (`KC_STAFF_ADMIN_CLIENT_ID` / `KC_STAFF_ADMIN_SECRET`, not the public SPA). Failure → 502/503 and no orphan Laravel row on create. WelcomeAgentJob only when the flag is off.
+- Checklist Keycloak: confidential client `backoffice-staff-admin`, service account, realm-management roles `manage-users`, `view-users`, `query-users`, `view-realm`, plus role assign (`manage-realm` or `query-roles`).
 - Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
 - **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.

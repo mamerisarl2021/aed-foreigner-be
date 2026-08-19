@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Enums\ActivityLogAction;
+use App\Exceptions\StaffKeycloakAdminException;
 use App\Http\Resources\StaffUserDetailResource;
 use App\Http\Resources\StaffUserListResource;
 use App\Jobs\ResetPasswordJob;
@@ -26,6 +27,7 @@ class AdminAuthService
     public function __construct(
         private readonly ActivityLogService $activityLog,
         private readonly KeycloakJwtValidator $keycloakJwtValidator,
+        private readonly StaffKeycloakAdminClient $staffKeycloakAdmin,
     ) {}
 
     public static function staffKeycloakEnabled(): bool
@@ -42,6 +44,20 @@ class AdminAuthService
     public function updateAgent(User $user, array $input, ?User $actor = null): ServiceResult
     {
         try {
+            if (self::staffKeycloakEnabled()) {
+                $roleSlug = $this->staffSlugForSync($user, $input['role'] ?? null);
+                if ($roleSlug === null) {
+                    return ServiceResult::fail('Rôle staff invalide.', null, 400);
+                }
+
+                $this->staffKeycloakAdmin->syncUser($user->email, [
+                    'email' => $input['email'] ?? $user->email,
+                    'first_name' => $input['first_name'] ?? $user->first_name,
+                    'name' => $input['name'] ?? $user->name,
+                    'role' => $roleSlug,
+                ]);
+            }
+
             $user->update([
                 'name' => $input['name'] ?? $user->name,
                 'first_name' => $input['first_name'] ?? $user->first_name,
@@ -71,6 +87,10 @@ class AdminAuthService
             );
 
             return ServiceResult::ok('Agent mis à jour avec succès.', (new StaffUserDetailResource($user))->resolve());
+        } catch (StaffKeycloakAdminException $e) {
+            Log::error('Failed to sync agent to Keycloak: '.$e->getMessage());
+
+            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
         } catch (Exception $e) {
             Log::error('Failed to update agent: '.$e->getMessage());
 
@@ -81,6 +101,10 @@ class AdminAuthService
     public function deleteAgent(User $user, ?User $actor = null): ServiceResult
     {
         try {
+            if (self::staffKeycloakEnabled()) {
+                $this->staffKeycloakAdmin->deleteByEmail((string) $user->email);
+            }
+
             $label = trim(($user->first_name ?? '').' '.($user->name ?? '')).' ('.$user->email.')';
             $targetId = $user->id;
             $user->roles()->detach();
@@ -95,6 +119,10 @@ class AdminAuthService
             );
 
             return ServiceResult::ok('Agent supprimé avec succès.', null);
+        } catch (StaffKeycloakAdminException $e) {
+            Log::error('Failed to delete agent on Keycloak: '.$e->getMessage());
+
+            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
         } catch (Exception $e) {
             Log::error('Failed to delete agent: '.$e->getMessage());
 
@@ -118,7 +146,33 @@ class AdminAuthService
             $this->assignRoleFromCode($user, $input['role']);
             $user->load('roles');
 
-            WelcomeAgentJob::dispatch($user);
+            if (self::staffKeycloakEnabled()) {
+                try {
+                    $roleSlug = $this->staffSlugForSync($user, $input['role']);
+                    if ($roleSlug === null) {
+                        $user->roles()->detach();
+                        $user->delete();
+
+                        return ServiceResult::fail('Rôle staff invalide.', null, 400);
+                    }
+
+                    $keycloakId = $this->staffKeycloakAdmin->syncUser($user->email, [
+                        'email' => $user->email,
+                        'first_name' => $user->first_name,
+                        'name' => $user->name,
+                        'role' => $roleSlug,
+                    ]);
+                    $this->staffKeycloakAdmin->sendUpdatePasswordEmail($keycloakId);
+                } catch (StaffKeycloakAdminException $e) {
+                    $user->roles()->detach();
+                    $user->delete();
+                    Log::error('Failed to sync new agent to Keycloak: '.$e->getMessage());
+
+                    return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
+                }
+            } else {
+                WelcomeAgentJob::dispatch($user);
+            }
 
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurCree,
@@ -383,6 +437,25 @@ class AdminAuthService
     {
         $slug = StaffRoleMapper::slugFromCode($role) ?? config('roles.client');
         $user->assignRole($slug);
+    }
+
+    private function staffSlugForSync(User $user, mixed $roleCode = null): ?string
+    {
+        $staff = self::staffRoles();
+
+        if (is_string($roleCode) && $roleCode !== '') {
+            $slug = StaffRoleMapper::slugFromCode($roleCode);
+
+            return is_string($slug) && in_array($slug, $staff, true) ? $slug : null;
+        }
+
+        foreach ($staff as $slug) {
+            if ($user->hasRole($slug)) {
+                return $slug;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -23,6 +23,9 @@ return [
     | KC_STAFF_* must point at pki-portal. Do not fall back to KC_INFRA_*
     | (realm infra / portal-id-foreigner) or an infra JWT would be accepted.
     |
+    | User CRUD is pushed to the Keycloak Admin API via a confidential service
+    | account (KC_STAFF_ADMIN_*), never via the public SPA client.
+    |
     */
 
     'staff' => [
@@ -31,5 +34,8 @@ return [
         'issuer' => env('KC_STAFF_ISSUER'),
         'audience' => env('KC_STAFF_AUDIENCE', 'backoffice-stranger'),
         'client_id' => env('KC_STAFF_CLIENT_ID', 'backoffice-stranger'),
+        'token_uri' => env('KC_STAFF_TOKEN_URI'),
+        'admin_client_id' => env('KC_STAFF_ADMIN_CLIENT_ID', 'backoffice-staff-admin'),
+        'admin_client_secret' => env('KC_STAFF_ADMIN_SECRET'),
     ],
 ];
