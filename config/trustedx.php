@@ -16,6 +16,20 @@ return [
 
     'redirect_url' => env('TX_REDIRECT_URL'),
 
+    /*
+    | Redirect URIs allowed to exchange an authorization code. The client sends
+    | the one it used at /authorize; TrustedX rejects the exchange unless both
+    | match literally, so the value must come from the client, not from here.
+    | This list only decides which clients we accept it from.
+    */
+    'allowed_redirect_urls' => array_values(array_unique(array_filter(array_map(
+        'trim',
+        array_merge(
+            [(string) env('TX_REDIRECT_URL')],
+            explode(',', (string) env('TX_ALLOWED_REDIRECT_URLS', ''))
+        )
+    )))),
+
     'anip_base_url' => env('ANIP_BASE_URL'),
 
     'anip_username' => env('ANIP_USERNAME'),

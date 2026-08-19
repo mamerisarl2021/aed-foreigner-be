@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\ClientLoginRequest;
 use App\Http\Requests\User\LoginWithCodeRequest;
 use App\Http\Requests\User\SearchUsersByEmailRequest;
 use App\Http\Requests\User\SearchUsersRequest;
@@ -50,9 +51,12 @@ class UserController extends BaseController
     /**
      * Client login (TrustedX authorization code)
      */
-    public function login(LoginWithCodeRequest $request): JsonResponse
+    public function login(ClientLoginRequest $request): JsonResponse
     {
-        return $this->respond($this->registration->login($request->input('code')));
+        return $this->respond($this->registration->login(
+            (string) $request->validated('code'),
+            (string) $request->validated('redirect_uri'),
+        ));
     }
 
     /**

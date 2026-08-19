@@ -42,9 +42,9 @@ class TrustedXClientService
     /**
      * @return array<string, mixed>
      */
-    public function obtainToken(string $code): array
+    public function obtainToken(string $code, ?string $redirectUri = null): array
     {
-        $url = "https://{$this->baseUrl}/trustedx-authserver/oauth/{$this->clientsLoggedAs}/token?grant_type=authorization_code&code={$code}&redirect_uri={$this->redirectUrl}";
+        $url = "https://{$this->baseUrl}/trustedx-authserver/oauth/{$this->clientsLoggedAs}/token?grant_type=authorization_code&code={$code}&redirect_uri={$redirectUri}";
         try {
             $response = $this->http()
                 ->withBasicAuth($this->clientId, $this->clientSecret)
@@ -53,6 +53,20 @@ class TrustedXClientService
             $this->logCall('obtainToken', 'POST', $url, $response->status(), [
                 'access_token' => $response->json('access_token'),
             ]);
+
+            if (! $response->successful() || ! is_string($response->json('access_token'))) {
+                Log::warning('TrustedX token exchange failed', [
+                    'operation' => 'obtainToken',
+                    'status' => $response->status(),
+                    'error' => $response->json('error'),
+                    'error_description' => $response->json('error_description'),
+                ]);
+
+                return [
+                    'status' => false,
+                    'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
+                ];
+            }
 
             return [
                 'status' => true,
@@ -87,6 +101,20 @@ class TrustedXClientService
                 'access_token' => $response->json('access_token'),
             ]);
 
+            if (! $response->successful() || ! is_string($response->json('access_token'))) {
+                Log::warning('TrustedX token exchange failed', [
+                    'operation' => 'obtainMobileToken',
+                    'status' => $response->status(),
+                    'error' => $response->json('error'),
+                    'error_description' => $response->json('error_description'),
+                ]);
+
+                return [
+                    'status' => false,
+                    'message' => 'Il semblerait que le code fournis soit invalide ou expiré.',
+                ];
+            }
+
             return [
                 'status' => true,
                 'data' => $response->json(),
@@ -108,10 +136,10 @@ class TrustedXClientService
     /**
      * @return array<string, mixed>
      */
-    public function userInfo(string $code): array
+    public function userInfo(string $code, ?string $redirectUri = null): array
     {
         try {
-            $resp = $this->obtainToken($code);
+            $resp = $this->obtainToken($code, $redirectUri);
             if ($resp['status']) {
                 $access_token = $resp['data']['access_token'];
             } else {
@@ -294,7 +322,7 @@ class TrustedXClientService
                 $data = json_decode($response->getBody()->getContents(), true);
                 $output = ['status' => true, 'data' => $data];
             } else {
-                $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer votre copte nous vous prions de réessayer.'];
+                $output = ['status' => false, 'message' => 'Nous n\'avons pas pû vous créer votre compte nous vous prions de réessayer.'];
             }
 
             return $output;
