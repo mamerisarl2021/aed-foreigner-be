@@ -31,13 +31,13 @@
             "name": "Enrollment - Manager"
         },
         {
+            "name": "Enrollment - Physique"
+        },
+        {
             "name": "Enrollment - OTP"
         },
         {
             "name": "Enrollment - KYC"
-        },
-        {
-            "name": "Enrollment - Physique"
         },
         {
             "name": "Enrollment - Suivi"
@@ -1517,7 +1517,7 @@
         "/v1/agents": {
             "get": {
                 "operationId": "agents.index",
-                "description": "Optional role filter. Defaults: per_page=15 (max 100).",
+                "description": "Optional role filter (`AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`).\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
                 "summary": "List staff users (admin only)",
                 "tags": [
                     "Admin Auth"
@@ -1546,7 +1546,6 @@
                                 "AGENT",
                                 "RESPONSABLE_DE_VALIDATION",
                                 "MANAGER",
-                                "ADMINISTRATEUR_PLATEFORME",
                                 null
                             ]
                         }
@@ -4451,197 +4450,6 @@
                 "security": []
             }
         },
-        "/v1/enrolements/etrangers": {
-            "post": {
-                "operationId": "enrolements.etrangers.store",
-                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT,\nemail_verifie and telephone_verifie (always true: both OTPs are required before submit).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
-                "summary": "Submit personne physique enrollment",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SubmitEnrollmentRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/enrolements/finalisation": {
-            "get": {
-                "operationId": "enrolements.finalisation.show",
-                "description": "Open the secure link from the approval email (`?token=`). Optional `npi` (legacy links)\nmust match the invitation when present; digits only. Success data: demande_id, numero_suivi, email, statut.\nThe applicant then types the generated NPI (not numero_suivi) on the form.\nToken TTL: 60 minutes from issuance.",
-                "summary": "Validate finalisation invitation token",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "parameters": [
-                    {
-                        "name": "token",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "maxLength": 100
-                        }
-                    },
-                    {
-                        "name": "npi",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "pattern": "^[0-9]+$",
-                            "maxLength": 50
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            },
-            "post": {
-                "operationId": "enrolements.finalisation.store",
-                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN and sets TrustedX password/PIN in this request\n(explicit exception to \u00a710.1: ENROLEE is returned only after TrustedX credentials exist).\nSuccess 200: statut ENROLEE, npi, numero_suivi, demande_id.",
-                "summary": "Complete enrollment (password + security questions)",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreFinalisationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/enrolements/finalisation/otp/send": {
-            "post": {
-                "operationId": "enrolements.finalisation.otp.send",
-                "description": "Body: npi (typed digits, generated NPI) + token (from the invitation link).\nThe NPI must match the invitation. Demand must be APPROUVEE.\nSends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).\nGuest-capable: no Sanctum token required; an existing session does not block the call.",
-                "summary": "Send finalisation email OTP",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SendFinalisationOtpRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/enrolements/finalisation/otp/verify": {
-            "post": {
-                "operationId": "enrolements.finalisation.otp.verify",
-                "description": "Body: npi (digits), token, otp (6 digits). On success stores a short-lived OTP proof (~15 min)\nrequired before POST /enrolements/finalisation.\nSuccess data: npi, demande_id, otp_verified=true.",
-                "summary": "Verify finalisation email OTP",
-                "tags": [
-                    "Enrollment - Physique"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/VerifyFinalisationOtpRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
         "/v1/enrolements": {
             "get": {
                 "operationId": "enrolements.index",
@@ -5290,6 +5098,197 @@
                 }
             }
         },
+        "/v1/enrolements/etrangers": {
+            "post": {
+                "operationId": "enrolements.etrangers.store",
+                "description": "Diagram \u00a72.4. Requires OTP + KYC gates. Full identity data and documents\n(selfie, recto; verso optional) are required at submit time.\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le if omitted at KYC.\nSuccess 202 data: demande_id (UUID), numero_suivi (tracking code PK\u2026), statut EN_ATTENTE_AGENT,\nemail_verifie and telephone_verifie (always true: both OTPs are required before submit).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "summary": "Submit personne physique enrollment",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubmitEnrollmentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/enrolements/finalisation": {
+            "get": {
+                "operationId": "enrolements.finalisation.show",
+                "description": "Open the secure link from the approval email (`?token=`). Optional `npi` (legacy links)\nmust match the invitation when present; digits only. Success data: demande_id, numero_suivi, email, statut.\nThe applicant then types the generated NPI (not numero_suivi) on the form.\nToken TTL: 60 minutes from issuance.",
+                "summary": "Validate finalisation invitation token",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "npi",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^[0-9]+$",
+                            "maxLength": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            },
+            "post": {
+                "operationId": "enrolements.finalisation.store",
+                "description": "Body: npi (digits), token (invitation), password (min 8),\nsecurity_questions (min 2 items with question + answer).\nRequires prior POST \u2026/finalisation/otp/verify for the same NPI.\nNo client PIN \u2014 server generates a 4-digit PIN and sets TrustedX password/PIN in this request\n(explicit exception to \u00a710.1: ENROLEE is returned only after TrustedX credentials exist).\nSuccess 200: statut ENROLEE, npi, numero_suivi, demande_id.",
+                "summary": "Complete enrollment (password + security questions)",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreFinalisationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/enrolements/finalisation/otp/send": {
+            "post": {
+                "operationId": "enrolements.finalisation.otp.send",
+                "description": "Body: npi (typed digits, generated NPI) + token (from the invitation link).\nThe NPI must match the invitation. Demand must be APPROUVEE.\nSends a 6-digit OTP to the enrollment email (AED OTP, not TrustedX MFA).\nGuest-capable: no Sanctum token required; an existing session does not block the call.",
+                "summary": "Send finalisation email OTP",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendFinalisationOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/enrolements/finalisation/otp/verify": {
+            "post": {
+                "operationId": "enrolements.finalisation.otp.verify",
+                "description": "Body: npi (digits), token, otp (6 digits). On success stores a short-lived OTP proof (~15 min)\nrequired before POST /enrolements/finalisation.\nSuccess data: npi, demande_id, otp_verified=true.",
+                "summary": "Verify finalisation email OTP",
+                "tags": [
+                    "Enrollment - Physique"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyFinalisationOtpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/v1/enrolements/suivi": {
             "post": {
                 "operationId": "enrolements.suivi",
@@ -5414,13 +5413,57 @@
         },
         "schemas": {
             "ActivityLog": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "action_code": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "actor_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "enrollment_request_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "metadata": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "action_code",
+                    "description",
+                    "actor_user_id",
+                    "enrollment_request_id",
+                    "metadata",
+                    "ip_address",
+                    "created_at"
+                ],
                 "title": "ActivityLog"
             },
             "ActivityLogDetailResource": {
@@ -5436,7 +5479,8 @@
                         "type": "string"
                     },
                     "date": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "actor": {
                         "type": [
@@ -5471,13 +5515,23 @@
                         ]
                     },
                     "enrollment_request_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "metadata": {
-                        "type": "string"
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
                     },
                     "ip_address": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -5551,13 +5605,101 @@
                 "title": "App.Http.Requests.Foreigner.VerifyOtpRequest"
             },
             "Audit": {
-                "type": "array",
-                "items": {
-                    "type": "string"
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "user_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "event": {
+                        "type": "string"
+                    },
+                    "auditable_type": {
+                        "type": "string"
+                    },
+                    "auditable_id": {
+                        "type": "string"
+                    },
+                    "old_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "new_values": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "user_agent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tags": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
                 },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false,
+                "required": [
+                    "id",
+                    "user_type",
+                    "user_id",
+                    "event",
+                    "auditable_type",
+                    "auditable_id",
+                    "old_values",
+                    "new_values",
+                    "url",
+                    "ip_address",
+                    "user_agent",
+                    "tags",
+                    "created_at",
+                    "updated_at"
+                ],
                 "title": "Audit"
             },
             "ChangeClientPasswordRequest": {
@@ -7335,6 +7477,9 @@
                     },
                     "password": {
                         "type": "string"
+                    },
+                    "remember": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -8160,128 +8305,8 @@
                 "title": "UpdateUserStatusRequest"
             },
             "User": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "first_name": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "sexe": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "email": {
-                        "type": "string"
-                    },
-                    "phonenumber": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "nationality": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "profile": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "npi": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "trustedx_registered_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "security_questions": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "must_change_password": {
-                        "type": "boolean"
-                    },
-                    "last_login_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "email_verified_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "link": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "first_name",
-                    "sexe",
-                    "email",
-                    "phonenumber",
-                    "nationality",
-                    "profile",
-                    "npi",
-                    "trustedx_registered_at",
-                    "security_questions",
-                    "status",
-                    "must_change_password",
-                    "last_login_at",
-                    "email_verified_at",
-                    "created_at",
-                    "updated_at",
-                    "link"
-                ],
+                "type": "array",
+                "items": {},
                 "title": "User"
             },
             "UserResource": {
