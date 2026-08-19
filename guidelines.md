@@ -626,7 +626,7 @@ POST /admin/password/change    { current_password, password, password_confirmati
 POST /agents/register          { name, first_name, email, phonenumber, role }  (admin)
 ```
 
-Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Policies remain the authorization SoT.
+Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Subsequent staff API calls (`GET /enrolements`, prise en charge, instruction, validation, `/agents`, `/me`, …) use **that Sanctum token** and `auth:sanctum` — they are **not** behind the infra `keycloak` middleware (one `Authorization` header cannot be both a Sanctum token and an infra JWT). Policies remain the authorization SoT.
 
 Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When `STAFF_KEYCLOAK_ENABLED=true`, `POST /agents/register` / update / delete and `php artisan manage:admin` push the user to realm `pki-portal` (Admin API, confidential client `backoffice-staff-admin`). WelcomeAgentJob is skipped; Keycloak sends `UPDATE_PASSWORD` (realm SMTP) or the operator sets the password in Keycloak. Requires `KC_STAFF_ADMIN_SECRET`. Keycloak-only users are still not imported.
 
@@ -820,6 +820,7 @@ Do not pretend these exist in code without implementing them:
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
+- **`KEYCLOAK_ENABLED`** (default true, set `false` locally): infra gateway JWT on **guest** routes only (`/otp/*`, `/kyc/*`, `POST /enrolements/etrangers`, suivi, finalisation). Staff queue `GET/PATCH /enrolements*` is Sanctum + policy.
 
 ### 13.9 Legacy code
 

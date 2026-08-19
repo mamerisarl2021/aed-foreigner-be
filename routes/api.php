@@ -93,6 +93,16 @@ Route::group([], function () {
         Route::get('/management/enrolements/physiques/{id}', [ManagerEnrollmentController::class, 'showPhysique'])->name('management.enrolements.physiques.show');
         Route::get('/management/enrolements/morales', [ManagerEnrollmentController::class, 'indexMorales'])->name('management.enrolements.morales.index');
         Route::get('/management/enrolements/morales/{id}', [ManagerEnrollmentController::class, 'showMorale'])->name('management.enrolements.morales.show');
+
+        // Agent/responsable queue — Sanctum only. Do not nest under `keycloak`
+        // (infra gateway JWT). Staff BO sends the Sanctum token from
+        // POST /admin/login/keycloak; KEYCLOAK_ENABLED is the guest/gateway flag.
+        Route::get('/enrolements', [EnrollmentController::class, 'index'])->name('enrolements.index');
+        Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge'])->name('enrolements.prise-en-charge');
+        Route::patch('/enrolements/{id}/prise-en-charge-validation', [EnrollmentController::class, 'priseEnChargeValidation'])->name('enrolements.prise-en-charge-validation');
+        Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction'])->name('enrolements.instruction');
+        Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation'])->name('enrolements.validation');
+        Route::get('/enrolements/{id}', [EnrollmentController::class, 'show'])->name('enrolements.show');
     });
 
     Route::middleware(['keycloak'])->group(function () {
@@ -122,15 +132,6 @@ Route::group([], function () {
         Route::post('/enrolements/finalisation', [FinalisationController::class, 'store'])
             ->middleware(['throttle:password-reset'])
             ->name('enrolements.finalisation.store');
-
-        Route::middleware(['auth:sanctum'])->group(function () {
-            Route::get('/enrolements', [EnrollmentController::class, 'index'])->name('enrolements.index');
-            Route::patch('/enrolements/{id}/prise-en-charge', [EnrollmentController::class, 'priseEnCharge'])->name('enrolements.prise-en-charge');
-            Route::patch('/enrolements/{id}/prise-en-charge-validation', [EnrollmentController::class, 'priseEnChargeValidation'])->name('enrolements.prise-en-charge-validation');
-            Route::patch('/enrolements/{id}/instruction', [EnrollmentController::class, 'instruction'])->name('enrolements.instruction');
-            Route::patch('/enrolements/{id}/validation', [EnrollmentController::class, 'validation'])->name('enrolements.validation');
-            Route::get('/enrolements/{id}', [EnrollmentController::class, 'show'])->name('enrolements.show');
-        });
     });
 
     Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail'])

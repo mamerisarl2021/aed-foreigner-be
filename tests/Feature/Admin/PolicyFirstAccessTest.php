@@ -95,6 +95,28 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function staff_enrollment_queue_accepts_sanctum_when_gateway_keycloak_is_on(): void
+    {
+        config(['consul.keycloak.enabled' => true]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/enrolements'))
+            ->assertOk()
+            ->assertJsonMissing(['message' => 'Token Keycloak invalide.']);
+    }
+
+    #[Test]
+    public function guest_kyc_still_requires_infra_keycloak_when_gateway_is_on(): void
+    {
+        config(['consul.keycloak.enabled' => true]);
+
+        $this->postJson($this->api('/kyc/verify'))
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Token Keycloak requis.');
+    }
+
+    #[Test]
     public function admin_can_list_agents_and_enrolled_persons(): void
     {
         Sanctum::actingAs($this->admin);
