@@ -54,9 +54,21 @@ final class WelcomeAgentJobTest extends TestCase
 
         (new WelcomeAgentJob($user))->handle();
 
-        Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
-            && str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/reset-password')
-            && $request['temporary'] === false);
+        Http::assertSent(function (Request $request): bool {
+            if ($request->method() !== 'PUT' || ! str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/reset-password')) {
+                return false;
+            }
+
+            $password = $request['value'] ?? null;
+
+            return $request['temporary'] === false
+                && is_string($password)
+                && strlen($password) === 16
+                && (bool) preg_match('/[A-Z]/', $password)
+                && (bool) preg_match('/[a-z]/', $password)
+                && (bool) preg_match('/[0-9]/', $password)
+                && (bool) preg_match('/[!@#$%&*\-_]/', $password);
+        });
         Bus::assertDispatched(SendEmailNotificationJob::class);
     }
 

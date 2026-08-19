@@ -242,7 +242,14 @@ final class StaffKeycloakAdminClient
             'temporary' => false,
         ]);
         KeycloakCallLogger::keycloak('admin_reset_password', 'PUT', $url, $response->status());
-        $this->ensureOk($response, 'Mot de passe Keycloak impossible à définir.');
+        if ($response->successful()) {
+            return;
+        }
+
+        throw new StaffKeycloakAdminException(
+            'Mot de passe Keycloak impossible à définir. '.$this->responseError($response),
+            502
+        );
     }
 
     private function replaceStaffRealmRole(string $userId, string $targetRole): void
