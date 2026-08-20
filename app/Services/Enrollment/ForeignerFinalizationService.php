@@ -19,11 +19,13 @@ use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\ClientLocalCredentials;
 use App\Support\NotificationRecipient;
+use App\Support\SecurityQuestions;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 final class ForeignerFinalizationService
 {
@@ -175,6 +177,12 @@ final class ForeignerFinalizationService
             return ServiceResult::fail('Deux questions de sécurité sont requises.', null, 422);
         }
 
+        try {
+            $hashedQuestions = SecurityQuestions::persist($securityQuestions);
+        } catch (InvalidArgumentException $e) {
+            return ServiceResult::fail($e->getMessage(), null, 422);
+        }
+
         $lookup = $this->trustedXClient->getUserWithNPI($user->npi);
         if (! ($lookup['status'] ?? false)) {
             return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
@@ -204,7 +212,7 @@ final class ForeignerFinalizationService
         try {
             ClientLocalCredentials::apply($user, 'password', $password);
             ClientLocalCredentials::apply($user, 'pin', $generatedPin);
-            $user->security_questions = $securityQuestions;
+            $user->security_questions = $hashedQuestions;
             $user->status = 'ACTIVE';
             $user->save();
 

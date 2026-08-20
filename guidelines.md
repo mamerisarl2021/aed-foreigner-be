@@ -693,7 +693,7 @@ Rules:
 - Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
 - `POST …/otp/send` / `…/otp/verify` / `POST /enrolements/finalisation`: **guest-capable** (no Sanctum required; an existing session does not block). **NPI + invitation token** required together (sequential NPIs must not send OTP alone). `npi` is digits only; `otp` is 6 digits. Email OTP is AED, distinct from TrustedX login MFA. Typed NPI must match the invitation — `numero_suivi` is not accepted.
 - After successful OTP verify: short-lived cache proof keyed by NPI (like KYC gate).
-- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1).
+- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1). Answers are hashed at rest (`answer_hash`); the HTTP body stays `{ question, answer }`.
 - Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
 - Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
@@ -770,11 +770,12 @@ GET  /me                                 profil + identites (id, type, statut, n
 POST /clients/logout                     révoque le token Sanctum courant
 POST /clients/password/change            { current_password, password, password_confirmation }
 POST /clients/pin/change                 { current_pin, pin, pin_confirmation }  (exactly 4 digits)
-GET  /clients/security-questions         questions without answers
+GET  /clients/security-questions         questions without answers or hashes
 PUT  /clients/security-questions         { current_password, security_questions }
 ```
 
 - PIN is still **generated server-side at finalisation**; the client may change it later with the current PIN.
+- Security-question answers are hashed at rest (`users.security_questions[].answer_hash`, same Hash driver as passwords). HTTP write bodies stay `{ question, answer }`; GET omits answers and hashes. Blank answers after trim → 422.
 - Password/PIN changes dual-write TrustedX and a local hash (`users.password` / `users.pin_hash`). If the local hash is missing (legacy enrollments), return 422 and tell the caller to use the e-mail reset.
 - Changing the password revokes all Sanctum tokens.
 - Client activity **history** is out of this lot.

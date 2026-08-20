@@ -7,6 +7,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use App\Services\PKI\TrustedXClientService;
 use App\Support\ClientLocalCredentials;
+use App\Support\SecurityQuestions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -139,7 +140,10 @@ final class ClientSecurityTest extends TestCase
             ->assertJsonPath('data.configure', true)
             ->assertJsonPath('data.questions.0.question', 'Ville de naissance ?')
             ->assertJsonMissingPath('data.questions.0.answer')
+            ->assertJsonMissingPath('data.questions.0.answer_hash')
             ->assertJsonMissing(['data' => ['questions' => [['answer' => 'secret-answer']]]]);
+
+        $this->assertArrayNotHasKey('security_questions', $this->client->toArray());
     }
 
     #[Test]
@@ -164,10 +168,14 @@ final class ClientSecurityTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('data.questions.0.question', 'Couleur préférée ?')
-            ->assertJsonMissingPath('data.questions.0.answer');
+            ->assertJsonMissingPath('data.questions.0.answer')
+            ->assertJsonMissingPath('data.questions.0.answer_hash');
 
         $this->client->refresh();
-        $this->assertSame('bleu', $this->client->security_questions[0]['answer'] ?? null);
+        $stored = $this->client->security_questions;
+        $this->assertIsArray($stored);
+        $this->assertArrayNotHasKey('answer', $stored[0]);
+        $this->assertTrue(SecurityQuestions::answerMatches('bleu', (string) ($stored[0]['answer_hash'] ?? '')));
     }
 
     #[Test]

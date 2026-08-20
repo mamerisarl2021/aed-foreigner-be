@@ -47,8 +47,6 @@ final class ClientLocalCredentials
 
     public static function securityQuestionsConfigured(User $user): bool
     {
-        $questions = $user->security_questions;
-
-        return is_array($questions) && $questions !== [];
+        return SecurityQuestions::configured($user->security_questions);
     }
 }

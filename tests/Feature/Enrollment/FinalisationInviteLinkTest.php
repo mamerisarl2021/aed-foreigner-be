@@ -13,6 +13,7 @@ use App\Models\EnrollmentRequest;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\PKI\TrustedXClientService;
+use App\Support\SecurityQuestions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -207,6 +208,14 @@ final class FinalisationInviteLinkTest extends TestCase
         ]);
         $this->assertSame('ACTIVE', $user->fresh()->status);
         $this->assertSame(EnrollmentStatus::Enrolee, $enrollment->fresh()->status);
+
+        $stored = $user->fresh()->security_questions;
+        $this->assertIsArray($stored);
+        $this->assertArrayNotHasKey('answer', $stored[0]);
+        $this->assertTrue(SecurityQuestions::answerMatches('Cotonou', (string) ($stored[0]['answer_hash'] ?? '')));
+        $encoded = json_encode($stored);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('Cotonou', $encoded);
     }
 
     #[Test]

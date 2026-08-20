@@ -10,6 +10,8 @@ use App\Services\ActivityLog\ActivityLogService;
 use App\Services\PKI\TrustedXClientService;
 use App\Services\ServiceResult;
 use App\Support\ClientLocalCredentials;
+use App\Support\SecurityQuestions;
+use InvalidArgumentException;
 
 final class ClientSecurityService
 {
@@ -97,7 +99,7 @@ final class ClientSecurityService
     {
         return [
             'configure' => ClientLocalCredentials::securityQuestionsConfigured($user),
-            'questions' => $this->questionsWithoutAnswers($user),
+            'questions' => SecurityQuestions::questionsForDisplay($user->security_questions),
         ];
     }
 
@@ -114,7 +116,12 @@ final class ClientSecurityService
             return ServiceResult::fail('Mot de passe actuel incorrect.', null, 400);
         }
 
-        $user->security_questions = $securityQuestions;
+        try {
+            $user->security_questions = SecurityQuestions::persist($securityQuestions);
+        } catch (InvalidArgumentException $e) {
+            return ServiceResult::fail($e->getMessage(), null, 422);
+        }
+
         $user->save();
 
         $this->activityLog->record(
@@ -155,29 +162,5 @@ final class ClientSecurityService
         }
 
         return ServiceResult::ok('ok');
-    }
-
-    /**
-     * @return list<array{question: string}>
-     */
-    private function questionsWithoutAnswers(User $user): array
-    {
-        $raw = $user->security_questions;
-        if (! is_array($raw)) {
-            return [];
-        }
-
-        $questions = [];
-        foreach ($raw as $item) {
-            if (! is_array($item)) {
-                continue;
-            }
-            $question = $item['question'] ?? null;
-            if (is_string($question) && $question !== '') {
-                $questions[] = ['question' => $question];
-            }
-        }
-
-        return $questions;
     }
 }
