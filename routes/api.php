@@ -48,6 +48,12 @@ Route::group([], function () {
             ->middleware('throttle:password-reset')
             ->name('clients.security-questions.update');
 
+        // Personne morale étape 2 : document d'identité seul (ni selfie ni liveness).
+        // Sanctum comme le reste du parcours morale — /kyc/verify reste la porte physique.
+        Route::post('/kyc/document/verify', [KycController::class, 'verifyDocument'])
+            ->middleware('throttle:document-verify')
+            ->name('kyc.document.verify');
+
         // Personne morale ownership is enforced by EnrollmentRequestPolicy.
         Route::prefix('enrolements/morales')->name('enrolements.morales.')->group(function () {
             Route::get('/', [PersonneMoraleEnrollmentController::class, 'index'])->name('index');

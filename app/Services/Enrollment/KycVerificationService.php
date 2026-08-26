@@ -107,6 +107,61 @@ final class KycVerificationService
         ]);
     }
 
+    /**
+     * Étape 2 du parcours personne morale : lecture du document d'identité seule.
+     * Pas de selfie, donc ni comparaison faciale ni session de liveness — le client
+     * est déjà authentifié et enrôlé, l'OTP et le contrôle du visage ont eu lieu
+     * lors de son propre enrôlement physique.
+     */
+    public function verifyDocument(Request $request, User $client): ServiceResult
+    {
+        $files = array_filter([
+            'recto' => $request->file('recto')?->getPathname(),
+            'verso' => $request->file('verso')?->getPathname(),
+        ]);
+
+        $analysis = $this->regulaService->analyzeDocument($files, ['email' => $client->email]);
+
+        if (($analysis['status'] ?? '') !== 'OK') {
+            $this->activityLog->record(
+                ActivityLogAction::KycVerifie,
+                sprintf('Échec de la vérification du document d\'identité pour %s.', $client->email),
+                $client->id,
+                null,
+                ['email' => $client->email, 'ok' => false, 'document_only' => true],
+            );
+
+            return ServiceResult::fail('Échec de la vérification du document d\'identité.', $analysis, 422);
+        }
+
+        Cache::put(
+            $this->userCacheKey((string) $client->id),
+            [
+                'verified_at' => now()->toIso8601String(),
+                'selfie_captured_at' => null,
+                'liveness' => null,
+                'similarity' => null,
+                'risk_score' => $analysis['risk_score'] ?? null,
+                'analysis_details' => $analysis['details'] ?? null,
+            ],
+            now()->addMinutes(self::VALIDITY_MINUTES)
+        );
+
+        $this->activityLog->record(
+            ActivityLogAction::KycVerifie,
+            sprintf('Document d\'identité vérifié pour %s.', $client->email),
+            $client->id,
+            null,
+            ['email' => $client->email, 'ok' => true, 'document_only' => true],
+        );
+
+        return ServiceResult::ok('Document d\'identité vérifié.', [
+            'kyc_valid' => true,
+            'risk_score' => $analysis['risk_score'] ?? null,
+            'similarity' => null,
+        ]);
+    }
+
     public function isVerified(string $email, string $phonenumber): bool
     {
         return Cache::has($this->cacheKey(strtolower(trim($email)), $this->otpService->normalizePhone($phonenumber)));

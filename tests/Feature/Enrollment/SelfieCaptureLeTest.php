@@ -128,7 +128,7 @@ final class SelfieCaptureLeTest extends TestCase
     }
 
     #[Test]
-    public function morale_kyc_persists_capture_le_on_the_demande(): void
+    public function morale_document_kyc_leaves_the_capture_instant_empty(): void
     {
         Bus::fake();
         $this->freezeTime();
@@ -150,12 +150,8 @@ final class SelfieCaptureLeTest extends TestCase
 
         Sanctum::actingAs($client);
 
-        $capturedAt = now()->subMinutes(1)->toIso8601String();
-        $this->post($this->api('/kyc/verify'), [
-            'email' => $client->email,
-            'phonenumber' => $client->phonenumber,
-            'capture_le' => $capturedAt,
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+        // Étape 2 : document seul, aucune capture de selfie à horodater.
+        $this->post($this->api('/kyc/document/verify'), [
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
 
@@ -171,17 +167,12 @@ final class SelfieCaptureLeTest extends TestCase
             'legal_representative_first_name' => 'Ada',
             'is_legal_representative' => '1',
             'trade_register_extract' => UploadedFile::fake()->create('rccm.pdf', 100, 'application/pdf'),
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
 
         $enrollment = EnrollmentRequest::query()->where('type', 'PERSONNE_MORALE')->first();
         $this->assertNotNull($enrollment);
-        $this->assertNotNull($enrollment->selfie_captured_at);
-        $this->assertTrue(
-            $enrollment->selfie_captured_at->startOfSecond()
-                ->equalTo(Carbon::parse($capturedAt)->startOfSecond())
-        );
+        $this->assertNull($enrollment->selfie_captured_at);
     }
 
     #[Test]

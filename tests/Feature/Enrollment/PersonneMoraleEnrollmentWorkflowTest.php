@@ -75,9 +75,10 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
     #[Test]
     public function submit_is_forbidden_without_an_approved_physique_identity(): void
     {
-        $this->client->identities()->delete();
         Sanctum::actingAs($this->client);
+        // Le KYC passe tant que l'identité physique existe : c'est bien le dépôt qui doit fermer.
         $this->passKyc();
+        $this->client->identities()->delete();
 
         $this->post($this->api('/enrolements/morales'), $this->submitPayload())
             ->assertForbidden();
@@ -112,6 +113,74 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
         Bus::assertDispatched(MoraleEmailVerificationJob::class);
         Bus::assertNotDispatched(ForeignerFinalizedJob::class);
         Bus::assertNotDispatched(SendEmailNotificationJob::class);
+    }
+
+    #[Test]
+    public function document_kyc_step_needs_no_selfie_and_stores_no_face_score(): void
+    {
+        Bus::fake();
+        Sanctum::actingAs($this->client);
+
+        $this->post($this->api('/kyc/document/verify'), [
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.kyc_valid', true)
+            ->assertJsonPath('data.similarity', null);
+
+        $this->post($this->api('/enrolements/morales'), $this->submitPayload())->assertOk();
+
+        $enrollment = EnrollmentRequest::query()->where('type', 'PERSONNE_MORALE')->first();
+        $this->assertNotNull($enrollment);
+        $this->assertNull($enrollment->selfie_captured_at);
+        $this->assertNull($enrollment->similarity);
+        $this->assertNull($enrollment->liveness);
+        $this->assertArrayNotHasKey('selfie', (array) $enrollment->documents);
+        $this->assertTrue(($enrollment->analysis_details['document_only'] ?? false) === true);
+    }
+
+    #[Test]
+    public function document_kyc_step_is_refused_without_an_approved_physique_identity(): void
+    {
+        $this->client->identities()->delete();
+        Sanctum::actingAs($this->client);
+
+        $this->post($this->api('/kyc/document/verify'), [
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ])->assertForbidden();
+    }
+
+    #[Test]
+    public function supporting_documents_must_be_pdf_files(): void
+    {
+        Bus::fake();
+        Sanctum::actingAs($this->client);
+        $this->passKyc();
+
+        $payload = $this->submitPayload();
+        $payload['trade_register_extract'] = UploadedFile::fake()->image('rccm.jpg');
+
+        $this->post($this->api('/enrolements/morales'), $payload)
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'data.trade_register_extract.0',
+                'L\'extrait du registre de commerce doit être un fichier PDF.'
+            );
+    }
+
+    #[Test]
+    public function supporting_documents_are_capped_at_five_megabytes(): void
+    {
+        Bus::fake();
+        Sanctum::actingAs($this->client);
+        $this->passKyc();
+
+        $payload = $this->submitPayload();
+        $payload['statutes'] = UploadedFile::fake()->create('statuts.pdf', 5121, 'application/pdf');
+
+        $this->post($this->api('/enrolements/morales'), $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('data.statutes.0', 'Les statuts ne doivent pas dépasser 5 Mo.');
     }
 
     #[Test]
@@ -343,10 +412,7 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
 
     private function passKyc(): void
     {
-        $this->post($this->api('/kyc/verify'), [
-            'email' => $this->client->email,
-            'phonenumber' => $this->client->phonenumber,
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+        $this->post($this->api('/kyc/document/verify'), [
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
     }
@@ -370,7 +436,6 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
             'legal_representative_first_name' => 'Ada',
             'is_legal_representative' => '1',
             'trade_register_extract' => UploadedFile::fake()->create('rccm.pdf', 100, 'application/pdf'),
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ];
     }

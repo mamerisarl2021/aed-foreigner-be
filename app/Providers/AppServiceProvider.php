@@ -62,6 +62,12 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->ip());
         });
 
+        // Étape 2 personne morale : route authentifiée, donc quota par client et non par IP —
+        // plusieurs demandeurs peuvent partager une sortie NAT.
+        RateLimiter::for('document-verify', function (Request $request) {
+            return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());
         });

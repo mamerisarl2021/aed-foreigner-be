@@ -53,12 +53,15 @@ class PersonneMoraleEnrollmentController extends BaseController
     }
 
     /**
-     * Submit personne morale enrollment
+     * Submit personne morale enrollment (étape 3)
      *
-     * Requires authenticated client with finalized physique enrollment and a prior
-     * POST /kyc/verify session (OTP skipped for ACTIVE clients).
-     * Optional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on
-     * selfie_captured_at for analyse_kyc.selfie.capture_le.
+     * Requires an authenticated client with a finalized physique enrollment and a prior
+     * POST /kyc/document/verify session (étape 2 — document d'identité seul, ni selfie ni
+     * liveness). Parcours : étape 1 formulaire d'identification, étape 2 document d'identité,
+     * étape 3 pièces justificatives puis soumission.
+     * Pièces justificatives (trade_register_extract, statutes, procuration) : **PDF uniquement,
+     * 5 Mo par fichier**. recto / verso restent le document d'identité du demandeur, joint au
+     * dossier pour l'agent.
      * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK…).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
@@ -107,7 +110,8 @@ class PersonneMoraleEnrollmentController extends BaseController
     /**
      * Correct a rejected personne morale enrollment (owner, A_CORRIGER only)
      *
-     * Updates company fields and attachments (not official contacts, not KYC selfie).
+     * Updates company fields and attachments (not official contacts, not the KYC document).
+     * Pièces justificatives : PDF uniquement, 5 Mo par fichier.
      * On success the request returns to EN_ATTENTE_AGENT.
      */
     #[PathParameter('id', description: 'Personne morale enrollment request UUID.', type: 'string', format: 'uuid')]

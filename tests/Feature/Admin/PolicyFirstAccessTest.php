@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Identity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -120,6 +122,39 @@ final class PolicyFirstAccessTest extends TestCase
         $this->postJson($this->api('/kyc/verify'))
             ->assertUnauthorized()
             ->assertJsonPath('message', 'Token Keycloak requis.');
+    }
+
+    #[Test]
+    public function morale_document_kyc_accepts_sanctum_when_gateway_keycloak_is_on(): void
+    {
+        config(['consul.keycloak.enabled' => true, 'services.regula.mock' => true]);
+
+        $this->client->update(['status' => 'ACTIVE']);
+        Identity::query()->create([
+            'user_id' => $this->client->id,
+            'type' => 'IN_PERSON',
+            'level' => 'ADVANCED',
+            'status' => 'APPROVED',
+            'proof' => ['selfiePath' => ''],
+        ]);
+
+        Sanctum::actingAs($this->client);
+
+        $this->postJson($this->api('/kyc/document/verify'), [
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ])
+            ->assertOk()
+            ->assertJsonMissing(['message' => 'Token Keycloak requis.']);
+    }
+
+    #[Test]
+    public function agent_cannot_run_the_morale_document_kyc(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->postJson($this->api('/kyc/document/verify'), [
+            'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ])->assertForbidden();
     }
 
     #[Test]

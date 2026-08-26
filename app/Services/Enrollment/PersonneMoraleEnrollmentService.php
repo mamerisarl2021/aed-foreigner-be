@@ -52,6 +52,31 @@ class PersonneMoraleEnrollmentService
         ];
     }
 
+    /**
+     * Pièces acceptées au dépôt : justificatifs (étape 3) + document d'identité (étape 2).
+     * Plus de selfie : l'étape 2 ne fait plus de session de liveness.
+     *
+     * @var list<string>
+     */
+    private const SUBMIT_FILE_SLOTS = [
+        'trade_register_extract',
+        'statutes',
+        'procuration',
+        'recto',
+        'verso',
+    ];
+
+    /**
+     * La correction ne rejoue que les justificatifs, jamais le KYC du demandeur.
+     *
+     * @var list<string>
+     */
+    private const CORRECTION_FILE_SLOTS = [
+        'trade_register_extract',
+        'statutes',
+        'procuration',
+    ];
+
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
         EnrollmentStatus::Approuvee->value,
@@ -85,11 +110,12 @@ class PersonneMoraleEnrollmentService
 
         $email = strtolower(trim($request->input('email')));
         $phone = PhoneNumber::normalize((string) $request->input('phonenumber'));
-        $uploadedFiles = $this->uploadMoraleFiles($request);
+        $uploadedFiles = $this->uploadMoraleFiles($request, self::SUBMIT_FILE_SLOTS);
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
         $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
-        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
+        // Null sur le parcours actuel (document seul) ; renseigné par une session /kyc/verify héritée.
+        $capturedAt = $this->stringOrNull($kycSession['selfie_captured_at'] ?? null);
 
         DB::beginTransaction();
         try {
@@ -205,7 +231,7 @@ class PersonneMoraleEnrollmentService
             );
         }
 
-        $uploadedFiles = $this->uploadMoraleFiles($request);
+        $uploadedFiles = $this->uploadMoraleFiles($request, self::CORRECTION_FILE_SLOTS);
         $existingDocs = is_array($enrollment->documents) ? $enrollment->documents : [];
         $documents = array_merge($existingDocs, array_filter($uploadedFiles));
 
@@ -434,16 +460,19 @@ class PersonneMoraleEnrollmentService
     }
 
     /**
+     * Ne stocke que les emplacements validés par le Form Request de l'opération :
+     * un fichier hors contrat ne doit jamais atteindre le disque.
+     *
+     * @param  list<string>  $slots
      * @return array<string, string|null>
      */
-    private function uploadMoraleFiles(Request $request): array
+    private function uploadMoraleFiles(Request $request, array $slots): array
     {
         $uploadedFiles = [];
-        $keys = ['trade_register_extract', 'statutes', 'procuration', 'selfie', 'recto', 'verso'];
 
-        foreach ($keys as $key) {
-            if ($request->hasFile($key)) {
-                $uploadedFiles[$key] = $request->file($key)?->store('tmp/enrollments/morale', 'local');
+        foreach ($slots as $slot) {
+            if ($request->hasFile($slot)) {
+                $uploadedFiles[$slot] = $request->file($slot)?->store('tmp/enrollments/morale', 'local');
             }
         }
 

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Enrollment\ReadDocumentRequest;
+use App\Http\Requests\Enrollment\VerifyDocumentRequest;
 use App\Http\Requests\Enrollment\VerifyKycRequest;
+use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\DocumentReadService;
 use App\Services\Enrollment\KycVerificationService;
 use Dedoc\Scramble\Attributes\Group;
@@ -23,7 +25,8 @@ final class KycController extends BaseController
      * Sync KYC verification (Document Reader + Face match)
      *
      * Diagram §2.3. Guest physique: both OTP channels must be verified first.
-     * Authenticated ACTIVE client (morale): OTP skipped; session is cached on the user.
+     * Authenticated ACTIVE client: OTP skipped; session is cached on the user. Personne morale
+     * now uses POST /kyc/document/verify instead — document only, no liveness session.
      * When REGULA_MOCK=false: selfie + recto required; verso optional.
      * Optional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).
      * Client similarity is ignored for the OK/KO gate; scores come from Face /api/match.
@@ -37,6 +40,30 @@ final class KycController extends BaseController
     public function verify(VerifyKycRequest $request): JsonResponse
     {
         return $this->respond($this->kycVerification->verify($request));
+    }
+
+    /**
+     * Sync identity document verification (Document Reader only)
+     *
+     * Étape 2 du parcours personne morale : le document d'identité du demandeur est lu et
+     * contrôlé par Regula, **sans selfie, sans session de liveness et sans comparaison faciale**
+     * (le visage a déjà été contrôlé lors de son enrôlement physique).
+     * Authenticated ACTIVE client with an approved IN_PERSON identity (policy `submitMorale`).
+     * When REGULA_MOCK=false: recto required; verso optional.
+     * Success caches the KYC session ~30 min for `POST /enrolements/morales` (étape 3).
+     * data: { kyc_valid, risk_score, similarity } — `risk_score` and `similarity` are null:
+     * no face score is computed on this path.
+     */
+    public function verifyDocument(VerifyDocumentRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->sendError('Non authentifié.', null, 401);
+        }
+
+        $this->authorize('submitMorale', EnrollmentRequest::class);
+
+        return $this->respond($this->kycVerification->verifyDocument($request, $user));
     }
 
     /**
