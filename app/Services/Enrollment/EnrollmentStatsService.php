@@ -181,7 +181,7 @@ class EnrollmentStatsService
     }
 
     /**
-     * @return array{received: array{valeur: int, variation_pct: float|null}, in_progress: array{valeur: int, variation_pct: float|null}, approved: array{valeur: int, variation_pct: float|null}, rejected: array{valeur: int, variation_pct: float|null}, taux_rejet_global: array{valeur: float, variation_pct: float|null}}
+     * @return array{received: array{valeur: int, variation_pct: float|null}, in_progress: array{valeur: int, variation_pct: float|null}, approved: array{valeur: int, variation_pct: float|null}, rejected: array{valeur: int, variation_pct: float|null}, taux_rejet_global: array{valeur: float, variation_pct: float|null}, average_handling_days: array{valeur: float|null, variation_days: float|null}}
      */
     private function tendances(string $granularite): array
     {
@@ -193,6 +193,9 @@ class EnrollmentStatsService
         $currentTaux = $current['received'] > 0 ? round(($current['rejected'] / $current['received']) * 100, 1) : 0.0;
         $previousTaux = $previous['received'] > 0 ? round(($previous['rejected'] / $previous['received']) * 100, 1) : 0.0;
 
+        $currentAvgDays = $this->averageHandlingDays($currentFrom, $currentTo);
+        $previousAvgDays = $this->averageHandlingDays($previousFrom, $previousTo);
+
         return [
             'received' => $this->tendancePoint($current['received'], $previous['received']),
             'in_progress' => $this->tendancePoint($current['in_progress'], $previous['in_progress']),
@@ -202,7 +205,45 @@ class EnrollmentStatsService
                 'valeur' => $currentTaux,
                 'variation_pct' => $this->variationPct($currentTaux, $previousTaux),
             ],
+            'average_handling_days' => [
+                'valeur' => $currentAvgDays,
+                'variation_days' => $this->variationDays($currentAvgDays, $previousAvgDays),
+            ],
         ];
+    }
+
+    private function averageHandlingDays(?Carbon $from = null, ?Carbon $to = null): ?float
+    {
+        $query = EnrollmentRequest::query()
+            ->whereIn('status', [
+                EnrollmentStatus::Approuvee->value,
+                EnrollmentStatus::Enrolee->value,
+                EnrollmentStatus::Rejetee->value,
+            ]);
+
+        if ($from !== null) {
+            $query->where('created_at', '>=', $from);
+        }
+        if ($to !== null) {
+            $query->where('created_at', '<=', $to);
+        }
+
+        $avgHandlingSeconds = $query->avg(DB::raw('TIMESTAMPDIFF(SECOND, created_at, updated_at)'));
+
+        if ($avgHandlingSeconds === null) {
+            return null;
+        }
+
+        return round(((float) $avgHandlingSeconds) / 86400, 1);
+    }
+
+    private function variationDays(?float $current, ?float $previous): ?float
+    {
+        if ($current === null || $previous === null) {
+            return null;
+        }
+
+        return round($current - $previous, 1);
     }
 
     /**
@@ -257,7 +298,7 @@ class EnrollmentStatsService
     private function variationPct(float $current, float $previous): ?float
     {
         if ($previous == 0.0) {
-            return null;
+            return $current == 0.0 ? 0.0 : null;
         }
 
         return round((($current - $previous) / $previous) * 100, 1);
