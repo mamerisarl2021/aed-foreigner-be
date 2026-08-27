@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminActivityLogController;
+use App\Http\Controllers\AdminEnrolledCompanyController;
 use App\Http\Controllers\AdminEnrolledPersonController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
@@ -78,6 +79,11 @@ Route::group([], function () {
 
         Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index'])->name('admin.enrolled-persons.index');
         Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show'])->name('admin.enrolled-persons.show');
+        // Pendant morale de enrolled-persons, qui ne connaît que les physiques.
+        Route::get('/admin/enrolled-companies', [AdminEnrolledCompanyController::class, 'index'])->name('admin.enrolled-companies.index');
+        Route::get('/admin/enrolled-companies/{id}', [AdminEnrolledCompanyController::class, 'show'])
+            ->whereUuid('id')
+            ->name('admin.enrolled-companies.show');
         Route::post('/clients/set-password', [StaffDirectoryController::class, 'setClientPassword'])->name('clients.set-password');
 
         Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index'])->name('admin.activity-logs.index');

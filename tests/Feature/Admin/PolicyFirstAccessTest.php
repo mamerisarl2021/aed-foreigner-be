@@ -72,6 +72,27 @@ final class PolicyFirstAccessTest extends TestCase
         $this->getJson($this->api('/admin/enrolled-persons'))->assertForbidden();
     }
 
+    /**
+     * Le pendant morale est fermé au même titre : `EnrollmentRequestPolicy`
+     * ouvre tout à l'admin, mais elle ne garde pas cette route — c'est
+     * `EnrolledCompanyPolicy`, qui ne connaît que l'administrateur plateforme.
+     */
+    #[Test]
+    public function agent_cannot_list_enrolled_companies(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/admin/enrolled-companies'))->assertForbidden();
+    }
+
+    #[Test]
+    public function admin_can_list_enrolled_companies(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->getJson($this->api('/admin/enrolled-companies'))->assertOk();
+    }
+
     #[Test]
     public function client_cannot_access_stats_search_decrypt_or_update_status(): void
     {

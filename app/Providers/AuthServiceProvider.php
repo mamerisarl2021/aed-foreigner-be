@@ -12,6 +12,7 @@ use App\Models\OTP;
 use App\Models\User;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\AuthorizationPolicy;
+use App\Policies\EnrolledCompanyPolicy;
 use App\Policies\EnrolledPersonPolicy;
 use App\Policies\EnrollmentRejectMotifPolicy;
 use App\Policies\EnrollmentRequestPolicy;
@@ -40,6 +41,8 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('viewAnyEnrolledPerson', [EnrolledPersonPolicy::class, 'viewAny']);
         Gate::define('viewEnrolledPerson', [EnrolledPersonPolicy::class, 'view']);
+        Gate::define('viewAnyEnrolledCompany', [EnrolledCompanyPolicy::class, 'viewAny']);
+        Gate::define('viewEnrolledCompany', [EnrolledCompanyPolicy::class, 'view']);
         Gate::define('viewStats', [PlatformPolicy::class, 'viewStats']);
         Gate::define('viewAudits', [PlatformPolicy::class, 'viewAudits']);
         Gate::define('viewEncryptedDocuments', [PlatformPolicy::class, 'viewEncryptedDocuments']);
