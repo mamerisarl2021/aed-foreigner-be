@@ -50,6 +50,9 @@ class EnrollmentStatsService
             'average_handling_days' => $avgHandlingSeconds !== null
                 ? round(((float) $avgHandlingSeconds) / 86400, 1)
                 : null,
+            // Les cartes du pilotage lisent ici : chaque type porte ses propres
+            // compteurs et sa propre variation, le global ne les résume plus.
+            'par_type' => $this->parType($granularite),
             'reject_rate_by_motif' => $this->rejectRateByMotif($rejected),
             'evolution' => [
                 'granularite' => $granularite,
@@ -60,13 +63,55 @@ class EnrollmentStatsService
     }
 
     /**
+     * Compteurs et variations de chaque type de demande.
+     *
+     * La valeur est le cumul depuis toujours — ce que la carte affiche en
+     * grand — et la variation compare la période courante à la précédente,
+     * comme les tendances globales. Deux lectures différentes du même
+     * compteur, et c'est voulu : le manager veut le volume total et le sens
+     * dans lequel il bouge.
+     *
+     * @return array<string, array<string, array{valeur: int, variation_pct: float|null}>>
+     */
+    private function parType(string $granularite): array
+    {
+        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->tendanceWindows($granularite);
+
+        $bloc = [];
+        foreach (['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'] as $type) {
+            $total = $this->summarizeCounts($this->countsByStatus(null, null, $type));
+            $courant = $this->summarizeCounts($this->countsByStatus($currentFrom, $currentTo, $type));
+            $precedent = $this->summarizeCounts($this->countsByStatus($previousFrom, $previousTo, $type));
+
+            $compteurs = [];
+            foreach (['received', 'in_progress', 'approved', 'enrolled', 'rejected'] as $cle) {
+                $compteurs[$cle] = [
+                    'valeur' => $total[$cle],
+                    'variation_pct' => $this->variationPct(
+                        (float) $courant[$cle],
+                        (float) $precedent[$cle],
+                    ),
+                ];
+            }
+
+            $bloc[$type] = $compteurs;
+        }
+
+        return $bloc;
+    }
+
+    /**
      * @return array<string, int>
      */
-    private function countsByStatus(?Carbon $from = null, ?Carbon $to = null): array
+    private function countsByStatus(?Carbon $from = null, ?Carbon $to = null, ?string $type = null): array
     {
         $query = EnrollmentRequest::query()
             ->select('status', DB::raw('count(*) as total'))
             ->groupBy('status');
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
 
         if ($from !== null) {
             $query->where('created_at', '>=', $from);
@@ -85,8 +130,15 @@ class EnrollmentStatsService
     }
 
     /**
+     * Résumé d'un jeu de compteurs.
+     *
+     * `approved` et `enrolled` sont distincts : une décision favorable n'est pas
+     * un enrôlement — l'identité, ou l'entreprise, ne naît qu'au terme du
+     * parcours. Les additionner, comme le faisait ce résumé, empêchait le
+     * pilotage de dire combien de dossiers approuvés restent à finaliser.
+     *
      * @param  array<string, int>  $byStatus
-     * @return array{received: int, in_progress: int, approved: int, rejected: int}
+     * @return array{received: int, in_progress: int, approved: int, enrolled: int, rejected: int}
      */
     private function summarizeCounts(array $byStatus): array
     {
@@ -99,13 +151,15 @@ class EnrollmentStatsService
             fn (string $status) => $byStatus[$status] ?? 0,
             $openStatuses,
         ));
-        $approved = (int) (($byStatus[EnrollmentStatus::Approuvee->value] ?? 0) + ($byStatus[EnrollmentStatus::Enrolee->value] ?? 0));
+        $approved = (int) ($byStatus[EnrollmentStatus::Approuvee->value] ?? 0);
+        $enrolled = (int) ($byStatus[EnrollmentStatus::Enrolee->value] ?? 0);
         $rejected = (int) ($byStatus[EnrollmentStatus::Rejetee->value] ?? 0);
 
         return [
             'received' => $received,
             'in_progress' => $inProgress,
             'approved' => $approved,
+            'enrolled' => $enrolled,
             'rejected' => $rejected,
         ];
     }
@@ -181,7 +235,7 @@ class EnrollmentStatsService
     }
 
     /**
-     * @return array{received: array{valeur: int, variation_pct: float|null}, in_progress: array{valeur: int, variation_pct: float|null}, approved: array{valeur: int, variation_pct: float|null}, rejected: array{valeur: int, variation_pct: float|null}, taux_rejet_global: array{valeur: float, variation_pct: float|null}, average_handling_days: array{valeur: float|null, variation_days: float|null}}
+     * @return array{received: array{valeur: int, variation_pct: float|null}, in_progress: array{valeur: int, variation_pct: float|null}, approved: array{valeur: int, variation_pct: float|null}, enrolled: array{valeur: int, variation_pct: float|null}, rejected: array{valeur: int, variation_pct: float|null}, taux_rejet_global: array{valeur: float, variation_pct: float|null}, average_handling_days: array{valeur: float|null, variation_days: float|null}}
      */
     private function tendances(string $granularite): array
     {
@@ -200,6 +254,7 @@ class EnrollmentStatsService
             'received' => $this->tendancePoint($current['received'], $previous['received']),
             'in_progress' => $this->tendancePoint($current['in_progress'], $previous['in_progress']),
             'approved' => $this->tendancePoint($current['approved'], $previous['approved']),
+            'enrolled' => $this->tendancePoint($current['enrolled'], $previous['enrolled']),
             'rejected' => $this->tendancePoint($current['rejected'], $previous['rejected']),
             'taux_rejet_global' => [
                 'valeur' => $currentTaux,

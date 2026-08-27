@@ -22,6 +22,10 @@ class EnrollmentStatsController extends BaseController
      * Enrollment dashboard statistics (manager)
      *
      * Global counts, rejection rate, average handling time, motifs, evolution, and period trends.
+     * `par_type` breaks the counters down by PERSONNE_PHYSIQUE / PERSONNE_MORALE — each one
+     * carrying its own period-over-period variation, which is what the dashboard cards read.
+     * `approved` (APPROUVEE) and `enrolled` (ENROLEE) are counted apart: a favourable decision
+     * is not yet an enrolment.
      * Query: granularite=semaine|mois (default semaine).
      */
     public function index(DashboardEnrollmentStatsRequest $request): JsonResponse
