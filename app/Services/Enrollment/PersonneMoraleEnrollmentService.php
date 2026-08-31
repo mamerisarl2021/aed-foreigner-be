@@ -39,7 +39,9 @@ class PersonneMoraleEnrollmentService
     ) {}
 
     /**
-     * Une demande morale bloque les suivantes tant qu'elle n'est pas close.
+     * Une demande morale bloque un nouveau dépôt **pour la même entreprise** tant
+     * qu'elle n'est pas close. Un même demandeur reste libre de porter plusieurs
+     * entreprises distinctes en parallèle.
      *
      * @return list<string>
      */
@@ -89,16 +91,16 @@ class PersonneMoraleEnrollmentService
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
-        if ($this->hasOpenMoraleRequest($user)) {
+        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
+        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+
+        if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country)) {
             return ServiceResult::fail(
-                'Vous avez déjà une demande personne morale en cours.',
+                'Vous avez déjà une demande en cours pour cette entreprise.',
                 null,
                 409
             );
         }
-
-        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
-        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
 
         if ($this->isCompanyAlreadyEnrolled($registrationNumber, $country)) {
             return ServiceResult::fail(
@@ -222,6 +224,14 @@ class PersonneMoraleEnrollmentService
 
         $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
         $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+
+        if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country, $enrollment->id)) {
+            return ServiceResult::fail(
+                'Vous avez déjà une demande en cours pour cette entreprise.',
+                null,
+                409
+            );
+        }
 
         if ($this->isCompanyAlreadyEnrolled($registrationNumber, $country)) {
             return ServiceResult::fail(
@@ -423,12 +433,31 @@ class PersonneMoraleEnrollmentService
         return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', $this->contactVerificationPayload($enrollment->fresh() ?? $enrollment));
     }
 
-    private function hasOpenMoraleRequest(User $user): bool
-    {
+    /**
+     * Doublon d'une entreprise déjà en cours d'instruction chez ce demandeur.
+     *
+     * Le verrou porte sur le couple immatriculation + pays, jamais sur le demandeur :
+     * un dirigeant peut enrôler autant d'entreprises qu'il en représente.
+     */
+    private function hasOpenMoraleRequestForCompany(
+        User $user,
+        string $registrationNumber,
+        string $country,
+        ?string $excludeId = null,
+    ): bool {
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
             ->whereIn('status', self::openMoraleStatuses())
+            ->when($excludeId !== null, fn ($query) => $query->whereKeyNot($excludeId))
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
+                [$registrationNumber]
+            )
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
+                [$country]
+            )
             ->exists();
     }
 

@@ -410,6 +410,63 @@ final class PersonneMoraleEnrollmentWorkflowTest extends TestCase
             ->count());
     }
 
+    #[Test]
+    public function several_companies_can_be_enrolled_in_parallel(): void
+    {
+        Bus::fake();
+        Sanctum::actingAs($this->client);
+
+        $this->passKyc();
+        $this->post($this->api('/enrolements/morales'), $this->submitPayload())
+            ->assertOk()
+            ->assertJsonPath('data.statut', EnrollmentStatus::AwaitingContactVerification->value);
+
+        // Le premier dossier est encore ouvert : il ne doit pas fermer le dépôt d'une autre entreprise.
+        $second = $this->submitPayload();
+        $second['legal_name'] = 'AUTRE SARL';
+        $second['registration_number'] = 'RCCM-CA-002';
+        $second['email'] = 'autre-entreprise@example.com';
+
+        $this->passKyc();
+        $this->post($this->api('/enrolements/morales'), $second)
+            ->assertOk()
+            ->assertJsonPath('data.statut', EnrollmentStatus::AwaitingContactVerification->value);
+
+        $this->assertSame(2, EnrollmentRequest::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('submitted_by_user_id', $this->client->id)
+            ->count());
+
+        $this->getJson($this->api('/enrolements/morales'))
+            ->assertOk()
+            ->assertJsonCount(2, 'data.data');
+    }
+
+    #[Test]
+    public function resubmitting_the_same_company_while_in_flight_is_conflict(): void
+    {
+        Bus::fake();
+        Sanctum::actingAs($this->client);
+
+        $this->passKyc();
+        $this->post($this->api('/enrolements/morales'), $this->submitPayload())->assertOk();
+
+        // Même immatriculation + même pays : c'est le doublon que le verrou doit encore attraper.
+        $duplicate = $this->submitPayload();
+        $duplicate['legal_name'] = 'tech sarl innov ';
+        $duplicate['registration_number'] = ' rccm-ca-001';
+
+        $this->passKyc();
+        $this->post($this->api('/enrolements/morales'), $duplicate)
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Vous avez déjà une demande en cours pour cette entreprise.');
+
+        $this->assertSame(1, EnrollmentRequest::query()
+            ->where('type', 'PERSONNE_MORALE')
+            ->where('submitted_by_user_id', $this->client->id)
+            ->count());
+    }
+
     private function passKyc(): void
     {
         $this->post($this->api('/kyc/document/verify'), [

@@ -62,6 +62,9 @@ class PersonneMoraleEnrollmentController extends BaseController
      * Pièces justificatives (trade_register_extract, statutes, procuration) : **PDF uniquement,
      * 5 Mo par fichier**. recto / verso restent le document d'identité du demandeur, joint au
      * dossier pour l'agent.
+     * Un même demandeur peut porter plusieurs entreprises, y compris en parallèle :
+     * seul le doublon est refusé (409) — même immatriculation et même pays qu'une de ses
+     * demandes encore ouverte, ou qu'une entreprise déjà enrôlée.
      * Initial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK…).
      * phonenumber: optional leading +, then 8–20 digits; spaces/dashes/parentheses allowed and stripped.
      */
