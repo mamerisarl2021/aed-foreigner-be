@@ -59,7 +59,7 @@ final class EnrolledCompanyService
 
         $query->orderBy($orderBy, $orderDir);
 
-        $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
+        $perPage = min((int) $request->input('per_page', 15), 100);
 
         return $query->paginate($perPage);
     }

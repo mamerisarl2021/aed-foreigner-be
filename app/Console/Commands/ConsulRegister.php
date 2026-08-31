@@ -21,7 +21,7 @@ final class ConsulRegister extends Command
         ConsulRegistrationStore $store,
     ): int {
         $name = (string) config('consul.service_name');
-        $ip = (string) (config('consul.service_ip') ?: gethostbyname(gethostname()));
+        $ip = (string) (config('consul.service_ip') ?: gethostbyname((string) gethostname()));
         $port = (int) config('consul.service_port');
         $id = $name.'-'.Str::random(8);
 

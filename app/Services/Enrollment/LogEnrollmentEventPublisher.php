@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Log;
 
 final class LogEnrollmentEventPublisher implements EnrollmentEventPublisherInterface
 {
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     public function publish(string $event, array $payload): void
     {
         Log::info('enrollment.event', [

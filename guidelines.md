@@ -169,11 +169,15 @@ Run before commit:
 ./vendor/bin/pint
 ```
 
-Static analysis with **Larastan** at **level 6 or higher**:
+Static analysis with **Larastan** at **level 8** (`phpstan.neon`) — le niveau ne redescend pas :
 
 ```bash
 ./vendor/bin/phpstan analyse
 ```
+
+`phpstan-baseline.neon` **n'est pas une décharge**. Une entrée n'y a sa place que si l'erreur vient d'un stub tiers plus strict que la réalité — le seul cas restant est `currentAccessToken()?->`, que Sanctum lui-même teste en booléen. Toute autre erreur se corrige : un `@mixin <Model>` sur la ressource, un générique sur la relation ou le paginateur, une forme de tableau sur le DTO. Après avoir corrigé, régénérez le fichier (`--generate-baseline`) pour que les entrées périmées ne masquent pas les suivantes.
+
+Le niveau 8 impose la sûreté sur `null` : un `Carbon|null`, un `string|null` ou le `false` que rend `store()` en cas d'échec doivent être traités, pas supposés. Le niveau 9 (traque du `mixed`) reste un chantier à part.
 
 ---
 
@@ -316,6 +320,7 @@ Tests may use `Sanctum::actingAs()` or project test helpers.
 
 - All API routes return JSON (`ForceJsonResponse` middleware is global)
 - Use **API Resources** to decouple DB shape from public JSON (e.g. `EnrollmentRequestResource`)
+- Annotate each Resource with `@mixin <Model>` so `$this->attribut` reste typé : sans ça Larastan remonte un `property.notFound` par champ, et la dette part au baseline
 
 Standard success envelope:
 
@@ -382,7 +387,11 @@ List and search endpoints **MUST** use a Form Request for query params — same 
 // ListEnrolledPersonsRequest — GET /admin/enrolled-persons
 'q' => ['nullable', 'string', 'max:255'],
 'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+'order_by' => ['nullable', 'string', 'in:enrolled_at,name,email'],
+'order_dir' => ['nullable', 'string', 'in:asc,desc'],
 ```
+
+Les noms de paramètres sont en **snake_case** (§6). Un service ne doit pas accepter d'alias non déclaré — un repli `perPage` derrière `per_page`, par exemple, est invisible de `/docs/api` et donc interdit.
 
 Every filter the client may send must appear in the Form Request. Do not accept undocumented query params in the service layer.
 
@@ -762,7 +771,16 @@ REJET_CONFIRME (morale) → A_CORRIGER (délai config, défaut 7 jours) → PUT 
 
 On responsable approve: **do not** create a new `User` / TrustedX. Insert `enrolled_companies` (source of vérité entreprise enrôlée, `identifiant` = `PM` + 9 caractères) and `Identity` `PERSONNE_MORALE` on `submitted_by_user_id`. Proof JSON includes `enrolled_company_id` + `identifiant`. Emails go to **demandeur** (`submittedBy.email`) **and** official company email. Response includes `identifiant`. Owner list/detail expose `identifiant` (null until approved) and `statut_libelle`.
 
-Duplicate submit is blocked against `enrolled_companies` (`ACTIVE`, `registration_number` + `country_of_incorporation`) plus leftover `APPROUVEE` demandes without a company row.
+**Un demandeur peut porter plusieurs entreprises, y compris en parallèle.** Le verrou d'unicité porte sur le couple `registration_number` + `country_of_incorporation`, **jamais sur le demandeur** : un dirigeant enrôle autant d'entreprises qu'il en représente, sans attendre la décision sur la précédente.
+
+Deux refus, tous deux en **409** :
+
+| Cas | Message |
+|-----|---------|
+| Le demandeur a déjà une demande **ouverte** pour cette entreprise (`AWAITING_CONTACT_VERIFICATION`, file agent/responsable, ou `A_CORRIGER`) | `Vous avez déjà une demande en cours pour cette entreprise.` |
+| L'entreprise est déjà enrôlée — `enrolled_companies` `ACTIVE`, ou demande `APPROUVEE` / `ENROLEE` sans ligne entreprise | `Une entreprise correspondant à ces informations est déjà enrôlée.` |
+
+La comparaison normalise casse et espaces (`UPPER(TRIM(...))`) des deux côtés. `PUT /enrolements/morales/{id}` applique le même contrôle en s'excluant lui-même : corriger un dossier ne peut pas le faire pointer vers une entreprise déjà portée par un autre dossier ouvert du même demandeur.
 
 Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces justificatives (mêmes règles PDF / 5 Mo ; pas l'email/téléphone officiels, pas le document d'identité) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
 
@@ -820,7 +838,7 @@ GET  /audits                                               → journal OwenIt te
 
 Do not pretend these exist in code without implementing them:
 
-- Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
+- **Visioconférence** — **entièrement retirée du code**, pas seulement absente d'un produit tiers (Zoom/Meet). Le statut `VISIO_REQUESTED` avait été réécrit en `EN_ATTENTE` lors de l'alignement sur le diagramme ; les colonnes `visio_requested_at`, `visio_completed_at` et `visio_notes`, le cas d'enum `EnrollmentVisioRequested` et le gabarit `emails/identity/visio_requested.blade.php` ont suivi, faute de lecteur. Seules les migrations d'origine en gardent la trace, comme il se doit. Rouvrir ce parcours, c'est le concevoir de zéro.
 - Kafka topic / object-storage hardening for local dev
 - **PSCEQ / professional certificate** acquisition for personne morale (APIs §7, statut actif/suspendu/révoqué)
 - Transfert / changement de gestionnaire entreprise (PDF §9)
@@ -861,7 +879,7 @@ Before opening or approving a PR, verify:
 - [ ] `$request->user()` used instead of auth facades
 - [ ] Emails: reuse/adapt `resources/views/emails/**` before adding templates
 - [ ] Tests added/updated; `php artisan test` passes
-- [ ] Pint (and Larastan when configured) clean on touched files
+- [ ] Pint et Larastan (niveau 8) passent sans erreur, sans nouvelle entrée au baseline
 - [ ] Migrations reversible and safe for existing data
 
 ---

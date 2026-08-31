@@ -32,11 +32,13 @@ class ActivityLog extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_user_id');
     }
 
+    /** @return BelongsTo<EnrollmentRequest, $this> */
     public function enrollmentRequest(): BelongsTo
     {
         return $this->belongsTo(EnrollmentRequest::class, 'enrollment_request_id');

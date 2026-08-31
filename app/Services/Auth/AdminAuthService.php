@@ -87,7 +87,7 @@ class AdminAuthService
         $this->activityLog->record(
             ActivityLogAction::ConnexionAdmin,
             sprintf('%s s\'est connecté(e) à l\'espace staff.', ActivityLogService::actorLabel($user)),
-            is_string($user->id) ? $user->id : null,
+            $user->id,
         );
 
         return ServiceResult::ok(
@@ -163,7 +163,7 @@ class AdminAuthService
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurCree,
                 sprintf('Compte staff %s provisionné depuis Keycloak.', $email),
-                is_string($user->id) ? $user->id : null,
+                $user->id,
                 null,
                 ['keycloak_id' => $subject],
             );
@@ -195,7 +195,7 @@ class AdminAuthService
             $this->activityLog->record(
                 ActivityLogAction::UtilisateurModifie,
                 sprintf('Rôles staff de %s resynchronisés depuis Keycloak.', $user->email),
-                is_string($user->id) ? $user->id : null,
+                $user->id,
                 null,
                 ['from' => $previous, 'to' => $current],
             );

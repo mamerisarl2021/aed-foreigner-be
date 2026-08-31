@@ -70,15 +70,11 @@ final class ConsulStatus extends Command
     {
         $expectedCheckId = 'service:'.$serviceId;
 
-        if (isset($checks[$expectedCheckId]) && is_array($checks[$expectedCheckId])) {
+        if (isset($checks[$expectedCheckId])) {
             return $checks[$expectedCheckId];
         }
 
         foreach ($checks as $check) {
-            if (! is_array($check)) {
-                continue;
-            }
-
             if (($check['ServiceID'] ?? null) === $serviceId
                 || ($check['CheckID'] ?? null) === $expectedCheckId) {
                 return $check;

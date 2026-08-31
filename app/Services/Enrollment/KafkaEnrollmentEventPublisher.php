@@ -10,6 +10,9 @@ use Junges\Kafka\Message\Message;
 
 final class KafkaEnrollmentEventPublisher implements EnrollmentEventPublisherInterface
 {
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     public function publish(string $event, array $payload): void
     {
         $topic = config("enrollment_events.topics.{$event}");

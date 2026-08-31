@@ -19,6 +19,7 @@ use App\Policies\EnrollmentRequestPolicy;
 use App\Policies\PlatformPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Opcodes\LogViewer\Facades\LogViewer;
@@ -50,7 +51,7 @@ class AuthServiceProvider extends ServiceProvider
 
         LogViewer::auth(fn ($request) => $request->user()?->hasRole(config('roles.administrateur_plateforme')) ?? false);
 
-        ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
+        ResetPassword::createUrlUsing(function (CanResetPassword $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
         });
     }

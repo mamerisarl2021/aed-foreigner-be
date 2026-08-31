@@ -42,7 +42,12 @@ class EnrollmentSlaService
             ->chunkById(100, function ($enrollments) use ($maxHours, $levels, &$checked, &$updated) {
                 foreach ($enrollments as $enrollment) {
                     $checked++;
-                    $elapsedHours = $enrollment->created_at->diffInHours(now(), false);
+                    $createdAt = $enrollment->created_at;
+                    if ($createdAt === null) {
+                        continue;
+                    }
+
+                    $elapsedHours = $createdAt->diffInHours(now(), false);
                     $percent = ($elapsedHours / $maxHours) * 100;
 
                     $newLevel = null;

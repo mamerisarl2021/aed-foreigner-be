@@ -11,6 +11,10 @@ use InvalidArgumentException;
 
 final readonly class EmailNotificationData
 {
+    /**
+     * @param  list<array<string, mixed>>  $recipients
+     * @param  array<string, mixed>  $variables
+     */
     public function __construct(
         public string $subject,
         public NotificationTemplate $template,
@@ -27,6 +31,9 @@ final readonly class EmailNotificationData
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $payload = [

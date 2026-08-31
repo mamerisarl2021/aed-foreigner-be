@@ -10,7 +10,7 @@ use InvalidArgumentException;
 final class SecurityQuestions
 {
     /**
-     * @param  list<array<string, mixed>>  $pairs
+     * @param  array<int, array<string, mixed>>  $pairs
      * @return list<array{question: string, answer_hash: string}>
      */
     public static function persist(array $pairs): array
@@ -40,7 +40,7 @@ final class SecurityQuestions
     }
 
     /**
-     * @param  list<mixed>|null  $stored
+     * @param  array<int, mixed>|null  $stored
      * @return list<array{question: string}>
      */
     public static function questionsForDisplay(?array $stored): array
@@ -64,7 +64,7 @@ final class SecurityQuestions
     }
 
     /**
-     * @param  list<mixed>|null  $stored
+     * @param  array<int, mixed>|null  $stored
      */
     public static function configured(?array $stored): bool
     {

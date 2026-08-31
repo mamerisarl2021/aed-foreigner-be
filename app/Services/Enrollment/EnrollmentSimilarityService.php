@@ -160,11 +160,11 @@ class EnrollmentSimilarityService
             }
         }
 
-        return $matches
+        return array_values($matches
             ->sortByDesc('score')
             ->take($max)
             ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -275,11 +275,11 @@ class EnrollmentSimilarityService
             }
         }
 
-        return $matches
+        return array_values($matches
             ->sortByDesc('score')
             ->take($max)
             ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -291,7 +291,9 @@ class EnrollmentSimilarityService
     }
 
     /**
-     * @param  Builder<Model>  $query
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
      */
     private function orEqual(Builder $query, string $column, string $value): void
     {
@@ -303,7 +305,9 @@ class EnrollmentSimilarityService
     }
 
     /**
-     * @param  Builder<Model>  $query
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
      */
     private function orJsonEqual(Builder $query, string $column, string $path, string $value): void
     {

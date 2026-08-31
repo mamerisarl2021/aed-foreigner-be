@@ -8,9 +8,9 @@ use App\Contracts\NotificationPublisherInterface;
 use App\DataTransferObjects\EmailNotificationData;
 use App\DataTransferObjects\SmsNotificationData;
 use App\DataTransferObjects\WebsocketNotificationData;
+use Junges\Kafka\Contracts\MessageProducer;
 use Junges\Kafka\Facades\Kafka;
 use Junges\Kafka\Message\Message;
-use Junges\Kafka\Producers\Builder as ProducerBuilder;
 
 final class KafkaNotificationPublisher implements NotificationPublisherInterface
 {
@@ -29,6 +29,9 @@ final class KafkaNotificationPublisher implements NotificationPublisherInterface
         $this->publish(config('notifications.topics.websocket'), $notification->toArray());
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function publish(string $topic, array $payload): void
     {
         $producer = Kafka::asyncPublish((string) config('kafka.brokers'))
@@ -40,15 +43,15 @@ final class KafkaNotificationPublisher implements NotificationPublisherInterface
             ->send();
     }
 
-    private function applySecurity(object $producer): object // ProducerBuilder
+    private function applySecurity(MessageProducer $producer): MessageProducer
     {
         $protocol = (string) config('kafka.securityProtocol');
 
         if (in_array($protocol, ['SASL_PLAINTEXT', 'SASL_SSL'], true)) {
             return $producer->withSasl(
-                username: config('kafka.sasl.username'),
-                password: config('kafka.sasl.password'),
-                mechanisms: config('kafka.sasl.mechanisms'),
+                username: (string) config('kafka.sasl.username'),
+                password: (string) config('kafka.sasl.password'),
+                mechanisms: (string) config('kafka.sasl.mechanisms'),
                 securityProtocol: $protocol,
             );
         }

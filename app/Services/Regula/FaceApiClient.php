@@ -53,7 +53,7 @@ final class FaceApiClient
         }
 
         $payloadImages = [];
-        foreach (array_values($images) as $i => $image) {
+        foreach ($images as $i => $image) {
             $data = $image['data'] ?? null;
             if (($data === null || $data === '') && isset($image['path']) && is_file($image['path'])) {
                 $bytes = file_get_contents($image['path']);

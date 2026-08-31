@@ -7,5 +7,6 @@ parameters:
     paths:
         - app/
 
-    # Level 9 is the highest level
-    level: 6
+    # Level 9 is the highest level. Level 9 ne demande plus que la traque
+    # du `mixed` : ~500 erreurs, à ouvrir comme un chantier à part.
+    level: 8
