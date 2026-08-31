@@ -5,214 +5,82 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Enums\ActivityLogAction;
-use App\Exceptions\StaffKeycloakAdminException;
 use App\Http\Resources\StaffUserDetailResource;
-use App\Jobs\ResetPasswordJob;
-use App\Jobs\WelcomeAgentJob;
-use App\Models\StaffPasswordResetToken;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\StaffKeycloakRoleMapper;
-use App\Support\StaffRoleMapper;
-use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
+/**
+ * Keycloak est le seul annuaire du staff.
+ *
+ * L'application ne crée, ne modifie et ne supprime plus aucun compte staff :
+ * elle projette en base ce que porte le JWT, le temps d'accrocher les clés
+ * étrangères (jetons Sanctum, journaux d'activité, dossiers assignés) et les
+ * rôles Spatie que lisent les policies.
+ */
 class AdminAuthService
 {
     public function __construct(
         private readonly ActivityLogService $activityLog,
         private readonly KeycloakJwtValidator $keycloakJwtValidator,
-        private readonly StaffKeycloakAdminClient $staffKeycloakAdmin,
     ) {}
 
-    public static function staffKeycloakEnabled(): bool
-    {
-        return (bool) config('keycloak.staff.enabled');
-    }
-
-    /** @return list<string> */
-    private static function staffRoles(): array
-    {
-        return config('roles.staff', []);
-    }
-
-    public function updateAgent(User $user, array $input, ?User $actor = null): ServiceResult
+    /**
+     * Échange un access token Keycloak (realm pki-portal, client
+     * backoffice-stranger) contre un jeton Sanctum.
+     *
+     * L'admission se décide sur le JWT, jamais sur la base : un porteur de rôle
+     * staff inconnu localement est provisionné à la volée. Sans ce provisioning,
+     * la plateforme serait inaccessible — plus aucun compte ne peut être créé
+     * depuis l'application.
+     */
+    public function loginWithKeycloak(string $accessToken): ServiceResult
     {
         try {
-            if (self::staffKeycloakEnabled()) {
-                $roleSlug = $this->staffSlugForSync($user, $input['role'] ?? null);
-                if ($roleSlug === null) {
-                    return ServiceResult::fail('Rôle staff invalide.', null, 400);
-                }
+            $payload = $this->keycloakJwtValidator->validate($accessToken, 'keycloak.staff');
+        } catch (\Throwable $e) {
+            Log::warning('Staff Keycloak login rejected: '.$e->getMessage());
 
-                $this->staffKeycloakAdmin->syncUser($user->email, [
-                    'email' => $input['email'] ?? $user->email,
-                    'first_name' => $input['first_name'] ?? $user->first_name,
-                    'name' => $input['name'] ?? $user->name,
-                    'role' => $roleSlug,
-                ]);
-            }
+            return ServiceResult::fail('Token Keycloak invalide.', null, 401);
+        }
 
-            $user->update([
-                'name' => $input['name'] ?? $user->name,
-                'first_name' => $input['first_name'] ?? $user->first_name,
-                'email' => $input['email'] ?? $user->email,
-                'phonenumber' => $input['phonenumber'] ?? $user->phonenumber,
-                'npi' => $input['npi'] ?? $user->npi,
+        // Keycloak décide qui est staff : ce contrôle passe avant toute lecture
+        // de la base, sinon un rôle retiré côté realm resterait sans effet.
+        $slugs = StaffKeycloakRoleMapper::slugsFromJwt($payload);
+        if ($slugs === []) {
+            return ServiceResult::fail('Aucun rôle staff Keycloak n\'est associé à ce compte.', null, 403);
+        }
+
+        $email = strtolower(trim(
+            $this->claim($payload, 'email') ?? $this->claim($payload, 'preferred_username') ?? ''
+        ));
+        if ($email === '') {
+            return ServiceResult::fail('Le token Keycloak ne contient pas d\'email.', null, 401);
+        }
+
+        $subject = $this->claim($payload, 'sub');
+        if ($subject === null) {
+            return ServiceResult::fail('Le token Keycloak ne contient pas de sujet.', null, 401);
+        }
+
+        try {
+            $user = DB::transaction(fn () => $this->projectKeycloakUser($payload, $subject, $email));
+        } catch (\Throwable $e) {
+            Log::error('Staff Keycloak provisioning failed: '.$e->getMessage(), [
+                'keycloak_id' => $subject,
             ]);
 
-            if (array_key_exists('role', $input)) {
-                $user->roles()->detach();
-                $this->assignRoleFromCode($user, $input['role']);
-            }
-
-            $user->load('roles');
-
-            $this->activityLog->record(
-                ActivityLogAction::UtilisateurModifie,
-                sprintf(
-                    '%s a modifié le compte %s (%s).',
-                    ActivityLogService::actorLabel($actor),
-                    trim(($user->first_name ?? '').' '.($user->name ?? '')),
-                    $user->email
-                ),
-                is_string($actor?->id) ? $actor->id : null,
-                null,
-                ['target_user_id' => $user->id],
-            );
-
-            return ServiceResult::ok('Agent mis à jour avec succès.', $user);
-        } catch (StaffKeycloakAdminException $e) {
-            Log::error('Failed to sync agent to Keycloak: '.$e->getMessage());
-
-            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
-        } catch (Exception $e) {
-            Log::error('Failed to update agent: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de mettre à jour l\'agent, veuillez réessayer.', null, 500);
-        }
-    }
-
-    public function deleteAgent(User $user, ?User $actor = null): ServiceResult
-    {
-        try {
-            if (self::staffKeycloakEnabled()) {
-                $this->staffKeycloakAdmin->deleteByEmail((string) $user->email);
-            }
-
-            $label = trim(($user->first_name ?? '').' '.($user->name ?? '')).' ('.$user->email.')';
-            $targetId = $user->id;
-            $user->roles()->detach();
-            $user->delete();
-
-            $this->activityLog->record(
-                ActivityLogAction::UtilisateurSupprime,
-                sprintf('%s a supprimé le compte %s.', ActivityLogService::actorLabel($actor), $label),
-                is_string($actor?->id) ? $actor->id : null,
-                null,
-                ['target_user_id' => $targetId],
-            );
-
-            return ServiceResult::ok('Agent supprimé avec succès.', null);
-        } catch (StaffKeycloakAdminException $e) {
-            Log::error('Failed to delete agent on Keycloak: '.$e->getMessage());
-
-            return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
-        } catch (Exception $e) {
-            Log::error('Failed to delete agent: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de supprimer l\'agent, veuillez réessayer.', null, 500);
-        }
-    }
-
-    public function registerAgent(array $input, ?User $actor = null): ServiceResult
-    {
-        try {
-            $user = User::create([
-                'name' => $input['name'],
-                'first_name' => $input['first_name'],
-                'email' => $input['email'],
-                'phonenumber' => $input['phonenumber'],
-                'status' => 'ACTIVE',
-                'must_change_password' => true,
-            ]);
-            $user->forceFill(['password' => Hash::make(Str::password(64))])->save();
-
-            $this->assignRoleFromCode($user, $input['role']);
-            $user->load('roles');
-
-            if (self::staffKeycloakEnabled()) {
-                try {
-                    $roleSlug = $this->staffSlugForSync($user, $input['role']);
-                    if ($roleSlug === null) {
-                        $user->roles()->detach();
-                        $user->delete();
-
-                        return ServiceResult::fail('Rôle staff invalide.', null, 400);
-                    }
-
-                    $keycloakId = $this->staffKeycloakAdmin->syncUser($user->email, [
-                        'email' => $user->email,
-                        'first_name' => $user->first_name,
-                        'name' => $user->name,
-                        'role' => $roleSlug,
-                    ]);
-                    if ((bool) config('keycloak.staff.execute_actions_email')) {
-                        $this->staffKeycloakAdmin->sendUpdatePasswordEmail($keycloakId);
-                    } else {
-                        WelcomeAgentJob::dispatch($user);
-                    }
-                } catch (StaffKeycloakAdminException $e) {
-                    $user->roles()->detach();
-                    $user->delete();
-                    Log::error('Failed to sync new agent to Keycloak: '.$e->getMessage());
-
-                    return ServiceResult::fail('Synchronisation Keycloak impossible.', null, $e->status());
-                }
-            } else {
-                WelcomeAgentJob::dispatch($user);
-            }
-
-            $this->activityLog->record(
-                ActivityLogAction::UtilisateurCree,
-                sprintf(
-                    '%s a créé le compte utilisateur %s %s (%s).',
-                    ActivityLogService::actorLabel($actor),
-                    $user->first_name,
-                    $user->name,
-                    $user->email
-                ),
-                is_string($actor?->id) ? $actor->id : null,
-            );
-
-            return ServiceResult::ok('Agent enregistré avec succès', $user);
-        } catch (Exception $e) {
-            Log::error('Failed to register agent: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de créer le compte agent reessayer.', null, 500);
-        }
-    }
-
-    public function loginDirect(User $user, bool $requirePassword = true): ServiceResult
-    {
-        if (! $user->hasAnyRole(self::staffRoles())) {
-            return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
+            return ServiceResult::fail('Impossible de synchroniser le compte staff.', null, 500);
         }
 
-        if ($user->status !== 'ACTIVE') {
-            return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
-        }
-
-        if ($requirePassword && empty($user->password)) {
-            return ServiceResult::fail('Mot de passe non défini. Contactez un administrateur.', null, 403);
-        }
+        $this->syncStaffRoles($user, $slugs);
 
         $user->last_login_at = now();
         $user->save();
+        $user->load('roles');
 
         $token = $user->createToken($user->email.'-'.now())->plainTextToken;
 
@@ -228,78 +96,8 @@ class AdminAuthService
                 'user' => (new StaffUserDetailResource($user))->resolve(),
                 'roles' => $user->getRoleNames(),
                 'access_token' => $token,
-                'must_change_password' => (bool) $user->must_change_password,
             ]
         );
-    }
-
-    /**
-     * Exchange a Keycloak access token (frontend OIDC on realm pki-portal /
-     * client backoffice-stranger) for a Sanctum token. The local user must
-     * already exist (email match); Spatie staff roles are replaced from the JWT.
-     */
-    public function loginWithKeycloak(string $accessToken): ServiceResult
-    {
-        if (! self::staffKeycloakEnabled()) {
-            return ServiceResult::fail('Authentification Keycloak non activée.', null, 403);
-        }
-
-        try {
-            $payload = $this->keycloakJwtValidator->validate($accessToken, 'keycloak.staff');
-        } catch (\Throwable $e) {
-            Log::warning('Staff Keycloak login rejected: '.$e->getMessage());
-
-            return ServiceResult::fail('Token Keycloak invalide.', null, 401);
-        }
-
-        $email = $payload['email'] ?? $payload['preferred_username'] ?? null;
-        if (! is_string($email) || $email === '') {
-            return ServiceResult::fail('Le token Keycloak ne contient pas d\'email.', null, 401);
-        }
-
-        $user = User::where('email', strtolower(trim($email)))->first();
-        if (! $user) {
-            return ServiceResult::fail("L'email fourni n'appartient pas à un agent ou un administrateur.", null, 403);
-        }
-
-        if ($user->status !== 'ACTIVE') {
-            return ServiceResult::fail('Compte inactif. Contactez un administrateur.', null, 403);
-        }
-
-        $slugs = StaffKeycloakRoleMapper::slugsFromJwt($payload);
-        if ($slugs === []) {
-            return ServiceResult::fail('Aucun rôle staff Keycloak n\'est associé à ce compte.', null, 403);
-        }
-
-        $user->syncRoles($slugs);
-        $user->load('roles');
-
-        return $this->loginDirect($user, requirePassword: false);
-    }
-
-    /**
-     * @param  array{current_password: string, password: string}  $validatedData
-     */
-    public function changePassword(User $user, array $validatedData): ServiceResult
-    {
-        if (! Hash::check($validatedData['current_password'], $user->password)) {
-            return ServiceResult::fail('Mot de passe actuel incorrect.', null, 400);
-        }
-
-        $user->password = Hash::make($validatedData['password']);
-        $user->must_change_password = false;
-        $user->save();
-
-        // Revoke every Sanctum token so all sessions must re-authenticate.
-        $user->tokens()->delete();
-
-        $this->activityLog->record(
-            ActivityLogAction::MotDePasseChange,
-            sprintf('%s a modifié son mot de passe staff.', ActivityLogService::actorLabel($user)),
-            is_string($user->id) ? $user->id : null,
-        );
-
-        return ServiceResult::ok('Mot de passe mis à jour avec succès. Veuillez vous reconnecter.', []);
     }
 
     public function logout(User $user): ServiceResult
@@ -316,183 +114,107 @@ class AdminAuthService
     }
 
     /**
-     * @param  array<string, mixed>  $input
+     * Retrouve ou crée la ligne locale, puis la réaligne sur le JWT.
+     *
+     * Le rattachement se fait sur `sub` en priorité : l'email reste un repli
+     * pour les comptes antérieurs à cette colonne, et se voit backfillé au
+     * passage. Un compte désactivé côté application est réactivé — la
+     * désactivation se fait dans Keycloak, qui n'émet alors plus de token.
+     *
+     * @param  array<string, mixed>  $payload
      */
-    public function updateAgentById(string $id, array $input, ?User $actor = null): ServiceResult
+    private function projectKeycloakUser(array $payload, string $subject, string $email): User
     {
-        $user = User::query()->find($id);
-        if (! $user) {
-            return ServiceResult::fail('Agent introuvable.', null, 404);
-        }
+        $user = User::query()->where('keycloak_id', $subject)->first();
+        $created = false;
 
-        return $this->updateAgent($user, $input, $actor);
-    }
+        if ($user === null) {
+            $user = User::query()->where('email', $email)->lockForUpdate()->first();
 
-    public function deleteAgentById(string $id, ?User $actor = null): ServiceResult
-    {
-        $user = User::query()->find($id);
-        if (! $user) {
-            return ServiceResult::fail('Agent introuvable.', null, 404);
-        }
-
-        return $this->deleteAgent($user, $actor);
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     */
-    public function listAgents(array $filters): ServiceResult
-    {
-        try {
-            $perPage = min((int) ($filters['per_page'] ?? 15), 100);
-            $roleFilter = StaffRoleMapper::slugFromCode(
-                isset($filters['role']) && is_string($filters['role']) ? $filters['role'] : null
-            );
-            $allowedRoles = StaffRoleMapper::listableSlugs();
-
-            $query = User::query()->whereHas('roles', function ($sub) use ($roleFilter, $allowedRoles) {
-                $sub->whereIn('name', $allowedRoles);
-                if ($roleFilter !== null && in_array($roleFilter, $allowedRoles, true)) {
-                    $sub->where('name', $roleFilter);
-                }
-            })->with('roles');
-
-            $q = $filters['q'] ?? null;
-            if (is_string($q) && $q !== '') {
-                $query->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('first_name', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%");
-                });
+            // Compte Keycloak recréé sous le même email : on rebascule la ligne
+            // locale sur le nouveau sujet. Refuser laisserait le compte
+            // définitivement bloqué, l'application n'ayant plus aucun écran
+            // d'administration des comptes staff.
+            if ($user !== null && is_string($user->keycloak_id) && $user->keycloak_id !== $subject) {
+                Log::warning('Staff Keycloak subject changed for an existing email.', [
+                    'email' => $email,
+                    'previous_keycloak_id' => $user->keycloak_id,
+                    'new_keycloak_id' => $subject,
+                ]);
             }
-
-            $orderBy = $filters['order_by'] ?? 'created_at';
-            if (! in_array($orderBy, ['created_at', 'name', 'email', 'last_login_at'], true)) {
-                $orderBy = 'created_at';
-            }
-            $orderDir = strtolower((string) ($filters['order_dir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
-            $query->orderBy($orderBy, $orderDir);
-
-            return ServiceResult::ok('Liste des agents.', $query->paginate($perPage));
-        } catch (Exception $e) {
-            Log::error('Impossible de récupérer les agents: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de récupérer la liste des agents.', null, 500);
         }
-    }
 
-    public function showAgent(string $id): ServiceResult
-    {
-        try {
-            $agent = User::whereHas('roles', function ($query) {
-                $query->whereIn('name', StaffRoleMapper::listableSlugs());
-            })->with('roles')->findOrFail($id);
-
-            return ServiceResult::ok('Agent récupéré avec succès', $agent);
-        } catch (ModelNotFoundException $e) {
-            Log::error('Agent not found: '.$e->getMessage());
-
-            return ServiceResult::fail('Agent non trouvé.', null, 404);
-        } catch (Exception $e) {
-            Log::error('Failed to retrieve agent: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible de récupérer l\'agent, veuillez réessayer.', null, 500);
+        if ($user === null) {
+            $user = new User;
+            $created = true;
         }
-    }
 
-    /**
-     * @param  array{token: string, email: string, password: string}  $validatedData
-     */
-    public function resetPassword(array $validatedData): ServiceResult
-    {
-        try {
-            $record = StaffPasswordResetToken::query()
-                ->where('email', $validatedData['email'])
-                ->first();
+        $user->fill(array_filter([
+            'name' => $this->claim($payload, 'family_name'),
+            'first_name' => $this->claim($payload, 'given_name'),
+        ], fn (?string $value) => $value !== null));
 
-            if (! $record || ! Hash::check($validatedData['token'], $record->token)) {
-                return ServiceResult::fail('Token invalide ou expiré.', null, 400);
-            }
+        $user->email = $email;
+        $user->keycloak_id = $subject;
+        $user->status = 'ACTIVE';
+        $user->save();
 
-            $user = User::where('email', $validatedData['email'])->first();
-            $user->password = Hash::make($validatedData['password']);
-            $user->status = 'ACTIVE';
-            $user->must_change_password = false;
-            $user->save();
-
+        if ($created) {
             $this->activityLog->record(
-                ActivityLogAction::MotDePasseReinitialise,
-                sprintf('%s a réinitialisé son mot de passe staff.', ActivityLogService::actorLabel($user)),
+                ActivityLogAction::UtilisateurCree,
+                sprintf('Compte staff %s provisionné depuis Keycloak.', $email),
                 is_string($user->id) ? $user->id : null,
+                null,
+                ['keycloak_id' => $subject],
             );
+        }
 
-            // Revoke every Sanctum token so all sessions must re-authenticate.
+        return $user;
+    }
+
+    /**
+     * Réplique les rôles du JWT et coupe les sessions ouvertes si le périmètre
+     * a changé : sans ça, un rôle retiré dans Keycloak resterait actif jusqu'à
+     * l'expiration du jeton Sanctum.
+     *
+     * @param  list<string>  $slugs
+     */
+    private function syncStaffRoles(User $user, array $slugs): void
+    {
+        $previous = $user->getRoleNames()->all();
+
+        $user->syncRoles($slugs);
+
+        sort($previous);
+        $current = $slugs;
+        sort($current);
+
+        if ($previous !== [] && $previous !== $current) {
             $user->tokens()->delete();
 
-            $record->delete();
-
-            return ServiceResult::ok('Mot de passe réinitialisé avec succès.', []);
-        } catch (Exception $e) {
-            return ServiceResult::fail('Impossible de mettre à jour le mot de passe', null, 401);
-        }
-    }
-
-    public function sendPasswordResetLink(string $email): ServiceResult
-    {
-        try {
-            $user = User::where('email', $email)->first();
-
-            if (! $user || ! $user->hasAnyRole(self::staffRoles())) {
-                return ServiceResult::fail(
-                    'Vous ne disposez d\'aucun des privilièges requis pour la mise à jour du mot de passe sur cette interface',
-                    null,
-                    403
-                );
-            }
-
-            $token = Str::random(60);
-
-            StaffPasswordResetToken::query()->updateOrCreate(
-                ['email' => $user->email],
-                [
-                    'token' => Hash::make($token),
-                    'created_at' => now(),
-                ]
+            $this->activityLog->record(
+                ActivityLogAction::UtilisateurModifie,
+                sprintf('Rôles staff de %s resynchronisés depuis Keycloak.', $user->email),
+                is_string($user->id) ? $user->id : null,
+                null,
+                ['from' => $previous, 'to' => $current],
             );
-
-            $resetLink = config('app.frontend_url').'/reset-password/'.$token.'/'.urlencode($user->email);
-            ResetPasswordJob::dispatch($user, $resetLink);
-
-            return ServiceResult::ok('Lien de réinitialisation envoyé avec succès.', null);
-        } catch (Exception $e) {
-            Log::error('Failed to send password reset link: '.$e->getMessage());
-
-            return ServiceResult::fail('Impossible d\'envoyer le lien de réinitialisation, réessayer.', null, 400);
         }
     }
 
-    private function assignRoleFromCode(User $user, ?string $role): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function claim(array $payload, string $key): ?string
     {
-        $slug = StaffRoleMapper::slugFromCode($role) ?? config('roles.client');
-        $user->assignRole($slug);
-    }
+        $value = $payload[$key] ?? null;
 
-    private function staffSlugForSync(User $user, mixed $roleCode = null): ?string
-    {
-        $staff = self::staffRoles();
-
-        if (is_string($roleCode) && $roleCode !== '') {
-            $slug = StaffRoleMapper::slugFromCode($roleCode);
-
-            return is_string($slug) && in_array($slug, $staff, true) ? $slug : null;
+        if (! is_string($value)) {
+            return null;
         }
 
-        foreach ($staff as $slug) {
-            if ($user->hasRole($slug)) {
-                return $slug;
-            }
-        }
+        $value = trim($value);
 
-        return null;
+        return $value === '' ? null : $value;
     }
 }

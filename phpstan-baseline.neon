@@ -67,24 +67,6 @@ parameters:
 			path: app/DataTransferObjects/WebsocketNotificationData.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Auth\\RegisterAgentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/RegisterAgentRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Auth\\ResetPasswordRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/ResetPasswordRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Auth\\SendPasswordResetLinkRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Auth/SendPasswordResetLinkRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\Enrollment\\InstructionEnrollmentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -325,12 +307,6 @@ parameters:
 			path: app/Http/Resources/StaffUserDetailResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$must_change_password\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/StaffUserDetailResource.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\StaffUserDetailResource\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
@@ -460,18 +436,6 @@ parameters:
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 3
-			path: app/Services/Auth/AdminAuthService.php
-
-		-
-			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:registerAgent\(\) has parameter \$input with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Auth/AdminAuthService.php
-
-		-
-			message: '#^Method App\\Services\\Auth\\AdminAuthService\:\:updateAgent\(\) has parameter \$input with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
 			path: app/Services/Auth/AdminAuthService.php
 
 		-

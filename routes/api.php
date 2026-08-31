@@ -19,7 +19,6 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
 use App\Http\Controllers\Singletons\HealthCheckController;
 use App\Http\Controllers\Singletons\UserProfileController;
-use App\Http\Controllers\StaffAgentController;
 use App\Http\Controllers\StaffDirectoryController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\UserController;
@@ -70,12 +69,6 @@ Route::group([], function () {
         });
 
         Route::post('users/{id}', [UserController::class, 'update'])->name('users.update');
-
-        Route::post('/agents/register', [StaffAgentController::class, 'register'])->name('agents.register');
-        Route::post('/agents/{id}', [StaffAgentController::class, 'update'])->name('agents.update');
-        Route::delete('/agents/{id}', [StaffAgentController::class, 'destroy'])->name('agents.destroy');
-        Route::get('/agents', [StaffAgentController::class, 'index'])->name('agents.index');
-        Route::get('/agents/{id}', [StaffAgentController::class, 'show'])->name('agents.show');
 
         Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index'])->name('admin.enrolled-persons.index');
         Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show'])->name('admin.enrolled-persons.show');
@@ -190,19 +183,9 @@ Route::group([], function () {
     Route::post('/admin/logout', [AuthController::class, 'logoutAdmin'])
         ->middleware('auth:sanctum')
         ->name('admin.logout');
-    Route::post('/admin/login', [AuthController::class, 'loginAdmin'])
-        ->middleware('throttle:auth-login')
-        ->name('admin.login');
+    // Seule porte d'entrée du staff : les comptes, mots de passe et rôles vivent
+    // dans Keycloak, l'application n'en tient plus le registre.
     Route::post('/admin/login/keycloak', [AuthController::class, 'loginAdminKeycloak'])
         ->middleware('throttle:auth-login')
         ->name('admin.login.keycloak');
-    Route::post('/admin/password/link', [AuthController::class, 'sendPasswordResetLink'])
-        ->middleware('throttle:password-reset')
-        ->name('admin.password.link');
-    Route::post('/admin/password/reset', [AuthController::class, 'resetPassword'])
-        ->middleware('throttle:password-reset')
-        ->name('admin.password.reset');
-    Route::post('/admin/password/change', [AuthController::class, 'changePassword'])
-        ->middleware('auth:sanctum')
-        ->name('admin.password.change');
 });
