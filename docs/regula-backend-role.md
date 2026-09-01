@@ -91,11 +91,13 @@ Person / group / 1:N search: **not** KYC v1.
 
 | Piece | Current behavior |
 |-------|------------------|
-| Entry | `POST /api/v1/kyc/verify` after both OTPs |
+| Entry (physique) | `POST /api/v1/kyc/verify` after both OTPs |
+| Entry (personne morale) | `POST /api/v1/kyc/document/verify` — étape 2, **document seul** : Document Reader, ni selfie, ni Face `match`, ni liveness |
 | Clients | `DocumentReaderClient` + `FaceApiClient`; `HttpRegulaService` orchestrates them |
 | Config | `REGULA_DOCUMENT_URL`, `REGULA_FACE_URL`, `REGULA_MATCH_THRESHOLD`, `REGULA_MOCK` (legacy `REGULA_URL` fallback) |
 | Mock | `REGULA_MOCK=true` → `MockRegulaService` (always OK) |
-| Gate | When not mocking: **selfie + recto required**; optional `liveness` / `liveness_transaction_id`; client `similarity` ignored for OK/KO |
+| Gate (physique) | When not mocking: **selfie + recto required**; optional `liveness` / `liveness_transaction_id`; client `similarity` ignored for OK/KO |
+| Gate (morale) | `analyzeDocument()`: **recto required**, verso optional; OK/KO sur la lecture du document et son `overallStatus` uniquement. `similarity`, `liveness` et `risk_score` restent `null`, `details.document_only = true` |
 | Scores | Similarity / risk from Face `/api/match` (+ optional liveness lookup); cached ~30 min then consumed at submit |
 | After submit | `UploadEnrollmentFilesJob` → **`RegulaAnalysisJob`** → confirmation email |
 | Agent UI | Detail exposes `analyse_kyc` (`liveness`, `similarity`, `risk_score`, `details`) |
@@ -129,11 +131,24 @@ On-prem / HTTPS (example): Document `https://local-doc-regula.qcdigitalhub.com`,
 
 ## 5. Target flow (as implemented)
 
+### Personne physique
+
 1. **Frontend** captures ID + selfie/liveness (SDK UI against Regula HTTPS hosts as needed).
 2. Frontend sends images (+ optional liveness transaction id) to **AED** `POST /kyc/verify`.
 3. **AED**: Document Reader `process` → Face `match` (portrait crop when available, else recto) → optional liveness get → OK/KO + cache.
 4. Submit: persist docs; chain upload → `RegulaAnalysisJob` → email; return `numero_suivi`.
 5. Agents see `analyse_kyc` + documents; human decision remains authoritative.
+
+### Personne morale (document seul)
+
+1. Étape 1 : formulaire d'identification de l'entreprise (aucun appel Regula).
+2. Étape 2 : le frontend envoie le recto (+ verso) du document d'identité du demandeur à **AED**
+   `POST /kyc/document/verify` (Sanctum, policy `submitMorale`, quota 10/min par client).
+3. **AED** : Document Reader `process` uniquement → OK/KO + cache ~30 min. Aucun appel Face :
+   le visage du demandeur a déjà été contrôlé lors de son enrôlement physique.
+4. Étape 3 : `POST /enrolements/morales` avec les pièces justificatives (PDF, 5 Mo max) ;
+   pas de `RegulaAnalysisJob` sur ce parcours.
+5. Agents see `analyse_kyc` (OCR document, sans bloc facial) + documents.
 
 ---
 

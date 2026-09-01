@@ -68,6 +68,7 @@ class User extends Authenticatable implements Auditable
         'password',
         'pin_hash',
         'remember_token',
+        'security_questions',
     ];
 
     protected function casts(): array

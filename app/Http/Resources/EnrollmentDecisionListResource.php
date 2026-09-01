@@ -38,6 +38,9 @@ class EnrollmentDecisionListResource extends JsonResource
             'numero_suivi' => $moraleCols['numero_suivi'],
             'raison_sociale' => $moraleCols['raison_sociale'],
             'pays_origine' => $moraleCols['pays_origine'],
+            'pays' => $this->isPersonneMorale()
+                ? ($kyc['country_of_incorporation'] ?? null)
+                : ($kyc['country_of_residence'] ?? null),
             // Le responsable consulte aussi les personnes enrôlées : sans le
             // demandeur, cet écran n'aurait personne à nommer.
             'demandeur' => $this->formatDemandeur(

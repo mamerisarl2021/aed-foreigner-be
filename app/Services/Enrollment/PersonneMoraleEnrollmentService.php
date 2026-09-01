@@ -39,7 +39,9 @@ class PersonneMoraleEnrollmentService
     ) {}
 
     /**
-     * Une demande morale bloque les suivantes tant qu'elle n'est pas close.
+     * Une demande morale bloque un nouveau dépôt **pour la même entreprise** tant
+     * qu'elle n'est pas close. Un même demandeur reste libre de porter plusieurs
+     * entreprises distinctes en parallèle.
      *
      * @return list<string>
      */
@@ -51,6 +53,31 @@ class PersonneMoraleEnrollmentService
             EnrollmentStatus::ACorriger->value,
         ];
     }
+
+    /**
+     * Pièces acceptées au dépôt : justificatifs (étape 3) + document d'identité (étape 2).
+     * Plus de selfie : l'étape 2 ne fait plus de session de liveness.
+     *
+     * @var list<string>
+     */
+    private const SUBMIT_FILE_SLOTS = [
+        'trade_register_extract',
+        'statutes',
+        'procuration',
+        'recto',
+        'verso',
+    ];
+
+    /**
+     * La correction ne rejoue que les justificatifs, jamais le KYC du demandeur.
+     *
+     * @var list<string>
+     */
+    private const CORRECTION_FILE_SLOTS = [
+        'trade_register_extract',
+        'statutes',
+        'procuration',
+    ];
 
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
@@ -64,16 +91,16 @@ class PersonneMoraleEnrollmentService
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
-        if ($this->hasOpenMoraleRequest($user)) {
+        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
+        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+
+        if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country)) {
             return ServiceResult::fail(
-                'Vous avez déjà une demande personne morale en cours.',
+                'Vous avez déjà une demande en cours pour cette entreprise.',
                 null,
                 409
             );
         }
-
-        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
-        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
 
         if ($this->isCompanyAlreadyEnrolled($registrationNumber, $country)) {
             return ServiceResult::fail(
@@ -85,11 +112,12 @@ class PersonneMoraleEnrollmentService
 
         $email = strtolower(trim($request->input('email')));
         $phone = PhoneNumber::normalize((string) $request->input('phonenumber'));
-        $uploadedFiles = $this->uploadMoraleFiles($request);
+        $uploadedFiles = $this->uploadMoraleFiles($request, self::SUBMIT_FILE_SLOTS);
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
         $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
-        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
+        // Null sur le parcours actuel (document seul) ; renseigné par une session /kyc/verify héritée.
+        $capturedAt = $this->stringOrNull($kycSession['selfie_captured_at'] ?? null);
 
         DB::beginTransaction();
         try {
@@ -197,6 +225,14 @@ class PersonneMoraleEnrollmentService
         $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
         $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
 
+        if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country, $enrollment->id)) {
+            return ServiceResult::fail(
+                'Vous avez déjà une demande en cours pour cette entreprise.',
+                null,
+                409
+            );
+        }
+
         if ($this->isCompanyAlreadyEnrolled($registrationNumber, $country)) {
             return ServiceResult::fail(
                 'Une entreprise correspondant à ces informations est déjà enrôlée.',
@@ -205,7 +241,7 @@ class PersonneMoraleEnrollmentService
             );
         }
 
-        $uploadedFiles = $this->uploadMoraleFiles($request);
+        $uploadedFiles = $this->uploadMoraleFiles($request, self::CORRECTION_FILE_SLOTS);
         $existingDocs = is_array($enrollment->documents) ? $enrollment->documents : [];
         $documents = array_merge($existingDocs, array_filter($uploadedFiles));
 
@@ -397,12 +433,31 @@ class PersonneMoraleEnrollmentService
         return ServiceResult::ok('Téléphone officiel vérifié. Votre demande entre en file de traitement.', $this->contactVerificationPayload($enrollment->fresh() ?? $enrollment));
     }
 
-    private function hasOpenMoraleRequest(User $user): bool
-    {
+    /**
+     * Doublon d'une entreprise déjà en cours d'instruction chez ce demandeur.
+     *
+     * Le verrou porte sur le couple immatriculation + pays, jamais sur le demandeur :
+     * un dirigeant peut enrôler autant d'entreprises qu'il en représente.
+     */
+    private function hasOpenMoraleRequestForCompany(
+        User $user,
+        string $registrationNumber,
+        string $country,
+        ?string $excludeId = null,
+    ): bool {
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
             ->whereIn('status', self::openMoraleStatuses())
+            ->when($excludeId !== null, fn ($query) => $query->whereKeyNot($excludeId))
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
+                [$registrationNumber]
+            )
+            ->whereRaw(
+                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
+                [$country]
+            )
             ->exists();
     }
 
@@ -434,16 +489,19 @@ class PersonneMoraleEnrollmentService
     }
 
     /**
+     * Ne stocke que les emplacements validés par le Form Request de l'opération :
+     * un fichier hors contrat ne doit jamais atteindre le disque.
+     *
+     * @param  list<string>  $slots
      * @return array<string, string|null>
      */
-    private function uploadMoraleFiles(Request $request): array
+    private function uploadMoraleFiles(Request $request, array $slots): array
     {
         $uploadedFiles = [];
-        $keys = ['trade_register_extract', 'statutes', 'procuration', 'selfie', 'recto', 'verso'];
 
-        foreach ($keys as $key) {
-            if ($request->hasFile($key)) {
-                $uploadedFiles[$key] = $request->file($key)?->store('tmp/enrollments/morale', 'local');
+        foreach ($slots as $slot) {
+            if ($request->hasFile($slot)) {
+                $uploadedFiles[$slot] = $request->file($slot)?->store('tmp/enrollments/morale', 'local');
             }
         }
 

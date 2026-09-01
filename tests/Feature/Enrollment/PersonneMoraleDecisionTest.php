@@ -412,10 +412,7 @@ final class PersonneMoraleDecisionTest extends TestCase
         ]);
 
         Sanctum::actingAs($other);
-        $this->post($this->api('/kyc/verify'), [
-            'email' => $other->email,
-            'phonenumber' => $other->phonenumber,
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
+        $this->post($this->api('/kyc/document/verify'), [
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])->assertOk();
 
@@ -431,7 +428,6 @@ final class PersonneMoraleDecisionTest extends TestCase
             'legal_representative_first_name' => 'Jane',
             'is_legal_representative' => '1',
             'trade_register_extract' => UploadedFile::fake()->create('rccm.pdf', 100, 'application/pdf'),
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
             'recto' => UploadedFile::fake()->image('recto.jpg'),
         ])
             ->assertStatus(409)

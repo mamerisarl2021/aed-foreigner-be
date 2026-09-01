@@ -29,51 +29,22 @@ final class HttpRegulaService implements RegulaService
         $verso = $this->path($files, 'verso');
 
         if ($selfie === null || $recto === null) {
-            return [
-                'status' => 'KO',
-                'risk_score' => null,
-                'details' => ['error' => 'selfie_and_recto_required'],
-            ];
+            return $this->failure('selfie_and_recto_required');
         }
 
         if ((string) config('services.regula.document_url') === '' || (string) config('services.regula.face_url') === '') {
             Log::error('Regula DOCUMENT/FACE URLs are not configured. KYC analysis fails closed.');
 
-            return [
-                'status' => 'KO',
-                'risk_score' => null,
-                'details' => ['error' => 'regula_not_configured'],
-            ];
+            return $this->failure('regula_not_configured');
         }
 
-        $docPages = array_values(array_filter([$recto, $verso]));
-        $document = $this->documentReader->process($docPages);
-        if (! $document['ok']) {
-            return [
-                'status' => 'KO',
-                'risk_score' => null,
-                'details' => [
-                    'error' => $document['error'] ?? 'document_failed',
-                    'document' => $this->summarizeDocument($document['payload']),
-                ],
-            ];
+        $read = $this->readDocumentPages($recto, $verso);
+        if ($read['failure'] !== null) {
+            return $read['failure'];
         }
 
-        $documentSummary = $this->summarizeDocument($document['payload']);
-        if (($documentSummary['overall_status'] ?? null) === 2) {
-            return [
-                'status' => 'KO',
-                'risk_score' => null,
-                'similarity' => null,
-                'liveness' => null,
-                'details' => [
-                    'error' => 'document_overall_status_error',
-                    'document' => $documentSummary,
-                ],
-            ];
-        }
-
-        $portraitB64 = $this->extractPortraitBase64($document['payload']);
+        $documentSummary = $read['summary'];
+        $portraitB64 = $this->extractPortraitBase64($read['payload']);
         $matchImages = [
             [
                 'type' => FaceApiClient::IMAGE_LIVE,
@@ -185,6 +156,99 @@ final class HttpRegulaService implements RegulaService
                 'liveness' => $livenessPayload,
                 'used_document_portrait' => $portraitB64 !== null,
             ],
+        ];
+    }
+
+    /**
+     * Document-only analysis for the personne morale step 2: no selfie, so no face match
+     * and no liveness — the identity document alone is read and checked.
+     *
+     * @param  array<string, mixed>  $files  Local paths keyed by slot (recto, verso)
+     * @param  array<string, mixed>  $data  Unused: no face transaction is involved
+     * @return array<string, mixed>
+     */
+    public function analyzeDocument(array $files, array $data): array
+    {
+        unset($data);
+
+        $recto = $this->path($files, 'recto');
+        $verso = $this->path($files, 'verso');
+
+        if ($recto === null) {
+            return $this->failure('recto_required');
+        }
+
+        if ((string) config('services.regula.document_url') === '') {
+            Log::error('Regula DOCUMENT URL is not configured. Document analysis fails closed.');
+
+            return $this->failure('regula_not_configured');
+        }
+
+        $read = $this->readDocumentPages($recto, $verso);
+        if ($read['failure'] !== null) {
+            return $read['failure'];
+        }
+
+        return [
+            'status' => 'OK',
+            'risk_score' => null,
+            'similarity' => null,
+            'liveness' => null,
+            'details' => [
+                'doc_validity' => true,
+                'document_only' => true,
+                'document' => $read['summary'],
+            ],
+        ];
+    }
+
+    /**
+     * Document Reader pass shared by the full and the document-only analysis.
+     * `failure` is the ready-to-return KO payload; it is null when the document is usable.
+     *
+     * @return array{summary: array<string, mixed>, payload: array<string, mixed>|null, failure: array<string, mixed>|null}
+     */
+    private function readDocumentPages(string $recto, ?string $verso): array
+    {
+        $document = $this->documentReader->process(array_values(array_filter([$recto, $verso])));
+        $summary = $this->summarizeDocument($document['payload']);
+
+        if (! $document['ok']) {
+            return [
+                'summary' => $summary,
+                'payload' => null,
+                'failure' => $this->failure($document['error'] ?? 'document_failed', $summary),
+            ];
+        }
+
+        if (($summary['overall_status'] ?? null) === 2) {
+            return [
+                'summary' => $summary,
+                'payload' => $document['payload'],
+                'failure' => $this->failure('document_overall_status_error', $summary),
+            ];
+        }
+
+        return ['summary' => $summary, 'payload' => $document['payload'], 'failure' => null];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $documentSummary
+     * @return array<string, mixed>
+     */
+    private function failure(string $error, ?array $documentSummary = null): array
+    {
+        $details = ['error' => $error];
+        if ($documentSummary !== null) {
+            $details['document'] = $documentSummary;
+        }
+
+        return [
+            'status' => 'KO',
+            'risk_score' => null,
+            'similarity' => null,
+            'liveness' => null,
+            'details' => $details,
         ];
     }
 

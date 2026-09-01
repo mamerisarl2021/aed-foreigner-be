@@ -38,6 +38,9 @@ class EnrollmentRequestListResource extends JsonResource
             'numero_suivi' => $moraleCols['numero_suivi'],
             'raison_sociale' => $moraleCols['raison_sociale'],
             'pays_origine' => $moraleCols['pays_origine'],
+            'pays' => $this->isPersonneMorale()
+                ? ($kyc['country_of_incorporation'] ?? null)
+                : ($kyc['country_of_residence'] ?? null),
             'demandeur' => $this->formatDemandeur(
                 $this->isPersonneMorale(),
                 $kyc,

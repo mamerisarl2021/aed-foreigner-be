@@ -33,4 +33,30 @@ class MockRegulaService implements RegulaService
             ],
         ];
     }
+
+    /**
+     * @param  array<string, mixed>  $files
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function analyzeDocument(array $files, array $data): array
+    {
+        unset($files, $data);
+
+        return [
+            'status' => 'OK',
+            'risk_score' => null,
+            'similarity' => null,
+            'liveness' => null,
+            'details' => [
+                'doc_validity' => true,
+                'document_only' => true,
+                'document' => [
+                    'document_name' => null,
+                    'ocr' => [],
+                ],
+                'mock' => true,
+            ],
+        ];
+    }
 }

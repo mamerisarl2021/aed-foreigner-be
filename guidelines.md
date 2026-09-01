@@ -465,7 +465,7 @@ HTTP responses **MUST NOT** wait on these operations.
 
 **Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
 
-- KYC / Regula on `POST /kyc/verify` and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
+- KYC / Regula on `POST /kyc/verify`, `POST /kyc/document/verify`, and `POST /kyc/document/read` — the enrollment gate must accept or reject before persist
 - Keycloak JWKS fetch on token validation (cached 1 hour per URI)
 - ANIP lookup on `POST /clients/send-otp`
 - TrustedX `obtainToken` / `userInfo` on client login — the token is returned in the same response
@@ -693,20 +693,30 @@ Rules:
 - Prérequis: statut `APPROUVEE`; User + TrustedX already created at responsable approval.
 - `POST …/otp/send` / `…/otp/verify` / `POST /enrolements/finalisation`: **guest-capable** (no Sanctum required; an existing session does not block). **NPI + invitation token** required together (sequential NPIs must not send OTP alone). `npi` is digits only; `otp` is 6 digits. Email OTP is AED, distinct from TrustedX login MFA. Typed NPI must match the invitation — `numero_suivi` is not accepted.
 - After successful OTP verify: short-lived cache proof keyed by NPI (like KYC gate).
-- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1).
+- Finalize requires matching `npi` + `token` + OTP proof; `password` + two `security_questions` required; **no client PIN** — server generates a 4-digit PIN and sets TrustedX password/PIN **in this HTTP request** (exception to §10.1). Answers are hashed at rest (`answer_hash`); the HTTP body stays `{ question, answer }`.
 - Sets user `ACTIVE`, enrollment `ENROLEE`; publishes `enrolement.completed`.
 - Post-enrollment auth OTP (2FA) is **TrustedX-only** — not an AED OTP flow.
 
 ### 13.4 Personne morale enrollment (PDF §4)
 
-Prerequisites: authenticated `client` with an approved `IN_PERSON` identity (`ACTIVE`). KYC/Regula (demandeur identity document + selfie) must succeed before submit — OTP is skipped for that client; session cached ~30 min on the user.
+Prerequisites: authenticated `client` with an approved `IN_PERSON` identity (`ACTIVE`). Regula must read and accept the demandeur's **identity document** before submit — **no selfie, no liveness session, no face match** on this parcours: the visage was already checked during the demandeur's own physique enrollment. OTP is skipped for that client; session cached ~30 min on the user.
+
+Parcours en 3 étapes (SPA) :
+
+| Étape | Écran | API |
+|-------|-------|-----|
+| 1 | Formulaire d'identification de l'entreprise | — (aucun appel) |
+| 2 | Téléversement du document d'identité du demandeur, vérifié par Regula | `POST /kyc/document/verify` |
+| 3 | Téléversement des pièces justificatives puis soumission | `POST /enrolements/morales` |
+
+Pièces justificatives (étape 3) : **PDF uniquement, 5 Mo maximum par fichier** (`trade_register_extract`, `statutes`, `procuration`). Le document d'identité (`recto` / `verso`) reste en jpg, jpeg, png ou pdf, 5 Mo.
 
 Canonical HTTP flow:
 
 ```
 POST /kyc/document/read                                (assistive OCR; no OTP)
-POST /kyc/verify                                       (auth client: no OTP; guest physique: OTP first; optional capture_le)
-POST /enrolements/morales                              (auth:sanctum + client; returns numero_suivi PKI…)
+POST /kyc/document/verify                              (étape 2 — auth:sanctum + policy submitMorale; document seul, ni selfie ni liveness)
+POST /enrolements/morales                              (étape 3 — auth:sanctum + client; returns numero_suivi PKI…)
 GET  /enrolements/morales                              (owner list — Mes entreprises)
 GET  /enrolements/morales/{id}                         (owner only: company fields + pièces jointes)
 POST /enrolements/suivi                                (guest: numero_suivi + email — physique or morale)
@@ -718,7 +728,7 @@ POST /enrolements/morales/{id}/verify-phone-otp          (owner only)
 
 After **both** company contacts verified → `EN_ATTENTE_AGENT` and confirmation email to the **demandeur** (`submittedBy.email`) with `numero_suivi`. The 24h verification link goes to the official company email at submit. Same instruction/validation contract as physique afterwards.
 
-**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR/selfie of the demandeur — not company `kyc_data`) + `similar_enrollments`. Authenticated owner tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}`. Guest tracking (numero_suivi + email) uses `POST /enrolements/suivi` for both types.
+**Agent backoffice:** list and detail use `GET /enrolements` and `GET /enrolements/{id}` with `?type=PERSONNE_MORALE`. List `demandeur` = `submitted_by` user (demandeur authentifié); list also exposes `raison_sociale`, `pays_origine`, `numero_suivi`. Detail returns `informations_entreprise` + `pieces_jointes` + `analyse_kyc` (OCR of the demandeur's identity document — not company `kyc_data`) + `similar_enrollments`. Le bloc `analyse_kyc` garde la même forme que sur une physique, mais `selfie.url`, `selfie.capture_le`, `similarity`, `liveness` et `risk_score` sont **null** et `etapes.liveness_effectue` / `etapes.visage_compare` **false** : il n'y a plus de contrôle facial sur ce parcours (`analysis_details.document_only = true`). Authenticated owner tracking uses `GET /enrolements/morales` and `GET /enrolements/morales/{id}`. Guest tracking (numero_suivi + email) uses `POST /enrolements/suivi` for both types.
 
 On submit: assign Spatie role `demandeur_authentifie` to submitter (enterprise manager, distinct from staff `manager` role).
 
@@ -737,7 +747,7 @@ Company fields stored in `enrollment_requests.kyc_data` (`type = PERSONNE_MORALE
 | `legal_representative_first_name` | Prénoms du représentant légal | yes |
 | `is_legal_representative` | Demandeur = représentant légal | yes |
 
-Documents (`documents` JSON): `trade_register_extract` (required), `statutes` (optional), `procuration` (required when `is_legal_representative = false`), plus `selfie` / `recto` / `verso` from the KYC step (agent `analyse_kyc`).
+Documents (`documents` JSON): `trade_register_extract` (required), `statutes` (optional), `procuration` (required when `is_legal_representative = false`) — **PDF uniquement, 5 Mo max** — plus `recto` / `verso` du document d'identité de l'étape 2 (agent `analyse_kyc`). Plus de `selfie` : le dépôt le refuse et le service ne stocke que les emplacements validés par le Form Request de l'opération.
 
 Contact: `email` / `phonenumber` on the row = **official company** email and phone. Verified asynchronously after submit (email link, then SMS OTP) before the demande enters the agent queue. Confirmation of submission is sent to the demandeur only after both verifications.
 
@@ -754,7 +764,7 @@ On responsable approve: **do not** create a new `User` / TrustedX. Insert `enrol
 
 Duplicate submit is blocked against `enrolled_companies` (`ACTIVE`, `registration_number` + `country_of_incorporation`) plus leftover `APPROUVEE` demandes without a company row.
 
-Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces (not official email/phone, not KYC selfie) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
+Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces justificatives (mêmes règles PDF / 5 Mo ; pas l'email/téléphone officiels, pas le document d'identité) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
 
 No TrustedX / PSCEQ in this phase.
 
@@ -770,11 +780,12 @@ GET  /me                                 profil + identites (id, type, statut, n
 POST /clients/logout                     révoque le token Sanctum courant
 POST /clients/password/change            { current_password, password, password_confirmation }
 POST /clients/pin/change                 { current_pin, pin, pin_confirmation }  (exactly 4 digits)
-GET  /clients/security-questions         questions without answers
+GET  /clients/security-questions         questions without answers or hashes
 PUT  /clients/security-questions         { current_password, security_questions }
 ```
 
 - PIN is still **generated server-side at finalisation**; the client may change it later with the current PIN.
+- Security-question answers are hashed at rest (`users.security_questions[].answer_hash`, same Hash driver as passwords). HTTP write bodies stay `{ question, answer }`; GET omits answers and hashes. Blank answers after trim → 422.
 - Password/PIN changes dual-write TrustedX and a local hash (`users.password` / `users.pin_hash`). If the local hash is missing (legacy enrollments), return 422 and tell the caller to use the e-mail reset.
 - Changing the password revokes all Sanctum tokens.
 - Client activity **history** is out of this lot.

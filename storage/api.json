@@ -19,6 +19,9 @@
             "name": "Client Auth"
         },
         {
+            "name": "Enrollment - KYC"
+        },
+        {
             "name": "Enrollment - Morale"
         },
         {
@@ -35,9 +38,6 @@
         },
         {
             "name": "Enrollment - OTP"
-        },
-        {
-            "name": "Enrollment - KYC"
         },
         {
             "name": "Enrollment - Suivi"
@@ -324,6 +324,46 @@
                                             "type": "string"
                                         }
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/clients/set-password": {
+            "post": {
+                "operationId": "clients.set-password",
+                "summary": "Set a client TrustedX password or PIN (admin only)",
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetClientPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -1157,7 +1197,24 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/PlatformStatsResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Statistiques de la plateforme."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
                                 }
                             }
                         }
@@ -1167,6 +1224,164 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/users/search": {
+            "get": {
+                "operationId": "users.search",
+                "description": "Defaults: limit=10 (max 100).",
+                "summary": "Search users by email, name or NPI (staff only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/UserResource"
+                                                    }
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Searching users failed.",
+                                                        "R\u00e9sultats de recherche."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/users-email/search": {
+            "post": {
+                "operationId": "users.search-by-email",
+                "description": "Defaults: limit=10 (max 100). Historical path: POST /users-email/search.",
+                "summary": "Search users by email (staff only)",
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SearchUsersByEmailRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/UserResource"
+                                                    }
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Searching users failed.",
+                                                        "R\u00e9sultats de recherche."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -1174,7 +1389,7 @@
         "/v1/decrypt/token/file/{filename}": {
             "get": {
                 "operationId": "decrypt.token.file",
-                "description": "Staff reviewers and manager (viewEncryptedDocuments gate). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.",
+                "description": "Staff reviewers and manager (`viewEncryptedDocuments` policy). `filename` is the stored encrypted file name;\nthe decrypted content is returned inline with its detected MIME type.\n404 when the file does not exist.\nException to the JSON `{success,message,data}` envelope (\u00a79.2): success is raw file bytes.",
                 "summary": "Decrypt and display an encrypted enrollment document",
                 "tags": [
                     "Admin"
@@ -1210,6 +1425,46 @@
                             },
                             "Content-Type": {
                                 "description": "Detected MIME type of the decrypted file.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/management/users/update-status": {
+            "post": {
+                "operationId": "management.users.update-status",
+                "summary": "Bulk update user statuses (staff)",
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
                                 "schema": {
                                     "type": "string"
                                 }
@@ -1358,38 +1613,6 @@
                             }
                         }
                     },
-                    "404": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Agent introuvable."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 404
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
@@ -1426,38 +1649,6 @@
                             "application/json": {
                                 "schema": {
                                     "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Agent introuvable."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 404
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
                                 }
                             }
                         }
@@ -1612,10 +1803,16 @@
                                                     "type": "boolean"
                                                 },
                                                 "data": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "pagination": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "message": {
                                                     "type": "string"
@@ -1648,6 +1845,7 @@
         "/v1/admins/logout": {
             "post": {
                 "operationId": "admins.logout",
+                "description": "Canonical path: POST /admin/logout. Historical alias POST /admins/logout is kept.",
                 "summary": "Admin logout (revokes current token)",
                 "tags": [
                     "Admin Auth"
@@ -1658,33 +1856,44 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "minItems": 0,
-                                            "maxItems": 0,
-                                            "additionalItems": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "D\u00e9connexion r\u00e9ussie."
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "data",
-                                        "message"
-                                    ]
+                                    "type": "string"
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/logout": {
+            "post": {
+                "operationId": "admin.logout",
+                "description": "Canonical path: POST /admin/logout. Historical alias POST /admins/logout is kept.",
+                "summary": "Admin logout (revokes current token)",
+                "tags": [
+                    "Admin Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -1965,36 +2174,7 @@
                         }
                     },
                     "403": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Les mots de passe sont g\u00e9r\u00e9s via Keycloak."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 403
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
+                        "$ref": "#/components/responses/AuthorizationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -2180,33 +2360,7 @@
                                             "type": "boolean"
                                         },
                                         "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "configure": {
-                                                    "type": "boolean"
-                                                },
-                                                "questions": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "question": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "question"
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "configure",
-                                                "questions"
-                                            ]
+                                            "$ref": "#/components/schemas/ClientSecurityQuestionsResource"
                                         },
                                         "message": {
                                             "type": "string",
@@ -2316,240 +2470,8 @@
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/clients/set-password": {
-            "post": {
-                "operationId": "clients.set-password",
-                "summary": "Set a client TrustedX password or PIN (admin only)",
-                "tags": [
-                    "Client Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SetClientPasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/users/search": {
-            "get": {
-                "operationId": "users.search",
-                "description": "Defaults: limit=10 (max 100).",
-                "summary": "Search users by email, name or NPI (staff only)",
-                "tags": [
-                    "Client Auth"
-                ],
-                "parameters": [
-                    {
-                        "name": "query",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "maxLength": 255
-                        }
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "integer",
-                                "null"
-                            ],
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/UserResource"
-                                                    }
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Searching users failed.",
-                                                        "R\u00e9sultats de recherche."
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "string"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/users-email/search": {
-            "post": {
-                "operationId": "users.search-by-email",
-                "description": "Defaults: limit=10 (max 100).",
-                "summary": "Search users by email (staff only)",
-                "tags": [
-                    "Client Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SearchUsersByEmailRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/UserResource"
-                                                    }
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Searching users failed.",
-                                                        "R\u00e9sultats de recherche."
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "string"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/management/users/update-status": {
-            "post": {
-                "operationId": "management.users.update-status",
-                "summary": "Bulk update user statuses (staff)",
-                "tags": [
-                    "Client Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateUserStatusRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -2642,7 +2564,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/LoginWithCodeRequest"
+                                "$ref": "#/components/schemas/ClientLoginRequest"
                             }
                         }
                     }
@@ -2806,6 +2728,47 @@
                 "security": []
             }
         },
+        "/v1/kyc/document/verify": {
+            "post": {
+                "operationId": "kyc.document.verify",
+                "description": "\u00c9tape 2 du parcours personne morale : le document d'identit\u00e9 du demandeur est lu et\ncontr\u00f4l\u00e9 par Regula, **sans selfie, sans session de liveness et sans comparaison faciale**\n(le visage a d\u00e9j\u00e0 \u00e9t\u00e9 contr\u00f4l\u00e9 lors de son enr\u00f4lement physique).\nAuthenticated ACTIVE client with an approved IN_PERSON identity (policy `submitMorale`).\nWhen REGULA_MOCK=false: recto required; verso optional.\nSuccess caches the KYC session ~30 min for `POST /enrolements/morales` (\u00e9tape 3).\ndata: { kyc_valid, risk_score, similarity } \u2014 `risk_score` and `similarity` are null:\nno face score is computed on this path.",
+                "summary": "Sync identity document verification (Document Reader only)",
+                "tags": [
+                    "Enrollment - KYC"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyDocumentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/kyc/document/read": {
             "post": {
                 "operationId": "kyc.document.read",
@@ -2845,7 +2808,7 @@
         "/v1/kyc/verify": {
             "post": {
                 "operationId": "kyc.verify",
-                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client (morale): OTP skipped; session is cached on the user.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nOptional capture_le (ISO-8601 with timezone, e.g. 2026-08-17T14:30:00+01:00):\nwhen the selfie / liveness was captured. Must be within the last 60 minutes\n(and at most 5 minutes in the future). Stored on enrollment_requests.selfie_captured_at\nand returned as analyse_kyc.selfie.capture_le. Defaults to verification time.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Diagram \u00a72.3. Guest physique: both OTP channels must be verified first.\nAuthenticated ACTIVE client: OTP skipped; session is cached on the user. Personne morale\nnow uses POST /kyc/document/verify instead \u2014 document only, no liveness session.\nWhen REGULA_MOCK=false: selfie + recto required; verso optional.\nOptional liveness / liveness_transaction_id = Face liveness transaction id (not a client score).\nClient similarity is ignored for the OK/KO gate; scores come from Face /api/match.\nSuccess caches KYC session ~30 min for submit; data includes kyc_valid, risk_score, similarity.\nOptional capture_le (ISO-8601 with timezone, e.g. 2026-08-17T14:30:00+01:00):\nwhen the selfie / liveness was captured. Must be within the last 60 minutes\n(and at most 5 minutes in the future). Stored on enrollment_requests.selfie_captured_at\nand returned as analyse_kyc.selfie.capture_le. Defaults to verification time.\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Sync KYC verification (Document Reader + Face match)",
                 "tags": [
                     "Enrollment - KYC"
@@ -2916,230 +2879,7 @@
                                             "type": "boolean"
                                         },
                                         "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "counts": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "received": {
-                                                            "type": "integer"
-                                                        },
-                                                        "in_progress": {
-                                                            "type": "integer"
-                                                        },
-                                                        "approved": {
-                                                            "type": "integer"
-                                                        },
-                                                        "rejected": {
-                                                            "type": "integer"
-                                                        },
-                                                        "by_status": {
-                                                            "type": "object",
-                                                            "additionalProperties": {
-                                                                "type": "integer"
-                                                            }
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "received",
-                                                        "in_progress",
-                                                        "approved",
-                                                        "rejected",
-                                                        "by_status"
-                                                    ]
-                                                },
-                                                "taux_rejet_global": {
-                                                    "type": "number"
-                                                },
-                                                "average_handling_seconds": {
-                                                    "type": [
-                                                        "number",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "average_handling_hours": {
-                                                    "type": [
-                                                        "number",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "average_handling_days": {
-                                                    "type": [
-                                                        "number",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "reject_rate_by_motif": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "title": {},
-                                                            "count": {
-                                                                "type": "integer"
-                                                            },
-                                                            "taux": {
-                                                                "type": "number"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "id",
-                                                            "title",
-                                                            "count",
-                                                            "taux"
-                                                        ]
-                                                    }
-                                                },
-                                                "evolution": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "granularite": {
-                                                            "type": "string",
-                                                            "enum": [
-                                                                "mois",
-                                                                "semaine"
-                                                            ]
-                                                        },
-                                                        "points": {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "type": "object",
-                                                                "properties": {
-                                                                    "periode": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "count": {
-                                                                        "type": "integer"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "periode",
-                                                                    "count"
-                                                                ]
-                                                            }
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "granularite",
-                                                        "points"
-                                                    ]
-                                                },
-                                                "tendances": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "received": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "valeur": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "variation_pct": {
-                                                                    "type": [
-                                                                        "number",
-                                                                        "null"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "valeur",
-                                                                "variation_pct"
-                                                            ]
-                                                        },
-                                                        "in_progress": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "valeur": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "variation_pct": {
-                                                                    "type": [
-                                                                        "number",
-                                                                        "null"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "valeur",
-                                                                "variation_pct"
-                                                            ]
-                                                        },
-                                                        "approved": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "valeur": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "variation_pct": {
-                                                                    "type": [
-                                                                        "number",
-                                                                        "null"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "valeur",
-                                                                "variation_pct"
-                                                            ]
-                                                        },
-                                                        "rejected": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "valeur": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "variation_pct": {
-                                                                    "type": [
-                                                                        "number",
-                                                                        "null"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "valeur",
-                                                                "variation_pct"
-                                                            ]
-                                                        },
-                                                        "taux_rejet_global": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "valeur": {
-                                                                    "type": "number"
-                                                                },
-                                                                "variation_pct": {
-                                                                    "type": [
-                                                                        "number",
-                                                                        "null"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "valeur",
-                                                                "variation_pct"
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "received",
-                                                        "in_progress",
-                                                        "approved",
-                                                        "rejected",
-                                                        "taux_rejet_global"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "counts",
-                                                "taux_rejet_global",
-                                                "average_handling_seconds",
-                                                "average_handling_hours",
-                                                "average_handling_days",
-                                                "reject_rate_by_motif",
-                                                "evolution",
-                                                "tendances"
-                                            ]
+                                            "$ref": "#/components/schemas/EnrollmentDashboardStatsResource"
                                         },
                                         "message": {
                                             "type": "string",
@@ -4046,8 +3786,8 @@
             },
             "post": {
                 "operationId": "enrolements.morales.store",
-                "description": "Requires authenticated client with finalized physique enrollment and a prior\nPOST /kyc/verify session (OTP skipped for ACTIVE clients).\nOptional capture_le (ISO-8601 with timezone, last 60 min / next 5 min) is stored on\nselfie_captured_at for analyse_kyc.selfie.capture_le.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
-                "summary": "Submit personne morale enrollment",
+                "description": "Requires an authenticated client with a finalized physique enrollment and a prior\nPOST /kyc/document/verify session (\u00e9tape 2 \u2014 document d'identit\u00e9 seul, ni selfie ni\nliveness). Parcours : \u00e9tape 1 formulaire d'identification, \u00e9tape 2 document d'identit\u00e9,\n\u00e9tape 3 pi\u00e8ces justificatives puis soumission.\nPi\u00e8ces justificatives (trade_register_extract, statutes, procuration) : **PDF uniquement,\n5 Mo par fichier**. recto / verso restent le document d'identit\u00e9 du demandeur, joint au\ndossier pour l'agent.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "summary": "Submit personne morale enrollment (\u00e9tape 3)",
                 "tags": [
                     "Enrollment - Morale"
                 ],
@@ -4155,7 +3895,7 @@
             },
             "put": {
                 "operationId": "enrolements.morales.update",
-                "description": "Updates company fields and attachments (not official contacts, not KYC selfie).\nOn success the request returns to EN_ATTENTE_AGENT.",
+                "description": "Updates company fields and attachments (not official contacts, not the KYC document).\nPi\u00e8ces justificatives : PDF uniquement, 5 Mo par fichier.\nOn success the request returns to EN_ATTENTE_AGENT.",
                 "summary": "Correct a rejected personne morale enrollment (owner, A_CORRIGER only)",
                 "tags": [
                     "Enrollment - Morale"
@@ -4803,6 +4543,9 @@
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     },
@@ -4867,6 +4610,9 @@
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
                     },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     },
@@ -4912,13 +4658,46 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EnrollmentSubmitResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Avis d'instruction invalide.",
+                                                        "Avis d\u00e9favorable transmis au responsable.",
+                                                        "Erreur lors de la validation agent.",
+                                                        "Avis favorable transmis au responsable.",
+                                                        "Statut non \u00e9ligible \u00e0 l'instruction agent (EN_COURS_AGENT requis)."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
                                 }
                             }
                         }
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -5088,6 +4867,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -5355,7 +5137,7 @@
         "/v1/health": {
             "get": {
                 "operationId": "health",
-                "description": "Public. Returns `{\"status\": \"UP\"}` (200) when the database is reachable,\n`{\"status\": \"DOWN\"}` (503) otherwise. Used by Consul and load balancers.",
+                "description": "Public. Returns `{\"status\": \"UP\"}` (200) when the database is reachable,\n`{\"status\": \"DOWN\"}` (503) otherwise. Used by Consul and load balancers.\nException to the standard `{success,message,data}` envelope (\u00a79.2).",
                 "summary": "Service health check",
                 "tags": [
                     "Infrastructure"
@@ -5793,6 +5575,42 @@
                 ],
                 "title": "ClientIdentityResource"
             },
+            "ClientLoginRequest": {
+                "type": "object",
+                "description": "Web client login. The `redirect_uri` is not ours to choose: TrustedX binds\nthe authorization code to the exact value used at `/authorize`, so the\nbrowser that started the flow is the only party that knows it. We accept it\nfrom the client and check it against the configured allow-list.",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "redirect_uri": {
+                        "type": "string",
+                        "enum": [
+                            "http://localhost:4200/etranger/connexion/callback"
+                        ]
+                    }
+                },
+                "required": [
+                    "code",
+                    "redirect_uri"
+                ],
+                "title": "ClientLoginRequest"
+            },
+            "ClientSecurityQuestionsResource": {
+                "type": "object",
+                "properties": {
+                    "configure": {
+                        "type": "string"
+                    },
+                    "questions": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "configure",
+                    "questions"
+                ],
+                "title": "ClientSecurityQuestionsResource"
+            },
             "CorrectMoraleEnrollmentRequest": {
                 "type": "object",
                 "properties": {
@@ -5845,7 +5663,7 @@
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
+                        "description": "Extrait du registre de commerce. PDF uniquement, 5 Mo maximum."
                     },
                     "statutes": {
                         "type": [
@@ -5854,7 +5672,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
+                        "description": "Statuts de l'entreprise (facultatif). PDF uniquement, 5 Mo maximum."
                     },
                     "procuration": {
                         "type": [
@@ -5863,7 +5681,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
+                        "description": "Procuration, exig\u00e9e si is_legal_representative=false. PDF uniquement, 5 Mo maximum."
                     }
                 },
                 "required": [
@@ -5957,6 +5775,11 @@
                     "informations"
                 ],
                 "title": "EnrolledPersonDetailResource"
+            },
+            "EnrollmentDashboardStatsResource": {
+                "type": "object",
+                "additionalProperties": {},
+                "title": "EnrollmentDashboardStatsResource"
             },
             "EnrollmentDecisionDetailResource": {
                 "anyOf": [
@@ -6227,12 +6050,20 @@
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         },
                                         "url_telechargement": {
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         }
                                     },
@@ -6289,6 +6120,10 @@
                                                 "type": [
                                                     "string",
                                                     "null"
+                                                ],
+                                                "enum": [
+                                                    "",
+                                                    null
                                                 ]
                                             },
                                             "capture_le": {
@@ -6559,12 +6394,20 @@
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         },
                                         "url_telechargement": {
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         }
                                     },
@@ -7108,12 +6951,20 @@
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         },
                                         "url_telechargement": {
                                             "type": [
                                                 "string",
                                                 "null"
+                                            ],
+                                            "enum": [
+                                                "",
+                                                null
                                             ]
                                         }
                                     },
@@ -7170,6 +7021,10 @@
                                                 "type": [
                                                     "string",
                                                     "null"
+                                                ],
+                                                "enum": [
+                                                    "",
+                                                    null
                                                 ]
                                             },
                                             "capture_le": {
@@ -7261,6 +7116,11 @@
                     "ENROLEE"
                 ],
                 "title": "EnrollmentStatus"
+            },
+            "EnrollmentSubmitResource": {
+                "type": "object",
+                "additionalProperties": {},
+                "title": "EnrollmentSubmitResource"
             },
             "EnrollmentTrackingResource": {
                 "anyOf": [
@@ -7556,6 +7416,26 @@
                 "type": "array",
                 "items": {},
                 "title": "MoraleEnrollmentOwnerResource"
+            },
+            "PlatformStatsResource": {
+                "type": "object",
+                "properties": {
+                    "stats": {
+                        "type": "string"
+                    },
+                    "roles": {
+                        "type": "string"
+                    },
+                    "enrollment_by_status": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "stats",
+                    "roles",
+                    "enrollment_by_status"
+                ],
+                "title": "PlatformStatsResource"
             },
             "ReadDocumentRequest": {
                 "type": "object",
@@ -8080,7 +7960,7 @@
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
+                        "description": "\u00c9tape 3 \u2014 extrait du registre de commerce. PDF uniquement, 5 Mo maximum."
                     },
                     "statutes": {
                         "type": [
@@ -8089,7 +7969,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
+                        "description": "\u00c9tape 3 \u2014 statuts de l'entreprise (facultatif). PDF uniquement, 5 Mo maximum."
                     },
                     "procuration": {
                         "type": [
@@ -8098,19 +7978,13 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 10240 kilobytes."
-                    },
-                    "selfie": {
-                        "type": "string",
-                        "format": "binary",
-                        "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
+                        "description": "\u00c9tape 3 \u2014 procuration, exig\u00e9e si is_legal_representative=false. PDF uniquement, 5 Mo maximum."
                     },
                     "recto": {
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
+                        "description": "\u00c9tape 2 \u2014 recto du document d'identit\u00e9 du demandeur, d\u00e9j\u00e0 v\u00e9rifi\u00e9 par POST /kyc/document/verify. jpg, jpeg, png ou pdf, 5 Mo maximum."
                     },
                     "verso": {
                         "type": [
@@ -8119,14 +7993,7 @@
                         ],
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "description": "Maximum file size: 5120 kilobytes."
-                    },
-                    "capture_le": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Instant ISO-8601 of the selfie / liveness capture (TZ required). Fallback if omitted at /kyc/verify."
+                        "description": "\u00c9tape 2 \u2014 verso du document d'identit\u00e9 (facultatif). jpg, jpeg, png ou pdf, 5 Mo maximum."
                     }
                 },
                 "required": [
@@ -8141,7 +8008,6 @@
                     "legal_representative_first_name",
                     "is_legal_representative",
                     "trade_register_extract",
-                    "selfie",
                     "recto"
                 ],
                 "title": "SubmitMoraleEnrollmentRequest"
@@ -8459,6 +8325,30 @@
                     "decision"
                 ],
                 "title": "ValidationEnrollmentRequest"
+            },
+            "VerifyDocumentRequest": {
+                "type": "object",
+                "properties": {
+                    "recto": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Recto du document d'identit\u00e9 : jpg, jpeg, png ou pdf, 5 Mo maximum."
+                    },
+                    "verso": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Verso du document d'identit\u00e9 (facultatif) : jpg, jpeg, png ou pdf, 5 Mo maximum."
+                    }
+                },
+                "required": [
+                    "recto"
+                ],
+                "title": "VerifyDocumentRequest"
             },
             "VerifyFinalisationOtpRequest": {
                 "type": "object",
