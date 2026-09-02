@@ -784,7 +784,7 @@ La comparaison normalise casse et espaces (`UPPER(TRIM(...))`) des deux côtés.
 
 Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces justificatives (mêmes règles PDF / 5 Mo ; pas l'email/téléphone officiels, pas le document d'identité) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
 
-No TrustedX / PSCEQ in this phase.
+L'enrôlement morale n'appelle pas le PSCEQ. Les APIs partenaires de consultation (PDF §7) sont au §13.6.1.
 
 ### 13.5 Espace client (post-TrustedX)
 
@@ -818,6 +818,12 @@ GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier 
 GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id, ip_address)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
+GET  /admin/enrolled-companies? q, per_page                → entreprises enrôlées (read-only, UUID interne ; **ce n'est pas** l'API PSCEQ)
+GET  /admin/enrolled-companies/{id}                        → détail read-only (email, pièces, `demande_id`)
+PATCH /admin/enrolled-companies/{id}/status                { statut: ACTIVE|SUSPENDED|REVOKED }
+GET  /admin/psceq-clients                                  → prestataires habilités (préfixe, révocation ; jamais la clé ni le hash)
+POST /admin/psceq-clients                                  { nom } → `api_key` en clair **une seule fois**
+POST /admin/psceq-clients/{id}/revoke                      pose `revoked_at` (appels suivants → 401)
 POST /admin/enrollment-reject-motifs                       { title, description }
 GET  /admin/enrollment-reject-motifs/{id}
 PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
@@ -832,7 +838,33 @@ GET  /audits                                               → journal OwenIt te
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
 - **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
+- **Entreprises enrôlées** (`GET /admin/enrolled-companies`) : listing admin par UUID, y compris email et pièces. **Ce n'est pas** l'API partenaire PSCEQ (PDF §7) — celle-ci est au §13.6.1.
+- **Statut entreprise** : `ACTIVE` | `SUSPENDED` | `REVOKED`. Le doublon d'enrôlement reste bloqué sur `ACTIVE` seulement. `PATCH …/status` journalise `ENTREPRISE STATUT MODIFIE`.
 - **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
+
+### 13.6.1 APIs PSCEQ (PDF §7)
+
+Consultation d'entreprises enrôlées par un prestataire de confiance habilité. **Clés API**, pas de client Keycloak par prestataire. Habiliter ou couper un PSCEQ se fait dans AED (admin plateforme).
+
+**Émission / révocation (admin, Sanctum + `administrateur_plateforme`)** — voir aussi §13.6 :
+
+- `POST /admin/psceq-clients` `{ nom }` → 201 avec `api_key` plaintext **une fois**. Le prestataire l'envoie en `Authorization: Bearer` **ou** `X-Api-Key`.
+- `GET /admin/psceq-clients` — liste sans hash ni clé.
+- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Rotation = révoquer puis émettre une nouvelle clé.
+- Stockage : préfixe public (`psceq_` + 8 caractères) + `Hash::make`. La clé n'est jamais re-lisible. Logs : préfixe seulement.
+
+**Consultation (pas `auth:sanctum`, pas Keycloak)** — préfixe `/api/v1/psceq`, middleware `psceq` + `throttle:psceq`. Lookup par **`identifiant` `PM` + 9 alphanumériques**, jamais l'UUID interne.
+
+```
+GET /psceq/entreprises?q=                 q requis, min 2 car. LIKE sur legal_name (même normalisation que le doublon morale). Court : identifiant, raison_sociale, pays_origine, statut. Pas d'email, pièces, demande_id
+GET /psceq/entreprises/{identifiant}      identité entreprise, pas documents / KYC / UUID
+GET /psceq/entreprises/{identifiant}/administrateur   nom / prenoms du représentant légal
+GET /psceq/entreprises/{identifiant}/statut           { identifiant, statut, existe: true }
+```
+
+Identifiant inconnu **ou** mal formé → **404** `Entreprise introuvable`. Clé absente, inconnue ou révoquée → **401** `Clé API invalide.` (même message). Gate `queryAsPsceq` après le middleware (pas un rôle Spatie). Journal `CONSULTATION PSCEQ` : `actor_user_id` null, metadata `psceq_client_id`, `key_prefix`, route, `identifiant` ou `q`, `found`.
+
+Hors de ce lot : certificats professionnels, transfert de gestionnaire (PDF §9), clients Keycloak PSCEQ, UI prestataire.
 
 ### 13.7 Explicitly out of current API scope
 
@@ -840,7 +872,7 @@ Do not pretend these exist in code without implementing them:
 
 - **Visioconférence** — **entièrement retirée du code**, pas seulement absente d'un produit tiers (Zoom/Meet). Le statut `VISIO_REQUESTED` avait été réécrit en `EN_ATTENTE` lors de l'alignement sur le diagramme ; les colonnes `visio_requested_at`, `visio_completed_at` et `visio_notes`, le cas d'enum `EnrollmentVisioRequested` et le gabarit `emails/identity/visio_requested.blade.php` ont suivi, faute de lecteur. Seules les migrations d'origine en gardent la trace, comme il se doit. Rouvrir ce parcours, c'est le concevoir de zéro.
 - Kafka topic / object-storage hardening for local dev
-- **PSCEQ / professional certificate** acquisition for personne morale (APIs §7, statut actif/suspendu/révoqué)
+- **Certificat professionnel** personne morale (hors APIs de consultation PSCEQ, déjà au §13.6.1)
 - Transfert / changement de gestionnaire entreprise (PDF §9)
 - Reopen of a **physique** rejected demande (applicant submits a **new** demande). Morale uses `A_CORRIGER` + `PUT /enrolements/morales/{id}` instead.
 - SLA thresholds admin UI (env/config only for now)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsurePsceqApiKey;
 use App\Services\Regula\HttpRegulaService;
 use App\Services\Regula\MockRegulaService;
 use App\Services\Regula\RegulaService;
@@ -76,6 +77,13 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by(
                 strtolower((string) $request->input('numero_suivi')).'|'.$request->ip()
             );
+        });
+
+        RateLimiter::for('psceq', function (Request $request) {
+            $prefix = $request->attributes->get(EnsurePsceqApiKey::KEY_PREFIX_ATTRIBUTE);
+            $key = is_string($prefix) && $prefix !== '' ? $prefix : (string) $request->ip();
+
+            return Limit::perMinute(60)->by($key);
         });
 
         // Scramble merges inferred JSON content with #[Response] binary for decrypt; drop the noise.

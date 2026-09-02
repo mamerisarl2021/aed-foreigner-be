@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminActivityLogController;
 use App\Http\Controllers\AdminEnrolledCompanyController;
 use App\Http\Controllers\AdminEnrolledPersonController;
+use App\Http\Controllers\AdminPsceqClientController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientSecurityController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\ManagerEnrollmentController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
+use App\Http\Controllers\PsceqCompanyController;
 use App\Http\Controllers\Singletons\HealthCheckController;
 use App\Http\Controllers\Singletons\UserProfileController;
 use App\Http\Controllers\StaffDirectoryController;
@@ -77,6 +79,15 @@ Route::group([], function () {
         Route::get('/admin/enrolled-companies/{id}', [AdminEnrolledCompanyController::class, 'show'])
             ->whereUuid('id')
             ->name('admin.enrolled-companies.show');
+        Route::patch('/admin/enrolled-companies/{id}/status', [AdminEnrolledCompanyController::class, 'updateStatus'])
+            ->whereUuid('id')
+            ->name('admin.enrolled-companies.status');
+
+        Route::get('/admin/psceq-clients', [AdminPsceqClientController::class, 'index'])->name('admin.psceq-clients.index');
+        Route::post('/admin/psceq-clients', [AdminPsceqClientController::class, 'store'])->name('admin.psceq-clients.store');
+        Route::post('/admin/psceq-clients/{id}/revoke', [AdminPsceqClientController::class, 'revoke'])
+            ->whereUuid('id')
+            ->name('admin.psceq-clients.revoke');
         Route::post('/clients/set-password', [StaffDirectoryController::class, 'setClientPassword'])->name('clients.set-password');
 
         Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index'])->name('admin.activity-logs.index');
@@ -149,6 +160,16 @@ Route::group([], function () {
         Route::post('/enrolements/finalisation', [FinalisationController::class, 'store'])
             ->middleware(['throttle:password-reset'])
             ->name('enrolements.finalisation.store');
+    });
+
+    Route::middleware(['psceq', 'throttle:psceq'])->prefix('psceq')->name('psceq.')->group(function () {
+        Route::get('/entreprises', [PsceqCompanyController::class, 'search'])->name('entreprises.search');
+        Route::get('/entreprises/{identifiant}/administrateur', [PsceqCompanyController::class, 'administrateur'])
+            ->name('entreprises.administrateur');
+        Route::get('/entreprises/{identifiant}/statut', [PsceqCompanyController::class, 'statut'])
+            ->name('entreprises.statut');
+        Route::get('/entreprises/{identifiant}', [PsceqCompanyController::class, 'show'])
+            ->name('entreprises.show');
     });
 
     Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail'])

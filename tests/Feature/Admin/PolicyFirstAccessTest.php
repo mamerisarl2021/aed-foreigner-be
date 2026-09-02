@@ -79,6 +79,24 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function agent_cannot_list_psceq_clients(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/admin/psceq-clients'))->assertForbidden();
+    }
+
+    #[Test]
+    public function agent_cannot_update_enrolled_company_status(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->patchJson($this->api('/admin/enrolled-companies/'.fake()->uuid().'/status'), [
+            'statut' => 'SUSPENDED',
+        ])->assertForbidden();
+    }
+
+    #[Test]
     public function client_cannot_access_stats_search_decrypt_or_update_status(): void
     {
         Sanctum::actingAs($this->client);

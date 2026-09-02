@@ -26,4 +26,9 @@ class EnrolledCompanyPolicy
     {
         return $user->hasRole(config('roles.administrateur_plateforme'));
     }
+
+    public function updateStatus(User $user): bool
+    {
+        return $user->hasRole(config('roles.administrateur_plateforme'));
+    }
 }

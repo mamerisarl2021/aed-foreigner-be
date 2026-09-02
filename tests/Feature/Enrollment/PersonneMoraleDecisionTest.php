@@ -6,6 +6,7 @@ namespace Tests\Feature\Enrollment;
 
 use App\Enums\ActivityLogAction;
 use App\Enums\AgentAvis;
+use App\Enums\EnrolledCompanyStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\NotificationTemplate;
 use App\Jobs\Notifications\SendEmailNotificationJob;
@@ -109,7 +110,7 @@ final class PersonneMoraleDecisionTest extends TestCase
         $this->assertNotNull($company);
         $this->assertSame($identifiant, $company->identifiant);
         $this->assertSame('TECH SARL INNOV', $company->legal_name);
-        $this->assertSame(EnrolledCompany::STATUS_ACTIVE, $company->status);
+        $this->assertSame(EnrolledCompanyStatus::Active, $company->status);
 
         $this->assertTrue(Identity::query()
             ->where('user_id', $this->client->id)
