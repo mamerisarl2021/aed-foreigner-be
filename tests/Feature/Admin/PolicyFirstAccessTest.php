@@ -102,6 +102,7 @@ final class PolicyFirstAccessTest extends TestCase
         Sanctum::actingAs($this->client);
 
         $this->getJson($this->api('/stats'))->assertForbidden();
+        $this->getJson($this->api('/management/enrollment-stats'))->assertForbidden();
         $this->getJson($this->api('/users/search?query=test'))->assertForbidden();
         $this->getJson($this->api('/decrypt/token/file/dummy.enc'))->assertForbidden();
         $this->postJson($this->api('/admins/logout'))->assertForbidden();
@@ -118,6 +119,7 @@ final class PolicyFirstAccessTest extends TestCase
         Sanctum::actingAs($this->agent);
 
         $this->getJson($this->api('/stats'))->assertOk();
+        $this->getJson($this->api('/management/enrollment-stats'))->assertOk();
         $this->getJson($this->api('/users/search?query=admin-policy'))->assertOk();
     }
 
