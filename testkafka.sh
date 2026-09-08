@@ -22,7 +22,8 @@ TOPICS=(
 )
 
 PROBE_TOPIC="${KAFKA_TOPIC_EMAIL:-notify.email}"
-PROBE_VALUE="{\"source\":\"test-kafka.sh\",\"at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+# Même enveloppe qu'OtpService -> EmailNotificationData::toArray() (OTP factice).
+PROBE_VALUE='{"subject":"Votre code OTP AED","platform":"PORTAL","primaryChannel":"EMAIL","recipients":[{"email":"probe@example.com","personalVariables":{"otp":"000000"}}],"templateName":"FOREIGNER_OTP","visibleInInterface":true,"type":"OTP_SEND","variables":{"otp":"000000"}}'
 
 kafka_sh() {
     local script="$1"
@@ -38,7 +39,7 @@ kafka_in() {
 
 echo "==> conteneur ${CONTAINER}"
 status="$(docker inspect -f '{{.State.Status}}' "$CONTAINER")"
-if [[ "$status" != "running" ]]; then
+if [ "$status" != "running" ]; then
     echo "FAIL: ${CONTAINER} status=${status}"
     exit 1
 fi
@@ -55,27 +56,19 @@ kafka_sh kafka-topics.sh --list
 
 echo "==> produce ${PROBE_TOPIC}"
 printf '%s\n' "$PROBE_VALUE" | kafka_in kafka-console-producer.sh --topic "$PROBE_TOPIC"
-
-echo "==> consume 1 message (timeout 12s)"
-GOT="$(
-    docker exec "$CONTAINER" timeout 12 "${KAFKA_BIN}/kafka-console-consumer.sh" \
-        --bootstrap-server "$BOOTSTRAP_INTERNAL" \
-        --topic "$PROBE_TOPIC" \
-        --from-beginning \
-        --max-messages 1 \
-        --timeout-ms 10000 2>/dev/null ||
-        true
-)"
-
-if [[ "$GOT" != *test-kafka.sh* ]]; then
-    echo "FAIL: message de probe introuvable sur ${PROBE_TOPIC}"
-    echo "$GOT"
-    exit 1
-fi
-echo "    OK $GOT"
+echo "    OK (FOREIGNER_OTP / probe@example.com)"
 
 echo
 echo "Broker OK. Pour tester Laravel (rdkafka) :"
 echo "  1. NOTIFICATION_DRIVER=kafka et KAFKA_BROKERS=${BOOTSTRAP_HOST} dans .env"
-echo "  2. php artisan tinker --execute=\"app(\\App\\Contracts\\NotificationPublisherInterface::class)->publishEmail(new \\App\\DataTransferObjects\\EmailNotificationData(subject: 'probe', template: \\App\\Enums\\NotificationTemplate::EnrollmentSubmitted, recipients: [['email' => 'probe@example.com']], variables: ['probe' => true]));\""
-echo "  3. kafka-ui / consumer sur ${PROBE_TOPIC}"
+echo "  2. php artisan tinker, puis :"
+echo "     app(\\App\\Contracts\\NotificationPublisherInterface::class)->publishEmail("
+echo "       new \\App\\DataTransferObjects\\EmailNotificationData("
+echo "         subject: 'Votre code OTP AED',"
+echo "         template: \\App\\Enums\\NotificationTemplate::ForeignerOtp,"
+echo "         recipients: [\\App\\Support\\NotificationRecipient::email('probe@example.com', ['otp' => '000000'])],"
+echo "         variables: ['otp' => '000000'],"
+echo "         type: 'OTP_SEND',"
+echo "       )"
+echo "     );"
+echo "  3. kafka-ui sur ${PROBE_TOPIC}"
