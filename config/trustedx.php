@@ -16,6 +16,10 @@ return [
 
     'redirect_url' => env('TX_REDIRECT_URL'),
 
+    'redirect_path' => env('TX_REDIRECT_PATH'),
+
+    'scope' => env('TX_SCOPE', 'urn:gob:basic:profile'),
+
     /*
     | Redirect URIs allowed to exchange an authorization code. The client sends
     | the one it used at /authorize; TrustedX rejects the exchange unless both
