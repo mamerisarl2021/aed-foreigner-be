@@ -14,9 +14,6 @@ class EnrollmentDashboardStatsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var array<string, mixed> $payload */
-        $payload = $this->resource;
-
-        return $payload;
+        return is_array($this->resource) ? $this->resource : [];
     }
 }

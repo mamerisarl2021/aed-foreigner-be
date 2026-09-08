@@ -29,9 +29,8 @@ class EnrollmentTrackingResource extends JsonResource
 
         $kyc = is_array($enrollment->kyc_data) ? $enrollment->kyc_data : [];
         $isMorale = $enrollment->isPersonneMorale();
-        $submitter = $enrollment->submittedBy;
 
-        $payload = [
+        return [
             'id' => $enrollment->id,
             'numero_suivi' => $enrollment->tracking_code,
             'type' => $enrollment->type,
@@ -46,19 +45,37 @@ class EnrollmentTrackingResource extends JsonResource
             'correction_deadline_at' => $enrollment->correction_deadline_at,
             'motifs' => $this->applicantMotifs($enrollment),
             'raison_sociale' => $isMorale ? ($kyc['legal_name'] ?? null) : null,
-            'demandeur' => [
-                'nom' => $isMorale
-                    ? ($submitter !== null ? $submitter->name : ($kyc['legal_representative_name'] ?? null))
-                    : ($kyc['name'] ?? null),
-                'prenom' => $isMorale
-                    ? ($submitter !== null ? $submitter->first_name : ($kyc['legal_representative_first_name'] ?? null))
-                    : ($kyc['first_name'] ?? null),
-            ],
+            'demandeur' => $this->applicantName($enrollment, $kyc, $isMorale),
             'email_verifie' => $enrollment->isEmailVerified(),
             'telephone_verifie' => $enrollment->isPhoneVerified(),
         ];
+    }
 
-        return $payload;
+    /**
+     * @param  array<string, mixed>  $kyc
+     * @return array{nom: mixed, prenom: mixed}
+     */
+    private function applicantName(EnrollmentRequest $enrollment, array $kyc, bool $isMorale): array
+    {
+        if (! $isMorale) {
+            return [
+                'nom' => $kyc['name'] ?? null,
+                'prenom' => $kyc['first_name'] ?? null,
+            ];
+        }
+
+        $submitter = $enrollment->submittedBy;
+        if ($submitter !== null) {
+            return [
+                'nom' => $submitter->name,
+                'prenom' => $submitter->first_name,
+            ];
+        }
+
+        return [
+            'nom' => $kyc['legal_representative_name'] ?? null,
+            'prenom' => $kyc['legal_representative_first_name'] ?? null,
+        ];
     }
 
     /**
