@@ -21,6 +21,9 @@ final class SendSmsNotificationJob implements ShouldQueue
         public readonly SmsNotificationData $notification,
     ) {}
 
+    /**
+     * @return list<int>
+     */
     public function backoff(): array
     {
         return [60, 120, 300];

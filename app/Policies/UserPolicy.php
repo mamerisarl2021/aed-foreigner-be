@@ -59,16 +59,6 @@ class UserPolicy
         return $user->hasRole(config('roles.client'));
     }
 
-    public function manageStaff(User $user): bool
-    {
-        return $user->hasRole(config('roles.administrateur_plateforme'));
-    }
-
-    public function changeStaffPassword(User $user): bool
-    {
-        return $user->hasAnyRole(self::staffRoles());
-    }
-
     public function logoutStaff(User $user): bool
     {
         return $user->hasAnyRole(self::staffRoles());

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\EnrolledCompanyStatus;
 use App\Http\Requests\Admin\ListEnrolledCompaniesRequest;
 use App\Http\Requests\Admin\ShowEnrolledCompanyRequest;
+use App\Http\Requests\Admin\UpdateEnrolledCompanyStatusRequest;
 use App\Http\Resources\EnrolledCompanyDetailResource;
 use App\Http\Resources\EnrolledCompanyListResource;
+use App\Models\EnrolledCompany;
 use App\Services\Admin\EnrolledCompanyService;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
@@ -28,13 +31,16 @@ final class AdminEnrolledCompanyController extends BaseController
      * company enrolment is approved — and never the requests themselves.
      * `identifiant` is the company's unique id, the NPI's counterpart.
      * Defaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.
+     * This is not the PSCEQ partner API.
      */
     public function index(ListEnrolledCompaniesRequest $request): JsonResponse
     {
         $this->authorize('viewAnyEnrolledCompany');
 
         $paginator = $this->enrolledCompanyService->list($request);
-        $paginator->getCollection()->transform(fn ($item) => new EnrolledCompanyListResource($item));
+        $paginator->getCollection()->transform(
+            fn (EnrolledCompany $item) => new EnrolledCompanyListResource($item)
+        );
 
         return $this->sendResponse('Liste des entreprises enrôlées.', $paginator);
     }
@@ -51,7 +57,33 @@ final class AdminEnrolledCompanyController extends BaseController
         $this->authorize('viewEnrolledCompany');
 
         $result = $this->enrolledCompanyService->show((string) $request->validated('id'));
-        if (! $result->success) {
+        if (! $result->success || ! $result->data instanceof EnrolledCompany) {
+            return $this->respond($result);
+        }
+
+        return $this->sendResponse($result->message, new EnrolledCompanyDetailResource($result->data));
+    }
+
+    /**
+     * Update enrolled company status
+     *
+     * Body: `{ statut }` with `ACTIVE`, `SUSPENDED` or `REVOKED`. Finds the
+     * company by UUID regardless of current status. Duplicate enrollment stays
+     * blocked on ACTIVE only.
+     */
+    #[PathParameter('id', description: 'Enrolled company UUID.', type: 'string', format: 'uuid')]
+    public function updateStatus(UpdateEnrolledCompanyStatusRequest $request): JsonResponse
+    {
+        $this->authorize('updateEnrolledCompanyStatus');
+
+        $status = EnrolledCompanyStatus::from((string) $request->validated('statut'));
+        $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+        $result = $this->enrolledCompanyService->updateStatus(
+            (string) $request->validated('id'),
+            $status,
+            $actorId,
+        );
+        if (! $result->success || ! $result->data instanceof EnrolledCompany) {
             return $this->respond($result);
         }
 

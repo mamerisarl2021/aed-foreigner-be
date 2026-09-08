@@ -99,7 +99,12 @@ trait EncryptionTrait
             }
         }
 
-        $decryptedContent = openssl_decrypt($encryptedContent, $method, $key, OPENSSL_RAW_DATA, '4921a67c51de4c8b');
+        $legacyIv = (string) config('encryption.legacy_cbc_iv');
+        if (strlen($legacyIv) !== 16) {
+            return base64_encode('');
+        }
+
+        $decryptedContent = openssl_decrypt($encryptedContent, $method, $key, OPENSSL_RAW_DATA, $legacyIv);
 
         return base64_encode($decryptedContent === false ? '' : $decryptedContent);
     }

@@ -43,8 +43,8 @@ final class DocumentReaderClient
         }
 
         $list = [];
-        foreach (array_values($imagePaths) as $index => $path) {
-            if (! is_string($path) || ! is_file($path)) {
+        foreach ($imagePaths as $index => $path) {
+            if (! is_file($path)) {
                 continue;
             }
             $bytes = file_get_contents($path);

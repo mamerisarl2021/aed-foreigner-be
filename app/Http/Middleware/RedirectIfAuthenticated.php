@@ -24,7 +24,7 @@ final class RedirectIfAuthenticated
                     ], 409);
                 }
 
-                return redirect(config('app.home'));
+                return redirect()->to((string) config('app.home'));
             }
         }
 

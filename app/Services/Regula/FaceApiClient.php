@@ -52,26 +52,7 @@ final class FaceApiClient
             return ['ok' => false, 'payload' => null, 'error' => 'face_url_not_configured'];
         }
 
-        $payloadImages = [];
-        foreach (array_values($images) as $i => $image) {
-            $data = $image['data'] ?? null;
-            if (($data === null || $data === '') && isset($image['path']) && is_file($image['path'])) {
-                $bytes = file_get_contents($image['path']);
-                if ($bytes === false || $bytes === '') {
-                    continue;
-                }
-                $data = base64_encode($bytes);
-            }
-            if (! is_string($data) || $data === '') {
-                continue;
-            }
-            $payloadImages[] = [
-                'index' => $image['index'] ?? $i,
-                'type' => $image['type'],
-                'data' => $data,
-            ];
-        }
-
+        $payloadImages = $this->encodeMatchImages($images);
         if (count($payloadImages) < 2) {
             return ['ok' => false, 'payload' => null, 'error' => 'match_needs_two_images'];
         }
@@ -93,6 +74,45 @@ final class FaceApiClient
 
             return ['ok' => false, 'payload' => null, 'error' => 'face_unreachable'];
         }
+    }
+
+    /**
+     * @param  list<array{type: int, path?: string, data?: string, index?: int}>  $images
+     * @return list<array{index: int, type: int, data: string}>
+     */
+    private function encodeMatchImages(array $images): array
+    {
+        $payloadImages = [];
+        foreach ($images as $i => $image) {
+            $data = $this->imageData($image);
+            if ($data === null) {
+                continue;
+            }
+            $payloadImages[] = [
+                'index' => $image['index'] ?? $i,
+                'type' => $image['type'],
+                'data' => $data,
+            ];
+        }
+
+        return $payloadImages;
+    }
+
+    /**
+     * @param  array{type: int, path?: string, data?: string, index?: int}  $image
+     */
+    private function imageData(array $image): ?string
+    {
+        $data = $image['data'] ?? null;
+        if (($data === null || $data === '') && isset($image['path']) && is_file($image['path'])) {
+            $bytes = file_get_contents($image['path']);
+            if ($bytes === false || $bytes === '') {
+                return null;
+            }
+            $data = base64_encode($bytes);
+        }
+
+        return is_string($data) && $data !== '' ? $data : null;
     }
 
     /**

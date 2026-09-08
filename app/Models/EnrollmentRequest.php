@@ -30,6 +30,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property Carbon|null $returned_at
  * @property Carbon|null $agent_decided_at
  * @property Carbon|null $sla_deadline_at
+ * @property Carbon|null $verification_deadline_at
  * @property Carbon|null $correction_deadline_at
  * @property Carbon|null $correction_reminder_sent_at
  * @property-read User|null $assignedAgent
@@ -72,9 +73,6 @@ class EnrollmentRequest extends Model implements Auditable
         'email_verified_at',
         'phone_verified_at',
         'verification_deadline_at',
-        'visio_notes',
-        'visio_requested_at',
-        'visio_completed_at',
         'returned_at',
         'return_reasons',
         'sla_deadline_at',
@@ -97,8 +95,6 @@ class EnrollmentRequest extends Model implements Auditable
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'verification_deadline_at' => 'datetime',
-            'visio_requested_at' => 'datetime',
-            'visio_completed_at' => 'datetime',
             'returned_at' => 'datetime',
             'agent_decided_at' => 'datetime',
             'sla_deadline_at' => 'datetime',
@@ -107,16 +103,19 @@ class EnrollmentRequest extends Model implements Auditable
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignedAgent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_agent_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignedResponsable(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_responsable_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by_user_id');

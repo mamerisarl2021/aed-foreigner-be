@@ -371,7 +371,7 @@ class PersonneMoraleEnrollmentService
         Cache::forget("morale_otp_phone_attempts_{$enrollment->id}");
         SendSmsNotificationJob::dispatch(new SmsNotificationData(
             subject: "Votre code OTP AED (entreprise) est : {$otp} (valide {$ttl} minutes).",
-            recipients: [NotificationRecipient::phone($enrollment->phonenumber)],
+            recipients: [NotificationRecipient::phone((string) $enrollment->phonenumber)],
             type: 'GENERIC_SMS',
             platform: NotificationPlatform::from(config('notifications.platform')),
         ));
@@ -501,7 +501,10 @@ class PersonneMoraleEnrollmentService
 
         foreach ($slots as $slot) {
             if ($request->hasFile($slot)) {
-                $uploadedFiles[$slot] = $request->file($slot)?->store('tmp/enrollments/morale', 'local');
+                $chemin = $request->file($slot)?->store('tmp/enrollments/morale', 'local');
+                // store() rend `false` si l'écriture échoue : ne jamais laisser
+                // ce booléen atteindre la colonne `documents`.
+                $uploadedFiles[$slot] = $chemin === false ? null : $chemin;
             }
         }
 

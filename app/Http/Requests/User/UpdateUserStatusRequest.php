@@ -13,6 +13,9 @@ class UpdateUserStatusRequest extends ApiFormRequest
         return 'Erreur de validation des données';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

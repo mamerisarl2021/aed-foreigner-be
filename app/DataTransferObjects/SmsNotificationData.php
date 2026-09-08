@@ -10,6 +10,9 @@ use InvalidArgumentException;
 
 final readonly class SmsNotificationData
 {
+    /**
+     * @param  list<array<string, mixed>>  $recipients
+     */
     public function __construct(
         public string $subject,
         public array $recipients,
@@ -24,6 +27,9 @@ final readonly class SmsNotificationData
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $payload = [

@@ -16,7 +16,6 @@ enum NotificationTemplate: string
     case ForeignerFinalized = 'FOREIGNER_FINALIZED';
     case IdentityStepApproved = 'IDENTITY_STEP_APPROVED';
     case IdentityRejected = 'IDENTITY_REJECTED';
-    case EnrollmentVisioRequested = 'ENROLLMENT_VISIO_REQUESTED';
     case EnrollmentReturnedToAgent = 'ENROLLMENT_RETURNED_TO_AGENT';
     case EnrollmentSlaAlert = 'ENROLLMENT_SLA_ALERT';
     case MoraleApproved = 'MORALE_APPROVED';

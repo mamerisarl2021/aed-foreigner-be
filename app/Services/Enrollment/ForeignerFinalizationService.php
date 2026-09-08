@@ -183,7 +183,7 @@ final class ForeignerFinalizationService
             return ServiceResult::fail($e->getMessage(), null, 422);
         }
 
-        $lookup = $this->trustedXClient->getUserWithNPI($user->npi);
+        $lookup = $this->trustedXClient->getUserWithNPI((string) $user->npi);
         if (! ($lookup['status'] ?? false)) {
             return ServiceResult::fail($lookup['message'] ?? 'Impossible de récupérer le compte TrustedX.', null, 400);
         }

@@ -9,6 +9,9 @@ use App\Rules\PhoneNumber;
 
 class SendOtpRequest extends ApiFormRequest
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

@@ -120,7 +120,7 @@ class EnrollmentRequestPolicy
 
     public function viewEnrollmentStats(User $user): bool
     {
-        return $user->hasRole(config('roles.manager'));
+        return $user->hasAnyRole(config('roles.staff', []));
     }
 
     public function supervise(User $user): bool

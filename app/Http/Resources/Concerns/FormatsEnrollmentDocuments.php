@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Concerns;
 
+use App\Models\User;
 use App\Support\CloudTemporaryUrl;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -138,7 +139,7 @@ trait FormatsEnrollmentDocuments
      * @param  array<string, mixed>|null  $kyc
      * @return array{nom: ?string, prenom: ?string}
      */
-    protected function formatDemandeur(bool $estPersonneMorale, ?array $kyc, ?object $submitter): array
+    protected function formatDemandeur(bool $estPersonneMorale, ?array $kyc, ?User $submitter): array
     {
         if ($estPersonneMorale) {
             return [

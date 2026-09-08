@@ -4,15 +4,37 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\EnrolledCompanyStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Entreprise étrangère enrôlée (PDF §6) — distincte de la demande.
  *
+ * @property string $id
+ * @property string $identifiant
+ * @property string $enrollment_request_id
+ * @property string $manager_user_id
+ * @property string $legal_name
+ * @property string|null $legal_form
+ * @property string $country_of_incorporation
+ * @property string $registration_number
+ * @property Carbon|null $incorporation_date
+ * @property string $headquarters_address
+ * @property string $activity_sector
+ * @property string $legal_representative_name
+ * @property string $legal_representative_first_name
+ * @property string $company_email
+ * @property string|null $company_phone
  * @property array<string, mixed>|null $documents
+ * @property EnrolledCompanyStatus $status
+ * @property Carbon $approved_at
+ * @property string|null $approved_by_user_id
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class EnrolledCompany extends Model implements Auditable
 {
@@ -48,7 +70,13 @@ class EnrolledCompany extends Model implements Auditable
             'documents' => 'array',
             'incorporation_date' => 'date',
             'approved_at' => 'datetime',
+            'status' => EnrolledCompanyStatus::class,
         ];
+    }
+
+    public function statusValue(): string
+    {
+        return $this->status->value;
     }
 
     /**

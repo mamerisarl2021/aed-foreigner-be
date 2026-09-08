@@ -10,7 +10,7 @@ use InvalidArgumentException;
 final class SecurityQuestions
 {
     /**
-     * @param  list<array<string, mixed>>  $pairs
+     * @param  array<int, array<string, mixed>>  $pairs
      * @return list<array{question: string, answer_hash: string}>
      */
     public static function persist(array $pairs): array
@@ -40,7 +40,7 @@ final class SecurityQuestions
     }
 
     /**
-     * @param  list<mixed>|null  $stored
+     * @param  array<int, mixed>|null  $stored
      * @return list<array{question: string}>
      */
     public static function questionsForDisplay(?array $stored): array
@@ -64,7 +64,7 @@ final class SecurityQuestions
     }
 
     /**
-     * @param  list<mixed>|null  $stored
+     * @param  array<int, mixed>|null  $stored
      */
     public static function configured(?array $stored): bool
     {
@@ -97,48 +97,55 @@ final class SecurityQuestions
             if (! is_array($item)) {
                 continue;
             }
-
-            $question = self::stringValue($item['question'] ?? null);
-            if ($question === '') {
-                continue;
+            $row = self::migrateStoredItem($item);
+            if ($row !== null) {
+                $migrated[] = $row;
             }
-
-            $existingHash = self::stringValue($item['answer_hash'] ?? null);
-            if ($existingHash !== '') {
-                $migrated[] = [
-                    'question' => $question,
-                    'answer_hash' => $existingHash,
-                ];
-
-                continue;
-            }
-
-            $answer = self::stringValue($item['answer'] ?? null);
-            if ($answer === '') {
-                continue;
-            }
-
-            if (Hash::isHashed($answer)) {
-                $migrated[] = [
-                    'question' => $question,
-                    'answer_hash' => $answer,
-                ];
-
-                continue;
-            }
-
-            $normalized = self::normalizeAnswer($answer);
-            if ($normalized === '') {
-                continue;
-            }
-
-            $migrated[] = [
-                'question' => $question,
-                'answer_hash' => Hash::make($normalized),
-            ];
         }
 
         return $migrated === [] ? null : $migrated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array{question: string, answer_hash: string}|null
+     */
+    private static function migrateStoredItem(array $item): ?array
+    {
+        $question = self::stringValue($item['question'] ?? null);
+        if ($question === '') {
+            return null;
+        }
+
+        $existingHash = self::stringValue($item['answer_hash'] ?? null);
+        if ($existingHash !== '') {
+            return [
+                'question' => $question,
+                'answer_hash' => $existingHash,
+            ];
+        }
+
+        $answer = self::stringValue($item['answer'] ?? null);
+        if ($answer === '') {
+            return null;
+        }
+
+        if (Hash::isHashed($answer)) {
+            return [
+                'question' => $question,
+                'answer_hash' => $answer,
+            ];
+        }
+
+        $normalized = self::normalizeAnswer($answer);
+        if ($normalized === '') {
+            return null;
+        }
+
+        return [
+            'question' => $question,
+            'answer_hash' => Hash::make($normalized),
+        ];
     }
 
     public static function normalizeAnswer(string $plain): string

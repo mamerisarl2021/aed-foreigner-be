@@ -156,17 +156,30 @@ final class KeycloakJwtValidator
 
     private function encodeLength(int $length): string
     {
+        if ($length < 0) {
+            throw new RuntimeException('Longueur DER invalide.');
+        }
+
         if ($length < 128) {
             return chr($length);
         }
 
         $bytes = '';
         while ($length > 0) {
-            $bytes = chr($length & 0xFF).$bytes;
+            $bytes = $this->chrByte($length & 0xFF).$bytes;
             $length >>= 8;
         }
 
-        return chr(0x80 | strlen($bytes)).$bytes;
+        return $this->chrByte(0x80 | strlen($bytes)).$bytes;
+    }
+
+    private function chrByte(int $value): string
+    {
+        if ($value < 0 || $value > 255) {
+            throw new RuntimeException('Octet DER invalide.');
+        }
+
+        return chr($value);
     }
 
     private function encodeInteger(string $value): string

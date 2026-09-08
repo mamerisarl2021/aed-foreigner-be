@@ -131,7 +131,7 @@ class AgentEnrollmentReviewService
             return ServiceResult::ok('Avis favorable transmis au responsable.', [
                 'demande_id' => $enrollment->id,
                 'statut' => $enrollment->status->value,
-                'avis_agent' => $enrollment->agent_avis->value,
+                'avis_agent' => AgentAvis::Favorable->value,
             ]);
         } catch (Exception $e) {
             DB::rollBack();
@@ -175,7 +175,7 @@ class AgentEnrollmentReviewService
         return ServiceResult::ok('Avis défavorable transmis au responsable.', [
             'demande_id' => $enrollment->id,
             'statut' => $enrollment->status->value,
-            'avis_agent' => $enrollment->agent_avis->value,
+            'avis_agent' => AgentAvis::Defavorable->value,
         ]);
     }
 }

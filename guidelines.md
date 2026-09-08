@@ -22,7 +22,7 @@ Engineering sources consolidated from:
 | Framework | Laravel **12** |
 | PHP | **8.4+** |
 | API prefix | `/api/v1` (configured in `bootstrap/app.php`) |
-| Auth | Laravel Sanctum + Spatie Permission (roles) + **Laravel Policies** (resource actions) |
+| Auth | Staff: Keycloak (`pki-portal` / `backoffice-stranger`) then Sanctum. Client: TrustedX OAuth then Sanctum. Guest enrollment: optional infra JWT (`KEYCLOAK_ENABLED`). Resource actions: **Laravel Policies** + Spatie roles. |
 | Notifications | Kafka publisher (`KafkaNotificationPublisher`) — not direct `Mail::` in domain code |
 | Service discovery | Consul (when infra is available) |
 
@@ -169,11 +169,15 @@ Run before commit:
 ./vendor/bin/pint
 ```
 
-Static analysis with **Larastan** at **level 6 or higher**:
+Static analysis with **Larastan** at **level 8** (`phpstan.neon`) — le niveau ne redescend pas :
 
 ```bash
 ./vendor/bin/phpstan analyse
 ```
+
+`phpstan-baseline.neon` **n'est pas une décharge**. Une entrée n'y a sa place que si l'erreur vient d'un stub tiers plus strict que la réalité — le seul cas restant est `currentAccessToken()?->`, que Sanctum lui-même teste en booléen. Toute autre erreur se corrige : un `@mixin <Model>` sur la ressource, un générique sur la relation ou le paginateur, une forme de tableau sur le DTO. Après avoir corrigé, régénérez le fichier (`--generate-baseline`) pour que les entrées périmées ne masquent pas les suivantes.
+
+Le niveau 8 impose la sûreté sur `null` : un `Carbon|null`, un `string|null` ou le `false` que rend `store()` en cas d'échec doivent être traités, pas supposés. Le niveau 9 (traque du `mixed`) reste un chantier à part.
 
 ---
 
@@ -201,7 +205,6 @@ Staff queue `GET/PATCH /enrolements/{id}*` constrains `{id}` as UUID so `GET /en
 - `POST /admins/logout` and `POST /admin/logout`
 - `POST /users-email/search`
 - `POST /clients/some/reset`
-- `POST /agents/{id}` (update, not PUT/PATCH)
 - `POST /users/{id}` (profile update)
 
 ---
@@ -223,7 +226,7 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 ### 7.2 Secrets
 
 - **Never** hardcode API keys, tokens, or passwords
-- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
+- **Never** commit `.env` — use `.env.example` / `.env.schema` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
 **Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
@@ -317,6 +320,7 @@ Tests may use `Sanctum::actingAs()` or project test helpers.
 
 - All API routes return JSON (`ForceJsonResponse` middleware is global)
 - Use **API Resources** to decouple DB shape from public JSON (e.g. `EnrollmentRequestResource`)
+- Annotate each Resource with `@mixin <Model>` so `$this->attribut` reste typé : sans ça Larastan remonte un `property.notFound` par champ, et la dette part au baseline
 
 Standard success envelope:
 
@@ -342,14 +346,13 @@ Use appropriate HTTP status codes; validation errors return **422**.
 |-------|----------------|
 | `auth:sanctum` | Caller is authenticated (when required) |
 | **Policy** (`$this->authorize(...)`) | Role + ownership + status rules (claim, approve, reject, supervisor actions, …) |
-| Route `role:` middleware | **Transitional coarse gate only** — may remain while migrating legacy routes; must not diverge from the matching policy |
+| Route `role:` middleware | **Do not add.** Coarse gates belong in policies. PSCEQ uses middleware `psceq` (API key), not a Spatie role. |
 
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
 2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
-3. Prefer expanding policies over adding more nested `role:` middleware groups.
-4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
+3. Prefer expanding policies over adding `role:` middleware groups.
 
 Spatie `UnauthorizedException` / authorization failures are rendered as JSON **403** — preserve this behavior.
 
@@ -359,6 +362,7 @@ Spatie `UnauthorizedException` / authorization failures are rendered as JSON **4
 - Never trust query params, headers, or file metadata without validation
 - CSRF applies to stateful web routes; API uses token auth
 - Enforce HTTPS in production (reverse proxy / middleware)
+- Laravel session cookies: `SESSION_SECURE_COOKIE` empty = Secure only on HTTPS requests; production HTTPS should set `true` (see `.env.schema`)
 - Avoid raw dynamic SQL; use Eloquent or bound query builder
 - Apply least-privilege DB credentials in deployment
 
@@ -380,13 +384,14 @@ API docs are generated by **dedoc/scramble** from Form Request validation rules 
 List and search endpoints **MUST** use a Form Request for query params — same rules as body fields. Scramble documents them as query parameters in `/docs/api`.
 
 ```php
-// ListAgentsRequest — GET /agents
+// ListEnrolledPersonsRequest — GET /admin/enrolled-persons
 'q' => ['nullable', 'string', 'max:255'],
-'role' => ['nullable', 'string', 'in:AGENT,RESPONSABLE_DE_VALIDATION,MANAGER'],
 'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-'order_by' => ['nullable', 'string', 'in:created_at,name,email,last_login_at'],
+'order_by' => ['nullable', 'string', 'in:enrolled_at,name,email'],
 'order_dir' => ['nullable', 'string', 'in:asc,desc'],
 ```
+
+Les noms de paramètres sont en **snake_case** (§6). Un service ne doit pas accepter d'alias non déclaré — un repli `perPage` derrière `per_page`, par exemple, est invisible de `/docs/api` et donc interdit.
 
 Every filter the client may send must appear in the Form Request. Do not accept undocumented query params in the service layer.
 
@@ -460,8 +465,6 @@ HTTP responses **MUST NOT** wait on these operations.
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
 **Exception — TrustedX password / PIN / client reset.** Admin `setPassword`, client password or PIN change, and client reset call TrustedX `setDefaultPassword` **in the HTTP request** so the remote secret exists before `200`. Same logging exception as above.
-
-**Exception — Keycloak Admin API on staff CRUD.** When `STAFF_KEYCLOAK_ENABLED=true`, `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API **in the request** (timeout + TLS verify on). Create rolls back the local user on Keycloak failure (fail closed). The operator must not see success before Keycloak is consistent.
 
 **Exception — synchronous third-party gates that must finish before the HTTP response.** These stay in the request (always with an explicit HTTP timeout; TLS verify on):
 
@@ -630,15 +633,21 @@ Decision mapping (responsable buttons), depuis `EN_COURS_RESPONSABLE` uniquement
 Staff auth:
 
 ```
-POST /admin/login              { email, password } → access_token + must_change_password
-POST /admin/login/keycloak     { access_token }    → Sanctum token (STAFF_KEYCLOAK_ENABLED=true)
-POST /admin/password/change    { current_password, password, password_confirmation }  (auth)
-POST /agents/register          { name, first_name, email, phonenumber, role }  (admin)
+POST /admin/login/keycloak     { access_token }    → Sanctum token
+POST /admin/logout                                 (auth)
 ```
 
-Default: local password login (`STAFF_KEYCLOAK_ENABLED=false`). When the flag is on, the back-office SPA authenticates on Keycloak realm **`pki-portal`** / client **`backoffice-stranger`**, then `POST /admin/login/keycloak` with the access token. Laravel validates JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **no** `KC_INFRA_*` fallback), requires an existing `users.email` match (no auto-create), **syncs Spatie staff roles** from the JWT (`realm_access` + `resource_access.backoffice-stranger`), and issues the usual Sanctum token. JWT without a mappable staff role → 403. `POST /admin/login` and staff password reset/change → 403. Independent of `KEYCLOAK_ENABLED` (guest / gateway). Subsequent staff API calls (`GET /enrolements`, prise en charge, instruction, validation, `/agents`, `/me`, …) use **that Sanctum token** and `auth:sanctum` — they are **not** behind the infra `keycloak` middleware (one `Authorization` header cannot be both a Sanctum token and an infra JWT). Policies remain the authorization SoT.
+**Keycloak est le seul annuaire du staff**, y compris en local. L'application ne crée, ne modifie et ne supprime plus aucun compte : il n'y a plus de login mot de passe, plus de `/agents*`, plus de `manage:admin`, plus de seeder staff. Le back-office SPA s'authentifie sur le realm **`pki-portal`** / client **`backoffice-stranger`**, puis appelle `POST /admin/login/keycloak` avec l'access token.
 
-Staff registration creates user with generated default password (emailed); `must_change_password=true` until first change via `/admin/password/change`. When `STAFF_KEYCLOAK_ENABLED=true`, `POST /agents/register` / update / delete and `php artisan manage:admin` push the user to realm `pki-portal` (Admin API, confidential client `backoffice-staff-admin`). Default: **no Keycloak SMTP** — `WelcomeAgentJob` still runs (log/kafka driver) and writes a Keycloak-compatible password (16 chars, mixed case, digit, `!@#$%&*-_`) via `reset-password`. Set `KC_STAFF_EXECUTE_ACTIONS_EMAIL=true` only when realm Email is configured; then Laravel skips the job and Keycloak sends `UPDATE_PASSWORD`. `execute-actions-email` 500 without SMTP is expected. Requires `KC_STAFF_ADMIN_SECRET`. Keycloak-only users are still not imported.
+Laravel valide le JWKS (`KC_STAFF_ISSUER` / `KC_STAFF_JWKS`, **jamais** de repli sur `KC_INFRA_*`), lit les rôles staff du JWT (`realm_access` + `resource_access.backoffice-stranger`) et **refuse en 403 si aucun n'est mappable** — ce contrôle passe avant toute lecture de la base. Un porteur de rôle staff inconnu localement est **provisionné à la volée** : sans ça la plateforme serait inaccessible, plus aucun compte ne pouvant être créé depuis l'application.
+
+La ligne `users` n'est qu'une projection du JWT, le temps de porter les clés étrangères (jetons Sanctum, journaux, dossiers assignés) et les rôles Spatie que lisent les policies. Elle est rattachée au claim `sub` (`users.keycloak_id`), pas à l'email : un changement d'email côté Keycloak suit le compte au lieu de créer un doublon. Le `status` local est réaligné sur `ACTIVE` — la désactivation se fait dans Keycloak, qui n'émet alors plus de token.
+
+Les rôles sont réécrits depuis le JWT à chaque connexion. **Attention** : c'est une photo prise au login, pas un lien continu — un rôle retiré dans Keycloak resterait actif jusqu'à l'expiration du jeton Sanctum (`SANCTUM_TOKEN_EXPIRATION_MINUTES`, 12 h par défaut). Quand le périmètre de rôles change, les jetons Sanctum ouverts du compte sont donc révoqués.
+
+Le **changement de mot de passe à la première connexion** relève du realm (action requise `UPDATE_PASSWORD`, ou mot de passe « Temporary » à la création dans la console) : Keycloak n'émet aucun token tant qu'elle n'est pas jouée, donc le backend ne voit jamais ce cas.
+
+Indépendant de `KEYCLOAK_ENABLED` (guest / gateway). Les appels staff suivants (`GET /enrolements`, prise en charge, instruction, validation, `/me`, …) utilisent **ce jeton Sanctum** et `auth:sanctum` — ils ne sont **pas** derrière le middleware infra `keycloak` (un même header `Authorization` ne peut pas être à la fois un jeton Sanctum et un JWT infra). Les policies restent la SoT d'autorisation.
 
 Role mapping (PDF → Spatie):
 
@@ -651,7 +660,7 @@ Role mapping (PDF → Spatie):
 | Étranger enrôlé / portail | `client` |
 | Demandeur authentifié (morale, placeholder) | `demandeur_authentifie` |
 
-Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`. Platform admin is created via `php artisan manage:admin` only.
+Les rôles staff sont portés par le JWT Keycloak (`realm_access` / `resource_access.backoffice-stranger`) et mappés par `StaffKeycloakRoleMapper`, qui accepte le slug Spatie comme le code UI (`AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`, `ADMINISTRATEUR_PLATEFORME`) et ignore le bruit du realm (`offline_access`, `default-roles-*`). L'application n'attribue plus aucun rôle staff elle-même.
 
 - **Prise en charge:** agent-only `PATCH .../prise-en-charge` sets `assigned_agent_id` when null and status `EN_ATTENTE_AGENT`, then moves the request to `EN_COURS_AGENT` — la prise en charge doit être lisible dans le statut. No assign-to-other-agent.
 - **Prise en charge validation:** responsable-only `PATCH .../prise-en-charge-validation` sets `assigned_responsable_id` when null and status `EN_ATTENTE_RESPONSABLE`, then moves the request to `EN_COURS_RESPONSABLE`. No assign-to-other.
@@ -660,10 +669,16 @@ Staff registration API codes (`POST /agents/register`): `AGENT`, `RESPONSABLE_DE
 - Responsable `APPROUVEE`: local User + **NPI (10 digits, sequential in `1000000001`–`1999999999`; starts with a digit, no `F-` prefix)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/etranger/finalisation?token=`). The NPI is in the email body, not the URL. After opening the link the applicant **types the generated NPI** (not `numero_suivi` / demande code).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
-- Manager (read-only supervision; SLA level 3 notifies `manager`):
+- Staff dashboards (Sanctum + policy; **all** `config('roles.staff')`, including agent — not manager-only):
 
 ```
-GET /management/enrollment-stats                         (?granularite=semaine|mois)
+GET /stats                                               platform counts (users, demandes, …)
+GET /management/enrollment-stats                         (?granularite=semaine|mois) enrollment dashboard
+```
+
+- Manager-only supervision lists (SLA level 3 still notifies `manager`):
+
+```
 GET /management/enrollment-reject-motifs
 GET /management/enrolements/physiques
 GET /management/enrolements/physiques/{id}
@@ -671,7 +686,7 @@ GET /management/enrolements/morales
 GET /management/enrolements/morales/{id}
 ```
 
-  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged.
+  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged. `GET /management/enrollment-reject-motifs` stays on the reviewer catalogue (agents/responsables/manager).
 - Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`; agent and responsable detail resources expose it (PDF §5.1 morale cross-check; physique uses the same key).
 - SLA: `enrollment:check-sla` hourly.
@@ -762,11 +777,20 @@ REJET_CONFIRME (morale) → A_CORRIGER (délai config, défaut 7 jours) → PUT 
 
 On responsable approve: **do not** create a new `User` / TrustedX. Insert `enrolled_companies` (source of vérité entreprise enrôlée, `identifiant` = `PM` + 9 caractères) and `Identity` `PERSONNE_MORALE` on `submitted_by_user_id`. Proof JSON includes `enrolled_company_id` + `identifiant`. Emails go to **demandeur** (`submittedBy.email`) **and** official company email. Response includes `identifiant`. Owner list/detail expose `identifiant` (null until approved) and `statut_libelle`.
 
-Duplicate submit is blocked against `enrolled_companies` (`ACTIVE`, `registration_number` + `country_of_incorporation`) plus leftover `APPROUVEE` demandes without a company row.
+**Un demandeur peut porter plusieurs entreprises, y compris en parallèle.** Le verrou d'unicité porte sur le couple `registration_number` + `country_of_incorporation`, **jamais sur le demandeur** : un dirigeant enrôle autant d'entreprises qu'il en représente, sans attendre la décision sur la précédente.
+
+Deux refus, tous deux en **409** :
+
+| Cas | Message |
+|-----|---------|
+| Le demandeur a déjà une demande **ouverte** pour cette entreprise (`AWAITING_CONTACT_VERIFICATION`, file agent/responsable, ou `A_CORRIGER`) | `Vous avez déjà une demande en cours pour cette entreprise.` |
+| L'entreprise est déjà enrôlée — `enrolled_companies` `ACTIVE`, ou demande `APPROUVEE` / `ENROLEE` sans ligne entreprise | `Une entreprise correspondant à ces informations est déjà enrôlée.` |
+
+La comparaison normalise casse et espaces (`UPPER(TRIM(...))`) des deux côtés. `PUT /enrolements/morales/{id}` applique le même contrôle en s'excluant lui-même : corriger un dossier ne peut pas le faire pointer vers une entreprise déjà portée par un autre dossier ouvert du même demandeur.
 
 Morale `REJET_CONFIRME` is **not** final: statut `A_CORRIGER`, mail demandeur with motifs + `correction_deadline_at`. Owner `PUT /enrolements/morales/{id}` updates company fields + pièces justificatives (mêmes règles PDF / 5 Mo ; pas l'email/téléphone officiels, pas le document d'identité) and returns the demande to `EN_ATTENTE_AGENT`. `enrollment:check-sla` reminds the demandeur 24 h before the deadline, then archives `REJETEE` and mails the assigned agent. Physique `REJET_CONFIRME` stays immediate `REJETEE`. `RETOUR_AGENT` emails the assigned agent (`EnrollmentReturnedToAgent`).
 
-No TrustedX / PSCEQ in this phase.
+L'enrôlement morale n'appelle pas le PSCEQ. Les APIs partenaires de consultation (PDF §7) sont au §13.6.1.
 
 ### 13.5 Espace client (post-TrustedX)
 
@@ -792,20 +816,20 @@ PUT  /clients/security-questions         { current_password, security_questions 
 
 ### 13.6 Espace administrateur (backoffice)
 
-Role: `administrateur_plateforme` only (created via `php artisan manage:admin`, not `POST /agents/register`).
+Role: `administrateur_plateforme` only, attribué dans Keycloak (realm `pki-portal`) — l'application ne crée aucun compte.
 
 ```
-POST /admin/login                        { email, password }  (403 if STAFF_KEYCLOAK_ENABLED)
 POST /admin/login/keycloak               { access_token }     (realm pki-portal / backoffice-stranger)
-GET  /agents? q, role, per_page          → StaffUserListResource
-GET  /agents/{id}                        → StaffUserDetailResource
-POST /agents/register                    → create staff (AGENT|RESPONSABLE_DE_VALIDATION|MANAGER)
-POST /agents/{id}                        → update staff
-DELETE /agents/{id}                      → delete staff
 GET  /admin/activity-logs? q, action, from, to, per_page   → journaux métier UI (défaut per_page=20)
 GET  /admin/activity-logs/{id}                             → détail (actor, metadata, enrollment_request_id, ip_address)
 GET  /admin/enrolled-persons? q, per_page                  → personnes enrôlées (read-only)
 GET  /admin/enrolled-persons/{id}                          → détail read-only
+GET  /admin/enrolled-companies? q, per_page                → entreprises enrôlées (read-only, UUID interne ; **ce n'est pas** l'API PSCEQ)
+GET  /admin/enrolled-companies/{id}                        → détail read-only (email, pièces, `demande_id`)
+PATCH /admin/enrolled-companies/{id}/status                { statut: ACTIVE|SUSPENDED|REVOKED }
+GET  /admin/psceq-clients                                  → prestataires habilités (préfixe, révocation ; jamais la clé ni le hash)
+POST /admin/psceq-clients                                  { nom } → `api_key` en clair **une seule fois**
+POST /admin/psceq-clients/{id}/revoke                      pose `revoked_at` (appels suivants → 401)
 POST /admin/enrollment-reject-motifs                       { title, description }
 GET  /admin/enrollment-reject-motifs/{id}
 PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
@@ -814,22 +838,47 @@ GET  /audits                                               → journal OwenIt te
 ```
 
 - Login sets `users.last_login_at`.
-- **Keycloak staff** (`STAFF_KEYCLOAK_ENABLED`, default false): OIDC on `pki-portal` / `backoffice-stranger`, then `POST /admin/login/keycloak`. Existing local user only; Spatie roles replaced from the JWT. `KC_STAFF_*` must not fall back to `KC_INFRA_*`.
-- **Keycloak staff sync** (same flag): `POST/POST/DELETE /agents*` and `manage:admin` call the Keycloak Admin API (`KC_STAFF_ADMIN_CLIENT_ID` / `KC_STAFF_ADMIN_SECRET`, not the public SPA). Failure → 502/503 and no orphan Laravel row on create. WelcomeAgentJob runs unless `KC_STAFF_EXECUTE_ACTIONS_EMAIL=true` (Keycloak SMTP).
-- Checklist Keycloak: confidential client `backoffice-staff-admin`, service account, realm-management roles `manage-users`, `view-users`, `query-users`, `view-realm`, plus role assign (`manage-realm` or `query-roles`).
-- Staff list excludes `administrateur_plateforme`; role column uses UI codes (`AGENT`, `RESPONSABLE_DE_VALIDATION`, …).
+- **Keycloak staff** (obligatoire, y compris en local) : OIDC sur `pki-portal` / `backoffice-stranger`, puis `POST /admin/login/keycloak`. Compte inconnu provisionné à la volée, rattaché au claim `sub` ; rôles Spatie réécrits depuis le JWT. `KC_STAFF_*` ne doit jamais retomber sur `KC_INFRA_*`.
+- Checklist realm : rôles `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme` définis côté Keycloak, et `RoleSeeder` joué côté Laravel (`syncRoles` lève si le rôle Spatie n'existe pas). Mot de passe « Temporary » à la création pour forcer `UPDATE_PASSWORD`.
+- **Sécurité** : quiconque porte le rôle realm `administrateur_plateforme` devient administrateur plateforme sans validation locale. La configuration du realm fait partie du périmètre de sécurité de l'application.
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
 - **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
+- **Entreprises enrôlées** (`GET /admin/enrolled-companies`) : listing admin par UUID, y compris email et pièces. **Ce n'est pas** l'API partenaire PSCEQ (PDF §7) — celle-ci est au §13.6.1.
+- **Statut entreprise** : `ACTIVE` | `SUSPENDED` | `REVOKED`. Le doublon d'enrôlement reste bloqué sur `ACTIVE` seulement. `PATCH …/status` journalise `ENTREPRISE STATUT MODIFIE`.
 - **Motifs de rejet**: catalogue `title` + `description` (UUID `id`); admin CRUD above; agents/responsables list via `GET /management/enrollment-reject-motifs` and pass ids in `motif[]` / `reasons[]`.
+
+### 13.6.1 APIs PSCEQ (PDF §7)
+
+Consultation d'entreprises enrôlées par un prestataire de confiance habilité. **Clés API**, pas de client Keycloak par prestataire. Habiliter ou couper un PSCEQ se fait dans AED (admin plateforme).
+
+**Émission / révocation (admin, Sanctum + `administrateur_plateforme`)** — voir aussi §13.6 :
+
+- `POST /admin/psceq-clients` `{ nom }` → 201 avec `api_key` plaintext **une fois**. Le prestataire l'envoie en `Authorization: Bearer` **ou** `X-Api-Key`.
+- `GET /admin/psceq-clients` — liste sans hash ni clé.
+- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Rotation = révoquer puis émettre une nouvelle clé.
+- Stockage : préfixe public (`psceq_` + 8 caractères) + `Hash::make`. La clé n'est jamais re-lisible. Logs : préfixe seulement.
+
+**Consultation (pas `auth:sanctum`, pas Keycloak)** — préfixe `/api/v1/psceq`, middleware `psceq` + `throttle:psceq`. Lookup par **`identifiant` `PM` + 9 alphanumériques**, jamais l'UUID interne.
+
+```
+GET /psceq/entreprises?q=                 q requis, min 2 car. LIKE sur legal_name (même normalisation que le doublon morale). Court : identifiant, raison_sociale, pays_origine, statut. Pas d'email, pièces, demande_id
+GET /psceq/entreprises/{identifiant}      identité entreprise, pas documents / KYC / UUID
+GET /psceq/entreprises/{identifiant}/administrateur   nom / prenoms du représentant légal
+GET /psceq/entreprises/{identifiant}/statut           { identifiant, statut, existe: true }
+```
+
+Identifiant inconnu **ou** mal formé → **404** `Entreprise introuvable`. Clé absente, inconnue ou révoquée → **401** `Clé API invalide.` (même message). Gate `queryAsPsceq` après le middleware (pas un rôle Spatie). Journal `CONSULTATION PSCEQ` : `actor_user_id` null, metadata `psceq_client_id`, `key_prefix`, route, `identifiant` ou `q`, `found`.
+
+Hors de ce lot : certificats professionnels, transfert de gestionnaire (PDF §9), clients Keycloak PSCEQ, UI prestataire.
 
 ### 13.7 Explicitly out of current API scope
 
 Do not pretend these exist in code without implementing them:
 
-- Real **videoconferencing** product (Zoom/Meet) — only workflow status/notes/notification
+- **Visioconférence** — **entièrement retirée du code**, pas seulement absente d'un produit tiers (Zoom/Meet). Le statut `VISIO_REQUESTED` avait été réécrit en `EN_ATTENTE` lors de l'alignement sur le diagramme ; les colonnes `visio_requested_at`, `visio_completed_at` et `visio_notes`, le cas d'enum `EnrollmentVisioRequested` et le gabarit `emails/identity/visio_requested.blade.php` ont suivi, faute de lecteur. Seules les migrations d'origine en gardent la trace, comme il se doit. Rouvrir ce parcours, c'est le concevoir de zéro.
 - Kafka topic / object-storage hardening for local dev
-- **PSCEQ / professional certificate** acquisition for personne morale (APIs §7, statut actif/suspendu/révoqué)
+- **Certificat professionnel** personne morale (hors APIs de consultation PSCEQ, déjà au §13.6.1)
 - Transfert / changement de gestionnaire entreprise (PDF §9)
 - Reopen of a **physique** rejected demande (applicant submits a **new** demande). Morale uses `A_CORRIGER` + `PUT /enrolements/morales/{id}` instead.
 - SLA thresholds admin UI (env/config only for now)
@@ -847,7 +896,9 @@ Do not pretend these exist in code without implementing them:
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 
-Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here; personne morale enrollment will use `enrollment_requests` when implemented.
+Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here.
+
+`EncryptionTrait` / `php artisan pair:generate` are inherited PKI file crypto (`storage/aed-*.key`, decrypt download). Do not extend them; new document flows use the existing token decrypt path. The legacy AES-256-CBC IV for ciphertext stored before `storeEncFile()` prepended a random IV lives in `config('encryption.legacy_cbc_iv')` (optional `ENCRYPTION_LEGACY_CBC_IV`). Do not rotate that value in place — old files would no longer decrypt. `TrustedXClientService` is the same inherited client: constructor promotion from `config('trustedx.*')` in `AppServiceProvider`, new methods still follow §4.3 and §10.1 (explicit HTTP timeout).
 
 ---
 
@@ -868,7 +919,7 @@ Before opening or approving a PR, verify:
 - [ ] `$request->user()` used instead of auth facades
 - [ ] Emails: reuse/adapt `resources/views/emails/**` before adding templates
 - [ ] Tests added/updated; `php artisan test` passes
-- [ ] Pint (and Larastan when configured) clean on touched files
+- [ ] Pint et Larastan (niveau 8) passent sans erreur, sans nouvelle entrée au baseline
 - [ ] Migrations reversible and safe for existing data
 
 ---

@@ -29,6 +29,10 @@ final class NotificationRecipient
         throw new InvalidArgumentException('Impossible de déterminer le destinataire de l\'e-mail de notification.');
     }
 
+    /**
+     * @param  array<string, mixed>  $personalVariables
+     * @return array<string, mixed>
+     */
     public static function email(mixed $recipient, array $personalVariables = []): array
     {
         $entry = ['email' => self::resolveEmail($recipient)];
@@ -40,6 +44,10 @@ final class NotificationRecipient
         return $entry;
     }
 
+    /**
+     * @param  array<string, mixed>  $personalVariables
+     * @return array<string, mixed>
+     */
     public static function phone(string $phoneNumber, array $personalVariables = []): array
     {
         $entry = ['phoneNumber' => $phoneNumber];

@@ -10,7 +10,6 @@ use App\Models\EnrollmentRequest;
 use App\Models\OTP;
 use App\Models\User;
 use App\Services\ANIP\AnipSimulatorService;
-use App\Services\Auth\AdminAuthService;
 use App\Services\Enrollment\KycVerificationService;
 use App\Services\Enrollment\PersonneMoraleEnrollmentService;
 use App\Services\PasswordReset\ClientPasswordResetService;
@@ -20,7 +19,6 @@ use App\Services\Regula\MockRegulaService;
 use App\Services\Regula\RegulaService;
 use App\Traits\EncryptionTrait;
 use Carbon\Carbon;
-use Database\Seeders\AdminUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -59,20 +57,7 @@ final class ActivityLogEventsTest extends TestCase
         ]);
         $this->admin->assignRole(config('roles.administrateur_plateforme'));
 
-        config(['keycloak.staff.enabled' => false, 'services.regula.mock' => true]);
-    }
-
-    #[Test]
-    public function admin_login_records_connexion_admin(): void
-    {
-        app(AdminAuthService::class)->loginDirect($this->admin);
-
-        $this->assertTrue(
-            ActivityLog::query()
-                ->where('action_code', ActivityLogAction::ConnexionAdmin->label())
-                ->where('actor_user_id', $this->admin->id)
-                ->exists()
-        );
+        config(['services.regula.mock' => true]);
     }
 
     #[Test]
@@ -277,36 +262,6 @@ final class ActivityLogEventsTest extends TestCase
             ActivityLog::query()
                 ->where('action_code', ActivityLogAction::DocumentDechiffre->label())
                 ->where('actor_user_id', $this->admin->id)
-                ->exists()
-        );
-    }
-
-    #[Test]
-    public function staff_seeder_journals_utilisateur_cree_on_first_create(): void
-    {
-        config([
-            'seeding.admin' => [
-                'name' => 'Seed Admin',
-                'email' => 'seed-admin@example.com',
-                'password' => 'Secret123!',
-            ],
-        ]);
-
-        $this->seed(AdminUserSeeder::class);
-
-        $this->assertTrue(
-            ActivityLog::query()
-                ->where('action_code', ActivityLogAction::UtilisateurCree->label())
-                ->where('description', 'like', '%seeder%')
-                ->exists()
-        );
-
-        ActivityLog::query()->delete();
-        $this->seed(AdminUserSeeder::class);
-
-        $this->assertFalse(
-            ActivityLog::query()
-                ->where('action_code', ActivityLogAction::UtilisateurCree->label())
                 ->exists()
         );
     }

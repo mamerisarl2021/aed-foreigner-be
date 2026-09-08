@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\ActivityLogAction;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -35,7 +37,6 @@ final class StaffKeycloakLoginTest extends TestCase
         $this->bootRsaKey();
 
         config([
-            'keycloak.staff.enabled' => true,
             'keycloak.staff.jwks_uri' => self::JWKS_URI,
             'keycloak.staff.issuer' => self::ISSUER,
             'keycloak.staff.audience' => 'backoffice-stranger',
@@ -61,6 +62,7 @@ final class StaffKeycloakLoginTest extends TestCase
         $user->assignRole(config('roles.agent'));
 
         $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-1',
             'email' => $user->email,
             'realm_access' => ['roles' => ['manager', 'offline_access', 'default-roles-pki-portal']],
         ]);
@@ -75,23 +77,65 @@ final class StaffKeycloakLoginTest extends TestCase
         $user->refresh();
         $this->assertTrue($user->hasRole(config('roles.manager')));
         $this->assertFalse($user->hasRole(config('roles.agent')));
+        // Compte antérieur à la colonne : le sujet est rattaché au passage.
+        $this->assertSame('kc-subject-1', $user->keycloak_id);
     }
 
     #[Test]
-    public function keycloak_login_rejects_unknown_email(): void
+    public function keycloak_login_provisions_an_unknown_staff_user(): void
     {
         $token = $this->signStaffJwt([
-            'email' => 'unknown.staff@example.com',
+            'sub' => 'kc-subject-new',
+            'email' => 'nouvelle.agente@example.com',
+            'given_name' => 'Ada',
+            'family_name' => 'KOTO',
             'realm_access' => ['roles' => ['agent']],
+        ]);
+
+        $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
+            ->assertOk()
+            ->assertJsonPath('data.user.email', 'nouvelle.agente@example.com')
+            ->assertJsonPath('data.user.nom', 'KOTO')
+            ->assertJsonPath('data.user.prenom', 'Ada')
+            ->assertJsonPath('data.user.role', 'AGENT');
+
+        $user = User::query()->where('email', 'nouvelle.agente@example.com')->firstOrFail();
+        $this->assertSame('kc-subject-new', $user->keycloak_id);
+        $this->assertSame('ACTIVE', $user->status);
+        $this->assertTrue($user->hasRole(config('roles.agent')));
+
+        // Le provisioning est un acte d'administration : il doit être traçable
+        // au même titre que la connexion qui l'a déclenché.
+        foreach ([ActivityLogAction::UtilisateurCree, ActivityLogAction::ConnexionAdmin] as $action) {
+            $this->assertTrue(
+                ActivityLog::query()
+                    ->where('action_code', $action->label())
+                    ->where('actor_user_id', $user->id)
+                    ->exists(),
+                "Journal manquant pour {$action->value}."
+            );
+        }
+    }
+
+    #[Test]
+    public function keycloak_login_rejects_jwt_without_staff_role(): void
+    {
+        $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-norole',
+            'email' => 'sans.role@example.com',
+            'realm_access' => ['roles' => ['offline_access', 'default-roles-pki-portal']],
         ]);
 
         $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
             ->assertForbidden()
             ->assertJsonPath('success', false);
+
+        // Aucun rôle staff : rien ne doit être provisionné.
+        $this->assertDatabaseMissing('users', ['email' => 'sans.role@example.com']);
     }
 
     #[Test]
-    public function keycloak_login_rejects_jwt_without_staff_role(): void
+    public function keycloak_login_does_not_downgrade_an_existing_user_without_staff_role(): void
     {
         $user = User::factory()->create([
             'email' => 'agent.norole@example.com',
@@ -100,55 +144,87 @@ final class StaffKeycloakLoginTest extends TestCase
         $user->assignRole(config('roles.agent'));
 
         $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-2',
             'email' => $user->email,
-            'realm_access' => ['roles' => ['offline_access', 'default-roles-pki-portal']],
+            'realm_access' => ['roles' => ['offline_access']],
         ]);
 
         $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertForbidden();
 
         $user->refresh();
         $this->assertTrue($user->hasRole(config('roles.agent')));
     }
 
     #[Test]
-    public function keycloak_login_forbidden_when_flag_is_off(): void
+    public function keycloak_login_reactivates_a_locally_inactive_account(): void
     {
-        config(['keycloak.staff.enabled' => false]);
-
         $user = User::factory()->create([
-            'email' => 'agent.flagoff@example.com',
+            'email' => 'agent.inactif@example.com',
+            'status' => 'INACTIVE',
+        ]);
+        $user->assignRole(config('roles.agent'));
+
+        $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-3',
+            'email' => $user->email,
+            'realm_access' => ['roles' => ['agent']],
+        ]);
+
+        // La désactivation se fait dans Keycloak, qui n'émettrait alors pas de
+        // token : un statut local ne peut plus fermer la porte.
+        $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
+            ->assertOk();
+
+        $this->assertSame('ACTIVE', $user->refresh()->status);
+    }
+
+    #[Test]
+    public function keycloak_login_follows_the_subject_when_the_email_changes(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'ancienne.adresse@example.com',
+            'keycloak_id' => 'kc-subject-stable',
             'status' => 'ACTIVE',
         ]);
         $user->assignRole(config('roles.agent'));
 
         $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-stable',
+            'email' => 'nouvelle.adresse@example.com',
+            'realm_access' => ['roles' => ['agent']],
+        ]);
+
+        $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
+            ->assertOk()
+            ->assertJsonPath('data.user.id', $user->id);
+
+        $this->assertSame('nouvelle.adresse@example.com', $user->refresh()->email);
+        $this->assertSame(1, User::query()->where('keycloak_id', 'kc-subject-stable')->count());
+    }
+
+    #[Test]
+    public function keycloak_login_revokes_open_sessions_when_roles_change(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'agent.retrograde@example.com',
+            'status' => 'ACTIVE',
+        ]);
+        $user->assignRole(config('roles.manager'));
+        $user->createToken('session-ouverte');
+
+        $token = $this->signStaffJwt([
+            'sub' => 'kc-subject-4',
             'email' => $user->email,
             'realm_access' => ['roles' => ['agent']],
         ]);
 
         $this->postJson($this->api('/admin/login/keycloak'), ['access_token' => $token])
-            ->assertForbidden()
-            ->assertJsonPath('message', 'Authentification Keycloak non activée.');
-    }
+            ->assertOk();
 
-    #[Test]
-    public function password_login_forbidden_when_keycloak_staff_is_on(): void
-    {
-        $user = User::factory()->create([
-            'email' => 'agent.password@example.com',
-            'password' => 'password',
-            'status' => 'ACTIVE',
-        ]);
-        $user->assignRole(config('roles.agent'));
-
-        $this->postJson($this->api('/admin/login'), [
-            'email' => $user->email,
-            'password' => 'password',
-        ])
-            ->assertForbidden()
-            ->assertJsonPath('message', 'Authentification via Keycloak requise.');
+        // Un rôle retiré dans Keycloak ne doit pas survivre dans un jeton Sanctum
+        // encore valide : seule la session qui vient d'être ouverte subsiste.
+        $this->assertSame(1, $user->tokens()->count());
     }
 
     /**

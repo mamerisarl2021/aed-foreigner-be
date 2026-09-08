@@ -15,6 +15,9 @@ use Throwable;
 
 class WithTransaction
 {
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         return rescue(

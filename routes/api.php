@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminActivityLogController;
 use App\Http\Controllers\AdminEnrolledCompanyController;
 use App\Http\Controllers\AdminEnrolledPersonController;
+use App\Http\Controllers\AdminPsceqClientController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientSecurityController;
@@ -17,9 +18,9 @@ use App\Http\Controllers\ManagerEnrollmentController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
+use App\Http\Controllers\PsceqCompanyController;
 use App\Http\Controllers\Singletons\HealthCheckController;
 use App\Http\Controllers\Singletons\UserProfileController;
-use App\Http\Controllers\StaffAgentController;
 use App\Http\Controllers\StaffDirectoryController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\UserController;
@@ -71,12 +72,6 @@ Route::group([], function () {
 
         Route::post('users/{id}', [UserController::class, 'update'])->name('users.update');
 
-        Route::post('/agents/register', [StaffAgentController::class, 'register'])->name('agents.register');
-        Route::post('/agents/{id}', [StaffAgentController::class, 'update'])->name('agents.update');
-        Route::delete('/agents/{id}', [StaffAgentController::class, 'destroy'])->name('agents.destroy');
-        Route::get('/agents', [StaffAgentController::class, 'index'])->name('agents.index');
-        Route::get('/agents/{id}', [StaffAgentController::class, 'show'])->name('agents.show');
-
         Route::get('/admin/enrolled-persons', [AdminEnrolledPersonController::class, 'index'])->name('admin.enrolled-persons.index');
         Route::get('/admin/enrolled-persons/{id}', [AdminEnrolledPersonController::class, 'show'])->name('admin.enrolled-persons.show');
         // Pendant morale de enrolled-persons, qui ne connaît que les physiques.
@@ -84,6 +79,15 @@ Route::group([], function () {
         Route::get('/admin/enrolled-companies/{id}', [AdminEnrolledCompanyController::class, 'show'])
             ->whereUuid('id')
             ->name('admin.enrolled-companies.show');
+        Route::patch('/admin/enrolled-companies/{id}/status', [AdminEnrolledCompanyController::class, 'updateStatus'])
+            ->whereUuid('id')
+            ->name('admin.enrolled-companies.status');
+
+        Route::get('/admin/psceq-clients', [AdminPsceqClientController::class, 'index'])->name('admin.psceq-clients.index');
+        Route::post('/admin/psceq-clients', [AdminPsceqClientController::class, 'store'])->name('admin.psceq-clients.store');
+        Route::post('/admin/psceq-clients/{id}/revoke', [AdminPsceqClientController::class, 'revoke'])
+            ->whereUuid('id')
+            ->name('admin.psceq-clients.revoke');
         Route::post('/clients/set-password', [StaffDirectoryController::class, 'setClientPassword'])->name('clients.set-password');
 
         Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index'])->name('admin.activity-logs.index');
@@ -158,6 +162,16 @@ Route::group([], function () {
             ->name('enrolements.finalisation.store');
     });
 
+    Route::middleware(['psceq', 'throttle:psceq'])->prefix('psceq')->name('psceq.')->group(function () {
+        Route::get('/entreprises', [PsceqCompanyController::class, 'search'])->name('entreprises.search');
+        Route::get('/entreprises/{identifiant}/administrateur', [PsceqCompanyController::class, 'administrateur'])
+            ->name('entreprises.administrateur');
+        Route::get('/entreprises/{identifiant}/statut', [PsceqCompanyController::class, 'statut'])
+            ->name('entreprises.statut');
+        Route::get('/entreprises/{identifiant}', [PsceqCompanyController::class, 'show'])
+            ->name('entreprises.show');
+    });
+
     Route::post('/enrolements/morales/{id}/verify-email', [PersonneMoraleEnrollmentController::class, 'verifyEmail'])
         ->middleware('throttle:otp-verify')
         ->name('enrolements.morales.verify-email');
@@ -190,19 +204,9 @@ Route::group([], function () {
     Route::post('/admin/logout', [AuthController::class, 'logoutAdmin'])
         ->middleware('auth:sanctum')
         ->name('admin.logout');
-    Route::post('/admin/login', [AuthController::class, 'loginAdmin'])
-        ->middleware('throttle:auth-login')
-        ->name('admin.login');
+    // Seule porte d'entrée du staff : les comptes, mots de passe et rôles vivent
+    // dans Keycloak, l'application n'en tient plus le registre.
     Route::post('/admin/login/keycloak', [AuthController::class, 'loginAdminKeycloak'])
         ->middleware('throttle:auth-login')
         ->name('admin.login.keycloak');
-    Route::post('/admin/password/link', [AuthController::class, 'sendPasswordResetLink'])
-        ->middleware('throttle:password-reset')
-        ->name('admin.password.link');
-    Route::post('/admin/password/reset', [AuthController::class, 'resetPassword'])
-        ->middleware('throttle:password-reset')
-        ->name('admin.password.reset');
-    Route::post('/admin/password/change', [AuthController::class, 'changePassword'])
-        ->middleware('auth:sanctum')
-        ->name('admin.password.change');
 });

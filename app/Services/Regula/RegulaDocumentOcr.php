@@ -119,7 +119,7 @@ final class RegulaDocumentOcr
                 continue;
             }
 
-            $this->mergeFieldList($list, $fields);
+            $this->mergeFieldList(array_values($list), $fields);
         }
 
         return $fields;

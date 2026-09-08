@@ -79,16 +79,14 @@ final class ActivityLogAdminTest extends TestCase
         Bus::fake();
         Sanctum::actingAs($this->admin);
 
-        $this->postJson($this->api('/agents/register'), [
-            'name' => 'KOTO',
-            'first_name' => 'Ada',
-            'email' => 'ada.koto@example.com',
-            'phonenumber' => '+2290162405472',
-            'role' => 'AGENT',
+        $this->postJson($this->api('/management/users/update-status'), [
+            'users' => [
+                ['id' => $this->agent->id, 'status' => 'INACTIVE'],
+            ],
         ])->assertSuccessful();
 
         $log = ActivityLog::query()
-            ->where('action_code', ActivityLogAction::UtilisateurCree->label())
+            ->where('action_code', ActivityLogAction::StatutUtilisateurModifie->label())
             ->firstOrFail();
 
         $this->assertSame('127.0.0.1', $log->ip_address);
@@ -178,20 +176,6 @@ final class ActivityLogAdminTest extends TestCase
         Sanctum::actingAs($this->agent);
 
         $this->getJson($this->api('/admin/activity-logs'))->assertForbidden();
-    }
-
-    #[Test]
-    public function auditeur_role_is_rejected_on_register(): void
-    {
-        Sanctum::actingAs($this->admin);
-
-        $this->postJson($this->api('/agents/register'), [
-            'name' => 'Doe',
-            'first_name' => 'Jane',
-            'email' => 'jane.auditeur@example.com',
-            'phonenumber' => '+2290162405472',
-            'role' => 'AUDITEUR',
-        ])->assertStatus(422);
     }
 
     #[Test]

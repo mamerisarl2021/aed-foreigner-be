@@ -49,7 +49,10 @@ class EnrollmentRejectMotifController extends BaseController
         $this->authorize('create', EnrollmentRejectMotif::class);
 
         $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
-        $result = $this->motifs->create($request->validated(), $actorId);
+        $result = $this->motifs->create([
+            'title' => (string) $request->validated('title'),
+            'description' => (string) $request->validated('description'),
+        ], $actorId);
         if (! $result->success) {
             return $this->respond($result);
         }

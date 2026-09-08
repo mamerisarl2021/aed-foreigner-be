@@ -66,94 +66,51 @@ final class HttpRegulaService implements RegulaService
 
         $match = $this->faceApi->match($matchImages);
         if (! $match['ok']) {
-            return [
-                'status' => 'KO',
-                'risk_score' => null,
-                'similarity' => null,
-                'liveness' => null,
-                'details' => [
-                    'error' => $match['error'] ?? 'face_match_failed',
-                    'document' => $documentSummary,
-                    'face' => $match['payload'],
-                ],
-            ];
+            return $this->identityKo($match['error'] ?? 'face_match_failed', [
+                'document' => $documentSummary,
+                'face' => $match['payload'],
+            ]);
         }
 
         $similarity = $this->maxSimilarity($match['payload']);
         $faceCode = (int) ($match['payload']['code'] ?? -1);
         $threshold = (float) config('services.regula.match_threshold', 0.75);
 
-        $livenessStatus = null;
-        $livenessPayload = null;
-        $transactionId = $this->livenessTransactionId($data);
-        if ($transactionId !== null) {
-            $liveness = $this->faceApi->getLiveness($transactionId);
-            if (! $liveness['ok']) {
-                return [
-                    'status' => 'KO',
-                    'risk_score' => null,
-                    'similarity' => $similarity,
-                    'liveness' => null,
-                    'details' => [
-                        'error' => $liveness['error'] ?? 'liveness_failed',
-                        'document' => $documentSummary,
-                        'face' => $this->summarizeMatch($match['payload'], $similarity),
-                    ],
-                ];
-            }
-            $livenessPayload = $liveness['payload'];
-            $livenessStatus = $livenessPayload['status'] ?? null;
-            // Face API: status 0 = confirmed liveness, 1 = not confirmed.
-            if ((int) $livenessStatus !== 0) {
-                return [
-                    'status' => 'KO',
-                    'risk_score' => $this->riskFromSimilarity($similarity),
-                    'similarity' => $similarity,
-                    'liveness' => (string) $livenessStatus,
-                    'details' => [
-                        'error' => 'liveness_not_confirmed',
-                        'face_match' => false,
-                        'doc_validity' => ($documentSummary['overall_status'] ?? 1) !== 2,
-                        'document' => $documentSummary,
-                        'face' => $this->summarizeMatch($match['payload'], $similarity),
-                        'liveness' => $livenessPayload,
-                    ],
-                ];
-            }
+        $liveness = $this->evaluateLiveness(
+            $this->livenessTransactionId($data),
+            $similarity,
+            $documentSummary,
+            $match['payload'],
+        );
+        if ($liveness['failure'] !== null) {
+            return $liveness['failure'];
         }
 
         $faceOk = $faceCode === 0 && $similarity !== null && $similarity >= $threshold;
         if (! $faceOk) {
-            return [
-                'status' => 'KO',
-                'risk_score' => $this->riskFromSimilarity($similarity),
-                'similarity' => $similarity,
-                'liveness' => $livenessStatus !== null ? (string) $livenessStatus : null,
-                'details' => [
-                    'error' => 'face_match_below_threshold',
-                    'face_match' => false,
-                    'doc_validity' => true,
-                    'threshold' => $threshold,
-                    'document' => $documentSummary,
-                    'face' => $this->summarizeMatch($match['payload'], $similarity),
-                    'liveness' => $livenessPayload,
-                    'used_document_portrait' => $portraitB64 !== null,
-                ],
-            ];
+            return $this->identityKo('face_match_below_threshold', [
+                'face_match' => false,
+                'doc_validity' => true,
+                'threshold' => $threshold,
+                'document' => $documentSummary,
+                'face' => $this->summarizeMatch($match['payload'], $similarity),
+                'liveness' => $liveness['payload'],
+                'used_document_portrait' => $portraitB64 !== null,
+            ], $this->riskFromSimilarity($similarity), $similarity, $liveness['status']);
         }
 
         return [
             'status' => 'OK',
             'risk_score' => $this->riskFromSimilarity($similarity),
             'similarity' => $similarity,
-            'liveness' => $livenessStatus !== null ? (string) $livenessStatus : 'skipped',
+            'liveness' => $liveness['status'] !== null ? (string) $liveness['status'] : 'skipped',
             'details' => [
                 'face_match' => true,
                 'doc_validity' => true,
                 'threshold' => $threshold,
                 'document' => $documentSummary,
                 'face' => $this->summarizeMatch($match['payload'], $similarity),
-                'liveness' => $livenessPayload,
+                'liveness' => $liveness['payload'],
                 'used_document_portrait' => $portraitB64 !== null,
             ],
         ];
@@ -250,6 +207,74 @@ final class HttpRegulaService implements RegulaService
             'liveness' => null,
             'details' => $details,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     * @return array<string, mixed>
+     */
+    private function identityKo(
+        string $error,
+        array $details,
+        ?int $riskScore = null,
+        ?float $similarity = null,
+        mixed $liveness = null,
+    ): array {
+        $details['error'] = $error;
+
+        return [
+            'status' => 'KO',
+            'risk_score' => $riskScore,
+            'similarity' => $similarity,
+            'liveness' => $liveness !== null ? (string) $liveness : null,
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $documentSummary
+     * @param  array<string, mixed>|null  $matchPayload
+     * @return array{status: mixed, payload: mixed, failure: array<string, mixed>|null}
+     */
+    private function evaluateLiveness(
+        ?string $transactionId,
+        ?float $similarity,
+        array $documentSummary,
+        ?array $matchPayload,
+    ): array {
+        if ($transactionId === null) {
+            return ['status' => null, 'payload' => null, 'failure' => null];
+        }
+
+        $liveness = $this->faceApi->getLiveness($transactionId);
+        if (! $liveness['ok']) {
+            return [
+                'status' => null,
+                'payload' => null,
+                'failure' => $this->identityKo($liveness['error'] ?? 'liveness_failed', [
+                    'document' => $documentSummary,
+                    'face' => $this->summarizeMatch($matchPayload, $similarity),
+                ], null, $similarity),
+            ];
+        }
+
+        $payload = $liveness['payload'];
+        $status = is_array($payload) ? ($payload['status'] ?? null) : null;
+        if ((int) $status !== 0) {
+            return [
+                'status' => $status,
+                'payload' => $payload,
+                'failure' => $this->identityKo('liveness_not_confirmed', [
+                    'face_match' => false,
+                    'doc_validity' => ($documentSummary['overall_status'] ?? 1) !== 2,
+                    'document' => $documentSummary,
+                    'face' => $this->summarizeMatch($matchPayload, $similarity),
+                    'liveness' => $payload,
+                ], $this->riskFromSimilarity($similarity), $similarity, $status),
+            ];
+        }
+
+        return ['status' => $status, 'payload' => $payload, 'failure' => null];
     }
 
     /**
@@ -377,46 +402,63 @@ final class HttpRegulaService implements RegulaService
             if (! is_array($container)) {
                 continue;
             }
-
-            $images = $container['Images']['fieldList']
-                ?? $container['Images']['FieldList']
-                ?? $container['Images']
-                ?? null;
-
-            if (! is_array($images)) {
-                continue;
+            $found = $this->portraitFromContainer($container);
+            if ($found !== null) {
+                return $found;
             }
+        }
 
-            // fieldList style
-            if (array_is_list($images) || isset($images[0])) {
-                foreach ($images as $field) {
-                    if (! is_array($field)) {
-                        continue;
-                    }
-                    if ($this->isPortraitField($field)) {
-                        $value = $this->firstImageValue($field);
-                        if ($value !== null) {
-                            return $value;
-                        }
-                    }
-                }
-            }
+        return null;
+    }
 
-            foreach ($images as $key => $field) {
-                if (! is_array($field)) {
+    /**
+     * @param  array<string, mixed>  $container
+     */
+    private function portraitFromContainer(array $container): ?string
+    {
+        $images = $container['Images']['fieldList']
+            ?? $container['Images']['FieldList']
+            ?? $container['Images']
+            ?? null;
+
+        if (! is_array($images)) {
+            return null;
+        }
+
+        return $this->portraitFromImageList($images);
+    }
+
+    /**
+     * @param  array<mixed>  $images
+     */
+    private function portraitFromImageList(array $images): ?string
+    {
+        if (array_is_list($images) || isset($images[0])) {
+            foreach ($images as $field) {
+                if (! is_array($field) || ! $this->isPortraitField($field)) {
                     continue;
                 }
-                if (is_string($key) && stripos($key, 'portrait') !== false) {
-                    $value = $this->firstImageValue($field);
-                    if ($value !== null) {
-                        return $value;
-                    }
+                $value = $this->firstImageValue($field);
+                if ($value !== null) {
+                    return $value;
                 }
-                if ($this->isPortraitField($field)) {
-                    $value = $this->firstImageValue($field);
-                    if ($value !== null) {
-                        return $value;
-                    }
+            }
+        }
+
+        foreach ($images as $key => $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+            if (is_string($key) && stripos($key, 'portrait') !== false) {
+                $value = $this->firstImageValue($field);
+                if ($value !== null) {
+                    return $value;
+                }
+            }
+            if ($this->isPortraitField($field)) {
+                $value = $this->firstImageValue($field);
+                if ($value !== null) {
+                    return $value;
                 }
             }
         }

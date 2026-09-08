@@ -37,7 +37,7 @@ final class ClientLocalCredentials
 
     public static function passwordMatches(User $user, string $plain): bool
     {
-        return self::passwordIsStored($user) && Hash::check($plain, $user->password);
+        return self::passwordIsStored($user) && Hash::check($plain, (string) $user->password);
     }
 
     public static function pinMatches(User $user, string $plain): bool
