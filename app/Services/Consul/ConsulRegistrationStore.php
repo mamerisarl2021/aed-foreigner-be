@@ -26,7 +26,7 @@ final class ConsulRegistrationStore
             return null;
         }
 
-        $data = json_decode(Storage::get($this->path()), true);
+        $data = json_decode((string) Storage::get($this->path()), true);
 
         if (! is_array($data) || ! is_string($data['id'] ?? null)) {
             return null;

@@ -130,7 +130,9 @@ final class ForeignerEnrollmentService
 
         foreach (['selfie', 'recto', 'verso', 'profile'] as $field) {
             if ($request->hasFile($field)) {
-                $uploadedFiles[$field] = $request->file($field)?->store('tmp/enrollments', 'local');
+                $chemin = $request->file($field)?->store('tmp/enrollments', 'local');
+                // Idem : `false` signifie échec d'écriture, pas un chemin.
+                $uploadedFiles[$field] = $chemin === false ? null : $chemin;
             }
         }
 

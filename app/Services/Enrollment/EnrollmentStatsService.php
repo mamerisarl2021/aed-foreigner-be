@@ -183,20 +183,20 @@ class EnrollmentStatsService
             [EnrollmentStatus::Rejetee->value],
         );
 
-        return collect($rows)
-            ->map(function (object $row) use ($titles, $rejected): array {
+        return array_values(collect($rows)
+            ->map(function (\stdClass $row) use ($titles, $rejected): array {
                 $id = (string) $row->id;
                 $total = (int) $row->total;
 
                 return [
                     'id' => $id,
-                    'title' => $titles->get($id),
+                    'title' => is_string($titre = $titles->get($id)) ? $titre : null,
                     'count' => $total,
                     'taux' => $rejected > 0 ? round(($total / $rejected) * 100, 1) : 0.0,
                 ];
             })
             ->values()
-            ->all();
+            ->all());
     }
 
     /**

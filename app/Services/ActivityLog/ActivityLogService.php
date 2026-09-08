@@ -38,6 +38,9 @@ final class ActivityLogService
         ]);
     }
 
+    /**
+     * @return LengthAwarePaginator<int, ActivityLog>
+     */
     public function list(Request $request): LengthAwarePaginator
     {
         $query = ActivityLog::query()->orderByDesc('created_at');
@@ -67,7 +70,7 @@ final class ActivityLogService
             $query->whereDate('created_at', '<=', Carbon::parse((string) $request->input('to'))->toDateString());
         }
 
-        $perPage = min((int) $request->input('per_page', $request->input('perPage', 20)), 100);
+        $perPage = min((int) $request->input('per_page', 20), 100);
 
         return $query->paginate($perPage);
     }

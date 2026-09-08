@@ -1,3 +1,0 @@
-# Examples only — never commit real passwords.
-# php artisan manage:admin create --name="Admin Name" --email="admin@example.com" --password="<secret>"
-# php artisan manage:admin update --name="Updated Name" --email="admin@example.com" --password="<secret>"

@@ -9,6 +9,9 @@ use App\Rules\PhoneNumber;
 
 class VerifyOtpRequest extends ApiFormRequest
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

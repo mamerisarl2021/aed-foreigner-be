@@ -4,9 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * Alimentée par `EnrolledPersonService::show()`, dont la jointure sur
+ * `enrollment_requests` ajoute trois alias qui n'existent pas sur `users`.
+ *
+ * @mixin User
+ *
+ * @property-read string|null $enrollment_id
+ * @property-read string|null $enrolled_at
+ */
 class EnrolledPersonDetailResource extends JsonResource
 {
     /**

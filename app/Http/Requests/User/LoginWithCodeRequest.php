@@ -8,6 +8,9 @@ use App\Http\Requests\ApiFormRequest;
 
 class LoginWithCodeRequest extends ApiFormRequest
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

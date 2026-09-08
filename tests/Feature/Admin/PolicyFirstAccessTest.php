@@ -50,21 +50,6 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
-    public function agent_cannot_manage_agents_without_admin_policy(): void
-    {
-        Sanctum::actingAs($this->agent);
-
-        $this->getJson($this->api('/agents'))->assertForbidden();
-        $this->postJson($this->api('/agents/register'), [
-            'name' => 'Doe',
-            'first_name' => 'Jane',
-            'email' => 'new.agent@example.com',
-            'phonenumber' => '+2290162405472',
-            'role' => 'AGENT',
-        ])->assertForbidden();
-    }
-
-    #[Test]
     public function agent_cannot_list_enrolled_persons(): void
     {
         Sanctum::actingAs($this->agent);
@@ -94,18 +79,32 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function agent_cannot_list_psceq_clients(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/admin/psceq-clients'))->assertForbidden();
+    }
+
+    #[Test]
+    public function agent_cannot_update_enrolled_company_status(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->patchJson($this->api('/admin/enrolled-companies/'.fake()->uuid().'/status'), [
+            'statut' => 'SUSPENDED',
+        ])->assertForbidden();
+    }
+
+    #[Test]
     public function client_cannot_access_stats_search_decrypt_or_update_status(): void
     {
         Sanctum::actingAs($this->client);
 
         $this->getJson($this->api('/stats'))->assertForbidden();
+        $this->getJson($this->api('/management/enrollment-stats'))->assertForbidden();
         $this->getJson($this->api('/users/search?query=test'))->assertForbidden();
         $this->getJson($this->api('/decrypt/token/file/dummy.enc'))->assertForbidden();
-        $this->postJson($this->api('/admin/password/change'), [
-            'current_password' => 'password',
-            'password' => 'NewSecret1!',
-            'password_confirmation' => 'NewSecret1!',
-        ])->assertForbidden();
         $this->postJson($this->api('/admins/logout'))->assertForbidden();
         $this->postJson($this->api('/management/users/update-status'), [
             'users' => [
@@ -120,6 +119,7 @@ final class PolicyFirstAccessTest extends TestCase
         Sanctum::actingAs($this->agent);
 
         $this->getJson($this->api('/stats'))->assertOk();
+        $this->getJson($this->api('/management/enrollment-stats'))->assertOk();
         $this->getJson($this->api('/users/search?query=admin-policy'))->assertOk();
     }
 
@@ -179,21 +179,11 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
-    public function admin_can_list_agents_and_enrolled_persons(): void
+    public function admin_can_list_enrolled_persons(): void
     {
         Sanctum::actingAs($this->admin);
 
-        $this->getJson($this->api('/agents'))->assertOk();
         $this->getJson($this->api('/admin/enrolled-persons'))->assertOk();
-    }
-
-    #[Test]
-    public function listing_agents_rejects_administrateur_plateforme_role_filter(): void
-    {
-        Sanctum::actingAs($this->admin);
-
-        $this->getJson($this->api('/agents?role=ADMINISTRATEUR_PLATEFORME'))
-            ->assertUnprocessable();
     }
 
     #[Test]

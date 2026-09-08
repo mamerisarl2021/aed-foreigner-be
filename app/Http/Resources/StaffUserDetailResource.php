@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use App\Support\StaffRoleMapper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin User
+ */
 class StaffUserDetailResource extends JsonResource
 {
     /**
@@ -23,7 +27,6 @@ class StaffUserDetailResource extends JsonResource
             'telephone' => $this->phonenumber,
             'role' => StaffRoleMapper::codeFromUser($this->resource),
             'statut' => $this->status,
-            'must_change_password' => (bool) $this->must_change_password,
             'derniere_connexion' => $this->last_login_at,
         ];
     }

@@ -46,6 +46,15 @@ final class ManagerEnrollmentPilotTest extends TestCase
     }
 
     #[Test]
+    public function an_agent_can_read_enrollment_stats(): void
+    {
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/management/enrollment-stats'))
+            ->assertOk();
+    }
+
+    #[Test]
     public function the_physique_list_excludes_personne_morale_rows(): void
     {
         $physique = $this->enrollment(EnrollmentStatus::EnAttenteAgent, 'PERSONNE_PHYSIQUE', [

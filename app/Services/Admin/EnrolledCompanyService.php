@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Enums\ActivityLogAction;
+use App\Enums\EnrolledCompanyStatus;
 use App\Models\EnrolledCompany;
+use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -22,6 +25,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class EnrolledCompanyService
 {
+    public function __construct(
+        private readonly ActivityLogService $activityLog,
+    ) {}
+
     /**
      * Colonnes de tri exposées, et la colonne réelle derrière chacune.
      *
@@ -59,7 +66,7 @@ final class EnrolledCompanyService
 
         $query->orderBy($orderBy, $orderDir);
 
-        $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
+        $perPage = min((int) $request->input('per_page', 15), 100);
 
         return $query->paginate($perPage);
     }
@@ -79,6 +86,38 @@ final class EnrolledCompanyService
             Log::error('Failed to retrieve enrolled company: '.$e->getMessage());
 
             return ServiceResult::fail('Impossible de récupérer l\'entreprise enrôlée.', null, 500);
+        }
+    }
+
+    public function updateStatus(string $id, EnrolledCompanyStatus $status, ?string $actorUserId): ServiceResult
+    {
+        try {
+            $company = EnrolledCompany::query()->where('id', $id)->firstOrFail();
+            $previous = $company->statusValue();
+
+            $company->status = $status;
+            $company->save();
+
+            $this->activityLog->record(
+                ActivityLogAction::EntrepriseStatutModifie,
+                sprintf('Statut de l\'entreprise %s modifié.', $company->identifiant),
+                $actorUserId,
+                $company->enrollment_request_id,
+                [
+                    'enrolled_company_id' => $company->id,
+                    'identifiant' => $company->identifiant,
+                    'ancien_statut' => $previous,
+                    'nouveau_statut' => $status->value,
+                ],
+            );
+
+            return ServiceResult::ok('Statut de l\'entreprise mis à jour.', $company);
+        } catch (ModelNotFoundException) {
+            return ServiceResult::fail('Entreprise enrôlée introuvable.', null, 404);
+        } catch (Exception $e) {
+            Log::error('Failed to update enrolled company status: '.$e->getMessage());
+
+            return ServiceResult::fail('Impossible de mettre à jour le statut de l\'entreprise.', null, 500);
         }
     }
 }

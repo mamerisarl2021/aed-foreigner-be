@@ -17,27 +17,13 @@ use Psr\Http\Message\ResponseInterface;
 
 class TrustedXClientService
 {
-    private string $clientId;
-
-    private string $baseUrl;
-
-    private string $clientsLoggedAs;
-
-    private string $adminsLoggedAs;
-
-    private string $clientSecret;
-
-    private string $redirectUrl;
-
-    public function __construct()
-    {
-        $this->clientSecret = (string) config('trustedx.client_secret');
-        $this->baseUrl = (string) config('trustedx.base_url');
-        $this->clientsLoggedAs = (string) config('trustedx.clients_logged_as');
-        $this->adminsLoggedAs = (string) config('trustedx.admins_logged_as');
-        $this->clientId = (string) config('trustedx.client_id');
-        $this->redirectUrl = (string) config('trustedx.redirect_url');
-    }
+    public function __construct(
+        private readonly string $clientId,
+        private readonly string $baseUrl,
+        private readonly string $clientsLoggedAs,
+        private readonly string $adminsLoggedAs,
+        private readonly string $clientSecret,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -312,7 +298,7 @@ class TrustedXClientService
                 'first_login' => 'YES',
             ];
             $url = "https://{$this->baseUrl}/trustedx-resources/accounts/v1/users";
-            $request = new Psr7Request('POST', $url, $headers, json_encode($payload));
+            $request = new Psr7Request('POST', $url, $headers, json_encode($payload, JSON_THROW_ON_ERROR));
             $response = $this->sendRequest('register', $request, [
                 'npi' => $user['data']['npi'] ?? null,
                 'access_token' => $token,
@@ -355,7 +341,7 @@ class TrustedXClientService
                 'max_attempts' => 3,
             ];
             $url = "https://{$this->baseUrl}/trustedx-resources/accounts/v1/users/".$user['id']."/passwords/$type";
-            $request = new Psr7Request('PUT', $url, $headers, json_encode($body));
+            $request = new Psr7Request('PUT', $url, $headers, json_encode($body, JSON_THROW_ON_ERROR));
             $secretKey = $type === 'pin' ? 'pin' : 'password';
             $response = $this->sendRequest('setDefaultPassword', $request, [
                 'type' => $type,
@@ -553,7 +539,7 @@ class TrustedXClientService
                     'PATCH',
                     $url,
                     $headers,
-                    json_encode($updateData)
+                    json_encode($updateData, JSON_THROW_ON_ERROR)
                 );
                 $response = $this->sendRequest('updateUserAttributesByNPI', $request, [
                     'npi' => $npi,
@@ -616,7 +602,7 @@ class TrustedXClientService
                     'PATCH',
                     $url,
                     $headers,
-                    json_encode($updateData)
+                    json_encode($updateData, JSON_THROW_ON_ERROR)
                 );
                 $response = $this->sendRequest('updateCertValidityByNPI', $request, [
                     'npi' => $npi,

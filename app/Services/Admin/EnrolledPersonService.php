@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 
 final class EnrolledPersonService
 {
+    /**
+     * @return LengthAwarePaginator<int, User>
+     */
     public function list(Request $request): LengthAwarePaginator
     {
         $query = User::query()
@@ -49,7 +52,7 @@ final class EnrolledPersonService
 
         $query->orderBy($orderBy, $orderDir);
 
-        $perPage = min((int) $request->input('per_page', $request->input('perPage', 15)), 100);
+        $perPage = min((int) $request->input('per_page', 15), 100);
 
         return $query->paginate($perPage);
     }
@@ -74,7 +77,7 @@ final class EnrolledPersonService
                 ])
                 ->firstOrFail();
 
-            $kyc = $user->enrollment_kyc;
+            $kyc = $user->getAttribute('enrollment_kyc');
             if (is_string($kyc)) {
                 $user->setAttribute('enrollment_kyc', json_decode($kyc, true) ?? []);
             }

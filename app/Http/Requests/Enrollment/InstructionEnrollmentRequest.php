@@ -20,6 +20,9 @@ class InstructionEnrollmentRequest extends ApiFormRequest
         return 'Format de donnée invalide.';
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $motifIdRules = ['required', 'uuid', Rule::exists('enrollment_reject_motifs', 'id')];

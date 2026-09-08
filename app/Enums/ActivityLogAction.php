@@ -38,6 +38,10 @@ enum ActivityLogAction: string
     case ConnexionClient = 'CONNEXION_CLIENT';
     case DeconnexionClient = 'DECONNEXION_CLIENT';
     case DocumentDechiffre = 'DOCUMENT_DECHIFFRE';
+    case PsceqConsultation = 'PSCEQ_CONSULTATION';
+    case PsceqClientCree = 'PSCEQ_CLIENT_CREE';
+    case PsceqClientRevoque = 'PSCEQ_CLIENT_REVOQUE';
+    case EntrepriseStatutModifie = 'ENTREPRISE_STATUT_MODIFIE';
 
     public function label(): string
     {
@@ -72,6 +76,10 @@ enum ActivityLogAction: string
             self::ConnexionClient => 'CONNEXION CLIENT',
             self::DeconnexionClient => 'DECONNEXION CLIENT',
             self::DocumentDechiffre => 'DOCUMENT DECHIFFRE',
+            self::PsceqConsultation => 'CONSULTATION PSCEQ',
+            self::PsceqClientCree => 'PSCEQ CLIENT CREE',
+            self::PsceqClientRevoque => 'PSCEQ CLIENT REVOQUE',
+            self::EntrepriseStatutModifie => 'ENTREPRISE STATUT MODIFIE',
         };
     }
 }

@@ -42,26 +42,7 @@ class EnrollmentSlaService
             ->chunkById(100, function ($enrollments) use ($maxHours, $levels, &$checked, &$updated) {
                 foreach ($enrollments as $enrollment) {
                     $checked++;
-                    $elapsedHours = $enrollment->created_at->diffInHours(now(), false);
-                    $percent = ($elapsedHours / $maxHours) * 100;
-
-                    $newLevel = null;
-                    foreach ($levels as $threshold => $levelKey) {
-                        if ($percent >= (float) $threshold) {
-                            $newLevel = $levelKey;
-                            break;
-                        }
-                    }
-
-                    if ($newLevel === null || $newLevel === $enrollment->sla_alert_level) {
-                        continue;
-                    }
-
-                    $enrollment->sla_alert_level = $newLevel;
-                    $enrollment->save();
-                    $updated++;
-
-                    $this->notifyRoles($enrollment, $newLevel);
+                    $this->applySlaLevel($enrollment, $maxHours, $levels, $updated);
                 }
             });
 
@@ -92,34 +73,79 @@ class EnrollmentSlaService
             ->orderBy('id')
             ->chunkById(100, function ($enrollments) use ($reminderHours, &$reminded, &$archived) {
                 foreach ($enrollments as $enrollment) {
-                    $deadline = $enrollment->correction_deadline_at;
-                    if ($deadline === null) {
-                        continue;
-                    }
-
-                    if ($deadline->isPast()) {
-                        if ($this->archiveExpiredCorrectionIfPending($enrollment)) {
-                            $archived++;
-                            $this->notifyCorrectionExpired($enrollment);
-                        }
-
-                        continue;
-                    }
-
-                    if ($enrollment->correction_reminder_sent_at !== null) {
-                        continue;
-                    }
-
-                    if ($deadline->lessThanOrEqualTo(now()->addHours($reminderHours))) {
-                        if ($this->markCorrectionReminderIfPending($enrollment)) {
-                            $reminded++;
-                            $this->notifyCorrectionReminder($enrollment);
-                        }
-                    }
+                    $this->processMoraleCorrection($enrollment, $reminderHours, $reminded, $archived);
                 }
             });
 
         return ['reminded' => $reminded, 'archived' => $archived];
+    }
+
+    /**
+     * @param  array<int, string>  $levels
+     */
+    private function applySlaLevel(EnrollmentRequest $enrollment, int $maxHours, array $levels, int &$updated): void
+    {
+        $createdAt = $enrollment->created_at;
+        if ($createdAt === null) {
+            return;
+        }
+
+        $elapsedHours = $createdAt->diffInHours(now(), false);
+        $percent = ($elapsedHours / $maxHours) * 100;
+
+        $newLevel = null;
+        foreach ($levels as $threshold => $levelKey) {
+            if ($percent >= (float) $threshold) {
+                $newLevel = $levelKey;
+                break;
+            }
+        }
+
+        if ($newLevel === null || $newLevel === $enrollment->sla_alert_level) {
+            return;
+        }
+
+        $enrollment->sla_alert_level = $newLevel;
+        $enrollment->save();
+        $updated++;
+
+        $this->notifyRoles($enrollment, $newLevel);
+    }
+
+    private function processMoraleCorrection(
+        EnrollmentRequest $enrollment,
+        int $reminderHours,
+        int &$reminded,
+        int &$archived,
+    ): void {
+        $deadline = $enrollment->correction_deadline_at;
+        if ($deadline === null) {
+            return;
+        }
+
+        if ($deadline->isPast()) {
+            if ($this->archiveExpiredCorrectionIfPending($enrollment)) {
+                $archived++;
+                $this->notifyCorrectionExpired($enrollment);
+            }
+
+            return;
+        }
+
+        if ($enrollment->correction_reminder_sent_at !== null) {
+            return;
+        }
+
+        if (! $deadline->lessThanOrEqualTo(now()->addHours($reminderHours))) {
+            return;
+        }
+
+        if (! $this->markCorrectionReminderIfPending($enrollment)) {
+            return;
+        }
+
+        $reminded++;
+        $this->notifyCorrectionReminder($enrollment);
     }
 
     public function archiveExpiredCorrectionIfPending(EnrollmentRequest $enrollment): bool

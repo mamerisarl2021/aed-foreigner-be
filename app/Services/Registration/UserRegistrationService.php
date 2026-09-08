@@ -92,7 +92,7 @@ class UserRegistrationService
             }
 
             Cache::forget($attemptsKey);
-            $ttlSeconds = Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
+            $ttlSeconds = (int) Carbon::now()->diffInSeconds(Carbon::parse($existingOTP->valid_until));
             Cache::put('user_'.$npi.'_validate_otp', true, $ttlSeconds > 0 ? $ttlSeconds : 300);
 
             $this->activityLog->record(

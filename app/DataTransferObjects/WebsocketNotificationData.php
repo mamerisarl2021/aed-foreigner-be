@@ -10,6 +10,10 @@ use InvalidArgumentException;
 
 final readonly class WebsocketNotificationData
 {
+    /**
+     * @param  list<array<string, mixed>>  $recipients
+     * @param  array<string, mixed>  $variables
+     */
     public function __construct(
         public string $subject,
         public array $recipients,
@@ -23,6 +27,9 @@ final readonly class WebsocketNotificationData
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $payload = [

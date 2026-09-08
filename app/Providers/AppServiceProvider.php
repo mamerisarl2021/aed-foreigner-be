@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsurePsceqApiKey;
+use App\Services\PKI\TrustedXClientService;
 use App\Services\Regula\HttpRegulaService;
 use App\Services\Regula\MockRegulaService;
 use App\Services\Regula\RegulaService;
@@ -26,58 +28,102 @@ final class AppServiceProvider extends ServiceProvider
                 ? $app->make(MockRegulaService::class)
                 : $app->make(HttpRegulaService::class);
         });
+
+        $this->app->singleton(TrustedXClientService::class, static function (): TrustedXClientService {
+            return new TrustedXClientService(
+                clientId: (string) config('trustedx.client_id'),
+                baseUrl: (string) config('trustedx.base_url'),
+                clientsLoggedAs: (string) config('trustedx.clients_logged_as'),
+                adminsLoggedAs: (string) config('trustedx.admins_logged_as'),
+                clientSecret: (string) config('trustedx.client_secret'),
+            );
+        });
     }
 
     public function boot(): void
     {
         JsonResource::withoutWrapping();
+        $this->registerRateLimiters();
+        $this->hideScrambleDecryptJson();
+    }
 
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('api', $this->limitApi(...));
+        RateLimiter::for('otp-send', $this->limitOtpSend(...));
+        RateLimiter::for('otp-verify', $this->limitOtpVerify(...));
+        RateLimiter::for('auth-login', $this->limitAuthLogin(...));
+        RateLimiter::for('document-read', $this->limitDocumentRead(...));
+        RateLimiter::for('document-verify', $this->limitDocumentVerify(...));
+        RateLimiter::for('password-reset', $this->limitPasswordReset(...));
+        RateLimiter::for('enrollment-suivi', $this->limitEnrollmentSuivi(...));
+        RateLimiter::for('psceq', $this->limitPsceq(...));
+    }
 
-        RateLimiter::for('otp-send', function (Request $request) {
-            $identifier = $request->input('email')
-                ?: $request->input('phonenumber')
-                ?: $request->input('npi')
-                ?: '';
+    private function limitApi(Request $request): Limit
+    {
+        return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+    }
 
-            return Limit::perMinute(3)->by($identifier.'|'.$request->ip());
-        });
+    private function limitOtpSend(Request $request): Limit
+    {
+        return Limit::perMinute(3)->by($this->otpIdentifier($request));
+    }
 
-        RateLimiter::for('otp-verify', function (Request $request) {
-            $identifier = $request->input('email')
-                ?: $request->input('phonenumber')
-                ?: $request->input('npi')
-                ?: '';
+    private function limitOtpVerify(Request $request): Limit
+    {
+        return Limit::perMinute(10)->by($this->otpIdentifier($request));
+    }
 
-            return Limit::perMinute(10)->by($identifier.'|'.$request->ip());
-        });
+    private function limitAuthLogin(Request $request): Limit
+    {
+        return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
+    }
 
-        RateLimiter::for('auth-login', function (Request $request) {
-            return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
-        });
+    private function limitDocumentRead(Request $request): Limit
+    {
+        return Limit::perMinute(10)->by($request->ip());
+    }
 
-        RateLimiter::for('document-read', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
-        });
-
-        // Étape 2 personne morale : route authentifiée, donc quota par client et non par IP —
+    private function limitDocumentVerify(Request $request): Limit
+    {
+        // Étape 2 personne morale : route authentifiée, quota par client et non par IP —
         // plusieurs demandeurs peuvent partager une sortie NAT.
-        RateLimiter::for('document-verify', function (Request $request) {
-            return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
-        });
+        return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
+    }
 
-        RateLimiter::for('password-reset', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
-        });
+    private function limitPasswordReset(Request $request): Limit
+    {
+        return Limit::perMinute(3)->by($request->ip());
+    }
 
-        RateLimiter::for('enrollment-suivi', function (Request $request) {
-            return Limit::perMinute(10)->by(
-                strtolower((string) $request->input('numero_suivi')).'|'.$request->ip()
-            );
-        });
+    private function limitEnrollmentSuivi(Request $request): Limit
+    {
+        return Limit::perMinute(10)->by(
+            strtolower((string) $request->input('numero_suivi')).'|'.$request->ip()
+        );
+    }
 
+    private function limitPsceq(Request $request): Limit
+    {
+        $prefix = $request->attributes->get(EnsurePsceqApiKey::KEY_PREFIX_ATTRIBUTE);
+        $key = is_string($prefix) && $prefix !== '' ? $prefix : (string) $request->ip();
+
+        return Limit::perMinute(60)->by($key);
+    }
+
+    private function otpIdentifier(Request $request): string
+    {
+        $identifier = $request->input('email')
+            ?: $request->input('phonenumber')
+            ?: $request->input('npi')
+            ?: '';
+
+        return $identifier.'|'.$request->ip();
+    }
+
+    private function hideScrambleDecryptJson(): void
+    {
         // Scramble merges inferred JSON content with #[Response] binary for decrypt; drop the noise.
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             foreach ($openApi->paths as $path) {
