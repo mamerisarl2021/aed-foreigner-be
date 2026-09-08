@@ -20,4 +20,4 @@ yarn-error.log
 # txdocs
 .commands
 notes
-docker/keys/*
+docker/keys
