@@ -6,11 +6,7 @@
 /storage/*.key
 /vendor
 .env
-.env.backup
-.env.production
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
 auth.json
 npm-debug.log
 yarn-error.log
@@ -23,9 +19,5 @@ yarn-error.log
 .envforgeignore
 # txdocs
 .commands
-.env.prod
 notes
-docker/regula/regula.license
-docker/regula/.env
-minio
-docker-compose.yml
+docker/keys/*
