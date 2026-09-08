@@ -17,24 +17,13 @@ use Psr\Http\Message\ResponseInterface;
 
 class TrustedXClientService
 {
-    private string $clientId;
-
-    private string $baseUrl;
-
-    private string $clientsLoggedAs;
-
-    private string $adminsLoggedAs;
-
-    private string $clientSecret;
-
-    public function __construct()
-    {
-        $this->clientSecret = (string) config('trustedx.client_secret');
-        $this->baseUrl = (string) config('trustedx.base_url');
-        $this->clientsLoggedAs = (string) config('trustedx.clients_logged_as');
-        $this->adminsLoggedAs = (string) config('trustedx.admins_logged_as');
-        $this->clientId = (string) config('trustedx.client_id');
-    }
+    public function __construct(
+        private readonly string $clientId,
+        private readonly string $baseUrl,
+        private readonly string $clientsLoggedAs,
+        private readonly string $adminsLoggedAs,
+        private readonly string $clientSecret,
+    ) {}
 
     /**
      * @return array<string, mixed>

@@ -898,7 +898,7 @@ Do not pretend these exist in code without implementing them:
 
 Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here.
 
-`EncryptionTrait` / `php artisan pair:generate` are inherited PKI file crypto (`storage/aed-*.key`, decrypt download). Do not extend them; new document flows use the existing token decrypt path. `TrustedXClientService` is the same inherited client — new methods still follow §4.3 (promotion) and §10.1 (explicit HTTP timeout).
+`EncryptionTrait` / `php artisan pair:generate` are inherited PKI file crypto (`storage/aed-*.key`, decrypt download). Do not extend them; new document flows use the existing token decrypt path. The legacy AES-256-CBC IV for ciphertext stored before `storeEncFile()` prepended a random IV lives in `config('encryption.legacy_cbc_iv')` (optional `ENCRYPTION_LEGACY_CBC_IV`). Do not rotate that value in place — old files would no longer decrypt. `TrustedXClientService` is the same inherited client: constructor promotion from `config('trustedx.*')` in `AppServiceProvider`, new methods still follow §4.3 and §10.1 (explicit HTTP timeout).
 
 ---
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsurePsceqApiKey;
+use App\Services\PKI\TrustedXClientService;
 use App\Services\Regula\HttpRegulaService;
 use App\Services\Regula\MockRegulaService;
 use App\Services\Regula\RegulaService;
@@ -26,6 +27,16 @@ final class AppServiceProvider extends ServiceProvider
             return config('services.regula.mock')
                 ? $app->make(MockRegulaService::class)
                 : $app->make(HttpRegulaService::class);
+        });
+
+        $this->app->singleton(TrustedXClientService::class, static function (): TrustedXClientService {
+            return new TrustedXClientService(
+                clientId: (string) config('trustedx.client_id'),
+                baseUrl: (string) config('trustedx.base_url'),
+                clientsLoggedAs: (string) config('trustedx.clients_logged_as'),
+                adminsLoggedAs: (string) config('trustedx.admins_logged_as'),
+                clientSecret: (string) config('trustedx.client_secret'),
+            );
         });
     }
 
