@@ -22,7 +22,7 @@ Engineering sources consolidated from:
 | Framework | Laravel **12** |
 | PHP | **8.4+** |
 | API prefix | `/api/v1` (configured in `bootstrap/app.php`) |
-| Auth | Laravel Sanctum + Spatie Permission (roles) + **Laravel Policies** (resource actions) |
+| Auth | Staff: Keycloak (`pki-portal` / `backoffice-stranger`) then Sanctum. Client: TrustedX OAuth then Sanctum. Guest enrollment: optional infra JWT (`KEYCLOAK_ENABLED`). Resource actions: **Laravel Policies** + Spatie roles. |
 | Notifications | Kafka publisher (`KafkaNotificationPublisher`) — not direct `Mail::` in domain code |
 | Service discovery | Consul (when infra is available) |
 
@@ -226,7 +226,7 @@ Define env vars in `config/*.php`, then read with `config()`. This survives `php
 ### 7.2 Secrets
 
 - **Never** hardcode API keys, tokens, or passwords
-- **Never** commit `.env` — use `.env.example` / `.env.schema` / `.env.ai.md` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
+- **Never** commit `.env` — use `.env.example` / `.env.schema` for documentation. `.env.example` must contain **placeholders only** (empty `APP_KEY`, empty secrets). Generate a local key with `php artisan key:generate`.
 - **Never** read `.env` directly in tooling; use schema files for variable context
 
 **Exception — temporary TrustedX call logging.** `TrustedXClientService` logs every outbound TrustedX HTTP call at INFO (`TrustedX call`), including password/PIN and access_token, so live finalisation/approval can be verified in `storage/logs`. Kill switch: `TRUSTEDX_LOG_CALLS` (`config('trustedx.log_calls')`, default `false`). Set `true` only while debugging; remove `logCall()` and its call sites when debugging is done.
@@ -346,14 +346,13 @@ Use appropriate HTTP status codes; validation errors return **422**.
 |-------|----------------|
 | `auth:sanctum` | Caller is authenticated (when required) |
 | **Policy** (`$this->authorize(...)`) | Role + ownership + status rules (claim, approve, reject, supervisor actions, …) |
-| Route `role:` middleware | **Transitional coarse gate only** — may remain while migrating legacy routes; must not diverge from the matching policy |
+| Route `role:` middleware | **Do not add.** Coarse gates belong in policies. PSCEQ uses middleware `psceq` (API key), not a Spatie role. |
 
 Rules for new / touched enrollment-review code:
 
 1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
 2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
-3. Prefer expanding policies over adding more nested `role:` middleware groups.
-4. Goal of **P10-04**: remove redundant `role:` checks on routes that already authorize via policies, once coverage is complete.
+3. Prefer expanding policies over adding `role:` middleware groups.
 
 Spatie `UnauthorizedException` / authorization failures are rendered as JSON **403** — preserve this behavior.
 
@@ -363,6 +362,7 @@ Spatie `UnauthorizedException` / authorization failures are rendered as JSON **4
 - Never trust query params, headers, or file metadata without validation
 - CSRF applies to stateful web routes; API uses token auth
 - Enforce HTTPS in production (reverse proxy / middleware)
+- Laravel session cookies: `SESSION_SECURE_COOKIE` empty = Secure only on HTTPS requests; production HTTPS should set `true` (see `.env.schema`)
 - Avoid raw dynamic SQL; use Eloquent or bound query builder
 - Apply least-privilege DB credentials in deployment
 
@@ -669,10 +669,16 @@ Les rôles staff sont portés par le JWT Keycloak (`realm_access` / `resource_ac
 - Responsable `APPROUVEE`: local User + **NPI (10 digits, sequential in `1000000001`–`1999999999`; starts with a digit, no `F-` prefix)** + Identity + **TrustedX register** + finalisation invite email containing **`numero_suivi`**, **NPI**, and a **secure link** (`FRONTEND_URL/etranger/finalisation?token=`). The NPI is in the email body, not the URL. After opening the link the applicant **types the generated NPI** (not `numero_suivi` / demande code).
 - Responsable `REJET_CONFIRME`: `REJETEE` + applicant email.
 - Responsable `RETOUR_AGENT`: back to `EN_ATTENTE_AGENT`, clears `assigned_agent_id` and the agent's avis.
-- Manager (read-only supervision; SLA level 3 notifies `manager`):
+- Staff dashboards (Sanctum + policy; **all** `config('roles.staff')`, including agent — not manager-only):
 
 ```
-GET /management/enrollment-stats                         (?granularite=semaine|mois)
+GET /stats                                               platform counts (users, demandes, …)
+GET /management/enrollment-stats                         (?granularite=semaine|mois) enrollment dashboard
+```
+
+- Manager-only supervision lists (SLA level 3 still notifies `manager`):
+
+```
 GET /management/enrollment-reject-motifs
 GET /management/enrolements/physiques
 GET /management/enrolements/physiques/{id}
@@ -680,7 +686,7 @@ GET /management/enrolements/morales
 GET /management/enrolements/morales/{id}
 ```
 
-  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged.
+  Manager lists default to every **listable** status (not the agent queue). `{id}` of the wrong type → 404. List rows expose `agent`, `responsable`, `delai_ecoule_jours`. Detail is identity + `pieces_jointes` only (no KYC analysis, no instruction). `GET /enrolements` remains the agent/responsable queue. Owner `GET /enrolements/morales` is unchanged. `GET /management/enrollment-reject-motifs` stays on the reviewer catalogue (agents/responsables/manager).
 - Reject motifs (list for reviewers): `GET /management/enrollment-reject-motifs` → `{ id, title, description }`.
 - Show attaches heuristic `similar_enrollments`; agent and responsable detail resources expose it (PDF §5.1 morale cross-check; physique uses the same key).
 - SLA: `enrollment:check-sla` hourly.
@@ -890,7 +896,9 @@ Do not pretend these exist in code without implementing them:
 
 `app/Mail/` and `resources/views/emails/` remain reference material during the Kafka migration. Prefer Kafka notification jobs + existing Blade templates. Do not build new features on `Mail::` facades.
 
-Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here; personne morale enrollment will use `enrollment_requests` when implemented.
+Legacy citizen B2B modules (`Structure*`, subscriptions, signatures, entity attachments, employee invitations) have been **removed** from this backend. Do not reintroduce them here.
+
+`EncryptionTrait` / `php artisan pair:generate` are inherited PKI file crypto (`storage/aed-*.key`, decrypt download). Do not extend them; new document flows use the existing token decrypt path. `TrustedXClientService` is the same inherited client — new methods still follow §4.3 (promotion) and §10.1 (explicit HTTP timeout).
 
 ---
 
