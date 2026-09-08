@@ -42,6 +42,7 @@ return [
         'mock' => (bool) env('REGULA_MOCK', false),
         'document_url' => env('REGULA_DOCUMENT_URL') ?: env('REGULA_URL'),
         'face_url' => env('REGULA_FACE_URL') ?: env('REGULA_URL'),
+        'api_key' => env('REGULA_API_KEY'),
         'timeout' => (int) env('REGULA_TIMEOUT', 60),
         'document_scenario' => env('REGULA_DOCUMENT_SCENARIO', 'FullProcess'),
         // Face /api/match similarity is 0.0–1.0; below this threshold KYC fails closed.
