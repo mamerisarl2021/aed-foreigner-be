@@ -107,9 +107,10 @@ return new class extends Migration
     }
 
     /**
-     * Redéfinit l'ENUM via le Schema Builder plutôt qu'un ALTER brut : c'est lui
-     * que lit l'analyse statique pour typer `status`, et un ALTER en SQL direct
-     * la laisserait sur les valeurs de la migration d'origine.
+     * Redéfinit les valeurs possibles de `status` via une contrainte CHECK gérée
+     * en SQL brut. Sur PostgreSQL, `$table->enum(...)->change()` génère un
+     * ALTER COLUMN ... TYPE varchar(255) CHECK (...) invalide : le CHECK doit
+     * être ajouté séparément via ADD CONSTRAINT.
      *
      * @param  list<string>  $statuses
      */
@@ -117,8 +118,17 @@ return new class extends Migration
     {
         $values = array_values(array_unique($statuses));
 
-        Schema::table('enrollment_requests', function (Blueprint $table) use ($values, $default) {
-            $table->enum('status', $values)->default($default)->nullable(false)->change();
-        });
+        // Le nom de la contrainte générée par défaut par Laravel/Postgres.
+        $constraint = 'enrollment_requests_status_check';
+
+        DB::statement("ALTER TABLE enrollment_requests DROP CONSTRAINT IF EXISTS {$constraint}");
+
+        DB::statement('ALTER TABLE enrollment_requests ALTER COLUMN status TYPE varchar(255)');
+        DB::statement('ALTER TABLE enrollment_requests ALTER COLUMN status SET NOT NULL');
+        DB::statement("ALTER TABLE enrollment_requests ALTER COLUMN status SET DEFAULT '{$default}'");
+
+        $quoted = collect($values)->map(fn ($v) => "'{$v}'")->implode(', ');
+
+        DB::statement("ALTER TABLE enrollment_requests ADD CONSTRAINT {$constraint} CHECK (status IN ({$quoted}))");
     }
 };

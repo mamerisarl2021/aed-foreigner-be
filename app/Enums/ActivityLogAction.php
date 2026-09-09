@@ -40,6 +40,9 @@ enum ActivityLogAction: string
     case DocumentDechiffre = 'DOCUMENT_DECHIFFRE';
     case PsceqConsultation = 'PSCEQ_CONSULTATION';
     case PsceqClientCree = 'PSCEQ_CLIENT_CREE';
+    case PsceqClientModifie = 'PSCEQ_CLIENT_MODIFIE';
+    case PsceqClientSupprime = 'PSCEQ_CLIENT_SUPPRIME';
+    case PsceqClientRegenere = 'PSCEQ_CLIENT_REGENERE';
     case PsceqClientRevoque = 'PSCEQ_CLIENT_REVOQUE';
     case EntrepriseStatutModifie = 'ENTREPRISE_STATUT_MODIFIE';
 
@@ -78,6 +81,9 @@ enum ActivityLogAction: string
             self::DocumentDechiffre => 'DOCUMENT DECHIFFRE',
             self::PsceqConsultation => 'CONSULTATION PSCEQ',
             self::PsceqClientCree => 'PSCEQ CLIENT CREE',
+            self::PsceqClientModifie => 'PSCEQ CLIENT MODIFIE',
+            self::PsceqClientSupprime => 'PSCEQ CLIENT SUPPRIME',
+            self::PsceqClientRegenere => 'PSCEQ CLIENT REGENERE',
             self::PsceqClientRevoque => 'PSCEQ CLIENT REVOQUE',
             self::EntrepriseStatutModifie => 'ENTREPRISE STATUT MODIFIE',
         };
