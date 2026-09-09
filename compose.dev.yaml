@@ -1,13 +1,10 @@
 services:
   web:
-    image: nginx:latest # Using the default Nginx image with custom configuration.
+    image: nginx:latest
     volumes:
-      # Mount the application code for live updates
       - ./:/var/www
-      # Mount the Nginx configuration file
       - ./docker/development/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      # Map port 80 inside the container to the port specified by 'NGINX_PORT' on the host machine
       - "80:80"
     environment:
       - NGINX_HOST=localhost
@@ -15,10 +12,9 @@ services:
       - portal-id-foreigner-development
     depends_on:
       php-fpm:
-        condition: service_started # Wait for php-fpm to start
+        condition: service_started
 
   php-fpm:
-    # For the php-fpm service, we will use our common PHP-FPM Dockerfile with the development target
     build:
       context: .
       dockerfile: ./docker/common/php-fpm/Dockerfile
@@ -33,20 +29,17 @@ services:
         XDEBUG_LOG: /dev/stdout
         XDEBUG_LOG_LEVEL: 0
     env_file:
-      # Load the environment variables from the Laravel application
       - .env
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
-      # Mount the application code for live updates
       - ./:/var/www
     networks:
       - portal-id-foreigner-development
     depends_on:
       postgres:
-        condition: service_started # Wait for postgres to start
+        condition: service_started
 
   workspace:
-    # For the workspace service, we will also create a custom image to install and setup all the necessary stuff.
     build:
       context: .
       dockerfile: ./docker/development/workspace/Dockerfile
@@ -59,8 +52,8 @@ services:
         XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
         XDEBUG_LOG: /dev/stdout
         XDEBUG_LOG_LEVEL: 0
-    tty: true # Enables an interactive terminal
-    stdin_open: true # Keeps standard input open for 'docker exec'
+    tty: true
+    stdin_open: true
     env_file:
       - .env
     volumes:
@@ -77,12 +70,14 @@ services:
       - POSTGRES_USER=laravel
       - POSTGRES_PASSWORD=secret
     volumes:
-      - postgres-data-development:/var/lib/postgresql
+      - postgres-data-development:/var/lib/postgresql/data
     networks:
       - portal-id-foreigner-development
 
   redis:
     image: redis:alpine
+    ports:
+      - "6379:6379"
     networks:
       - portal-id-foreigner-development
 
@@ -90,4 +85,4 @@ networks:
   portal-id-foreigner-development:
 
 volumes:
-  portal-id-foreigner-development-data:
+  postgres-data-development:

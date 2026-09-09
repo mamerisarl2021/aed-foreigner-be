@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\MergesRouteId;
 use App\Models\PsceqClient;
+use Dedoc\Scramble\Attributes\IgnoreParam;
 use Illuminate\Support\Facades\Gate;
 
-class StorePsceqClientRequest extends ApiFormRequest
+#[IgnoreParam('id')]
+class UpdatePsceqClientRequest extends ApiFormRequest
 {
+    use MergesRouteId;
+
     public function authorize(): bool
     {
         return Gate::allows('create', PsceqClient::class);
@@ -21,6 +26,7 @@ class StorePsceqClientRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
+            'id' => ['required', 'uuid', 'exists:psceq_clients,id'],
             'nom' => ['required', 'string', 'max:255'],
             'raison_sociale' => ['required', 'string', 'max:255'],
             'rccm' => ['required', 'string', 'max:100'],

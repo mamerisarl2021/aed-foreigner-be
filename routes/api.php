@@ -87,9 +87,18 @@ Route::group([], function () {
 
         Route::get('/admin/psceq-clients', [AdminPsceqClientController::class, 'index'])->name('admin.psceq-clients.index');
         Route::post('/admin/psceq-clients', [AdminPsceqClientController::class, 'store'])->name('admin.psceq-clients.store');
+        Route::get('/admin/psceq-clients/{id}', [AdminPsceqClientController::class, 'show'])
+            ->whereUuid('id')->name('admin.psceq-clients.show');
+        Route::put('/admin/psceq-clients/{id}', [AdminPsceqClientController::class, 'update'])
+            ->whereUuid('id')->name('admin.psceq-clients.update');
+        Route::delete('/admin/psceq-clients/{id}', [AdminPsceqClientController::class, 'destroy'])
+            ->whereUuid('id')->name('admin.psceq-clients.destroy');
         Route::post('/admin/psceq-clients/{id}/revoke', [AdminPsceqClientController::class, 'revoke'])
-            ->whereUuid('id')
-            ->name('admin.psceq-clients.revoke');
+            ->whereUuid('id')->name('admin.psceq-clients.revoke');
+        Route::post('/admin/psceq-clients/{id}/regenerate', [AdminPsceqClientController::class, 'regenerate'])
+            ->whereUuid('id')->name('admin.psceq-clients.regenerate');
+        Route::get('/admin/psceq-clients/{id}/historique', [AdminPsceqClientController::class, 'historique'])
+            ->whereUuid('id')->name('admin.psceq-clients.historique');
         Route::post('/clients/set-password', [StaffDirectoryController::class, 'setClientPassword'])->name('clients.set-password');
 
         Route::get('/admin/activity-logs', [AdminActivityLogController::class, 'index'])->name('admin.activity-logs.index');

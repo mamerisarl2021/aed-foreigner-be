@@ -14,6 +14,18 @@ use Illuminate\Support\Carbon;
  *
  * @property string $id
  * @property string $name
+ * @property string|null $raison_sociale
+ * @property string|null $rccm
+ * @property string|null $pays
+ * @property string|null $adresse_siege
+ * @property string|null $site_web
+ * @property string|null $email
+ * @property string|null $telephone
+ * @property string|null $point_focal_nom
+ * @property string|null $point_focal_prenom
+ * @property string|null $point_focal_fonction
+ * @property string|null $point_focal_email
+ * @property string|null $point_focal_telephone
  * @property string $key_prefix
  * @property string $key_hash
  * @property Carbon|null $last_used_at
@@ -27,6 +39,18 @@ class PsceqClient extends Model
     /** @var list<string> */
     protected $fillable = [
         'name',
+        'raison_sociale',
+        'rccm',
+        'pays',
+        'adresse_siege',
+        'site_web',
+        'email',
+        'telephone',
+        'point_focal_nom',
+        'point_focal_prenom',
+        'point_focal_fonction',
+        'point_focal_email',
+        'point_focal_telephone',
         'key_prefix',
         'key_hash',
         'last_used_at',
