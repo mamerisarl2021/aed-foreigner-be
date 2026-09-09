@@ -35,5 +35,6 @@ return [
         'issuer' => env('KC_STAFF_ISSUER'),
         'audience' => env('KC_STAFF_AUDIENCE', 'backoffice-stranger'),
         'client_id' => env('KC_STAFF_CLIENT_ID', 'backoffice-stranger'),
+        'scope' => env('KC_STAFF_SCOPE', 'openid profile email'),
     ],
 ];

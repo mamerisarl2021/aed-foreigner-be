@@ -22,6 +22,18 @@ class StorePsceqClientRequest extends ApiFormRequest
     {
         return [
             'nom' => ['required', 'string', 'max:255'],
+            'raison_sociale' => ['required', 'string', 'max:255'],
+            'rccm' => ['required', 'string', 'max:100'],
+            'pays' => ['required', 'string', 'max:100'],
+            'adresse_siege' => ['required', 'string', 'max:255'],
+            'site_web' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'telephone' => ['required', 'string', 'max:30'],
+            'point_focal_nom' => ['required', 'string', 'max:255'],
+            'point_focal_prenom' => ['required', 'string', 'max:255'],
+            'point_focal_fonction' => ['required', 'string', 'max:255'],
+            'point_focal_email' => ['required', 'email', 'max:255'],
+            'point_focal_telephone' => ['required', 'string', 'max:30'],
         ];
     }
 }

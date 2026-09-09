@@ -29,7 +29,7 @@ class BaseController extends Controller
         return $this->sendError($result->message, $result->data, $result->code);
     }
 
-    public function sendResponse(string $message, mixed $data = null, int $code = 200): JsonResponse
+    public function sendResponse(?string $message, mixed $data = null, int $code = 200): JsonResponse
     {
         $response = [
             'success' => true,

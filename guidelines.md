@@ -890,7 +890,7 @@ Do not pretend these exist in code without implementing them:
 - **Consul**: register/deregister via artisan commands; config in `config/consul.php`
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
-- **`KEYCLOAK_ENABLED`** (default true, set `false` locally): infra gateway JWT on **guest** routes only (`/otp/*`, `/kyc/*`, `POST /enrolements/etrangers`, suivi, finalisation). Staff queue `GET/PATCH /enrolements*` is Sanctum + policy.
+- **`KEYCLOAK_ENABLED`** (default true, set `false` locally): infra gateway JWT on **guest** routes only (`/otp/*`, `/kyc/*`, `POST /enrolements/etrangers`, suivi, finalisation). Staff queue `GET/PATCH /enrolements*` is Sanctum + policy. **`GET /configuration`** is public (no Sanctum, no gateway JWT) and returns TrustedX/Keycloak authorize fields (`TX_*`, `KC_STAFF_*`) — never `TX_CLIENT_SECRET`.
 
 ### 13.9 Legacy code
 
