@@ -4,7 +4,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: docker/nginx/Dockerfile
+      dockerfile: docker/production/nginx/Dockerfile
     restart: unless-stopped # Automatically restart unless the service is explicitly stopped
     volumes:
       # Mount the 'laravel-storage' volume to '/var/www/storage' inside the container.

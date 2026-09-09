@@ -1,4 +1,4 @@
-# docker/nginx/Dockerfile
+# ./docker/production/nginx/Dockerfile
 # Stage 1: Build assets
 FROM debian AS builder
 

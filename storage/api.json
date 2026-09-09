@@ -25,10 +25,10 @@
             "name": "Enrollment - Morale"
         },
         {
-            "name": "Admin Auth"
+            "name": "Admin"
         },
         {
-            "name": "Admin"
+            "name": "Enrollment"
         },
         {
             "name": "Enrollment - Manager"
@@ -41,6 +41,12 @@
         },
         {
             "name": "Enrollment - Suivi"
+        },
+        {
+            "name": "PSCEQ"
+        },
+        {
+            "name": "Admin Auth"
         }
     ],
     "security": [
@@ -340,6 +346,739 @@
                 }
             }
         },
+        "/v1/admin/enrolled-companies": {
+            "get": {
+                "operationId": "admin.enrolled-companies.index",
+                "description": "Personne morale counterpart of GET /admin/enrolled-persons, which is\nphysique-only. Reads `enrolled_companies` \u2014 the record created when a\ncompany enrolment is approved \u2014 and never the requests themselves.\n`identifiant` is the company's unique id, the NPI's counterpart.\nDefaults: per_page=15 (max 100), order_by=enrolled_at, order_dir=desc.\nThis is not the PSCEQ partner API.",
+                "summary": "List enrolled companies (read-only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Recherche sur la raison sociale, l'email, le num\u00e9ro d'immatriculation ou l'identifiant.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 255
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "D\u00e9faut: 15. Maximum: 100.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "D\u00e9faut: enrolled_at. M\u00eames cl\u00e9s que /admin/enrolled-persons, aux colonnes pr\u00e8s.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "enrolled_at",
+                                "legal_name",
+                                "email",
+                                null
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "D\u00e9faut: desc.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "asc",
+                                "desc",
+                                null
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/EnrolledCompany"
+                                                    }
+                                                },
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "data",
+                                                "first_page_url",
+                                                "from",
+                                                "last_page_url",
+                                                "last_page",
+                                                "links",
+                                                "next_page_url",
+                                                "path",
+                                                "per_page",
+                                                "prev_page_url",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Liste des entreprises enr\u00f4l\u00e9es."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/enrolled-companies/{id}": {
+            "get": {
+                "operationId": "admin.enrolled-companies.show",
+                "description": "Company fields only: no KYC analysis \u2014 a personne morale never goes\nthrough liveness. 404 when the id is unknown or the company is inactive.",
+                "summary": "Enrolled company detail (read-only)",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Enrolled company UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EnrolledCompanyDetailResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Impossible de r\u00e9cup\u00e9rer l'entreprise enr\u00f4l\u00e9e.",
+                                                        "Entreprise enr\u00f4l\u00e9e introuvable.",
+                                                        "Entreprise enr\u00f4l\u00e9e r\u00e9cup\u00e9r\u00e9e."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/enrolled-companies/{id}/status": {
+            "patch": {
+                "operationId": "admin.enrolled-companies.status",
+                "description": "Body: `{ statut }` with `ACTIVE`, `SUSPENDED` or `REVOKED`. Finds the\ncompany by UUID regardless of current status. Duplicate enrollment stays\nblocked on ACTIVE only.",
+                "summary": "Update enrolled company status",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Enrolled company UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEnrolledCompanyStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EnrolledCompanyDetailResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Impossible de mettre \u00e0 jour le statut de l'entreprise.",
+                                                        "Entreprise enr\u00f4l\u00e9e introuvable.",
+                                                        "Statut de l'entreprise mis \u00e0 jour."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/psceq-clients": {
+            "get": {
+                "operationId": "admin.psceq-clients.index",
+                "description": "Returns prefixes and revocation state. Never returns the plaintext key\nor the stored hash.",
+                "summary": "List PSCEQ API clients",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/PsceqClient"
+                                                    }
+                                                },
+                                                "first_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "next_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "prev_page_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "data",
+                                                "first_page_url",
+                                                "from",
+                                                "last_page_url",
+                                                "last_page",
+                                                "links",
+                                                "next_page_url",
+                                                "path",
+                                                "per_page",
+                                                "prev_page_url",
+                                                "to",
+                                                "total"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Liste des clients PSCEQ."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "admin.psceq-clients.store",
+                "description": "Body: `{ nom }`. The plaintext `api_key` is returned once; it cannot be\nread again. Store it out of band with the prestataire.",
+                "summary": "Issue a PSCEQ API key",
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePsceqClientRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Impossible de cr\u00e9er le client PSCEQ."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 500
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/psceq-clients/{id}/revoke": {
+            "post": {
+                "operationId": "admin.psceq-clients.revoke",
+                "description": "Sets `revoked_at`. Subsequent partner calls with that key return 401.\nIdempotent if already revoked.",
+                "summary": "Revoke a PSCEQ API key",
+                "tags": [
+                    "Admin"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "PSCEQ client UUID.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/PsceqClientResource"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Cl\u00e9 API PSCEQ r\u00e9voqu\u00e9e.",
+                                                        "Client PSCEQ introuvable."
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "data",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Client PSCEQ introuvable."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "const": 404
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "status",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/clients/set-password": {
             "post": {
                 "operationId": "clients.set-password",
@@ -440,6 +1179,10 @@
                                 "CONNEXION_CLIENT",
                                 "DECONNEXION_CLIENT",
                                 "DOCUMENT_DECHIFFRE",
+                                "PSCEQ_CONSULTATION",
+                                "PSCEQ_CLIENT_CREE",
+                                "PSCEQ_CLIENT_REVOQUE",
+                                "ENTREPRISE_STATUT_MODIFIE",
                                 null
                             ]
                         }
@@ -1534,314 +2277,6 @@
                 }
             }
         },
-        "/v1/agents/register": {
-            "post": {
-                "operationId": "agents.register",
-                "summary": "Register a new staff user (admin only)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegisterAgentRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/agents/{id}": {
-            "post": {
-                "operationId": "agents.update",
-                "summary": "Update staff user details (admin only)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "description": "Staff user UUID.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateAgentRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "agents.destroy",
-                "summary": "Delete a staff user (admin only)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "description": "Staff user UUID.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "get": {
-                "operationId": "agents.show",
-                "summary": "Staff user detail (admin only)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "description": "Staff user UUID.",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/v1/agents": {
-            "get": {
-                "operationId": "agents.index",
-                "description": "Optional role filter (`AGENT`, `RESPONSABLE_DE_VALIDATION`, `MANAGER`).\nDefaults: per_page=15 (max 100), order_by=created_at, order_dir=desc.",
-                "summary": "List staff users (admin only)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "parameters": [
-                    {
-                        "name": "q",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "maxLength": 255
-                        }
-                    },
-                    {
-                        "name": "role",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "enum": [
-                                "AGENT",
-                                "RESPONSABLE_DE_VALIDATION",
-                                "MANAGER",
-                                null
-                            ]
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "integer",
-                                "null"
-                            ],
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    },
-                    {
-                        "name": "order_by",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "enum": [
-                                "created_at",
-                                "name",
-                                "email",
-                                "last_login_at",
-                                null
-                            ]
-                        }
-                    },
-                    {
-                        "name": "order_dir",
-                        "in": "query",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "enum": [
-                                "asc",
-                                "desc",
-                                null
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "pagination": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data",
-                                                "pagination",
-                                                "message"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
         "/v1/admins/logout": {
             "post": {
                 "operationId": "admins.logout",
@@ -1904,78 +2339,10 @@
                 }
             }
         },
-        "/v1/admin/login": {
-            "post": {
-                "operationId": "admin.login",
-                "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 use POST /admin/login/keycloak instead.",
-                "summary": "Admin/Agent login (returns Sanctum token)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Authentification via Keycloak requise."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 403
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
         "/v1/admin/login/keycloak": {
             "post": {
                 "operationId": "admin.login.keycloak",
-                "description": "Exchange a Keycloak access token from realm pki-portal / client\nbackoffice-stranger (issuer KC_STAFF_ISSUER) for a Sanctum token.\nThe local user must already exist (email match); Spatie staff roles are\nsynced from the JWT. Only available when STAFF_KEYCLOAK_ENABLED=true.",
+                "description": "Seule porte d'entr\u00e9e du back-office : Keycloak (realm pki-portal, client\nbackoffice-stranger, issuer KC_STAFF_ISSUER) est l'annuaire du staff.\nUn porteur de r\u00f4le staff inconnu de la base est provisionn\u00e9 \u00e0 la vol\u00e9e ;\nles r\u00f4les Spatie que lisent les policies sont r\u00e9\u00e9crits depuis le JWT \u00e0\nchaque connexion.\nLe changement de mot de passe \u00e0 la premi\u00e8re connexion rel\u00e8ve de l'action\nrequise UPDATE_PASSWORD c\u00f4t\u00e9 Keycloak : aucun token n'est \u00e9mis tant\nqu'elle n'est pas jou\u00e9e, donc l'application ne voit jamais ce cas.",
                 "summary": "Admin/Agent login via Keycloak token exchange (returns Sanctum token)",
                 "tags": [
                     "Admin Auth"
@@ -2006,183 +2373,6 @@
                     }
                 },
                 "security": []
-            }
-        },
-        "/v1/admin/password/link": {
-            "post": {
-                "operationId": "admin.password.link",
-                "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
-                "summary": "Send staff password reset link",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SendPasswordResetLinkRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Les mots de passe sont g\u00e9r\u00e9s via Keycloak."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 403
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/admin/password/reset": {
-            "post": {
-                "operationId": "admin.password.reset",
-                "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
-                "summary": "Reset staff password using an emailed token",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ResetPasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Les mots de passe sont g\u00e9r\u00e9s via Keycloak."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 403
-                                        },
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                },
-                "security": []
-            }
-        },
-        "/v1/admin/password/change": {
-            "post": {
-                "operationId": "admin.password.change",
-                "description": "Disabled (403) when STAFF_KEYCLOAK_ENABLED=true \u2014 passwords are managed in Keycloak.",
-                "summary": "Change staff password (authenticated)",
-                "tags": [
-                    "Admin Auth"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChangeStaffPasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
             }
         },
         "/v1/me": {
@@ -2728,6 +2918,72 @@
                 "security": []
             }
         },
+        "/v1/management/enrollment-stats": {
+            "get": {
+                "operationId": "management.enrollment-stats.index",
+                "description": "Global counts, rejection rate, average handling time, motifs, evolution, and period trends.\n`par_type` breaks the counters down by PERSONNE_PHYSIQUE / PERSONNE_MORALE \u2014 each one\ncarrying its own period-over-period variation, which is what the dashboard cards read.\n`approved` (APPROUVEE) and `enrolled` (ENROLEE) are counted apart: a favourable decision\nis not yet an enrolment.\nQuery: granularite=semaine|mois (default semaine).\nAuthorization: `viewEnrollmentStats` \u2014 all `config('roles.staff')`. Manager-only lists stay on `/management/enrolements/*`.",
+                "summary": "Enrollment dashboard statistics (staff)",
+                "tags": [
+                    "Enrollment"
+                ],
+                "parameters": [
+                    {
+                        "name": "granularite",
+                        "in": "query",
+                        "description": "Granularit\u00e9 de la courbe d'\u00e9volution et des tendances. D\u00e9faut: semaine.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "semaine",
+                                "mois",
+                                null
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/EnrollmentDashboardStatsResource"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Statistiques d'enr\u00f4lement."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/kyc/document/verify": {
             "post": {
                 "operationId": "kyc.document.verify",
@@ -2839,72 +3095,6 @@
                     }
                 },
                 "security": []
-            }
-        },
-        "/v1/management/enrollment-stats": {
-            "get": {
-                "operationId": "management.enrollment-stats.index",
-                "description": "Global counts, rejection rate, average handling time, motifs, evolution, and period trends.\nQuery: granularite=semaine|mois (default semaine).",
-                "summary": "Enrollment dashboard statistics (manager)",
-                "tags": [
-                    "Enrollment - Manager"
-                ],
-                "parameters": [
-                    {
-                        "name": "granularite",
-                        "in": "query",
-                        "description": "Granularit\u00e9 de la courbe d'\u00e9volution et des tendances. D\u00e9faut: semaine.",
-                        "schema": {
-                            "type": [
-                                "string",
-                                "null"
-                            ],
-                            "enum": [
-                                "semaine",
-                                "mois",
-                                null
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/EnrollmentDashboardStatsResource"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "const": "Statistiques d'enr\u00f4lement."
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "data",
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
             }
         },
         "/v1/management/enrolements/physiques": {
@@ -3786,7 +3976,7 @@
             },
             "post": {
                 "operationId": "enrolements.morales.store",
-                "description": "Requires an authenticated client with a finalized physique enrollment and a prior\nPOST /kyc/document/verify session (\u00e9tape 2 \u2014 document d'identit\u00e9 seul, ni selfie ni\nliveness). Parcours : \u00e9tape 1 formulaire d'identification, \u00e9tape 2 document d'identit\u00e9,\n\u00e9tape 3 pi\u00e8ces justificatives puis soumission.\nPi\u00e8ces justificatives (trade_register_extract, statutes, procuration) : **PDF uniquement,\n5 Mo par fichier**. recto / verso restent le document d'identit\u00e9 du demandeur, joint au\ndossier pour l'agent.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
+                "description": "Requires an authenticated client with a finalized physique enrollment and a prior\nPOST /kyc/document/verify session (\u00e9tape 2 \u2014 document d'identit\u00e9 seul, ni selfie ni\nliveness). Parcours : \u00e9tape 1 formulaire d'identification, \u00e9tape 2 document d'identit\u00e9,\n\u00e9tape 3 pi\u00e8ces justificatives puis soumission.\nPi\u00e8ces justificatives (trade_register_extract, statutes, procuration) : **PDF uniquement,\n5 Mo par fichier**. recto / verso restent le document d'identit\u00e9 du demandeur, joint au\ndossier pour l'agent.\nUn m\u00eame demandeur peut porter plusieurs entreprises, y compris en parall\u00e8le :\nseul le doublon est refus\u00e9 (409) \u2014 m\u00eame immatriculation et m\u00eame pays qu'une de ses\ndemandes encore ouverte, ou qu'une entreprise d\u00e9j\u00e0 enr\u00f4l\u00e9e.\nInitial statut AWAITING_CONTACT_VERIFICATION. Returns numero_suivi (PK\u2026).\nphonenumber: optional leading +, then 8\u201320 digits; spaces/dashes/parentheses allowed and stripped.",
                 "summary": "Submit personne morale enrollment (\u00e9tape 3)",
                 "tags": [
                     "Enrollment - Morale"
@@ -3944,6 +4134,7 @@
                                                         "Dossier corrig\u00e9. La demande est de nouveau en file agent.",
                                                         "Erreur lors de la correction de la demande morale.",
                                                         "Une entreprise correspondant \u00e0 ces informations est d\u00e9j\u00e0 enr\u00f4l\u00e9e.",
+                                                        "Vous avez d\u00e9j\u00e0 une demande en cours pour cette entreprise.",
                                                         "Le d\u00e9lai de correction est d\u00e9pass\u00e9.",
                                                         "Cette demande ne peut pas \u00eatre corrig\u00e9e.",
                                                         "Acc\u00e8s non autoris\u00e9."
@@ -5184,6 +5375,269 @@
                 },
                 "security": []
             }
+        },
+        "/v1/configuration": {
+            "get": {
+                "operationId": "configuration",
+                "description": "No token. Independent of KEYCLOAK_ENABLED. Does not expose TX_CLIENT_SECRET.",
+                "summary": "Public OIDC bootstrap (TrustedX + staff Keycloak)",
+                "tags": [
+                    "Infrastructure"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "TX_BASE_URL": {
+                                                    "type": "string"
+                                                },
+                                                "TX_CLIENT_ID": {
+                                                    "type": "string"
+                                                },
+                                                "TX_SCOPE": {
+                                                    "type": "string"
+                                                },
+                                                "TX_REDIRECT_PATH": {
+                                                    "type": "string"
+                                                },
+                                                "TX_ADMINS_LOGGED_AS": {
+                                                    "type": "string"
+                                                },
+                                                "TX_CLIENTS_LOGGED_AS": {
+                                                    "type": "string"
+                                                },
+                                                "KC_STAFF_ISSUER": {
+                                                    "type": "string"
+                                                },
+                                                "KC_STAFF_CLIENT_ID": {
+                                                    "type": "string"
+                                                },
+                                                "KC_STAFF_SCOPE": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "TX_BASE_URL",
+                                                "TX_CLIENT_ID",
+                                                "TX_SCOPE",
+                                                "TX_REDIRECT_PATH",
+                                                "TX_ADMINS_LOGGED_AS",
+                                                "TX_CLIENTS_LOGGED_AS",
+                                                "KC_STAFF_ISSUER",
+                                                "KC_STAFF_CLIENT_ID",
+                                                "KC_STAFF_SCOPE"
+                                            ]
+                                        },
+                                        "message": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/psceq/entreprises": {
+            "get": {
+                "operationId": "psceq.entreprises.search",
+                "description": "Query `q` is required (min 2 characters). Matches `UPPER(TRIM(legal_name))`.\nShort payload only: identifiant, raison_sociale, pays_origine, statut.\nNo email, documents, or demande_id.",
+                "summary": "Search enrolled companies by legal name",
+                "tags": [
+                    "PSCEQ"
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 255
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PsceqCompanyListResource"
+                                            }
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Entreprises trouv\u00e9es."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "data",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/psceq/entreprises/{identifiant}/administrateur": {
+            "get": {
+                "operationId": "psceq.entreprises.administrateur",
+                "description": "Returns `nom` / `prenoms` of the repr\u00e9sentant l\u00e9gal only.",
+                "summary": "Legal representative of an enrolled company",
+                "tags": [
+                    "PSCEQ"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifiant",
+                        "in": "path",
+                        "required": true,
+                        "description": "Identifiant entreprise (PM + 9 caract\u00e8res alphanum\u00e9riques).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/psceq/entreprises/{identifiant}/statut": {
+            "get": {
+                "operationId": "psceq.entreprises.statut",
+                "description": "`{ identifiant, statut, existe: true }` when found. Same 404 otherwise.",
+                "summary": "Enrollment status of a company",
+                "tags": [
+                    "PSCEQ"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifiant",
+                        "in": "path",
+                        "required": true,
+                        "description": "Identifiant entreprise (PM + 9 caract\u00e8res alphanum\u00e9riques).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/v1/psceq/entreprises/{identifiant}": {
+            "get": {
+                "operationId": "psceq.entreprises.show",
+                "description": "Lookup by public `PM\u2026` identifiant, never the internal UUID.\nUnknown or malformed identifiant \u2192 404 Entreprise introuvable.",
+                "summary": "Company identity by identifiant",
+                "tags": [
+                    "PSCEQ"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifiant",
+                        "in": "path",
+                        "required": true,
+                        "description": "Identifiant entreprise (PM + 9 caract\u00e8res alphanum\u00e9riques).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
         }
     },
     "components": {
@@ -5524,26 +5978,6 @@
                 ],
                 "title": "ChangeClientPinRequest"
             },
-            "ChangeStaffPasswordRequest": {
-                "type": "object",
-                "properties": {
-                    "current_password": {
-                        "type": "string"
-                    },
-                    "password": {
-                        "type": "string"
-                    },
-                    "password_confirmation": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "current_password",
-                    "password",
-                    "password_confirmation"
-                ],
-                "title": "ChangeStaffPasswordRequest"
-            },
             "ClientIdentityResource": {
                 "type": "object",
                 "properties": {
@@ -5599,10 +6033,21 @@
                 "type": "object",
                 "properties": {
                     "configure": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "questions": {
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "question": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "question"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -5697,6 +6142,220 @@
                 ],
                 "title": "CorrectMoraleEnrollmentRequest"
             },
+            "EnrolledCompany": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "identifiant": {
+                        "type": "string"
+                    },
+                    "enrollment_request_id": {
+                        "type": "string"
+                    },
+                    "manager_user_id": {
+                        "type": "string"
+                    },
+                    "legal_name": {
+                        "type": "string"
+                    },
+                    "legal_form": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "country_of_incorporation": {
+                        "type": "string"
+                    },
+                    "registration_number": {
+                        "type": "string"
+                    },
+                    "incorporation_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "headquarters_address": {
+                        "type": "string"
+                    },
+                    "activity_sector": {
+                        "type": "string"
+                    },
+                    "legal_representative_name": {
+                        "type": "string"
+                    },
+                    "legal_representative_first_name": {
+                        "type": "string"
+                    },
+                    "company_email": {
+                        "type": "string"
+                    },
+                    "company_phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "documents": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/EnrolledCompanyStatus"
+                    },
+                    "approved_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "approved_by_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "identifiant",
+                    "enrollment_request_id",
+                    "manager_user_id",
+                    "legal_name",
+                    "legal_form",
+                    "country_of_incorporation",
+                    "registration_number",
+                    "incorporation_date",
+                    "headquarters_address",
+                    "activity_sector",
+                    "legal_representative_name",
+                    "legal_representative_first_name",
+                    "company_email",
+                    "company_phone",
+                    "documents",
+                    "status",
+                    "approved_at",
+                    "approved_by_user_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "EnrolledCompany"
+            },
+            "EnrolledCompanyDetailResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "raison_sociale": {
+                        "type": "string"
+                    },
+                    "identifiant": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "telephone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pays_origine": {
+                        "type": "string"
+                    },
+                    "date_enrolement": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "demande_id": {
+                        "type": "string"
+                    },
+                    "informations": {
+                        "type": "object",
+                        "properties": {
+                            "forme_juridique": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "numero_immatriculation": {
+                                "type": "string"
+                            },
+                            "date_creation": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            },
+                            "adresse_siege_social": {
+                                "type": "string"
+                            },
+                            "secteur_activite": {
+                                "type": "string"
+                            },
+                            "nom_representant_legal": {
+                                "type": "string"
+                            },
+                            "prenom_representant_legal": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "forme_juridique",
+                            "numero_immatriculation",
+                            "date_creation",
+                            "adresse_siege_social",
+                            "secteur_activite",
+                            "nom_representant_legal",
+                            "prenom_representant_legal"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "raison_sociale",
+                    "identifiant",
+                    "email",
+                    "telephone",
+                    "pays_origine",
+                    "date_enrolement",
+                    "demande_id",
+                    "informations"
+                ],
+                "title": "EnrolledCompanyDetailResource"
+            },
+            "EnrolledCompanyStatus": {
+                "type": "string",
+                "enum": [
+                    "ACTIVE",
+                    "SUSPENDED",
+                    "REVOKED"
+                ],
+                "title": "EnrolledCompanyStatus"
+            },
             "EnrolledPersonDetailResource": {
                 "type": "object",
                 "properties": {
@@ -5704,28 +6363,49 @@
                         "type": "string"
                     },
                     "nom": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "prenom": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "email": {
                         "type": "string"
                     },
                     "npi": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "telephone": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "nationalite": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "date_enrolement": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "demande_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "informations": {
                         "type": "object",
@@ -5778,7 +6458,63 @@
             },
             "EnrollmentDashboardStatsResource": {
                 "type": "object",
-                "additionalProperties": {},
+                "properties": {
+                    "counts": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "taux_rejet_global": {
+                        "type": "number"
+                    },
+                    "average_handling_seconds": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "average_handling_hours": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "average_handling_days": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "par_type": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "reject_rate_by_motif": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    },
+                    "evolution": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "tendances": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "required": [
+                    "counts",
+                    "taux_rejet_global",
+                    "average_handling_seconds",
+                    "average_handling_hours",
+                    "average_handling_days",
+                    "par_type",
+                    "reject_rate_by_motif",
+                    "evolution",
+                    "tendances"
+                ],
                 "title": "EnrollmentDashboardStatsResource"
             },
             "EnrollmentDecisionDetailResource": {
@@ -6104,10 +6840,10 @@
                                     },
                                     "details": {
                                         "type": [
-                                            "object",
+                                            "array",
                                             "null"
                                         ],
-                                        "additionalProperties": {}
+                                        "items": {}
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -6502,17 +7238,17 @@
                     },
                     "kyc_data": {
                         "type": [
-                            "object",
+                            "array",
                             "null"
                         ],
-                        "additionalProperties": {}
+                        "items": {}
                     },
                     "documents": {
                         "type": [
-                            "object",
+                            "array",
                             "null"
                         ],
-                        "additionalProperties": {}
+                        "items": {}
                     },
                     "liveness": {
                         "type": [
@@ -6534,10 +7270,10 @@
                     },
                     "analysis_details": {
                         "type": [
-                            "object",
+                            "array",
                             "null"
                         ],
-                        "additionalProperties": {}
+                        "items": {}
                     },
                     "selfie_captured_at": {
                         "type": [
@@ -6589,9 +7325,7 @@
                             "array",
                             "null"
                         ],
-                        "items": {
-                            "type": "string"
-                        }
+                        "items": {}
                     },
                     "review_comments": {
                         "type": [
@@ -6635,26 +7369,6 @@
                         ],
                         "format": "date-time"
                     },
-                    "visio_notes": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "visio_requested_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "visio_completed_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
                     "returned_at": {
                         "type": [
                             "string",
@@ -6667,9 +7381,7 @@
                             "array",
                             "null"
                         ],
-                        "items": {
-                            "type": "string"
-                        }
+                        "items": {}
                     },
                     "sla_deadline_at": {
                         "type": [
@@ -6739,9 +7451,6 @@
                     "email_verified_at",
                     "phone_verified_at",
                     "verification_deadline_at",
-                    "visio_notes",
-                    "visio_requested_at",
-                    "visio_completed_at",
                     "returned_at",
                     "return_reasons",
                     "sla_deadline_at",
@@ -7005,10 +7714,10 @@
                                     },
                                     "details": {
                                         "type": [
-                                            "object",
+                                            "array",
                                             "null"
                                         ],
-                                        "additionalProperties": {}
+                                        "items": {}
                                     },
                                     "document_identite": {
                                         "type": "object",
@@ -7118,8 +7827,8 @@
                 "title": "EnrollmentStatus"
             },
             "EnrollmentSubmitResource": {
-                "type": "object",
-                "additionalProperties": {},
+                "type": "array",
+                "items": {},
                 "title": "EnrollmentSubmitResource"
             },
             "EnrollmentTrackingResource": {
@@ -7221,23 +7930,15 @@
                                 "type": "object",
                                 "properties": {
                                     "nom": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
+                                        "type": [
+                                            "string",
+                                            "null"
                                         ]
                                     },
                                     "prenom": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
+                                        "type": [
+                                            "string",
+                                            "null"
                                         ]
                                     }
                                 },
@@ -7328,26 +8029,6 @@
                 ],
                 "title": "KeycloakLoginRequest"
             },
-            "LoginRequest": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    },
-                    "password": {
-                        "type": "string"
-                    },
-                    "remember": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "email",
-                    "password"
-                ],
-                "title": "LoginRequest"
-            },
             "LoginWithCodeRequest": {
                 "type": "object",
                 "properties": {
@@ -7361,54 +8042,31 @@
                 "title": "LoginWithCodeRequest"
             },
             "MoraleEnrollmentCorrectionResource": {
-                "anyOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "demande_id": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            },
-                            "numero_suivi": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            },
-                            "statut": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "demande_id",
-                            "numero_suivi",
-                            "statut"
+                "type": "object",
+                "properties": {
+                    "demande_id": {
+                        "type": [
+                            "string",
+                            "null"
                         ]
                     },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "demande_id": {
-                                "type": "null"
-                            },
-                            "numero_suivi": {
-                                "type": "null"
-                            },
-                            "statut": {
-                                "type": "null"
-                            }
-                        },
-                        "required": [
-                            "demande_id",
-                            "numero_suivi",
-                            "statut"
+                    "numero_suivi": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "statut": {
+                        "type": [
+                            "string",
+                            "null"
                         ]
                     }
+                },
+                "required": [
+                    "demande_id",
+                    "numero_suivi",
+                    "statut"
                 ],
                 "title": "MoraleEnrollmentCorrectionResource"
             },
@@ -7421,13 +8079,22 @@
                 "type": "object",
                 "properties": {
                     "stats": {
-                        "type": "string"
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
                     },
                     "roles": {
-                        "type": "string"
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
                     },
                     "enrollment_by_status": {
-                        "type": "string"
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
                     }
                 },
                 "required": [
@@ -7436,6 +8103,128 @@
                     "enrollment_by_status"
                 ],
                 "title": "PlatformStatsResource"
+            },
+            "PsceqClient": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "key_prefix": {
+                        "type": "string"
+                    },
+                    "last_used_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "revoked_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_by_user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "key_prefix",
+                    "last_used_at",
+                    "revoked_at",
+                    "created_by_user_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "PsceqClient"
+            },
+            "PsceqClientResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "nom": {
+                        "type": "string"
+                    },
+                    "prefixe": {
+                        "type": "string"
+                    },
+                    "revoque": {
+                        "type": "boolean"
+                    },
+                    "revoque_le": {
+                        "type": "null"
+                    },
+                    "dernier_usage_le": {
+                        "type": "null"
+                    },
+                    "cree_le": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "nom",
+                    "prefixe",
+                    "revoque",
+                    "revoque_le",
+                    "dernier_usage_le",
+                    "cree_le"
+                ],
+                "title": "PsceqClientResource"
+            },
+            "PsceqCompanyListResource": {
+                "type": "object",
+                "properties": {
+                    "identifiant": {
+                        "type": "string"
+                    },
+                    "raison_sociale": {
+                        "type": "string"
+                    },
+                    "pays_origine": {
+                        "type": "string"
+                    },
+                    "statut": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "identifiant",
+                    "raison_sociale",
+                    "pays_origine",
+                    "statut"
+                ],
+                "title": "PsceqCompanyListResource"
             },
             "ReadDocumentRequest": {
                 "type": "object",
@@ -7460,44 +8249,6 @@
                     "recto"
                 ],
                 "title": "ReadDocumentRequest"
-            },
-            "RegisterAgentRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "first_name": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "role": {
-                        "type": "string",
-                        "enum": [
-                            "AGENT",
-                            "RESPONSABLE_DE_VALIDATION",
-                            "MANAGER"
-                        ]
-                    },
-                    "phonenumber": {
-                        "type": "string",
-                        "description": "Optional leading +; 8\u201320 digits after stripping spaces/dashes/parentheses. Example: +2290162405472"
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 255
-                    }
-                },
-                "required": [
-                    "name",
-                    "first_name",
-                    "role",
-                    "phonenumber",
-                    "email"
-                ],
-                "title": "RegisterAgentRequest"
             },
             "ResetClientCredentialsRequest": {
                 "type": "object",
@@ -7562,37 +8313,6 @@
                     "type"
                 ],
                 "title": "ResetClientPasswordRequest"
-            },
-            "ResetPasswordRequest": {
-                "type": "object",
-                "properties": {
-                    "token": {
-                        "type": "string",
-                        "maxLength": 100
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 255
-                    },
-                    "password": {
-                        "type": "string",
-                        "minLength": 8,
-                        "maxLength": 255
-                    },
-                    "password_confirmation": {
-                        "type": "string",
-                        "minLength": 8,
-                        "maxLength": 255
-                    }
-                },
-                "required": [
-                    "token",
-                    "email",
-                    "password",
-                    "password_confirmation"
-                ],
-                "title": "ResetPasswordRequest"
             },
             "SearchUsersByEmailRequest": {
                 "type": "object",
@@ -7668,19 +8388,6 @@
                     "npi"
                 ],
                 "title": "SendOtpRequest"
-            },
-            "SendPasswordResetLinkRequest": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    }
-                },
-                "required": [
-                    "email"
-                ],
-                "title": "SendPasswordResetLinkRequest"
             },
             "SetClientPasswordRequest": {
                 "type": "object",
@@ -7772,6 +8479,19 @@
                     "security_questions"
                 ],
                 "title": "StoreFinalisationRequest"
+            },
+            "StorePsceqClientRequest": {
+                "type": "object",
+                "properties": {
+                    "nom": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "nom"
+                ],
+                "title": "StorePsceqClientRequest"
             },
             "SubmitEnrollmentRequest": {
                 "type": "object",
@@ -8033,41 +8753,6 @@
                 ],
                 "title": "TrackEnrollmentRequest"
             },
-            "UpdateAgentRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "first_name": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "role": {
-                        "type": "string",
-                        "enum": [
-                            "AGENT",
-                            "RESPONSABLE_DE_VALIDATION",
-                            "MANAGER"
-                        ]
-                    },
-                    "phonenumber": {
-                        "type": "string",
-                        "description": "Optional leading +; 8\u201320 digits after stripping spaces/dashes/parentheses. Example: +2290162405472"
-                    },
-                    "npi": {
-                        "type": "string",
-                        "maxLength": 10
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 255
-                    }
-                },
-                "title": "UpdateAgentRequest"
-            },
             "UpdateClientSecurityQuestionsRequest": {
                 "type": "object",
                 "properties": {
@@ -8101,6 +8786,18 @@
                     "security_questions"
                 ],
                 "title": "UpdateClientSecurityQuestionsRequest"
+            },
+            "UpdateEnrolledCompanyStatusRequest": {
+                "type": "object",
+                "properties": {
+                    "statut": {
+                        "$ref": "#/components/schemas/EnrolledCompanyStatus"
+                    }
+                },
+                "required": [
+                    "statut"
+                ],
+                "title": "UpdateEnrolledCompanyStatusRequest"
             },
             "UpdateEnrollmentRejectMotifRequest": {
                 "type": "object",
@@ -8493,25 +9190,6 @@
             }
         },
         "responses": {
-            "AuthenticationException": {
-                "description": "Unauthenticated",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
-                            ]
-                        }
-                    }
-                }
-            },
             "ValidationException": {
                 "description": "Validation error",
                 "content": {
@@ -8537,6 +9215,25 @@
                             "required": [
                                 "message",
                                 "errors"
+                            ]
+                        }
+                    }
+                }
+            },
+            "AuthenticationException": {
+                "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
                             ]
                         }
                     }
