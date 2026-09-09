@@ -1,4 +1,4 @@
-FROM php:8.1-fpm
+FROM php:8.4-fpm
 
 # Set working directory
 WORKDIR /var/www
@@ -8,7 +8,7 @@ ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/do
 
 # Install php extensions
 RUN chmod +x /usr/local/bin/install-php-extensions && sync && \
-    install-php-extensions mbstring pdo_mysql zip exif pcntl gd memcached
+    install-php-extensions mbstring pdo_mysql zip exif pcntl gd memcached bcmath
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -47,32 +47,35 @@ RUN mv /tmp/app/* /var/www && \
     mv /tmp/app/.* /var/www || true && \
     rm -rf /tmp/app
 
-# add root to www group
-RUN chmod -R ug+w /var/www/storage
-
-
 # Copy nginx/php/supervisor configs
 RUN cp docker/supervisor.conf /etc/supervisord.conf
 RUN cp docker/php.ini /usr/local/etc/php/conf.d/app.ini
 RUN cp docker/nginx.conf /etc/nginx/sites-enabled/default
-RUN cp .env.prod .env 
+RUN cp .env.prod .env
 RUN cp docker/keys/aed-private.key /var/www/storage/aed-private.key
 RUN cp docker/keys/aed-public.key /var/www/storage/aed-public.key
 
-# PHP Error Log Files
-RUN mkdir /var/log/php
-RUN touch /var/log/php/errors.log && chmod 777 /var/log/php/errors.log
+# PHP error log: owner www-data (php-fpm), not world-writable
+RUN mkdir -p /var/log/php \
+    && touch /var/log/php/errors.log \
+    && chown www-data:www-data /var/log/php /var/log/php/errors.log \
+    && chmod 750 /var/log/php \
+    && chmod 640 /var/log/php/errors.log
 
-RUN docker-php-ext-install bcmath
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Deployment steps
-RUN composer update --optimize-autoloader --no-dev
+# Deployment steps — lockfile only, never composer update in the image
+RUN composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 RUN chmod +x /var/www/docker/run.sh
-RUN chmod 777 storage/ -R
+RUN mkdir -p /var/www/bootstrap/cache \
+    && chown -R www:www-data /var/www/storage /var/www/bootstrap/cache \
+    && find /var/www/storage /var/www/bootstrap/cache -type d -exec chmod 775 {} \; \
+    && find /var/www/storage /var/www/bootstrap/cache -type f -exec chmod 664 {} \; \
+    && chmod 640 /var/www/storage/aed-private.key /var/www/storage/aed-public.key
 # RUN echo "81.91.230.86 keycloak.mameribj.org" >> /etc/hosts
 # RUN echo "31.207.38.163 of-collab.qcdigitalhub.com" >> /etc/hosts
 # RUN echo "31.207.38.163 ws-collab.qcdigitalhub.com" >> /etc/hosts
-# RUN mkdir /var/www/storage/app/docs /var/www/storage/app/logos /var/www/storage/app/stamps /var/www/storage/app/stamps/SIGNATURE /var/www/storage/app/stamps/VISA /var/www/storage/app/proofs  
+# RUN mkdir /var/www/storage/app/docs /var/www/storage/app/logos /var/www/storage/app/stamps /var/www/storage/app/stamps/SIGNATURE /var/www/storage/app/stamps/VISA /var/www/storage/app/proofs
 RUN ls /var/www/storage/app
 
 EXPOSE 80

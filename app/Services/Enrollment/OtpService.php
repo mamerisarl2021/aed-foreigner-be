@@ -115,39 +115,35 @@ final class OtpService
 
         // Prefer matching a single channel when both contacts are sent (different OTPs per channel).
         if ($email !== null) {
-            if ($this->tooManyAttempts('email', $email)) {
-                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            $emailAttempt = $this->attemptOtp(
+                'email',
+                $email,
+                $otp,
+                $this->emailKey($email),
+                $this->verifiedEmailKey($email),
+                $phone === null,
+                'OTP email invalide ou expiré.',
+            );
+            if ($emailAttempt instanceof ServiceResult) {
+                return $emailAttempt;
             }
-
-            $expected = Cache::get($this->emailKey($email));
-            if (is_string($expected) && hash_equals($expected, hash('sha256', $otp))) {
-                Cache::put($this->verifiedEmailKey($email), true, now()->addMinutes(self::VALIDITY_MINUTES));
-                Cache::forget($this->emailKey($email));
-                Cache::forget($this->attemptsKey('email', $email));
-                $matched = true;
-            } elseif ($phone === null) {
-                $this->recordFailedAttempt('email', $email);
-
-                return ServiceResult::fail('OTP email invalide ou expiré.', null, 400);
-            }
+            $matched = $emailAttempt;
         }
 
         if (! $matched && $phone !== null) {
-            if ($this->tooManyAttempts('phone', $phone)) {
-                return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+            $phoneAttempt = $this->attemptOtp(
+                'phone',
+                $phone,
+                $otp,
+                $this->phoneKey($phone),
+                $this->verifiedPhoneKey($phone),
+                $email === null,
+                'OTP téléphone invalide ou expiré.',
+            );
+            if ($phoneAttempt instanceof ServiceResult) {
+                return $phoneAttempt;
             }
-
-            $expected = Cache::get($this->phoneKey($phone));
-            if (is_string($expected) && hash_equals($expected, hash('sha256', $otp))) {
-                Cache::put($this->verifiedPhoneKey($phone), true, now()->addMinutes(self::VALIDITY_MINUTES));
-                Cache::forget($this->phoneKey($phone));
-                Cache::forget($this->attemptsKey('phone', $phone));
-                $matched = true;
-            } elseif ($email === null) {
-                $this->recordFailedAttempt('phone', $phone);
-
-                return ServiceResult::fail('OTP téléphone invalide ou expiré.', null, 400);
-            }
+            $matched = $phoneAttempt;
         }
 
         if (! $matched) {
@@ -198,6 +194,40 @@ final class OtpService
     public function normalizePhone(string $phonenumber): string
     {
         return PhoneNumber::normalize($phonenumber);
+    }
+
+    /**
+     * @return ServiceResult|bool true when the OTP matches, false when another channel may still match
+     */
+    private function attemptOtp(
+        string $channel,
+        string $identifier,
+        string $otp,
+        string $cacheKey,
+        string $verifiedKey,
+        bool $isOnlyChannel,
+        string $invalidMessage,
+    ): ServiceResult|bool {
+        if ($this->tooManyAttempts($channel, $identifier)) {
+            return ServiceResult::fail('Trop de tentatives. Demandez un nouveau code OTP.', null, 429);
+        }
+
+        $expected = Cache::get($cacheKey);
+        if (is_string($expected) && hash_equals($expected, hash('sha256', $otp))) {
+            Cache::put($verifiedKey, true, now()->addMinutes(self::VALIDITY_MINUTES));
+            Cache::forget($cacheKey);
+            Cache::forget($this->attemptsKey($channel, $identifier));
+
+            return true;
+        }
+
+        if ($isOnlyChannel) {
+            $this->recordFailedAttempt($channel, $identifier);
+
+            return ServiceResult::fail($invalidMessage, null, 400);
+        }
+
+        return false;
     }
 
     private function tooManyAttempts(string $channel, string $identifier): bool

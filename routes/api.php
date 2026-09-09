@@ -19,6 +19,7 @@ use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PersonneMoraleEnrollmentController;
 use App\Http\Controllers\PsceqCompanyController;
+use App\Http\Controllers\Singletons\ConfigurationController;
 use App\Http\Controllers\Singletons\HealthCheckController;
 use App\Http\Controllers\Singletons\UserProfileController;
 use App\Http\Controllers\StaffDirectoryController;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group([], function () {
     Route::get('/health', HealthCheckController::class)->name('health');
+    Route::get('/configuration', ConfigurationController::class)->name('configuration');
 
     Route::middleware(['auth:sanctum'])->get('/me', UserProfileController::class)->name('me');
 

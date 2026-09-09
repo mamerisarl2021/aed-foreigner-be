@@ -11,7 +11,7 @@ use App\Services\Enrollment\EnrollmentStatsService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
-#[Group('Enrollment - Manager')]
+#[Group('Enrollment')]
 class EnrollmentStatsController extends BaseController
 {
     public function __construct(
@@ -19,7 +19,7 @@ class EnrollmentStatsController extends BaseController
     ) {}
 
     /**
-     * Enrollment dashboard statistics (manager)
+     * Enrollment dashboard statistics (staff)
      *
      * Global counts, rejection rate, average handling time, motifs, evolution, and period trends.
      * `par_type` breaks the counters down by PERSONNE_PHYSIQUE / PERSONNE_MORALE — each one
@@ -27,6 +27,7 @@ class EnrollmentStatsController extends BaseController
      * `approved` (APPROUVEE) and `enrolled` (ENROLEE) are counted apart: a favourable decision
      * is not yet an enrolment.
      * Query: granularite=semaine|mois (default semaine).
+     * Authorization: `viewEnrollmentStats` — all `config('roles.staff')`. Manager-only lists stay on `/management/enrolements/*`.
      */
     public function index(DashboardEnrollmentStatsRequest $request): JsonResponse
     {

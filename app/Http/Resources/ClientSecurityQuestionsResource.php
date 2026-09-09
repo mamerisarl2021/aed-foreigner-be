@@ -4,22 +4,28 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\DataTransferObjects\ClientSecurityQuestionsPayload;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin ClientSecurityQuestionsPayload
+ */
 class ClientSecurityQuestionsResource extends JsonResource
 {
+    public function __construct(mixed $resource)
+    {
+        parent::__construct(ClientSecurityQuestionsPayload::from($resource));
+    }
+
     /**
-     * @return array{configure: mixed, questions: mixed}
+     * @return array{configure: bool, questions: list<array{question: string}>}
      */
     public function toArray(Request $request): array
     {
-        /** @var array{configure: mixed, questions: mixed} $payload */
+        /** @var ClientSecurityQuestionsPayload $payload */
         $payload = $this->resource;
 
-        return [
-            'configure' => $payload['configure'],
-            'questions' => $payload['questions'],
-        ];
+        return $payload->toArray();
     }
 }

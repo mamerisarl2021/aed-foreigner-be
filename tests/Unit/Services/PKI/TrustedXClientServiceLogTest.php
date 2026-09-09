@@ -29,7 +29,7 @@ final class TrustedXClientServiceLogTest extends TestCase
             '*' => Http::response(['access_token' => 'tok_test', 'token_type' => 'Bearer'], 200),
         ]);
 
-        $result = (new TrustedXClientService)->obtainToken('auth-code', self::REDIRECT_URI);
+        $result = app(TrustedXClientService::class)->obtainToken('auth-code', self::REDIRECT_URI);
 
         $this->assertTrue($result['status']);
 
@@ -59,7 +59,7 @@ final class TrustedXClientServiceLogTest extends TestCase
             '*' => Http::response(['access_token' => 'tok_test', 'token_type' => 'Bearer'], 200),
         ]);
 
-        $result = (new TrustedXClientService)->obtainToken('auth-code');
+        $result = app(TrustedXClientService::class)->obtainToken('auth-code');
 
         $this->assertTrue($result['status']);
         $this->assertNull(collect($recorded)->first(
@@ -79,7 +79,7 @@ final class TrustedXClientServiceLogTest extends TestCase
             '*' => Http::response(['access_token' => 'tok_ssl', 'token_type' => 'Bearer'], 200),
         ]);
 
-        $result = (new TrustedXClientService)->obtainToken('auth-code');
+        $result = app(TrustedXClientService::class)->obtainToken('auth-code');
 
         $this->assertTrue($result['status']);
         $this->assertTrue((bool) config('trustedx.verify_ssl'));

@@ -271,20 +271,30 @@ final class DocumentReadService
         }
 
         foreach ($list as $field) {
-            if (! is_array($field) || (int) ($field['fieldType'] ?? -1) !== self::GRAPHIC_PORTRAIT) {
-                continue;
+            $image = $this->portraitFromField($field);
+            if ($image !== null) {
+                return $image;
             }
+        }
 
-            $values = $field['valueList'] ?? null;
-            if (! is_array($values)) {
-                continue;
-            }
+        return null;
+    }
 
-            foreach ($values as $value) {
-                $image = is_array($value) ? ($value['value'] ?? null) : null;
-                if (is_string($image) && $image !== '') {
-                    return $image;
-                }
+    private function portraitFromField(mixed $field): ?string
+    {
+        if (! is_array($field) || (int) ($field['fieldType'] ?? -1) !== self::GRAPHIC_PORTRAIT) {
+            return null;
+        }
+
+        $values = $field['valueList'] ?? null;
+        if (! is_array($values)) {
+            return null;
+        }
+
+        foreach ($values as $value) {
+            $image = is_array($value) ? ($value['value'] ?? null) : null;
+            if (is_string($image) && $image !== '') {
+                return $image;
             }
         }
 
