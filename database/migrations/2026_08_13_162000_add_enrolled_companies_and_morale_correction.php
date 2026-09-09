@@ -91,9 +91,15 @@ return new class extends Migration
     private function setStatusEnum(array $statuses, string $default): void
     {
         $values = array_values(array_unique($statuses));
+        $constraint = 'enrollment_requests_status_check';
 
-        Schema::table('enrollment_requests', function (Blueprint $table) use ($values, $default) {
-            $table->enum('status', $values)->default($default)->nullable(false)->change();
-        });
+        DB::statement("ALTER TABLE enrollment_requests DROP CONSTRAINT IF EXISTS {$constraint}");
+        DB::statement('ALTER TABLE enrollment_requests ALTER COLUMN status TYPE varchar(255)');
+        DB::statement('ALTER TABLE enrollment_requests ALTER COLUMN status SET NOT NULL');
+        DB::statement("ALTER TABLE enrollment_requests ALTER COLUMN status SET DEFAULT '{$default}'");
+
+        $quoted = collect($values)->map(fn ($v) => "'{$v}'")->implode(', ');
+
+        DB::statement("ALTER TABLE enrollment_requests ADD CONSTRAINT {$constraint} CHECK (status IN ({$quoted}))");
     }
 };

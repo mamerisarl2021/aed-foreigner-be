@@ -1,7 +1,6 @@
 <?php
 
 use App\Providers\AppServiceProvider;
-use App\Providers\AuditingServiceProvider;
 use App\Providers\AuthServiceProvider;
 use App\Providers\ConsulServiceProvider;
 use App\Providers\EnrollmentEventServiceProvider;
@@ -15,5 +14,4 @@ return [
     ConsulServiceProvider::class,
     NotificationServiceProvider::class,
     EnrollmentEventServiceProvider::class,
-    AuditingServiceProvider::class,
 ];
