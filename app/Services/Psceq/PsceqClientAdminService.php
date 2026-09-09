@@ -13,7 +13,7 @@ use App\Support\PsceqApiKey;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Ramsey\Collection\Collection;
+use Illuminate\Database\Eloquent\Collection;
 use Throwable;
 
 final class PsceqClientAdminService
@@ -229,13 +229,13 @@ final class PsceqClientAdminService
             return ServiceResult::fail('Client PSCEQ introuvable.', null, 404);
         }
 
-        if (! $client->isRevoked()) {
-            $client->revoked_at = now();
+        if ($client->isRevoked()) {
+            $client->revoked_at = null;
             $client->save();
 
             $this->activityLog->record(
-                ActivityLogAction::PsceqClientRevoque,
-                sprintf('Clé API PSCEQ révoquée pour %s.', $client->name),
+                ActivityLogAction::PsceqClientReactive,
+                sprintf('Clé API PSCEQ réactivée pour %s.', $client->name),
                 $actorUserId,
                 null,
                 [
@@ -243,7 +243,23 @@ final class PsceqClientAdminService
                     'key_prefix' => $client->key_prefix,
                 ],
             );
+
+            return ServiceResult::ok('Clé API PSCEQ réactivée.', $client);
         }
+
+        $client->revoked_at = now();
+        $client->save();
+
+        $this->activityLog->record(
+            ActivityLogAction::PsceqClientRevoque,
+            sprintf('Clé API PSCEQ révoquée pour %s.', $client->name),
+            $actorUserId,
+            null,
+            [
+                'psceq_client_id' => $client->id,
+                'key_prefix' => $client->key_prefix,
+            ],
+        );
 
         return ServiceResult::ok('Clé API PSCEQ révoquée.', $client);
     }

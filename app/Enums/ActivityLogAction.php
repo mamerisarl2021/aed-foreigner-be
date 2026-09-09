@@ -44,6 +44,7 @@ enum ActivityLogAction: string
     case PsceqClientSupprime = 'PSCEQ_CLIENT_SUPPRIME';
     case PsceqClientRegenere = 'PSCEQ_CLIENT_REGENERE';
     case PsceqClientRevoque = 'PSCEQ_CLIENT_REVOQUE';
+    case PsceqClientReactive = 'PSCEQ_CLIENT_REACTIVE';
     case EntrepriseStatutModifie = 'ENTREPRISE_STATUT_MODIFIE';
 
     public function label(): string
@@ -85,6 +86,7 @@ enum ActivityLogAction: string
             self::PsceqClientSupprime => 'PSCEQ CLIENT SUPPRIME',
             self::PsceqClientRegenere => 'PSCEQ CLIENT REGENERE',
             self::PsceqClientRevoque => 'PSCEQ CLIENT REVOQUE',
+            self::PsceqClientReactive => 'PSCEQ CLIENT REACTIVE',
             self::EntrepriseStatutModifie => 'ENTREPRISE STATUT MODIFIE',
         };
     }
