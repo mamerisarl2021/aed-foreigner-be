@@ -60,7 +60,7 @@ services:
   php-cli:
     build:
       context: .
-      dockerfile: ./docker/php-cli/Dockerfile
+      dockerfile: ./docker/common/php-fpm/php-cli/Dockerfile
     tty: true # Enables an interactive terminal
     stdin_open: true # Keeps standard input open for 'docker exec'
     env_file:

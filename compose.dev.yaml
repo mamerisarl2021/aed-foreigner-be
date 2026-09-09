@@ -1,6 +1,7 @@
 services:
   web:
     image: nginx:latest # Using the default Nginx image with custom configuration.
+    container_name: portalidforeigner-nginx
     volumes:
       # Mount the application code for live updates
       - ./:/var/www
@@ -32,6 +33,7 @@ services:
         XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
         XDEBUG_LOG: /dev/stdout
         XDEBUG_LOG_LEVEL: 0
+    container_name: portalidforeigner-php-fpm
     env_file:
       # Load the environment variables from the Laravel application
       - .env
@@ -59,6 +61,7 @@ services:
         XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
         XDEBUG_LOG: /dev/stdout
         XDEBUG_LOG_LEVEL: 0
+    container_name: portalidforeigner-workspace
     tty: true # Enables an interactive terminal
     stdin_open: true # Keeps standard input open for 'docker exec'
     env_file:
@@ -70,6 +73,7 @@ services:
 
   postgres:
     image: postgres:18
+    container_name: portalidforeigner-postgres
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     environment:
@@ -83,6 +87,7 @@ services:
 
   redis:
     image: redis:alpine
+    container_name: portalidforeigner-redis
     networks:
       - portal-id-foreigner-development
 
