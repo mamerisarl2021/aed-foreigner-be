@@ -13,9 +13,9 @@ services:
       # The ':ro' option mounts it as read-only in the 'web' service because Nginx only needs to read these files.
       # The 'php-fpm' service mounts the same volume without ':ro' to allow write operations.
       # -----------------------------------------------------------
-      - laravel-storage-production:/var/www/storage:ro
+      - portal-id-foreigner-production-storage:/var/www/storage:ro
     networks:
-      - laravel-production
+      - portal-id-foreigner-production
     ports:
       # Map port 80 inside the container to the port specified by 'NGINX_PORT' on the host machine.
       # -----------------------------------------------------------
@@ -35,11 +35,11 @@ services:
       target: production # Use the 'production' stage in the Dockerfile
     restart: unless-stopped
     volumes:
-      - laravel-storage-production:/var/www/storage # Mount the storage volume
+      - portal-id-foreigner-production-storage:/var/www/storage # Mount the storage volume
     env_file:
       - .env
     networks:
-      - laravel-production
+      - portal-id-foreigner-production
     healthcheck:
       test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
       interval: 10s
@@ -66,7 +66,7 @@ services:
     env_file:
       - .env
     networks:
-      - laravel-production
+      - portal-id-foreigner-production
 
   postgres:
     image: postgres:18
@@ -81,7 +81,7 @@ services:
     volumes:
       - postgres-data-production:/var/lib/postgresql
     networks:
-      - laravel-production
+      - portal-id-foreigner-production
     # Health check for PostgreSQL
     # -----------------------------------------------------------
     # Health checks allow Docker to determine if a service is operational.
@@ -98,7 +98,7 @@ services:
     image: redis:alpine
     restart: unless-stopped # Automatically restart unless the service is explicitly stopped
     networks:
-      - laravel-production
+      - portal-id-foreigner-production
     # Health check for Redis
     # -----------------------------------------------------------
     # Checks if Redis is responding to the 'PING' command.
@@ -111,13 +111,13 @@ services:
       retries: 3
 
 networks:
-  # Attach the service to the 'laravel-production' network.
+  # Attach the service to the 'portal-id-foreigner-production' network.
   # -----------------------------------------------------------
   # This custom network allows all services within it to communicate using their service names as hostnames.
   # For example, 'php-fpm' can connect to 'postgres' by using 'postgres' as the hostname.
   # -----------------------------------------------------------
-  laravel-production:
+  portal-id-foreigner-production:
 
 volumes:
-  postgres-data-production:
-  laravel-storage-production:
+  portal-id-foreigner-production-data:
+  portal-id-foreigner-production-storage:
