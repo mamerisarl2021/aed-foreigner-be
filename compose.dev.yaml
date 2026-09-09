@@ -12,7 +12,7 @@ services:
     environment:
       - NGINX_HOST=localhost
     networks:
-      - laravel-development
+      - portal-id-foreigner-development
     depends_on:
       php-fpm:
         condition: service_started # Wait for php-fpm to start
@@ -40,7 +40,7 @@ services:
       # Mount the application code for live updates
       - ./:/var/www
     networks:
-      - laravel-development
+      - portal-id-foreigner-development
     depends_on:
       postgres:
         condition: service_started # Wait for postgres to start
@@ -66,7 +66,7 @@ services:
     volumes:
       - ./:/var/www
     networks:
-      - laravel-development
+      - portal-id-foreigner-development
 
   postgres:
     image: postgres:18
@@ -79,15 +79,15 @@ services:
     volumes:
       - postgres-data-development:/var/lib/postgresql
     networks:
-      - laravel-development
+      - portal-id-foreigner-development
 
   redis:
     image: redis:alpine
     networks:
-      - laravel-development
+      - portal-id-foreigner-development
 
 networks:
-  laravel-development:
+  portal-id-foreigner-development:
 
 volumes:
-  postgres-data-development:
+  portal-id-foreigner-development-data:
