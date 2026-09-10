@@ -8,9 +8,11 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Models\Identity;
 use App\Models\User;
+use App\Support\JsonbText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class EnrollmentSimilarityService
 {
@@ -18,6 +20,33 @@ class EnrollmentSimilarityService
      * @return list<array<string, mixed>>
      */
     public function findSimilar(EnrollmentRequest $enrollment): array
+    {
+        $ttl = max(0, (int) config('enrollment.similarity.cache_ttl_seconds', 120));
+        if ($ttl === 0) {
+            return $this->computeSimilar($enrollment);
+        }
+
+        $fingerprint = hash('sha256', (string) json_encode([
+            $enrollment->id,
+            $enrollment->status->value,
+            $enrollment->kyc_data,
+            $enrollment->updated_at?->getTimestamp(),
+        ]));
+
+        /** @var list<array<string, mixed>> $matches */
+        $matches = Cache::remember(
+            'enrollment.similarity.'.$fingerprint,
+            $ttl,
+            fn (): array => $this->computeSimilar($enrollment),
+        );
+
+        return $matches;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function computeSimilar(EnrollmentRequest $enrollment): array
     {
         if ($enrollment->isPersonneMorale()) {
             return $this->findSimilarMorale($enrollment);
@@ -95,11 +124,12 @@ class EnrollmentSimilarityService
                 if ($needle['document_number'] !== '') {
                     $documentNumber = $needle['document_number'];
                     $q->orWhereHas('identities', function (Builder $iq) use ($documentNumber): void {
+                        $sql = JsonbText::upperTrimEqualsSql('proof', '$.document_number');
+                        if ($sql === null) {
+                            return;
+                        }
                         $iq->where('status', 'APPROVED')
-                            ->whereRaw(
-                                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(proof, "$.document_number")))) = ?',
-                                [$documentNumber]
-                            );
+                            ->whereRaw($sql, [$documentNumber]);
                     });
                 }
             })
@@ -444,13 +474,11 @@ class EnrollmentSimilarityService
             return;
         }
 
-        if (preg_match('/^\$(\.[A-Za-z_]+)+$/', $path) !== 1) {
+        $sql = JsonbText::upperTrimEqualsSql($column, $path);
+        if ($sql === null) {
             return;
         }
 
-        $query->orWhereRaw(
-            "UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT({$column}, \"{$path}\")))) = ?",
-            [$value]
-        );
+        $query->orWhereRaw($sql, [$value]);
     }
 }

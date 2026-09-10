@@ -28,7 +28,7 @@ final class PsceqCompanyService
         $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $normalized);
 
         $companies = EnrolledCompany::query()
-            ->whereRaw('UPPER(TRIM(legal_name)) LIKE ?', ['%'.$escaped.'%'])
+            ->where('legal_name', 'ilike', '%'.$escaped.'%')
             ->orderBy('legal_name')
             ->limit(50)
             ->get();

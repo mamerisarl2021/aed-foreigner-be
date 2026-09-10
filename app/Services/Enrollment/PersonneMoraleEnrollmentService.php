@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Rules\PhoneNumber;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\JsonbText;
 use App\Support\NotificationRecipient;
 use App\Support\TrackingCodeAllocator;
 use Illuminate\Http\Request;
@@ -190,6 +191,17 @@ class PersonneMoraleEnrollmentService
     public function listOwn(User $user, int $perPage): LengthAwarePaginator
     {
         return EnrollmentRequest::query()
+            ->select([
+                'id',
+                'type',
+                'status',
+                'tracking_code',
+                'kyc_data',
+                'submitted_by_user_id',
+                'email_verified_at',
+                'phone_verified_at',
+                'created_at',
+            ])
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
             ->with('enrolledCompany')
@@ -445,19 +457,19 @@ class PersonneMoraleEnrollmentService
         string $country,
         ?string $excludeId = null,
     ): bool {
+        $registrationSql = JsonbText::upperTrimEqualsSql('kyc_data', '$.registration_number');
+        $countrySql = JsonbText::upperTrimEqualsSql('kyc_data', '$.country_of_incorporation');
+        if ($registrationSql === null || $countrySql === null) {
+            return false;
+        }
+
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->where('submitted_by_user_id', $user->id)
             ->whereIn('status', self::openMoraleStatuses())
             ->when($excludeId !== null, fn ($query) => $query->whereKeyNot($excludeId))
-            ->whereRaw(
-                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
-                [$registrationNumber]
-            )
-            ->whereRaw(
-                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
-                [$country]
-            )
+            ->whereRaw($registrationSql, [$registrationNumber])
+            ->whereRaw($countrySql, [$country])
             ->exists();
     }
 
@@ -473,18 +485,18 @@ class PersonneMoraleEnrollmentService
             return true;
         }
 
+        $registrationSql = JsonbText::upperTrimEqualsSql('kyc_data', '$.registration_number');
+        $countrySql = JsonbText::upperTrimEqualsSql('kyc_data', '$.country_of_incorporation');
+        if ($registrationSql === null || $countrySql === null) {
+            return $enrolled;
+        }
+
         return EnrollmentRequest::query()
             ->where('type', 'PERSONNE_MORALE')
             ->whereIn('status', self::ENROLLED_MORALE_STATUSES)
             ->whereDoesntHave('enrolledCompany')
-            ->whereRaw(
-                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.registration_number")))) = ?',
-                [$registrationNumber]
-            )
-            ->whereRaw(
-                'UPPER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(kyc_data, "$.country_of_incorporation")))) = ?',
-                [$country]
-            )
+            ->whereRaw($registrationSql, [$registrationNumber])
+            ->whereRaw($countrySql, [$country])
             ->exists();
     }
 

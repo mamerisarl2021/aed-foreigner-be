@@ -29,7 +29,12 @@ final class EnrolledPersonService
                     ->where('enrollment_requests.type', 'PERSONNE_PHYSIQUE');
             })
             ->select([
-                'users.*',
+                'users.id',
+                'users.name',
+                'users.first_name',
+                'users.email',
+                'users.npi',
+                'users.last_login_at',
                 'enrollment_requests.updated_at as enrolled_at',
             ])
             ->distinct();

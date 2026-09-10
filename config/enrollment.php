@@ -18,6 +18,7 @@ return [
 
     'similarity' => [
         'max_results' => 5,
+        'cache_ttl_seconds' => (int) env('ENROLLMENT_SIMILARITY_CACHE_TTL_SECONDS', 120),
     ],
 
     'morale' => [

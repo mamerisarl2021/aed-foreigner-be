@@ -109,7 +109,9 @@ final class EnrollmentController extends BaseController
     public function show(ShowEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::query()->findOrFail($id);
+        $enrollment = EnrollmentRequest::query()
+            ->with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])
+            ->findOrFail($id);
         $this->authorize('view', $enrollment);
         $result = $this->reviewQuery->show($enrollment);
 

@@ -24,11 +24,16 @@ final class ActivityLogService
         ?string $enrollmentRequestId = null,
         ?array $metadata = null,
     ): void {
+        $psceqClientId = is_array($metadata) && is_string($metadata['psceq_client_id'] ?? null)
+            ? $metadata['psceq_client_id']
+            : null;
+
         ActivityLog::create([
             'action_code' => $action->label(),
             'description' => $description,
             'actor_user_id' => $actorUserId,
             'enrollment_request_id' => $enrollmentRequestId,
+            'psceq_client_id' => $psceqClientId,
             'metadata' => $metadata,
             // Résolue ici, au moment de l'écriture : les appelants sont des
             // services métier qui n'ont pas à connaître la couche HTTP. Nulle

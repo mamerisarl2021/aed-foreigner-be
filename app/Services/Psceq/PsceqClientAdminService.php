@@ -10,10 +10,10 @@ use App\Models\PsceqClient;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\PsceqApiKey;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Collection;
 use Throwable;
 
 final class PsceqClientAdminService
@@ -216,7 +216,7 @@ final class PsceqClientAdminService
     public function historique(string $id): Collection
     {
         return ActivityLog::query()
-            ->whereJsonContains('metadata->psceq_client_id', $id)
+            ->where('psceq_client_id', $id)
             ->orderByDesc('created_at')
             ->limit(100)
             ->get();

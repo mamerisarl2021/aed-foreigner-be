@@ -21,7 +21,7 @@ class PsceqClientHistoriqueResource extends JsonResource
         return [
             'date' => $this->created_at?->toIso8601String(),
             'evenement' => $this->description,
-            'details' => str_replace(['{', '}'], ['[', ']'], json_encode($this->metadata)),
+            'details' => str_replace(['{', '}'], ['[', ']'], json_encode($this->metadata) ?: '[]'),
         ];
     }
 }
