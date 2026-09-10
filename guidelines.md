@@ -910,7 +910,7 @@ Do not pretend these exist in code without implementing them:
 
 ### 13.8 Infrastructure integration
 
-- **Consul**: register/deregister via artisan commands; config in `config/consul.php`. `compose.dev.yaml` runs `consul:register` after Nginx answers `/api/v1/health`. Announce `CONSUL_SERVICE_IP=127.0.0.1` and port `8000` when Consul reaches the app through `ssh -N -R 0.0.0.0:8000:127.0.0.1:8000`. Stop `php artisan serve` on that port first.
+- **Consul**: register/deregister via artisan commands; config in `config/consul.php`. The local service id is `config('consul.service_id_file')` (`storage/app/consul-service-id.json`), not the default filesystem disk (S3/MinIO). `compose.dev.yaml` runs `consul:register` after Nginx answers `/api/v1/health`. Announce `CONSUL_SERVICE_IP=127.0.0.1` and port `8000` when Consul reaches the app through `ssh -N -R 0.0.0.0:8000:127.0.0.1:8000`. Stop `php artisan serve` on that port first.
 - **Compose dev boot**: Postgres/Redis healthchecks, then php-fpm `migrate --force` and `db:seed --force` only if `roles` is empty, then `queue:work`. `compose.prod.yaml` is unchanged.
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
