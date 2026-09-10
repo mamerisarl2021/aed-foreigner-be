@@ -293,7 +293,7 @@ class PersonneMoraleEnrollmentService
             ])->dispatch();
         }
 
-        $legalName = (string) ($kyc['legal_name'] ?? $enrollment->email);
+        $legalName = $correction->legalName;
         $this->activityLog->record(
             ActivityLogAction::CorrectionMorale,
             sprintf('%s a corrigé la demande morale %s.', ActivityLogService::actorLabel($user), $legalName),
