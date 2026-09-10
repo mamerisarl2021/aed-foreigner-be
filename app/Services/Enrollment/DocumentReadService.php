@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\DataTransferObjects\DocumentReadInput;
 use App\Enums\ActivityLogAction;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\Regula\DocumentReaderClient;
 use App\Services\ServiceResult;
-use Illuminate\Http\Request;
 
 /**
  * Pré-lecture assistée de la pièce d'identité, avant la porte KYC.
@@ -82,11 +82,11 @@ final class DocumentReadService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    public function read(Request $request): ServiceResult
+    public function read(DocumentReadInput $input): ServiceResult
     {
         $pages = array_values(array_filter([
-            $request->file('recto')?->getPathname(),
-            $request->file('verso')?->getPathname(),
+            $input->recto->getPathname(),
+            $input->verso?->getPathname(),
         ]));
 
         if ($pages === []) {

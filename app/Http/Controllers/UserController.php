@@ -12,6 +12,7 @@ use App\Http\Requests\User\VerifyOtpRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Registration\UserRegistrationService;
+use App\Support\ValidatedUpload;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,9 @@ class UserController extends BaseController
      */
     public function sendOtp(SendOtpRequest $request): JsonResponse
     {
-        return $this->respond($this->registration->sendOtp($request->input('npi')));
+        return $this->respond($this->registration->sendOtp(
+            (string) $request->validated('npi')
+        ));
     }
 
     /**
@@ -37,8 +40,8 @@ class UserController extends BaseController
     public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
         return $this->respond($this->registration->verifyOtp(
-            $request->input('npi'),
-            $request->input('otp'),
+            (string) $request->validated('npi'),
+            (string) $request->validated('otp'),
         ));
     }
 
@@ -58,7 +61,9 @@ class UserController extends BaseController
      */
     public function loginMobile(LoginWithCodeRequest $request): JsonResponse
     {
-        return $this->respond($this->registration->loginMobile($request->input('code')));
+        return $this->respond($this->registration->loginMobile(
+            (string) $request->validated('code')
+        ));
     }
 
     /**
@@ -73,8 +78,8 @@ class UserController extends BaseController
 
         $result = $this->registration->updateUser(
             $id,
-            ['email' => $request->input('email')],
-            $request->file('profile'),
+            ['email' => (string) $request->validated('email')],
+            ValidatedUpload::file($request->validated(), 'profile'),
         );
 
         if (! $result->success) {

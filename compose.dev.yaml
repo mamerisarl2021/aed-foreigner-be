@@ -36,7 +36,7 @@ services:
     container_name: portalidforeigner-php-fpm
     env_file:
       # Load the environment variables from the Laravel application
-      - .env
+      - .env.compose
     user: "${UID:-1000}:${GID:-1000}"
     userns_mode: keep-id
     volumes:
@@ -66,7 +66,7 @@ services:
     tty: true # Enables an interactive terminal
     stdin_open: true # Keeps standard input open for 'docker exec'
     env_file:
-      - .env
+      - .env.compose
     volumes:
       - ./:/var/www
     networks:

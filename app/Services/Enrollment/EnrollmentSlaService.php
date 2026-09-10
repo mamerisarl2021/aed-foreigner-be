@@ -14,13 +14,14 @@ use App\Models\EnrollmentRequest;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Support\NotificationRecipient;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class EnrollmentSlaService
 {
-    /** @var array<string, Collection<int, User>> */
-    private array $usersByRoles = [];
+    private const NOTIFY_CHUNK = 100;
+
+    /** @var array<string, list<string>> */
+    private array $emailsByRoles = [];
 
     public function __construct(
         private readonly ActivityLogService $activityLog,
@@ -226,8 +227,8 @@ class EnrollmentSlaService
             return;
         }
 
-        $recipients = $this->usersWithRoles($roles);
-        if ($recipients->isEmpty()) {
+        $emails = $this->emailsForRoles($roles);
+        if ($emails === []) {
             Log::info('Enrollment SLA alert: no users for roles', [
                 'level' => $level,
                 'roles' => $roles,
@@ -237,38 +238,29 @@ class EnrollmentSlaService
             return;
         }
 
-        $notificationRecipients = [];
-        foreach ($recipients as $user) {
-            if (! $user->email) {
-                continue;
+        $variables = [
+            'level' => $level,
+            'enrollment_id' => $enrollment->id,
+            'email' => $enrollment->email,
+            'status' => $enrollment->status->value,
+            'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
+        ];
+
+        foreach (array_chunk($emails, self::NOTIFY_CHUNK) as $chunk) {
+            $notificationRecipients = [];
+            foreach ($chunk as $email) {
+                $notificationRecipients[] = NotificationRecipient::email($email, $variables);
             }
-            $notificationRecipients[] = NotificationRecipient::email($user->email, [
-                'level' => $level,
-                'enrollment_id' => $enrollment->id,
-                'email' => $enrollment->email,
-                'status' => $enrollment->status->value,
-                'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
-            ]);
-        }
 
-        if ($notificationRecipients === []) {
-            return;
+            SendEmailNotificationJob::dispatch(new EmailNotificationData(
+                subject: "Alerte SLA enrôlement ({$level}) — #{$enrollment->id}",
+                template: NotificationTemplate::EnrollmentSlaAlert,
+                recipients: $notificationRecipients,
+                variables: $variables,
+                type: 'ENROLLMENT_SLA_ALERT',
+                platform: NotificationPlatform::from(config('notifications.platform')),
+            ));
         }
-
-        SendEmailNotificationJob::dispatch(new EmailNotificationData(
-            subject: "Alerte SLA enrôlement ({$level}) — #{$enrollment->id}",
-            template: NotificationTemplate::EnrollmentSlaAlert,
-            recipients: $notificationRecipients,
-            variables: [
-                'level' => $level,
-                'enrollment_id' => $enrollment->id,
-                'email' => $enrollment->email,
-                'status' => $enrollment->status->value,
-                'sla_deadline_at' => optional($enrollment->sla_deadline_at)->toIso8601String(),
-            ],
-            type: 'ENROLLMENT_SLA_ALERT',
-            platform: NotificationPlatform::from(config('notifications.platform')),
-        ));
     }
 
     private function notifyCorrectionReminder(EnrollmentRequest $enrollment): void
@@ -313,11 +305,8 @@ class EnrollmentSlaService
                 'numero_suivi' => $enrollment->tracking_code,
             ]);
         } else {
-            foreach ($this->usersWithRoles([(string) config('roles.agent')]) as $user) {
-                if ($user->email === '') {
-                    continue;
-                }
-                $recipients[] = NotificationRecipient::email($user->email, [
+            foreach ($this->emailsForRoles([(string) config('roles.agent')]) as $email) {
+                $recipients[] = NotificationRecipient::email($email, [
                     'enrollment_id' => $enrollment->id,
                     'numero_suivi' => $enrollment->tracking_code,
                 ]);
@@ -348,15 +337,29 @@ class EnrollmentSlaService
 
     /**
      * @param  list<string>  $roles
-     * @return Collection<int, User>
+     * @return list<string>
      */
-    private function usersWithRoles(array $roles): Collection
+    private function emailsForRoles(array $roles): array
     {
         $key = implode("\0", $roles);
-        if (! array_key_exists($key, $this->usersByRoles)) {
-            $this->usersByRoles[$key] = User::role($roles)->get();
+        if (! array_key_exists($key, $this->emailsByRoles)) {
+            $emails = [];
+            $users = User::query()
+                ->whereHas('roles', static function ($query) use ($roles): void {
+                    $query->whereIn('name', $roles);
+                })
+                ->orderBy('id')
+                ->lazyById(self::NOTIFY_CHUNK);
+
+            foreach ($users as $user) {
+                if ($user->email === '') {
+                    continue;
+                }
+                $emails[] = $user->email;
+            }
+            $this->emailsByRoles[$key] = $emails;
         }
 
-        return $this->usersByRoles[$key];
+        return $this->emailsByRoles[$key];
     }
 }

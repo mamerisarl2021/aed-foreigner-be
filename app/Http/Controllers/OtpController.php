@@ -26,9 +26,12 @@ final class OtpController extends BaseController
      */
     public function send(SendOtpRequest $request): JsonResponse
     {
+        $email = $request->validated('email');
+        $phonenumber = $request->validated('phonenumber');
+
         return $this->respond($this->otpService->send(
-            $request->input('email'),
-            $request->input('phonenumber'),
+            is_string($email) ? $email : null,
+            is_string($phonenumber) ? $phonenumber : null,
         ));
     }
 
@@ -43,10 +46,13 @@ final class OtpController extends BaseController
      */
     public function verify(VerifyOtpRequest $request): JsonResponse
     {
+        $email = $request->validated('email');
+        $phonenumber = $request->validated('phonenumber');
+
         return $this->respond($this->otpService->verify(
-            $request->input('email'),
-            $request->input('phonenumber'),
-            $request->input('otp'),
+            is_string($email) ? $email : null,
+            is_string($phonenumber) ? $phonenumber : null,
+            (string) $request->validated('otp'),
         ));
     }
 }

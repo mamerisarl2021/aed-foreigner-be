@@ -265,9 +265,11 @@ Review list endpoints and exports for N+1 before merging.
 
 Use:
 
-- `cursor()` / lazy collections
+- `cursor()` / lazy collections (`lazyById`)
 - `chunk()` / `chunkById()` for batch processing
 - Pagination for HTTP list endpoints (cap `per_page`, e.g. max 100)
+
+SLA role fan-out (`EnrollmentSlaService`) loads staff emails with `lazyById(100)`, not `User::role()->get()`. Notification jobs are dispatched in chunks of 100 recipients.
 
 ### 8.4 Migrations
 
@@ -357,7 +359,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 
 Rules for new / touched enrollment-review code:
 
-1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
+1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy). That includes `GET /me` (`UserPolicy::view` on the authenticated user).
 2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
 3. Prefer expanding policies over adding `role:` middleware groups.
 

@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
@@ -54,6 +55,32 @@ final class MeProfileRoleTest extends TestCase
         $this->getJson($this->api('/me'))
             ->assertOk()
             ->assertJsonPath('data.role', 'AGENT');
+    }
+
+    #[Test]
+    public function me_returns_client_role_code(): void
+    {
+        $client = User::factory()->create();
+        $client->assignRole(config('roles.client'));
+
+        Sanctum::actingAs($client);
+
+        $this->getJson($this->api('/me'))
+            ->assertOk()
+            ->assertJsonPath('data.role', 'CLIENT')
+            ->assertJsonPath('data.email', $client->email);
+    }
+
+    #[Test]
+    public function me_is_forbidden_when_the_view_policy_denies(): void
+    {
+        $client = User::factory()->create();
+        $client->assignRole(config('roles.client'));
+        Sanctum::actingAs($client);
+
+        Gate::before(static fn (): bool => false);
+
+        $this->getJson($this->api('/me'))->assertForbidden();
     }
 
     #[Test]

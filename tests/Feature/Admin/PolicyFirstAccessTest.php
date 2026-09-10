@@ -50,6 +50,16 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function client_and_staff_can_read_their_own_profile(): void
+    {
+        Sanctum::actingAs($this->client);
+        $this->getJson($this->api('/me'))->assertOk();
+
+        Sanctum::actingAs($this->agent);
+        $this->getJson($this->api('/me'))->assertOk();
+    }
+
+    #[Test]
     public function agent_cannot_list_enrolled_persons(): void
     {
         Sanctum::actingAs($this->agent);

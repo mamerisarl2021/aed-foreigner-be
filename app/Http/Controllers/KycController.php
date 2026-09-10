@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\DocumentReadInput;
 use App\DataTransferObjects\KycDocumentVerifyInput;
 use App\DataTransferObjects\KycVerifyInput;
 use App\Http\Requests\Enrollment\ReadDocumentRequest;
@@ -103,7 +104,9 @@ final class KycController extends BaseController
      */
     public function readDocument(ReadDocumentRequest $request): JsonResponse
     {
-        return $this->respond($this->documentRead->read($request));
+        return $this->respond($this->documentRead->read(
+            DocumentReadInput::fromValidated($request->validated())
+        ));
     }
 
     private function physiqueKycActor(VerifyKycRequest $request): ?User
