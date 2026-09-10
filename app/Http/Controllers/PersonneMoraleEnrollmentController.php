@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\MoraleEnrollmentCorrection;
+use App\DataTransferObjects\MoraleEnrollmentSubmission;
 use App\Http\Requests\Enrollment\CorrectMoraleEnrollmentRequest;
 use App\Http\Requests\Enrollment\ListMoraleEnrollmentsRequest;
 use App\Http\Requests\Enrollment\SendMoralePhoneOtpRequest;
@@ -77,7 +79,10 @@ class PersonneMoraleEnrollmentController extends BaseController
 
         $this->authorize('submitMorale', EnrollmentRequest::class);
 
-        $result = $this->moraleEnrollment->submit($user, $request);
+        $result = $this->moraleEnrollment->submit(
+            $user,
+            MoraleEnrollmentSubmission::fromValidated($request->validated())
+        );
         if (! $result->success) {
             return $this->respond($result);
         }
@@ -129,7 +134,11 @@ class PersonneMoraleEnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('correctMorale', $enrollment);
 
-        $result = $this->moraleEnrollment->correct($user, $enrollment, $request);
+        $result = $this->moraleEnrollment->correct(
+            $user,
+            $enrollment,
+            MoraleEnrollmentCorrection::fromValidated($request->validated())
+        );
         if (! $result->success) {
             return $this->respond($result);
         }
@@ -147,7 +156,7 @@ class PersonneMoraleEnrollmentController extends BaseController
     {
         return $this->respondPayload($this->moraleEnrollment->verifyEmail(
             (string) $request->validated('id'),
-            $request->input('token'),
+            (string) $request->validated('token'),
         ));
     }
 
@@ -187,7 +196,11 @@ class PersonneMoraleEnrollmentController extends BaseController
         $enrollment = EnrollmentRequest::findOrFail($id);
         $this->authorize('viewOwnMorale', $enrollment);
 
-        return $this->respondPayload($this->moraleEnrollment->verifyPhoneOtp($user, $id, $request->input('otp')));
+        return $this->respondPayload($this->moraleEnrollment->verifyPhoneOtp(
+            $user,
+            $id,
+            (string) $request->validated('otp'),
+        ));
     }
 
     private function respondPayload(ServiceResult $result): JsonResponse

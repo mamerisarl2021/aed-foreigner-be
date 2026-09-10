@@ -230,21 +230,7 @@ final class PsceqClientAdminService
         }
 
         if ($client->isRevoked()) {
-            $client->revoked_at = null;
-            $client->save();
-
-            $this->activityLog->record(
-                ActivityLogAction::PsceqClientReactive,
-                sprintf('Clé API PSCEQ réactivée pour %s.', $client->name),
-                $actorUserId,
-                null,
-                [
-                    'psceq_client_id' => $client->id,
-                    'key_prefix' => $client->key_prefix,
-                ],
-            );
-
-            return ServiceResult::ok('Clé API PSCEQ réactivée.', $client);
+            return ServiceResult::ok('Clé API PSCEQ révoquée.', $client);
         }
 
         $client->revoked_at = now();

@@ -201,6 +201,7 @@ class UserRegistrationService
     {
         $user = User::findOrFail($id);
         $localProfilePath = null;
+        $cloudPath = null;
 
         try {
             DB::beginTransaction();
@@ -213,6 +214,8 @@ class UserRegistrationService
                     return ServiceResult::fail("Échec du téléchargement de l'image.", null, 500);
                 }
                 $localProfilePath = $stored;
+                $cloudPath = 'images/'.basename($stored);
+                $updateData['profile'] = $cloudPath;
             }
 
             $user->update($updateData);
@@ -224,10 +227,9 @@ class UserRegistrationService
             return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
         }
 
-        if ($localProfilePath !== null) {
-            UploadUserProfileImageJob::dispatch($user->id, $localProfilePath);
-            $user->refresh();
-            $updateData['profile'] = $user->profile;
+        if ($localProfilePath !== null && $cloudPath !== null) {
+            UploadUserProfileImageJob::dispatch($user->id, $localProfilePath, $cloudPath)
+                ->afterCommit();
         }
 
         $this->activityLog->record(

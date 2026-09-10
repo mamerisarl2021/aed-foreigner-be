@@ -28,7 +28,7 @@ final class PsceqCompanyService
         $normalized = mb_strtoupper(trim($q), 'UTF-8');
 
         $companies = EnrolledCompany::query()
-            ->where('legal_name', 'ilike', SqlLike::contains($normalized))
+            ->whereRaw('UPPER(TRIM(legal_name)) LIKE ? ESCAPE E\'\\\\\'', [SqlLike::contains($normalized)])
             ->orderBy('legal_name')
             ->limit(50)
             ->get();

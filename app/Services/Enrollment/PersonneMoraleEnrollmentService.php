@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\DataTransferObjects\EmailNotificationData;
+use App\DataTransferObjects\MoraleEnrollmentCorrection;
+use App\DataTransferObjects\MoraleEnrollmentSubmission;
 use App\DataTransferObjects\SmsNotificationData;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
@@ -23,7 +25,7 @@ use App\Services\ServiceResult;
 use App\Support\JsonbText;
 use App\Support\NotificationRecipient;
 use App\Support\TrackingCodeAllocator;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -55,45 +57,20 @@ class PersonneMoraleEnrollmentService
         ];
     }
 
-    /**
-     * Pièces acceptées au dépôt : justificatifs (étape 3) + document d'identité (étape 2).
-     * Plus de selfie : l'étape 2 ne fait plus de session de liveness.
-     *
-     * @var list<string>
-     */
-    private const SUBMIT_FILE_SLOTS = [
-        'trade_register_extract',
-        'statutes',
-        'procuration',
-        'recto',
-        'verso',
-    ];
-
-    /**
-     * La correction ne rejoue que les justificatifs, jamais le KYC du demandeur.
-     *
-     * @var list<string>
-     */
-    private const CORRECTION_FILE_SLOTS = [
-        'trade_register_extract',
-        'statutes',
-        'procuration',
-    ];
-
     /** @var list<string> */
     private const ENROLLED_MORALE_STATUSES = [
         EnrollmentStatus::Approuvee->value,
         EnrollmentStatus::Enrolee->value,
     ];
 
-    public function submit(User $user, Request $request): ServiceResult
+    public function submit(User $user, MoraleEnrollmentSubmission $submission): ServiceResult
     {
         if (! $this->kycVerification->isVerifiedForUser($user)) {
             return ServiceResult::fail('Veuillez d\'abord valider le KYC.', null, 400);
         }
 
-        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
-        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+        $registrationNumber = strtoupper(trim($submission->registrationNumber));
+        $country = strtoupper(trim($submission->countryOfIncorporation));
 
         if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country)) {
             return ServiceResult::fail(
@@ -111,9 +88,15 @@ class PersonneMoraleEnrollmentService
             );
         }
 
-        $email = strtolower(trim($request->input('email')));
-        $phone = PhoneNumber::normalize((string) $request->input('phonenumber'));
-        $uploadedFiles = $this->uploadMoraleFiles($request, self::SUBMIT_FILE_SLOTS);
+        $email = $submission->email;
+        $phone = PhoneNumber::normalize($submission->phonenumber);
+        $uploadedFiles = $this->storeLocalFiles([
+            'trade_register_extract' => $submission->tradeRegisterExtract,
+            'statutes' => $submission->statutes,
+            'procuration' => $submission->procuration,
+            'recto' => $submission->recto,
+            'verso' => $submission->verso,
+        ]);
         $verificationToken = Str::random(64);
         $verificationHours = max(1, (int) config('enrollment.morale.email_verification_hours', 24));
         $kycSession = $this->kycVerification->consumeVerificationForUser($user) ?? [];
@@ -127,16 +110,16 @@ class PersonneMoraleEnrollmentService
                 'email' => $email,
                 'phonenumber' => $phone,
                 'kyc_data' => [
-                    'legal_name' => $request->input('legal_name'),
-                    'legal_form' => $request->input('legal_form'),
-                    'country_of_incorporation' => $request->input('country_of_incorporation'),
-                    'registration_number' => $request->input('registration_number'),
-                    'incorporation_date' => $request->input('incorporation_date'),
-                    'headquarters_address' => $request->input('headquarters_address'),
-                    'activity_sector' => $request->input('activity_sector'),
-                    'legal_representative_name' => $request->input('legal_representative_name'),
-                    'legal_representative_first_name' => $request->input('legal_representative_first_name'),
-                    'is_legal_representative' => filter_var($request->input('is_legal_representative'), FILTER_VALIDATE_BOOLEAN),
+                    'legal_name' => $submission->legalName,
+                    'legal_form' => $submission->legalForm,
+                    'country_of_incorporation' => $submission->countryOfIncorporation,
+                    'registration_number' => $submission->registrationNumber,
+                    'incorporation_date' => $submission->incorporationDate,
+                    'headquarters_address' => $submission->headquartersAddress,
+                    'activity_sector' => $submission->activitySector,
+                    'legal_representative_name' => $submission->legalRepresentativeName,
+                    'legal_representative_first_name' => $submission->legalRepresentativeFirstName,
+                    'is_legal_representative' => $submission->isLegalRepresentative,
                 ],
                 'documents' => $uploadedFiles,
                 'liveness' => $this->stringOrNull($kycSession['liveness'] ?? null),
@@ -220,7 +203,7 @@ class PersonneMoraleEnrollmentService
         return ServiceResult::ok('Détail de la demande morale.', $enrollment);
     }
 
-    public function correct(User $user, EnrollmentRequest $enrollment, Request $request): ServiceResult
+    public function correct(User $user, EnrollmentRequest $enrollment, MoraleEnrollmentCorrection $correction): ServiceResult
     {
         if ($enrollment->submitted_by_user_id !== $user->id) {
             return ServiceResult::fail('Accès non autorisé.', null, 403);
@@ -234,8 +217,8 @@ class PersonneMoraleEnrollmentService
             return ServiceResult::fail('Le délai de correction est dépassé.', null, 422);
         }
 
-        $registrationNumber = strtoupper(trim((string) $request->input('registration_number')));
-        $country = strtoupper(trim((string) $request->input('country_of_incorporation')));
+        $registrationNumber = strtoupper(trim($correction->registrationNumber));
+        $country = strtoupper(trim($correction->countryOfIncorporation));
 
         if ($this->hasOpenMoraleRequestForCompany($user, $registrationNumber, $country, $enrollment->id)) {
             return ServiceResult::fail(
@@ -253,21 +236,25 @@ class PersonneMoraleEnrollmentService
             );
         }
 
-        $uploadedFiles = $this->uploadMoraleFiles($request, self::CORRECTION_FILE_SLOTS);
+        $uploadedFiles = $this->storeLocalFiles([
+            'trade_register_extract' => $correction->tradeRegisterExtract,
+            'statutes' => $correction->statutes,
+            'procuration' => $correction->procuration,
+        ]);
         $existingDocs = is_array($enrollment->documents) ? $enrollment->documents : [];
         $documents = array_merge($existingDocs, array_filter($uploadedFiles));
 
         $kyc = is_array($enrollment->kyc_data) ? $enrollment->kyc_data : [];
-        $kyc['legal_name'] = $request->input('legal_name');
-        $kyc['legal_form'] = $request->input('legal_form');
-        $kyc['country_of_incorporation'] = $request->input('country_of_incorporation');
-        $kyc['registration_number'] = $request->input('registration_number');
-        $kyc['incorporation_date'] = $request->input('incorporation_date');
-        $kyc['headquarters_address'] = $request->input('headquarters_address');
-        $kyc['activity_sector'] = $request->input('activity_sector');
-        $kyc['legal_representative_name'] = $request->input('legal_representative_name');
-        $kyc['legal_representative_first_name'] = $request->input('legal_representative_first_name');
-        $kyc['is_legal_representative'] = filter_var($request->input('is_legal_representative'), FILTER_VALIDATE_BOOLEAN);
+        $kyc['legal_name'] = $correction->legalName;
+        $kyc['legal_form'] = $correction->legalForm;
+        $kyc['country_of_incorporation'] = $correction->countryOfIncorporation;
+        $kyc['registration_number'] = $correction->registrationNumber;
+        $kyc['incorporation_date'] = $correction->incorporationDate;
+        $kyc['headquarters_address'] = $correction->headquartersAddress;
+        $kyc['activity_sector'] = $correction->activitySector;
+        $kyc['legal_representative_name'] = $correction->legalRepresentativeName;
+        $kyc['legal_representative_first_name'] = $correction->legalRepresentativeFirstName;
+        $kyc['is_legal_representative'] = $correction->isLegalRepresentative;
 
         DB::beginTransaction();
         try {
@@ -501,23 +488,22 @@ class PersonneMoraleEnrollmentService
     }
 
     /**
-     * Ne stocke que les emplacements validés par le Form Request de l'opération :
-     * un fichier hors contrat ne doit jamais atteindre le disque.
+     * Ne stocke que les fichiers déjà validés par le Form Request.
      *
-     * @param  list<string>  $slots
+     * @param  array<string, UploadedFile|null>  $files
      * @return array<string, string|null>
      */
-    private function uploadMoraleFiles(Request $request, array $slots): array
+    private function storeLocalFiles(array $files): array
     {
         $uploadedFiles = [];
 
-        foreach ($slots as $slot) {
-            if ($request->hasFile($slot)) {
-                $chemin = $request->file($slot)?->store('tmp/enrollments/morale', 'local');
-                // store() rend `false` si l'écriture échoue : ne jamais laisser
-                // ce booléen atteindre la colonne `documents`.
-                $uploadedFiles[$slot] = $chemin === false ? null : $chemin;
+        foreach ($files as $slot => $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
             }
+
+            $chemin = $file->store('tmp/enrollments/morale', 'local');
+            $uploadedFiles[$slot] = $chemin === false ? null : $chemin;
         }
 
         return $uploadedFiles;

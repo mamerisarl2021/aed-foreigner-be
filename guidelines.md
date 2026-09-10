@@ -275,6 +275,13 @@ When **changing** a column, include **all** previous attributes or they will be 
 
 One concern per migration. Name migrations descriptively.
 
+**One-way `down()`.** Some data conversions cannot restore the previous representation. Document that in the migration class and leave `down()` as a no-op or a thrown `RuntimeException`:
+
+- `2026_07_28_180000_convert_domain_primary_keys_to_uuid` — integer→UUID is irreversible (`down()` throws).
+- `2026_08_20_115000_hash_user_security_question_answers` — hashes cannot be turned back into plaintext answers.
+
+Do not invent a reverse transform for those. Rebuild from backup or `migrate:fresh` on empty databases.
+
 Use factories and seeders for test and local data:
 
 ```bash
@@ -461,6 +468,8 @@ Any operation that is slow, external, or retryable **MUST** be a queued job impl
 - Third-party API calls that can complete after the HTTP response
 
 HTTP responses **MUST NOT** wait on these operations.
+
+`POST /users/{id}` still writes `users.profile` (`images/…`) in the same request and returns it as `link`. The queued job copies bytes to that path; it is not the first writer of `profile`. Without that, an async worker leaves the JSON on the old or null photo.
 
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
@@ -866,7 +875,7 @@ Consultation d'entreprises enrôlées par un prestataire de confiance habilité.
 - `GET /admin/psceq-clients/{id}` — détail profil, sans secret.
 - `PUT /admin/psceq-clients/{id}` — même contrat de profil que la création.
 - `DELETE /admin/psceq-clients/{id}` — suppression du prestataire.
-- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Un second appel **réactive** la clé (`revoked_at` null, journal `PSCEQ CLIENT REACTIVE`).
+- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Un second appel est **idempotent** (reste révoqué, pas de second journal). Les appels prestataire suivants → 401.
 - `POST /admin/psceq-clients/{id}/regenerate` — nouvelle clé plaintext **une fois** (l'ancienne ne fonctionne plus).
 - `GET /admin/psceq-clients/{id}/historique` — journaux métier (`activity_logs.psceq_client_id`).
 - Stockage : préfixe public (`psceq_` + 8 caractères) + `Hash::make`. La clé n'est jamais re-lisible. Logs : préfixe seulement.

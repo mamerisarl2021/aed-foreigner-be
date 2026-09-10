@@ -84,7 +84,7 @@ final class PsceqClientAdminTest extends TestCase
     }
 
     #[Test]
-    public function admin_can_revoke_and_reactivate_key(): void
+    public function admin_can_revoke_key_idempotently(): void
     {
         Sanctum::actingAs($this->admin);
 
@@ -96,17 +96,15 @@ final class PsceqClientAdminTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.revoque', true);
 
+        $this->postJson($this->api("/admin/psceq-clients/{$id}/revoke"))
+            ->assertOk()
+            ->assertJsonPath('data.revoque', true);
+
         $this->assertNotNull(PsceqClient::query()->findOrFail($id)->revoked_at);
         $this->assertSame(1, ActivityLog::query()
             ->where('action_code', ActivityLogAction::PsceqClientRevoque->label())
             ->count());
-
-        $this->postJson($this->api("/admin/psceq-clients/{$id}/revoke"))
-            ->assertOk()
-            ->assertJsonPath('data.revoque', false);
-
-        $this->assertNull(PsceqClient::query()->findOrFail($id)->revoked_at);
-        $this->assertSame(1, ActivityLog::query()
+        $this->assertSame(0, ActivityLog::query()
             ->where('action_code', ActivityLogAction::PsceqClientReactive->label())
             ->count());
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Enrollment;
 
+use App\DataTransferObjects\KycDocumentVerifyInput;
+use App\DataTransferObjects\KycVerifyInput;
 use App\Enums\ActivityLogAction;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
@@ -11,9 +13,8 @@ use App\Services\Regula\RegulaService;
 use App\Services\ServiceResult;
 use Carbon\Carbon;
 use DateTimeInterface;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
-use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
 final class KycVerificationService
@@ -26,12 +27,12 @@ final class KycVerificationService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    public function verify(Request $request): ServiceResult
+    public function verify(KycVerifyInput $input): ServiceResult
     {
-        $client = $this->authenticatedClient($request);
+        $client = $this->activeClient($input->actor);
 
-        $email = strtolower(trim((string) $request->input('email')));
-        $phone = $this->otpService->normalizePhone((string) $request->input('phonenumber'));
+        $email = $input->email;
+        $phone = $this->otpService->normalizePhone($input->phonenumber);
 
         if ($email === '') {
             return ServiceResult::fail('Email requis pour la vérification KYC.', null, 422);
@@ -46,15 +47,15 @@ final class KycVerificationService
         }
 
         $files = array_filter([
-            'selfie' => $request->file('selfie')?->getPathname(),
-            'recto' => $request->file('recto')?->getPathname(),
-            'verso' => $request->file('verso')?->getPathname(),
+            'selfie' => $input->selfie instanceof UploadedFile ? $input->selfie->getPathname() : null,
+            'recto' => $input->recto instanceof UploadedFile ? $input->recto->getPathname() : null,
+            'verso' => $input->verso instanceof UploadedFile ? $input->verso->getPathname() : null,
         ]);
 
         $analysis = $this->regulaService->analyzeIdentity($files, [
             'email' => $email,
-            'liveness' => $request->input('liveness_transaction_id') ?: $request->input('liveness'),
-            'liveness_transaction_id' => $request->input('liveness_transaction_id'),
+            'liveness' => $input->livenessTransactionId ?: $input->liveness,
+            'liveness_transaction_id' => $input->livenessTransactionId,
         ]);
 
         if (($analysis['status'] ?? '') !== 'OK') {
@@ -69,7 +70,7 @@ final class KycVerificationService
             return ServiceResult::fail('Échec de la vérification KYC.', $analysis, 422);
         }
 
-        $capturedAt = $this->selfieCapturedAt($request);
+        $capturedAt = $this->selfieCapturedAt($input->captureLe);
 
         $session = [
             'verified_at' => now()->toIso8601String(),
@@ -113,11 +114,11 @@ final class KycVerificationService
      * est déjà authentifié et enrôlé, l'OTP et le contrôle du visage ont eu lieu
      * lors de son propre enrôlement physique.
      */
-    public function verifyDocument(Request $request, User $client): ServiceResult
+    public function verifyDocument(KycDocumentVerifyInput $input, User $client): ServiceResult
     {
         $files = array_filter([
-            'recto' => $request->file('recto')?->getPathname(),
-            'verso' => $request->file('verso')?->getPathname(),
+            'recto' => $input->recto instanceof UploadedFile ? $input->recto->getPathname() : null,
+            'verso' => $input->verso instanceof UploadedFile ? $input->verso->getPathname() : null,
         ]);
 
         $analysis = $this->regulaService->analyzeDocument($files, ['email' => $client->email]);
@@ -202,27 +203,18 @@ final class KycVerificationService
      *
      * @param  array<string, mixed>|null  $session
      */
-    public function selfieCapturedAt(Request $request, ?array $session = null): string
+    public function selfieCapturedAt(?string $captureLe, ?array $session = null): string
     {
         $session ??= [];
 
-        return $this->normalizeCaptureLe($request->input('capture_le'))
+        return $this->normalizeCaptureLe($captureLe)
             ?? $this->normalizeCaptureLe($session['selfie_captured_at'] ?? null)
             ?? $this->normalizeCaptureLe($session['verified_at'] ?? null)
             ?? now()->toIso8601String();
     }
 
-    public function authenticatedClient(Request $request): ?User
+    private function activeClient(?User $user): ?User
     {
-        $user = $request->user();
-        if (! $user instanceof User) {
-            $plain = $request->bearerToken();
-            if (is_string($plain) && $plain !== '') {
-                $tokenable = PersonalAccessToken::findToken($plain)?->tokenable;
-                $user = $tokenable instanceof User ? $tokenable : null;
-            }
-        }
-
         if (! $user instanceof User) {
             return null;
         }

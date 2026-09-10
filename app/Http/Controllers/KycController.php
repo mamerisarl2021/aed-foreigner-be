@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\KycDocumentVerifyInput;
+use App\DataTransferObjects\KycVerifyInput;
 use App\Http\Requests\Enrollment\ReadDocumentRequest;
 use App\Http\Requests\Enrollment\VerifyDocumentRequest;
 use App\Http\Requests\Enrollment\VerifyKycRequest;
 use App\Models\EnrollmentRequest;
+use App\Models\User;
 use App\Services\Enrollment\DocumentReadService;
 use App\Services\Enrollment\KycVerificationService;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
+use Laravel\Sanctum\PersonalAccessToken;
 
 #[Group('Enrollment - KYC')]
 final class KycController extends BaseController
@@ -39,11 +44,14 @@ final class KycController extends BaseController
      */
     public function verify(VerifyKycRequest $request): JsonResponse
     {
-        if ($request->user()) {
-            $this->authorize('verifyPhysiqueKyc', EnrollmentRequest::class);
+        $actor = $this->physiqueKycActor($request);
+        if ($actor !== null) {
+            Gate::forUser($actor)->authorize('verifyPhysiqueKyc', EnrollmentRequest::class);
         }
 
-        return $this->respond($this->kycVerification->verify($request));
+        return $this->respond($this->kycVerification->verify(
+            KycVerifyInput::fromValidated($request->validated(), $actor)
+        ));
     }
 
     /**
@@ -67,7 +75,10 @@ final class KycController extends BaseController
 
         $this->authorize('submitMorale', EnrollmentRequest::class);
 
-        return $this->respond($this->kycVerification->verifyDocument($request, $user));
+        return $this->respond($this->kycVerification->verifyDocument(
+            KycDocumentVerifyInput::fromValidated($request->validated()),
+            $user,
+        ));
     }
 
     /**
@@ -93,5 +104,22 @@ final class KycController extends BaseController
     public function readDocument(ReadDocumentRequest $request): JsonResponse
     {
         return $this->respond($this->documentRead->read($request));
+    }
+
+    private function physiqueKycActor(VerifyKycRequest $request): ?User
+    {
+        $user = $request->user();
+        if ($user instanceof User) {
+            return $user;
+        }
+
+        $plain = $request->bearerToken();
+        if (! is_string($plain) || $plain === '') {
+            return null;
+        }
+
+        $tokenable = PersonalAccessToken::findToken($plain)?->tokenable;
+
+        return $tokenable instanceof User ? $tokenable : null;
     }
 }

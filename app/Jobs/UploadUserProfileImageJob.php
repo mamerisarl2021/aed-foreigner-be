@@ -29,6 +29,7 @@ class UploadUserProfileImageJob implements ShouldQueue
     public function __construct(
         public readonly string $userId,
         public readonly string $localPath,
+        public readonly string $cloudPath,
     ) {}
 
     public function handle(): void
@@ -47,17 +48,18 @@ class UploadUserProfileImageJob implements ShouldQueue
         }
 
         $contents = Storage::disk('local')->get($this->localPath);
-        if ($contents === null) {
+        if (! is_string($contents)) {
             throw new \RuntimeException('Failed to read local profile image.');
         }
 
-        $cloudPath = 'images/'.basename($this->localPath);
-        if (! Storage::cloud()->put($cloudPath, $contents)) {
+        if (! Storage::cloud()->put($this->cloudPath, $contents)) {
             throw new \RuntimeException('Failed to upload profile image to cloud storage.');
         }
 
-        $user->profile = $cloudPath;
-        $user->save();
+        if ($user->profile !== $this->cloudPath) {
+            $user->profile = $this->cloudPath;
+            $user->save();
+        }
         Storage::disk('local')->delete($this->localPath);
     }
 }
