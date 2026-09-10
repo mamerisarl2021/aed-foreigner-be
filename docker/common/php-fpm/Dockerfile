@@ -72,7 +72,17 @@ RUN curl -o /usr/local/bin/php-fpm-healthcheck \
 
 # Copy the initialization script
 COPY ./docker/production/php-fpm/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY ./docker/common/php-fpm/prepare-database.sh /usr/local/bin/prepare-database.sh
+COPY ./docker/common/php-fpm/roles-exist.php /usr/local/bin/roles-exist.php
+COPY ./docker/common/php-fpm/queue-entrypoint.sh /usr/local/bin/queue-entrypoint.sh
+COPY ./docker/common/php-fpm/consul-register.sh /usr/local/bin/consul-register.sh
+COPY ./docker/common/php-fpm/wait-for-web-health.php /usr/local/bin/wait-for-web-health.php
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    /usr/local/bin/prepare-database.sh \
+    /usr/local/bin/roles-exist.php \
+    /usr/local/bin/queue-entrypoint.sh \
+    /usr/local/bin/consul-register.sh \
+    /usr/local/bin/wait-for-web-health.php
 
 # Copy the initial storage structure
 COPY ./storage /var/www/storage-init
