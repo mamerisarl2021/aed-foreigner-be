@@ -26,12 +26,15 @@ final class NpiAllocator
     public static function nextForeignerNpi(): string
     {
         return DB::transaction(function () {
+            // Postgres rejects FOR UPDATE on aggregates (MAX). Serialize
+            // allocators with a transaction-scoped advisory lock instead.
+            DB::select('select pg_advisory_xact_lock(?)', [self::RANGE_START]);
+
             $lastNumber = User::query()
                 ->whereNotNull('npi')
-                ->whereRaw('npi REGEXP ?', ['^[0-9]{10}$'])
-                ->whereRaw('CAST(npi AS UNSIGNED) BETWEEN ? AND ?', [self::RANGE_START, self::RANGE_END])
-                ->lockForUpdate()
-                ->max(DB::raw('CAST(npi AS UNSIGNED)'));
+                ->whereRaw("npi ~ '^[0-9]{10}$'")
+                ->whereRaw('CAST(npi AS BIGINT) BETWEEN ? AND ?', [self::RANGE_START, self::RANGE_END])
+                ->max(DB::raw('CAST(npi AS BIGINT)'));
 
             $next = $lastNumber === null ? self::RANGE_START : ((int) $lastNumber) + 1;
 

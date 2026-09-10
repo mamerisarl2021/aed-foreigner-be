@@ -15,11 +15,9 @@ fi
 # Remove storage-init directory
 rm -rf /var/www/storage-init
 
-# Run Laravel migrations
+# Schema + first-boot seed (shared with development)
 # -----------------------------------------------------------
-# Ensure the database schema is up to date.
-# -----------------------------------------------------------
-php artisan migrate --force
+/usr/local/bin/prepare-database.sh
 
 # Clear and cache configurations
 # -----------------------------------------------------------

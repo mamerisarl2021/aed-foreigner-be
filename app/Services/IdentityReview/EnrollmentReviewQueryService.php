@@ -9,11 +9,32 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\ServiceResult;
+use App\Support\SqlLike;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class EnrollmentReviewQueryService
 {
+    /** @var list<string> */
+    private const LIST_COLUMNS = [
+        'id',
+        'type',
+        'status',
+        'tracking_code',
+        'email',
+        'created_at',
+        'updated_at',
+        'kyc_data',
+        'agent_avis',
+        'agent_decided_at',
+        'returned_at',
+        'assigned_agent_id',
+        'assigned_responsable_id',
+        'submitted_by_user_id',
+    ];
+
     public function __construct(
         private readonly EnrollmentSimilarityService $similarityService,
     ) {}
@@ -29,7 +50,9 @@ class EnrollmentReviewQueryService
 
         $statuses = $filters->statuses ?? $defaultStatuses;
 
-        $query = EnrollmentRequest::whereIn('status', $statuses);
+        $query = EnrollmentRequest::query()
+            ->select(self::LIST_COLUMNS)
+            ->whereIn('status', $statuses);
 
         // L'avis de l'agent ayant quitté le statut, c'est par lui que le
         // responsable retrouve « les dossiers proposés au rejet ».
@@ -42,19 +65,7 @@ class EnrollmentReviewQueryService
         }
 
         if ($filters->q !== null) {
-            $q = $filters->q;
-            $query->where(function ($uq) use ($q) {
-                $uq->where('email', 'like', "%$q%")
-                    ->orWhere('phonenumber', 'like', "%$q%")
-                    ->orWhereJsonContains('kyc_data->name', $q)
-                    ->orWhereJsonContains('kyc_data->first_name', $q)
-                    ->orWhereJsonContains('kyc_data->legal_name', $q)
-                    ->orWhereJsonContains('kyc_data->registration_number', $q)
-                    ->orWhereHas('submittedBy', function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%$q%")
-                            ->orWhere('first_name', 'like', "%$q%");
-                    });
-            });
+            $this->constrainSearch($query, $filters->q);
         }
 
         if ($filters->from !== null) {
@@ -99,5 +110,30 @@ class EnrollmentReviewQueryService
         return EnrollmentRequest::query()
             ->with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])
             ->findOrFail($id);
+    }
+
+    /**
+     * @param  Builder<EnrollmentRequest>  $query
+     */
+    private function constrainSearch(Builder $query, string $q): void
+    {
+        $pattern = SqlLike::contains($q);
+        $query->where(function ($uq) use ($q, $pattern) {
+            $uq->where('email', 'like', $pattern)
+                ->orWhere('phonenumber', 'like', $pattern)
+                ->orWhereJsonContains('kyc_data->name', $q)
+                ->orWhereJsonContains('kyc_data->first_name', $q)
+                ->orWhereJsonContains('kyc_data->legal_name', $q)
+                ->orWhereJsonContains('kyc_data->registration_number', $q)
+                ->orWhereExists(function (QueryBuilder $sub) use ($pattern): void {
+                    $sub->selectRaw('1')
+                        ->from('users')
+                        ->whereColumn('users.id', 'enrollment_requests.submitted_by_user_id')
+                        ->where(function (QueryBuilder $nameQuery) use ($pattern): void {
+                            $nameQuery->where('users.name', 'like', $pattern)
+                                ->orWhere('users.first_name', 'like', $pattern);
+                        });
+                });
+        });
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Enrollment;
 
 use App\Contracts\EnrollmentEventPublisherInterface;
+use App\DataTransferObjects\PhysiqueEnrollmentSubmission;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrollmentStatus;
 use App\Jobs\ForeignerFinalizedJob;
@@ -14,7 +15,7 @@ use App\Models\EnrollmentRequest;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\TrackingCodeAllocator;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,10 +30,10 @@ final class ForeignerEnrollmentService
         private readonly ActivityLogService $activityLog,
     ) {}
 
-    public function submitEnrollment(Request $request): ServiceResult
+    public function submitEnrollment(PhysiqueEnrollmentSubmission $submission): ServiceResult
     {
-        $email = strtolower(trim($request->input('email')));
-        $phone = $this->otpService->normalizePhone((string) $request->input('phonenumber'));
+        $email = $submission->email;
+        $phone = $this->otpService->normalizePhone($submission->phonenumber);
 
         if (! $this->otpService->bothChannelsVerified($email, $phone)) {
             return ServiceResult::fail("Veuillez d'abord vérifier l'OTP email et téléphone.", null, 400);
@@ -43,8 +44,8 @@ final class ForeignerEnrollmentService
         }
 
         $kycSession = $this->kycVerification->consumeVerification($email, $phone) ?? [];
-        $uploadedFiles = $this->uploadEnrollmentFiles($request);
-        $capturedAt = $this->kycVerification->selfieCapturedAt($request, $kycSession);
+        $uploadedFiles = $this->storeLocalFiles($submission);
+        $capturedAt = $this->kycVerification->selfieCapturedAt($submission->captureLe, $kycSession);
 
         DB::beginTransaction();
         try {
@@ -53,20 +54,20 @@ final class ForeignerEnrollmentService
                 'email' => $email,
                 'phonenumber' => $phone,
                 'kyc_data' => [
-                    'name' => $request->input('name'),
-                    'first_name' => $request->input('first_name'),
-                    'sexe' => $request->input('sexe'),
-                    'date_of_birth' => $request->input('date_of_birth'),
-                    'place_of_birth' => $request->input('place_of_birth'),
-                    'nationality' => $request->input('nationality'),
-                    'country_of_residence' => $request->input('country_of_residence'),
-                    'address' => $request->input('address'),
-                    'document_type' => $request->input('document_type'),
-                    'document_number' => $request->input('document_number'),
+                    'name' => $submission->name,
+                    'first_name' => $submission->firstName,
+                    'sexe' => $submission->sexe,
+                    'date_of_birth' => $submission->dateOfBirth,
+                    'place_of_birth' => $submission->placeOfBirth,
+                    'nationality' => $submission->nationality,
+                    'country_of_residence' => $submission->countryOfResidence,
+                    'address' => $submission->address,
+                    'document_type' => $submission->documentType,
+                    'document_number' => $submission->documentNumber,
                 ],
                 'documents' => $uploadedFiles,
-                'liveness' => $kycSession['liveness'] ?? $request->input('liveness'),
-                'similarity' => $kycSession['similarity'] ?? $request->input('similarity'),
+                'liveness' => $kycSession['liveness'] ?? $submission->liveness,
+                'similarity' => $kycSession['similarity'] ?? $submission->similarity,
                 'risk_score' => $kycSession['risk_score'] ?? null,
                 'analysis_details' => is_array($kycSession['analysis_details'] ?? null)
                     ? $kycSession['analysis_details']
@@ -95,8 +96,8 @@ final class ForeignerEnrollmentService
                 ActivityLogAction::DemandeIdentite,
                 sprintf(
                     '%s %s a initié une demande d\'identité.',
-                    $request->input('first_name'),
-                    $request->input('name')
+                    $submission->firstName,
+                    $submission->name
                 ),
                 null,
                 $enrollmentRequest->id,
@@ -124,16 +125,22 @@ final class ForeignerEnrollmentService
     /**
      * @return array<string, string|null>
      */
-    private function uploadEnrollmentFiles(Request $request): array
+    private function storeLocalFiles(PhysiqueEnrollmentSubmission $submission): array
     {
         $uploadedFiles = [];
 
-        foreach (['selfie', 'recto', 'verso', 'profile'] as $field) {
-            if ($request->hasFile($field)) {
-                $chemin = $request->file($field)?->store('tmp/enrollments', 'local');
-                // Idem : `false` signifie échec d'écriture, pas un chemin.
-                $uploadedFiles[$field] = $chemin === false ? null : $chemin;
+        foreach ([
+            'selfie' => $submission->selfie,
+            'recto' => $submission->recto,
+            'verso' => $submission->verso,
+            'profile' => $submission->profile,
+        ] as $field => $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
             }
+
+            $chemin = $file->store('tmp/enrollments', 'local');
+            $uploadedFiles[$field] = $chemin === false ? null : $chemin;
         }
 
         return $uploadedFiles;

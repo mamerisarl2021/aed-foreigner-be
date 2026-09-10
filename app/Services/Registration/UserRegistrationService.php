@@ -6,6 +6,7 @@ namespace App\Services\Registration;
 
 use App\Enums\ActivityLogAction;
 use App\Jobs\SendOTPJob;
+use App\Jobs\UploadUserProfileImageJob;
 use App\Models\OTP;
 use App\Models\User;
 use App\Services\ActivityLog\ActivityLogService;
@@ -19,7 +20,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class UserRegistrationService
 {
@@ -199,41 +199,52 @@ class UserRegistrationService
      */
     public function updateUser(string $id, array $updateData, ?UploadedFile $profile): ServiceResult
     {
-        DB::beginTransaction();
-        try {
-            $user = User::findOrFail($id);
+        $user = User::findOrFail($id);
+        $localProfilePath = null;
 
-            if ($profile) {
-                $profilePath = Storage::cloud()->put('images', $profile);
-                if (! $profilePath) {
+        try {
+            DB::beginTransaction();
+
+            if ($profile !== null) {
+                $stored = $profile->store('tmp/profiles', 'local');
+                if (! is_string($stored) || $stored === '') {
                     DB::rollBack();
 
                     return ServiceResult::fail("Échec du téléchargement de l'image.", null, 500);
                 }
-                $updateData['profile'] = $profilePath;
+                $localProfilePath = $stored;
+                $updateData['profile'] = 'images/'.basename($stored);
             }
 
             $user->update($updateData);
             DB::commit();
-
-            $this->activityLog->record(
-                ActivityLogAction::UtilisateurModifie,
-                sprintf(
-                    '%s a mis à jour son profil.',
-                    ActivityLogService::actorLabel($user)
-                ),
-                $user->id,
-                null,
-                ['context' => 'profile_update', 'fields' => array_keys($updateData)],
-            );
-
-            return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load('identities'));
         } catch (Exception $e) {
             DB::rollBack();
             Log::error("Mise à jour de l'utilisateur échouée : ".$e->getMessage());
 
             return ServiceResult::fail('Une erreur est survenue lors de la mise à jour de vos informations.', null, 500);
         }
+
+        if ($localProfilePath !== null) {
+            UploadUserProfileImageJob::dispatch(
+                $user->id,
+                $localProfilePath,
+                'images/'.basename($localProfilePath),
+            )->afterCommit();
+        }
+
+        $this->activityLog->record(
+            ActivityLogAction::UtilisateurModifie,
+            sprintf(
+                '%s a mis à jour son profil.',
+                ActivityLogService::actorLabel($user)
+            ),
+            $user->id,
+            null,
+            ['context' => 'profile_update', 'fields' => array_keys($updateData)],
+        );
+
+        return ServiceResult::ok('Vos informations ont bien été mises à jour!', $user->load('identities'));
     }
 
     private function touchClientLogin(mixed $actor): ?string

@@ -72,7 +72,17 @@ RUN curl -o /usr/local/bin/php-fpm-healthcheck \
 
 # Copy the initialization script
 COPY ./docker/production/php-fpm/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY ./docker/common/php-fpm/prepare-database.sh /usr/local/bin/prepare-database.sh
+COPY ./docker/common/php-fpm/roles-exist.php /usr/local/bin/roles-exist.php
+COPY ./docker/common/php-fpm/queue-entrypoint.sh /usr/local/bin/queue-entrypoint.sh
+COPY ./docker/common/php-fpm/consul-register.sh /usr/local/bin/consul-register.sh
+COPY ./docker/common/php-fpm/wait-for-web-health.php /usr/local/bin/wait-for-web-health.php
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    /usr/local/bin/prepare-database.sh \
+    /usr/local/bin/roles-exist.php \
+    /usr/local/bin/queue-entrypoint.sh \
+    /usr/local/bin/consul-register.sh \
+    /usr/local/bin/wait-for-web-health.php
 
 # Copy the initial storage structure
 COPY ./storage /var/www/storage-init
@@ -137,7 +147,7 @@ RUN if [ "${XDEBUG_ENABLED}" = "true" ]; then \
     echo "xdebug.log=${XDEBUG_LOG}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
     echo "xdebug.log_level=${XDEBUG_LOG_LEVEL}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
     echo "xdebug.client_host=${XDEBUG_HOST}" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
-    echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
+    echo "xdebug.start_with_request=trigger" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini ; \
 fi
 
 # Add ARGs for syncing permissions

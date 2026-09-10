@@ -5,11 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Requests\Enrollment;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Models\EnrollmentRequest;
 use App\Rules\Enrollment\Iso8601Instant;
 use App\Rules\PhoneNumber;
 
 class VerifyKycRequest extends ApiFormRequest
 {
+    public function authorize(): bool
+    {
+        $user = $this->user();
+        if ($user === null) {
+            return true;
+        }
+
+        return $user->can('verifyPhysiqueKyc', EnrollmentRequest::class);
+    }
+
     /**
      * @return array<string, mixed>
      */

@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRejectMotif;
 use App\Models\EnrollmentRequest;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class EnrollmentStatsService
@@ -17,20 +18,16 @@ class EnrollmentStatsService
      */
     public function dashboard(string $granularite = 'semaine'): array
     {
-        $byStatus = $this->countsByStatus();
+        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->tendanceWindows($granularite);
+        $rows = $this->aggregatedStatusCounts($currentFrom, $currentTo, $previousFrom, $previousTo);
+
+        $byStatus = $this->totalsByStatus($rows);
         $summary = $this->summarizeCounts($byStatus);
         $received = $summary['received'];
         $rejected = $summary['rejected'];
 
-        $avgHandlingSeconds = EnrollmentRequest::query()
-            ->whereIn('status', [
-                EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::Enrolee->value,
-                EnrollmentStatus::Rejetee->value,
-            ])
-            ->avg(DB::raw('TIMESTAMPDIFF(SECOND, created_at, updated_at)'));
-
-        $avgHandlingSeconds = $avgHandlingSeconds !== null ? (float) $avgHandlingSeconds : null;
+        $averages = $this->handlingAverages($currentFrom, $currentTo, $previousFrom, $previousTo);
+        $avgHandlingSeconds = $averages['global_seconds'];
 
         $tauxRejetGlobal = $received > 0 ? round(($rejected / $received) * 100, 1) : 0.0;
 
@@ -43,45 +40,35 @@ class EnrollmentStatsService
                 'by_status' => $byStatus,
             ],
             'taux_rejet_global' => $tauxRejetGlobal,
-            'average_handling_seconds' => $avgHandlingSeconds !== null ? (float) $avgHandlingSeconds : null,
+            'average_handling_seconds' => $avgHandlingSeconds,
             'average_handling_hours' => $avgHandlingSeconds !== null
-                ? round(((float) $avgHandlingSeconds) / 3600, 2)
+                ? round($avgHandlingSeconds / 3600, 2)
                 : null,
             'average_handling_days' => $avgHandlingSeconds !== null
-                ? round(((float) $avgHandlingSeconds) / 86400, 1)
+                ? round($avgHandlingSeconds / 86400, 1)
                 : null,
-            // Les cartes du pilotage lisent ici : chaque type porte ses propres
-            // compteurs et sa propre variation, le global ne les résume plus.
-            'par_type' => $this->parType($granularite),
+            'par_type' => $this->parTypeFromRows($rows),
             'reject_rate_by_motif' => $this->rejectRateByMotif($rejected),
             'evolution' => [
                 'granularite' => $granularite,
                 'points' => $this->evolutionPoints($granularite),
             ],
-            'tendances' => $this->tendances($granularite),
+            'tendances' => $this->tendancesFromRows($rows, $averages),
         ];
     }
 
     /**
-     * Compteurs et variations de chaque type de demande.
-     *
-     * La valeur est le cumul depuis toujours — ce que la carte affiche en
-     * grand — et la variation compare la période courante à la précédente,
-     * comme les tendances globales. Deux lectures différentes du même
-     * compteur, et c'est voulu : le manager veut le volume total et le sens
-     * dans lequel il bouge.
-     *
+     * @param  Collection<int, object{type: string, status: string, total: int|string, current_count: int|string, previous_count: int|string}>  $rows
      * @return array<string, array<string, array{valeur: int, variation_pct: float|null}>>
      */
-    private function parType(string $granularite): array
+    private function parTypeFromRows(Collection $rows): array
     {
-        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->tendanceWindows($granularite);
-
         $bloc = [];
         foreach (['PERSONNE_PHYSIQUE', 'PERSONNE_MORALE'] as $type) {
-            $total = $this->summarizeCounts($this->countsByStatus(null, null, $type));
-            $courant = $this->summarizeCounts($this->countsByStatus($currentFrom, $currentTo, $type));
-            $precedent = $this->summarizeCounts($this->countsByStatus($previousFrom, $previousTo, $type));
+            $typed = $rows->where('type', $type);
+            $total = $this->summarizeCounts($this->pluckCount($typed, 'total'));
+            $courant = $this->summarizeCounts($this->pluckCount($typed, 'current_count'));
+            $precedent = $this->summarizeCounts($this->pluckCount($typed, 'previous_count'));
 
             $compteurs = [];
             foreach (['received', 'in_progress', 'approved', 'enrolled', 'rejected'] as $cle) {
@@ -101,42 +88,60 @@ class EnrollmentStatsService
     }
 
     /**
+     * @return Collection<int, object{type: string, status: string, total: int|string, current_count: int|string, previous_count: int|string}>
+     */
+    private function aggregatedStatusCounts(
+        Carbon $currentFrom,
+        Carbon $currentTo,
+        Carbon $previousFrom,
+        Carbon $previousTo,
+    ): Collection {
+        $rows = DB::select(
+            <<<'SQL'
+            SELECT type, status,
+                   COUNT(*)::int AS total,
+                   COUNT(*) FILTER (WHERE created_at >= ? AND created_at <= ?)::int AS current_count,
+                   COUNT(*) FILTER (WHERE created_at >= ? AND created_at <= ?)::int AS previous_count
+            FROM enrollment_requests
+            GROUP BY type, status
+            SQL,
+            [$currentFrom, $currentTo, $previousFrom, $previousTo],
+        );
+
+        return collect($rows);
+    }
+
+    /**
+     * @param  Collection<int, object{type: string, status: string, total: int|string, current_count: int|string, previous_count: int|string}>  $rows
      * @return array<string, int>
      */
-    private function countsByStatus(?Carbon $from = null, ?Carbon $to = null, ?string $type = null): array
+    private function totalsByStatus(Collection $rows): array
     {
-        $query = EnrollmentRequest::query()
-            ->select('status', DB::raw('count(*) as total'))
-            ->groupBy('status');
-
-        if ($type !== null) {
-            $query->where('type', $type);
-        }
-
-        if ($from !== null) {
-            $query->where('created_at', '>=', $from);
-        }
-        if ($to !== null) {
-            $query->where('created_at', '<=', $to);
-        }
-
-        $raw = $query->pluck('total', 'status')->all();
         $byStatus = [];
-        foreach ($raw as $status => $total) {
-            $byStatus[(string) $status] = (int) $total;
+        foreach ($rows as $row) {
+            $statusValue = (string) $row->status;
+            $byStatus[$statusValue] = ($byStatus[$statusValue] ?? 0) + (int) $row->total;
         }
 
         return $byStatus;
     }
 
     /**
-     * Résumé d'un jeu de compteurs.
-     *
-     * `approved` et `enrolled` sont distincts : une décision favorable n'est pas
-     * un enrôlement — l'identité, ou l'entreprise, ne naît qu'au terme du
-     * parcours. Les additionner, comme le faisait ce résumé, empêchait le
-     * pilotage de dire combien de dossiers approuvés restent à finaliser.
-     *
+     * @param  Collection<int, object{type: string, status: string, total: int|string, current_count: int|string, previous_count: int|string}>  $rows
+     * @return array<string, int>
+     */
+    private function pluckCount(Collection $rows, string $attribute): array
+    {
+        $byStatus = [];
+        foreach ($rows as $row) {
+            $statusValue = (string) $row->status;
+            $byStatus[$statusValue] = (int) $row->{$attribute};
+        }
+
+        return $byStatus;
+    }
+
+    /**
      * @param  array<string, int>  $byStatus
      * @return array{received: int, in_progress: int, approved: int, enrolled: int, rejected: int}
      */
@@ -173,12 +178,12 @@ class EnrollmentStatsService
 
         $rows = DB::select(
             <<<'SQL'
-            SELECT motifs.motif_id AS id, COUNT(*) AS total
-            FROM enrollment_requests,
-            JSON_TABLE(reject_reasons, '$[*]' COLUMNS(motif_id VARCHAR(64) PATH '$')) AS motifs
+            SELECT elem AS id, COUNT(*)::int AS total
+            FROM enrollment_requests
+            CROSS JOIN LATERAL jsonb_array_elements_text(reject_reasons::jsonb) AS elem
             WHERE status = ?
               AND reject_reasons IS NOT NULL
-            GROUP BY motifs.motif_id
+            GROUP BY elem
             SQL,
             [EnrollmentStatus::Rejetee->value],
         );
@@ -207,12 +212,12 @@ class EnrollmentStatsService
         [$start, $bucket] = $this->evolutionWindow($granularite);
 
         $bucketSql = $granularite === 'mois'
-            ? "DATE_FORMAT(created_at, '%Y-%m')"
-            : "DATE_FORMAT(created_at, '%x-W%v')";
+            ? "to_char(created_at, 'YYYY-MM')"
+            : "to_char(created_at, 'IYYY-\"W\"IW')";
 
         $counts = EnrollmentRequest::query()
             ->where('created_at', '>=', $start)
-            ->selectRaw("{$bucketSql} as bucket, COUNT(*) as total")
+            ->selectRaw("{$bucketSql} as bucket, COUNT(*)::int as total")
             ->groupBy(DB::raw($bucketSql))
             ->pluck('total', 'bucket');
 
@@ -235,20 +240,17 @@ class EnrollmentStatsService
     }
 
     /**
+     * @param  Collection<int, object{type: string, status: string, total: int|string, current_count: int|string, previous_count: int|string}>  $rows
+     * @param  array{global_seconds: float|null, current_days: float|null, previous_days: float|null}  $averages
      * @return array{received: array{valeur: int, variation_pct: float|null}, in_progress: array{valeur: int, variation_pct: float|null}, approved: array{valeur: int, variation_pct: float|null}, enrolled: array{valeur: int, variation_pct: float|null}, rejected: array{valeur: int, variation_pct: float|null}, taux_rejet_global: array{valeur: float, variation_pct: float|null}, average_handling_days: array{valeur: float|null, variation_days: float|null}}
      */
-    private function tendances(string $granularite): array
+    private function tendancesFromRows(Collection $rows, array $averages): array
     {
-        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->tendanceWindows($granularite);
-
-        $current = $this->summarizeCounts($this->countsByStatus($currentFrom, $currentTo));
-        $previous = $this->summarizeCounts($this->countsByStatus($previousFrom, $previousTo));
+        $current = $this->summarizeCounts($this->pluckCount($rows, 'current_count'));
+        $previous = $this->summarizeCounts($this->pluckCount($rows, 'previous_count'));
 
         $currentTaux = $current['received'] > 0 ? round(($current['rejected'] / $current['received']) * 100, 1) : 0.0;
         $previousTaux = $previous['received'] > 0 ? round(($previous['rejected'] / $previous['received']) * 100, 1) : 0.0;
-
-        $currentAvgDays = $this->averageHandlingDays($currentFrom, $currentTo);
-        $previousAvgDays = $this->averageHandlingDays($previousFrom, $previousTo);
 
         return [
             'received' => $this->tendancePoint($current['received'], $previous['received']),
@@ -261,35 +263,68 @@ class EnrollmentStatsService
                 'variation_pct' => $this->variationPct($currentTaux, $previousTaux),
             ],
             'average_handling_days' => [
-                'valeur' => $currentAvgDays,
-                'variation_days' => $this->variationDays($currentAvgDays, $previousAvgDays),
+                'valeur' => $averages['current_days'],
+                'variation_days' => $this->variationDays($averages['current_days'], $averages['previous_days']),
             ],
         ];
     }
 
-    private function averageHandlingDays(?Carbon $from = null, ?Carbon $to = null): ?float
-    {
-        $query = EnrollmentRequest::query()
-            ->whereIn('status', [
-                EnrollmentStatus::Approuvee->value,
-                EnrollmentStatus::Enrolee->value,
-                EnrollmentStatus::Rejetee->value,
-            ]);
+    /**
+     * @return array{global_seconds: float|null, current_days: float|null, previous_days: float|null}
+     */
+    private function handlingAverages(
+        Carbon $currentFrom,
+        Carbon $currentTo,
+        Carbon $previousFrom,
+        Carbon $previousTo,
+    ): array {
+        $closed = [
+            EnrollmentStatus::Approuvee->value,
+            EnrollmentStatus::Enrolee->value,
+            EnrollmentStatus::Rejetee->value,
+        ];
 
-        if ($from !== null) {
-            $query->where('created_at', '>=', $from);
+        $row = DB::selectOne(
+            <<<'SQL'
+            SELECT
+                AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) AS global_seconds,
+                AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (
+                    WHERE created_at >= ? AND created_at <= ?
+                ) AS current_seconds,
+                AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (
+                    WHERE created_at >= ? AND created_at <= ?
+                ) AS previous_seconds
+            FROM enrollment_requests
+            WHERE status IN (?, ?, ?)
+            SQL,
+            [
+                $currentFrom,
+                $currentTo,
+                $previousFrom,
+                $previousTo,
+                $closed[0],
+                $closed[1],
+                $closed[2],
+            ],
+        );
+
+        if (! is_object($row)) {
+            return [
+                'global_seconds' => null,
+                'current_days' => null,
+                'previous_days' => null,
+            ];
         }
-        if ($to !== null) {
-            $query->where('created_at', '<=', $to);
-        }
 
-        $avgHandlingSeconds = $query->avg(DB::raw('TIMESTAMPDIFF(SECOND, created_at, updated_at)'));
+        $global = isset($row->global_seconds) ? (float) $row->global_seconds : null;
+        $current = isset($row->current_seconds) ? (float) $row->current_seconds : null;
+        $previous = isset($row->previous_seconds) ? (float) $row->previous_seconds : null;
 
-        if ($avgHandlingSeconds === null) {
-            return null;
-        }
-
-        return round(((float) $avgHandlingSeconds) / 86400, 1);
+        return [
+            'global_seconds' => $global,
+            'current_days' => $current !== null ? round($current / 86400, 1) : null,
+            'previous_days' => $previous !== null ? round($previous / 86400, 1) : null,
+        ];
     }
 
     private function variationDays(?float $current, ?float $previous): ?float

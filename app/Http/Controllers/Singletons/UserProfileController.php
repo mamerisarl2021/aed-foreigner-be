@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Singletons;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\Auth\MeProfileRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
@@ -19,7 +20,12 @@ class UserProfileController extends BaseController
     public function __invoke(MeProfileRequest $request): JsonResponse
     {
         $user = $request->user();
-        $user?->loadMissing(['roles', 'identities']);
+        if (! $user instanceof User) {
+            return $this->sendError('Non authentifié.', null, 401);
+        }
+
+        $this->authorize('view', $user);
+        $user->loadMissing(['roles', 'identities']);
 
         return $this->sendResponse('Profil utilisateur.', new UserResource($user));
     }

@@ -8,6 +8,7 @@ use App\Enums\ActivityLogAction;
 use App\Http\Middleware\EnsurePsceqApiKey;
 use App\Models\EnrolledCompany;
 use App\Services\ActivityLog\ActivityLogService;
+use App\Support\SqlLike;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Request;
 
@@ -25,10 +26,9 @@ final class PsceqCompanyService
     public function search(string $q): Collection
     {
         $normalized = mb_strtoupper(trim($q), 'UTF-8');
-        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $normalized);
 
         $companies = EnrolledCompany::query()
-            ->whereRaw('UPPER(TRIM(legal_name)) LIKE ?', ['%'.$escaped.'%'])
+            ->whereRaw('UPPER(TRIM(legal_name)) LIKE ? ESCAPE E\'\\\\\'', [SqlLike::contains($normalized)])
             ->orderBy('legal_name')
             ->limit(50)
             ->get();

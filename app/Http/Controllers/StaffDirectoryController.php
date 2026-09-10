@@ -33,8 +33,8 @@ class StaffDirectoryController extends BaseController
         $this->authorize('search', User::class);
 
         $result = $this->users->search(
-            (string) $request->input('query'),
-            (int) $request->input('limit', 10),
+            (string) $request->validated('query'),
+            (int) ($request->validated('limit') ?? 10),
             (string) $request->user()?->id,
         );
 
@@ -55,8 +55,8 @@ class StaffDirectoryController extends BaseController
         $this->authorize('search', User::class);
 
         $result = $this->users->searchByEmail(
-            (string) $request->input('email'),
-            (int) $request->input('limit', 10),
+            (string) $request->validated('email'),
+            (int) ($request->validated('limit') ?? 10),
             (string) $request->user()?->id,
         );
 
@@ -75,8 +75,12 @@ class StaffDirectoryController extends BaseController
         $this->authorize('updateStatus', User::class);
 
         $actorId = is_string($request->user()?->id) ? $request->user()->id : null;
+        $users = $this->validatedStatusRows($request);
+        if ($users === []) {
+            return $this->sendError('Données invalides.', null, 422);
+        }
 
-        return $this->respond($this->users->updateStatuses($request->input('users'), $actorId));
+        return $this->respond($this->users->updateStatuses($users, $actorId));
     }
 
     /**
@@ -87,10 +91,35 @@ class StaffDirectoryController extends BaseController
         $this->authorize('setClientPassword', User::class);
 
         return $this->respond($this->registration->setPassword(
-            $request->input('npi'),
-            $request->input('password'),
-            $request->input('type'),
+            (string) $request->validated('npi'),
+            (string) $request->validated('password'),
+            (string) $request->validated('type'),
             $request->user(),
         ));
+    }
+
+    /**
+     * @return list<array{id: string, status: string}>
+     */
+    private function validatedStatusRows(UpdateUserStatusRequest $request): array
+    {
+        $payload = $request->validated('users');
+        if (! is_array($payload)) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($payload as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = $row['id'] ?? null;
+            $status = $row['status'] ?? null;
+            if (is_string($id) && is_string($status)) {
+                $rows[] = ['id' => $id, 'status' => $status];
+            }
+        }
+
+        return $rows;
     }
 }

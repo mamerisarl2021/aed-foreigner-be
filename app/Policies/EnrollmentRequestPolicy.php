@@ -13,11 +13,12 @@ class EnrollmentRequestPolicy
 {
     use HandlesAuthorization;
 
-    /** @var list<string> */
-    private const AGENT_ROLES = ['agent'];
-
     public function before(User $user, string $ability): ?bool
     {
+        if ($ability === 'verifyPhysiqueKyc') {
+            return null;
+        }
+
         if ($user->hasRole(config('roles.administrateur_plateforme'))) {
             return true;
         }
@@ -27,7 +28,11 @@ class EnrollmentRequestPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole([...self::AGENT_ROLES, config('roles.responsable_de_validation'), config('roles.manager')]);
+        return $user->hasAnyRole([
+            (string) config('roles.agent'),
+            (string) config('roles.responsable_de_validation'),
+            (string) config('roles.manager'),
+        ]);
     }
 
     public function view(User $user, EnrollmentRequest $enrollmentRequest): bool
@@ -36,7 +41,11 @@ class EnrollmentRequestPolicy
             return $this->viewOwnMorale($user, $enrollmentRequest);
         }
 
-        return $user->hasAnyRole([...self::AGENT_ROLES, config('roles.responsable_de_validation'), config('roles.manager')]);
+        return $user->hasAnyRole([
+            (string) config('roles.agent'),
+            (string) config('roles.responsable_de_validation'),
+            (string) config('roles.manager'),
+        ]);
     }
 
     public function submitMorale(User $user): bool
@@ -47,6 +56,12 @@ class EnrollmentRequestPolicy
                 ->where('type', 'IN_PERSON')
                 ->where('status', 'APPROVED')
                 ->exists();
+    }
+
+    public function verifyPhysiqueKyc(User $user): bool
+    {
+        return $user->hasRole(config('roles.client'))
+            && $user->status === 'ACTIVE';
     }
 
     public function viewOwnMorale(User $user, EnrollmentRequest $enrollmentRequest): bool
@@ -72,7 +87,7 @@ class EnrollmentRequestPolicy
 
     public function instruction(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        if (! $user->hasAnyRole(self::AGENT_ROLES)) {
+        if (! $user->hasRole(config('roles.agent'))) {
             return false;
         }
 
@@ -87,7 +102,7 @@ class EnrollmentRequestPolicy
 
     public function claim(User $user, EnrollmentRequest $enrollmentRequest): bool
     {
-        if (! $user->hasAnyRole(self::AGENT_ROLES)) {
+        if (! $user->hasRole(config('roles.agent'))) {
             return false;
         }
 

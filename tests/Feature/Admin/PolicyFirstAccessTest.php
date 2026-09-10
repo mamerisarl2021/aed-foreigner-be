@@ -50,6 +50,16 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function client_and_staff_can_read_their_own_profile(): void
+    {
+        Sanctum::actingAs($this->client);
+        $this->getJson($this->api('/me'))->assertOk();
+
+        Sanctum::actingAs($this->agent);
+        $this->getJson($this->api('/me'))->assertOk();
+    }
+
+    #[Test]
     public function agent_cannot_list_enrolled_persons(): void
     {
         Sanctum::actingAs($this->agent);
@@ -175,6 +185,19 @@ final class PolicyFirstAccessTest extends TestCase
 
         $this->postJson($this->api('/kyc/document/verify'), [
             'recto' => UploadedFile::fake()->image('recto.jpg'),
+        ])->assertForbidden();
+    }
+
+    #[Test]
+    public function agent_cannot_run_physique_kyc_verify(): void
+    {
+        config(['consul.keycloak.enabled' => false, 'services.regula.mock' => true]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->postJson($this->api('/kyc/verify'), [
+            'email' => 'agent-kyc@example.com',
+            'phonenumber' => '+2290162405472',
         ])->assertForbidden();
     }
 
