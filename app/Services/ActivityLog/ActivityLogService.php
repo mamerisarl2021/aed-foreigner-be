@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\ActivityLog;
 
+use App\DataTransferObjects\ActivityLogListFilters;
 use App\Enums\ActivityLogAction;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\ServiceResult;
+use App\Support\SqlLike;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 final class ActivityLogService
@@ -46,38 +47,34 @@ final class ActivityLogService
     /**
      * @return LengthAwarePaginator<int, ActivityLog>
      */
-    public function list(Request $request): LengthAwarePaginator
+    public function list(ActivityLogListFilters $filters): LengthAwarePaginator
     {
         $query = ActivityLog::query()->orderByDesc('created_at');
 
-        if ($request->filled('q')) {
-            $q = (string) $request->input('q');
-            $query->where(function ($sub) use ($q) {
-                $sub->where('description', 'like', "%{$q}%")
-                    ->orWhere('action_code', 'like', "%{$q}%");
+        if (is_string($filters->q) && $filters->q !== '') {
+            $pattern = SqlLike::contains($filters->q);
+            $query->where(function ($sub) use ($pattern) {
+                $sub->where('description', 'like', $pattern)
+                    ->orWhere('action_code', 'like', $pattern);
             });
         }
 
-        if ($request->filled('action')) {
-            $action = ActivityLogAction::tryFrom((string) $request->input('action'));
-            if ($action) {
+        if (is_string($filters->action) && $filters->action !== '') {
+            $action = ActivityLogAction::tryFrom($filters->action);
+            if ($action !== null) {
                 $query->where('action_code', $action->label());
-            } else {
-                $query->where('action_code', 'like', '%'.$request->input('action').'%');
             }
         }
 
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', Carbon::parse((string) $request->input('from'))->toDateString());
+        if (is_string($filters->from) && $filters->from !== '') {
+            $query->whereDate('created_at', '>=', Carbon::parse($filters->from)->toDateString());
         }
 
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', Carbon::parse((string) $request->input('to'))->toDateString());
+        if (is_string($filters->to) && $filters->to !== '') {
+            $query->whereDate('created_at', '<=', Carbon::parse($filters->to)->toDateString());
         }
 
-        $perPage = min((int) $request->input('per_page', 20), 100);
-
-        return $query->paginate($perPage);
+        return $query->paginate($filters->perPage);
     }
 
     public function show(string $id): ServiceResult

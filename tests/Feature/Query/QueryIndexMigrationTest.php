@@ -26,6 +26,7 @@ final class QueryIndexMigrationTest extends TestCase
         $this->assertContains('identities_user_type_status_idx', $this->indexNames('identities'));
         $this->assertContains('audits_created_at_idx', $this->indexNames('audits'));
         $this->assertContains('activity_logs_psceq_client_id_idx', $this->indexNames('activity_logs'));
+        $this->assertTrue(Schema::hasColumn('password_resets', 'id'));
     }
 
     /**

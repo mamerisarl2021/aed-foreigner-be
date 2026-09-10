@@ -46,6 +46,7 @@ enum ActivityLogAction: string
     case PsceqClientRevoque = 'PSCEQ_CLIENT_REVOQUE';
     case PsceqClientReactive = 'PSCEQ_CLIENT_REACTIVE';
     case EntrepriseStatutModifie = 'ENTREPRISE_STATUT_MODIFIE';
+    case SlaAlerte = 'SLA_ALERTE';
 
     public function label(): string
     {
@@ -88,6 +89,7 @@ enum ActivityLogAction: string
             self::PsceqClientRevoque => 'PSCEQ CLIENT REVOQUE',
             self::PsceqClientReactive => 'PSCEQ CLIENT REACTIVE',
             self::EntrepriseStatutModifie => 'ENTREPRISE STATUT MODIFIE',
+            self::SlaAlerte => 'ALERTE SLA',
         };
     }
 }

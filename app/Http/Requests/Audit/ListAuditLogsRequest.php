@@ -6,6 +6,11 @@ namespace App\Http\Requests\Audit;
 
 use App\Http\Requests\ApiFormRequest;
 
+/**
+ * Optional filters: event, user_id, auditable_type, auditable_id, ip_address,
+ * date_from, date_to, per_page.
+ * date_from and date_to may be sent independently (single-sided bounds).
+ */
 class ListAuditLogsRequest extends ApiFormRequest
 {
     /**

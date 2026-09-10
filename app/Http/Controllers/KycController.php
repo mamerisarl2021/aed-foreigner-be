@@ -39,6 +39,10 @@ final class KycController extends BaseController
      */
     public function verify(VerifyKycRequest $request): JsonResponse
     {
+        if ($request->user()) {
+            $this->authorize('verifyPhysiqueKyc', EnrollmentRequest::class);
+        }
+
         return $this->respond($this->kycVerification->verify($request));
     }
 

@@ -9,6 +9,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\EnrollmentRequest;
 use App\Services\Enrollment\EnrollmentSimilarityService;
 use App\Services\ServiceResult;
+use App\Support\SqlLike;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -116,20 +117,21 @@ class EnrollmentReviewQueryService
      */
     private function constrainSearch(Builder $query, string $q): void
     {
-        $query->where(function ($uq) use ($q) {
-            $uq->where('email', 'like', '%'.$q.'%')
-                ->orWhere('phonenumber', 'like', '%'.$q.'%')
+        $pattern = SqlLike::contains($q);
+        $query->where(function ($uq) use ($q, $pattern) {
+            $uq->where('email', 'like', $pattern)
+                ->orWhere('phonenumber', 'like', $pattern)
                 ->orWhereJsonContains('kyc_data->name', $q)
                 ->orWhereJsonContains('kyc_data->first_name', $q)
                 ->orWhereJsonContains('kyc_data->legal_name', $q)
                 ->orWhereJsonContains('kyc_data->registration_number', $q)
-                ->orWhereExists(function (QueryBuilder $sub) use ($q): void {
+                ->orWhereExists(function (QueryBuilder $sub) use ($pattern): void {
                     $sub->selectRaw('1')
                         ->from('users')
                         ->whereColumn('users.id', 'enrollment_requests.submitted_by_user_id')
-                        ->where(function (QueryBuilder $nameQuery) use ($q): void {
-                            $nameQuery->where('users.name', 'like', '%'.$q.'%')
-                                ->orWhere('users.first_name', 'like', '%'.$q.'%');
+                        ->where(function (QueryBuilder $nameQuery) use ($pattern): void {
+                            $nameQuery->where('users.name', 'like', $pattern)
+                                ->orWhere('users.first_name', 'like', $pattern);
                         });
                 });
         });

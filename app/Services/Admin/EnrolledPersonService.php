@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\DataTransferObjects\EnrolledPersonListFilters;
 use App\Enums\EnrollmentStatus;
 use App\Models\User;
 use App\Services\ServiceResult;
+use App\Support\SqlLike;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
@@ -18,7 +19,7 @@ final class EnrolledPersonService
     /**
      * @return LengthAwarePaginator<int, User>
      */
-    public function list(Request $request): LengthAwarePaginator
+    public function list(EnrolledPersonListFilters $filters): LengthAwarePaginator
     {
         $query = User::query()
             ->role(config('roles.client'))
@@ -39,27 +40,19 @@ final class EnrolledPersonService
             ])
             ->distinct();
 
-        if ($request->filled('q')) {
-            $q = $request->input('q');
-            $query->where(function ($sub) use ($q) {
-                $sub->where('users.name', 'like', "%{$q}%")
-                    ->orWhere('users.first_name', 'like', "%{$q}%")
-                    ->orWhere('users.email', 'like', "%{$q}%")
-                    ->orWhere('users.npi', 'like', "%{$q}%");
+        if (is_string($filters->q) && $filters->q !== '') {
+            $pattern = SqlLike::contains($filters->q);
+            $query->where(function ($sub) use ($pattern) {
+                $sub->where('users.name', 'like', $pattern)
+                    ->orWhere('users.first_name', 'like', $pattern)
+                    ->orWhere('users.email', 'like', $pattern)
+                    ->orWhere('users.npi', 'like', $pattern);
             });
         }
 
-        $orderBy = $request->input('order_by', 'enrolled_at');
-        $orderDir = strtolower($request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
-        if (! in_array($orderBy, ['enrolled_at', 'name', 'email'], true)) {
-            $orderBy = 'enrolled_at';
-        }
+        $query->orderBy($filters->orderBy, $filters->orderDir);
 
-        $query->orderBy($orderBy, $orderDir);
-
-        $perPage = min((int) $request->input('per_page', 15), 100);
-
-        return $query->paginate($perPage);
+        return $query->paginate($filters->perPage);
     }
 
     public function show(string $id): ServiceResult

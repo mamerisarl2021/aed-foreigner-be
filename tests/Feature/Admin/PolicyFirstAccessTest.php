@@ -179,6 +179,19 @@ final class PolicyFirstAccessTest extends TestCase
     }
 
     #[Test]
+    public function agent_cannot_run_physique_kyc_verify(): void
+    {
+        config(['consul.keycloak.enabled' => false, 'services.regula.mock' => true]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->postJson($this->api('/kyc/verify'), [
+            'email' => 'agent-kyc@example.com',
+            'phonenumber' => '+2290162405472',
+        ])->assertForbidden();
+    }
+
+    #[Test]
     public function admin_can_list_enrolled_persons(): void
     {
         Sanctum::actingAs($this->admin);

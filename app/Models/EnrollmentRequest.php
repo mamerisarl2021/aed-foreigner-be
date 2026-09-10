@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\AgentAvis;
 use App\Enums\EnrollmentStatus;
+use App\Services\Enrollment\EnrollmentSimilarityService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +43,13 @@ class EnrollmentRequest extends Model implements Auditable
 {
     use HasUuids;
     use \OwenIt\Auditing\Auditable;
+
+    protected static function booted(): void
+    {
+        $bump = static fn () => EnrollmentSimilarityService::bumpGeneration();
+        static::saved($bump);
+        static::deleted($bump);
+    }
 
     /** @var list<string> */
     protected array $auditExclude = [

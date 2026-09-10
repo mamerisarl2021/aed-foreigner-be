@@ -457,7 +457,7 @@ After changing validation rules, export or refresh `/docs/api` and confirm requi
 Any operation that is slow, external, or retryable **MUST** be a queued job implementing `ShouldQueue`:
 
 - Email/SMS/notifications (via Kafka jobs)
-- File upload to cloud storage, Regula analysis
+- File upload to cloud storage (enrollment documents and `POST /users/{id}` profile photo), Regula analysis
 - Third-party API calls that can complete after the HTTP response
 
 HTTP responses **MUST NOT** wait on these operations.
@@ -525,7 +525,9 @@ Monitor and fix N+1 queries and slow endpoints before scaling hardware.
 
 ### 11.3 Test database
 
-- Prefer a dedicated MySQL test database (`.env.testing`). Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
+- Application SQL is **PostgreSQL only** (`jsonb`, `FILTER`, `ilike`, `npi ~`, `pg_advisory_xact_lock`, `EXTRACT(EPOCH)`, `COUNT(*)::int`). Do not add MySQL dialect branches.
+- Prefer a dedicated Postgres test database (`.env.testing` or `phpunit.xml` `DB_*` without credentials). Local Compose publishes Postgres on `${POSTGRES_PORT:-5433}`; GitLab CI uses `postgres:18` on `5432` with `pdo_pgsql`.
+- Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
 - Seed only what each test needs; avoid depending on production-like fixtures
 - Spatie permission tables **must** exist via migrations (do not publish migrations ad hoc inside tests)
 
@@ -827,9 +829,14 @@ GET  /admin/enrolled-persons/{id}                          → détail read-only
 GET  /admin/enrolled-companies? q, per_page                → entreprises enrôlées (read-only, UUID interne ; **ce n'est pas** l'API PSCEQ)
 GET  /admin/enrolled-companies/{id}                        → détail read-only (email, pièces, `demande_id`)
 PATCH /admin/enrolled-companies/{id}/status                { statut: ACTIVE|SUSPENDED|REVOKED }
-GET  /admin/psceq-clients                                  → prestataires habilités (préfixe, révocation ; jamais la clé ni le hash)
-POST /admin/psceq-clients                                  { nom } → `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients                                  → prestataires habilités (profil, préfixe, révocation ; jamais la clé ni le hash)
+POST /admin/psceq-clients                                  profil prestataire (voir §13.6.1) → `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients/{id}                             → détail (sans clé ni hash)
+PUT  /admin/psceq-clients/{id}                             → mise à jour du profil
+DELETE /admin/psceq-clients/{id}                           → suppression
 POST /admin/psceq-clients/{id}/revoke                      pose `revoked_at` (appels suivants → 401)
+POST /admin/psceq-clients/{id}/regenerate                  nouvelle `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients/{id}/historique                  → journaux métier du prestataire
 POST /admin/enrollment-reject-motifs                       { title, description }
 GET  /admin/enrollment-reject-motifs/{id}
 PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
@@ -842,7 +849,7 @@ GET  /audits                                               → journal OwenIt te
 - Checklist realm : rôles `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme` définis côté Keycloak, et `RoleSeeder` joué côté Laravel (`syncRoles` lève si le rôle Spatie n'existe pas). Mot de passe « Temporary » à la création pour forcer `UPDATE_PASSWORD`.
 - **Sécurité** : quiconque porte le rôle realm `administrateur_plateforme` devient administrateur plateforme sans validation locale. La configuration du realm fait partie du périmètre de sécurité de l'application.
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
-- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
+- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`. Les changements de niveau SLA (`enrollment_requests.sla_alert_level`) passent par un `UPDATE` de masse : OwenIt n'émet pas d'événement ; ils sont journalisés dans `activity_logs` (`ALERTE SLA`).
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
 - **Entreprises enrôlées** (`GET /admin/enrolled-companies`) : listing admin par UUID, y compris email et pièces. **Ce n'est pas** l'API partenaire PSCEQ (PDF §7) — celle-ci est au §13.6.1.
 - **Statut entreprise** : `ACTIVE` | `SUSPENDED` | `REVOKED`. Le doublon d'enrôlement reste bloqué sur `ACTIVE` seulement. `PATCH …/status` journalise `ENTREPRISE STATUT MODIFIE`.
@@ -854,9 +861,14 @@ Consultation d'entreprises enrôlées par un prestataire de confiance habilité.
 
 **Émission / révocation (admin, Sanctum + `administrateur_plateforme`)** — voir aussi §13.6 :
 
-- `POST /admin/psceq-clients` `{ nom }` → 201 avec `api_key` plaintext **une fois**. Le prestataire l'envoie en `Authorization: Bearer` **ou** `X-Api-Key`.
+- `POST /admin/psceq-clients` — 201 avec `api_key` plaintext **une fois**. Corps : `nom`, `raison_sociale`, `rccm`, `pays`, `adresse_siege`, `email`, `telephone`, `point_focal_nom`, `point_focal_prenom`, `point_focal_fonction`, `point_focal_email`, `point_focal_telephone` ; `site_web` optionnel. Le prestataire envoie la clé en `Authorization: Bearer` **ou** `X-Api-Key`.
 - `GET /admin/psceq-clients` — liste sans hash ni clé.
-- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Rotation = révoquer puis émettre une nouvelle clé.
+- `GET /admin/psceq-clients/{id}` — détail profil, sans secret.
+- `PUT /admin/psceq-clients/{id}` — même contrat de profil que la création.
+- `DELETE /admin/psceq-clients/{id}` — suppression du prestataire.
+- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Un second appel **réactive** la clé (`revoked_at` null, journal `PSCEQ CLIENT REACTIVE`).
+- `POST /admin/psceq-clients/{id}/regenerate` — nouvelle clé plaintext **une fois** (l'ancienne ne fonctionne plus).
+- `GET /admin/psceq-clients/{id}/historique` — journaux métier (`activity_logs.psceq_client_id`).
 - Stockage : préfixe public (`psceq_` + 8 caractères) + `Hash::make`. La clé n'est jamais re-lisible. Logs : préfixe seulement.
 
 **Consultation (pas `auth:sanctum`, pas Keycloak)** — préfixe `/api/v1/psceq`, middleware `psceq` + `throttle:psceq`. Lookup par **`identifiant` `PM` + 9 alphanumériques**, jamais l'UUID interne.

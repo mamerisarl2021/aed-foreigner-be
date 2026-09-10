@@ -49,13 +49,12 @@ final class PsceqClientAdminTest extends TestCase
     {
         Sanctum::actingAs($this->admin);
 
-        $create = $this->postJson($this->api('/admin/psceq-clients'), [
-            'nom' => 'Prestataire Test',
-        ]);
+        $create = $this->postJson($this->api('/admin/psceq-clients'), $this->prestatairePayload('Prestataire Test'));
 
         $create->assertCreated()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.nom', 'Prestataire Test')
+            ->assertJsonPath('data.raison_sociale', 'Prestataire Test SARL')
             ->assertJsonPath('data.revoque', false);
 
         $plain = $create->json('data.api_key');
@@ -85,17 +84,13 @@ final class PsceqClientAdminTest extends TestCase
     }
 
     #[Test]
-    public function admin_can_revoke_key_idempotently(): void
+    public function admin_can_revoke_and_reactivate_key(): void
     {
         Sanctum::actingAs($this->admin);
 
-        $id = $this->postJson($this->api('/admin/psceq-clients'), ['nom' => 'À révoquer'])
+        $id = $this->postJson($this->api('/admin/psceq-clients'), $this->prestatairePayload('À révoquer', 'revoke'))
             ->assertCreated()
             ->json('data.id');
-
-        $this->postJson($this->api("/admin/psceq-clients/{$id}/revoke"))
-            ->assertOk()
-            ->assertJsonPath('data.revoque', true);
 
         $this->postJson($this->api("/admin/psceq-clients/{$id}/revoke"))
             ->assertOk()
@@ -104,6 +99,15 @@ final class PsceqClientAdminTest extends TestCase
         $this->assertNotNull(PsceqClient::query()->findOrFail($id)->revoked_at);
         $this->assertSame(1, ActivityLog::query()
             ->where('action_code', ActivityLogAction::PsceqClientRevoque->label())
+            ->count());
+
+        $this->postJson($this->api("/admin/psceq-clients/{$id}/revoke"))
+            ->assertOk()
+            ->assertJsonPath('data.revoque', false);
+
+        $this->assertNull(PsceqClient::query()->findOrFail($id)->revoked_at);
+        $this->assertSame(1, ActivityLog::query()
+            ->where('action_code', ActivityLogAction::PsceqClientReactive->label())
             ->count());
     }
 
@@ -114,6 +118,7 @@ final class PsceqClientAdminTest extends TestCase
 
         $this->getJson($this->api('/admin/psceq-clients'))->assertForbidden();
         $this->postJson($this->api('/admin/psceq-clients'), ['nom' => 'Non'])->assertForbidden();
+        $this->postJson($this->api('/admin/psceq-clients'), $this->prestatairePayload('Non'))->assertForbidden();
     }
 
     #[Test]
@@ -134,6 +139,67 @@ final class PsceqClientAdminTest extends TestCase
         $this->assertDatabaseHas('activity_logs', [
             'action_code' => ActivityLogAction::EntrepriseStatutModifie->label(),
         ]);
+    }
+
+    #[Test]
+    public function create_rejects_nom_without_the_prestataire_profile(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson($this->api('/admin/psceq-clients'), ['nom' => 'Incomplet'])
+            ->assertStatus(422);
+    }
+
+    #[Test]
+    public function admin_can_show_update_regenerate_and_read_historique(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $id = $this->postJson($this->api('/admin/psceq-clients'), $this->prestatairePayload('Historique Co', 'hist'))
+            ->assertCreated()
+            ->json('data.id');
+        $this->assertIsString($id);
+
+        $this->getJson($this->api("/admin/psceq-clients/{$id}"))
+            ->assertOk()
+            ->assertJsonPath('data.nom', 'Historique Co')
+            ->assertJsonMissing(['api_key']);
+
+        $updated = $this->prestatairePayload('Historique Co', 'hist');
+        $updated['nom'] = 'Historique Co Modifié';
+        $this->putJson($this->api("/admin/psceq-clients/{$id}"), $updated)
+            ->assertOk()
+            ->assertJsonPath('data.nom', 'Historique Co Modifié');
+
+        $regen = $this->postJson($this->api("/admin/psceq-clients/{$id}/regenerate"));
+        $regen->assertOk();
+        $this->assertIsString($regen->json('data.api_key'));
+        $this->assertStringStartsWith('psceq_', (string) $regen->json('data.api_key'));
+
+        $this->getJson($this->api("/admin/psceq-clients/{$id}/historique"))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function prestatairePayload(string $nom, string $suffix = 'create'): array
+    {
+        return [
+            'nom' => $nom,
+            'raison_sociale' => $nom.' SARL',
+            'rccm' => 'RCCM-'.$suffix,
+            'pays' => 'Bénin',
+            'adresse_siege' => 'Cotonou',
+            'email' => "psceq-{$suffix}@example.com",
+            'telephone' => '+2290162405472',
+            'point_focal_nom' => 'KOTO',
+            'point_focal_prenom' => 'Ada',
+            'point_focal_fonction' => 'Directrice',
+            'point_focal_email' => "focal-{$suffix}@example.com",
+            'point_focal_telephone' => '+2290162405473',
+        ];
     }
 
     private function seedCompany(): EnrolledCompany

@@ -62,7 +62,22 @@ class EnrollmentSlaService
                         ->update(['sla_alert_level' => $level]);
                     $updated += count($toUpdate);
                     foreach ($toUpdate as $enrollment) {
+                        $previous = $enrollment->sla_alert_level;
                         $enrollment->sla_alert_level = $level;
+                        $this->activityLog->record(
+                            ActivityLogAction::SlaAlerte,
+                            sprintf(
+                                'Alerte SLA %s pour la demande %s.',
+                                $level,
+                                $enrollment->tracking_code ?? $enrollment->id
+                            ),
+                            null,
+                            $enrollment->id,
+                            [
+                                'level' => $level,
+                                'previous_level' => $previous,
+                            ],
+                        );
                         $this->notifyRoles($enrollment, $level);
                     }
                 }

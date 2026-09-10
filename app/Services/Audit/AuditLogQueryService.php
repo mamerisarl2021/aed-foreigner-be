@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Audit;
 
-use Illuminate\Http\Request;
+use App\DataTransferObjects\AuditLogListFilters;
+use App\Support\SqlLike;
 use Illuminate\Pagination\LengthAwarePaginator;
 use OwenIt\Auditing\Models\Audit;
 
@@ -13,7 +14,7 @@ final class AuditLogQueryService
     /**
      * @return LengthAwarePaginator<int, Audit>
      */
-    public function list(Request $request): LengthAwarePaginator
+    public function list(AuditLogListFilters $filters): LengthAwarePaginator
     {
         $table = (new Audit)->getTable();
 
@@ -21,21 +22,27 @@ final class AuditLogQueryService
             ->leftJoin('users', "{$table}.user_id", '=', 'users.id')
             ->select("{$table}.*", 'users.name as user_name', 'users.email as user_email');
 
-        foreach (['event', 'user_id', 'auditable_type', 'auditable_id', 'ip_address'] as $filter) {
-            if ($request->filled($filter)) {
-                $query->where("{$table}.{$filter}", 'LIKE', '%'.$request->input($filter).'%');
+        $textFilters = [
+            'event' => $filters->event,
+            'user_id' => $filters->userId,
+            'auditable_type' => $filters->auditableType,
+            'auditable_id' => $filters->auditableId,
+            'ip_address' => $filters->ipAddress,
+        ];
+        foreach ($textFilters as $column => $value) {
+            if (is_string($value) && $value !== '') {
+                $query->where("{$table}.{$column}", 'LIKE', SqlLike::contains($value));
             }
         }
 
-        if ($request->filled('date_from') && $request->filled('date_to')) {
-            $query->whereBetween("{$table}.created_at", [
-                $request->input('date_from'),
-                $request->input('date_to'),
-            ]);
+        if (is_string($filters->dateFrom) && $filters->dateFrom !== '') {
+            $query->where("{$table}.created_at", '>=', $filters->dateFrom);
         }
 
-        $perPage = min((int) $request->input('per_page', 15), 100);
+        if (is_string($filters->dateTo) && $filters->dateTo !== '') {
+            $query->where("{$table}.created_at", '<=', $filters->dateTo);
+        }
 
-        return $query->orderBy("{$table}.created_at", 'desc')->paginate($perPage);
+        return $query->orderBy("{$table}.created_at", 'desc')->paginate($filters->perPage);
     }
 }

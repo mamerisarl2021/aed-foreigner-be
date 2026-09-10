@@ -16,6 +16,22 @@ use Illuminate\Support\Facades\Cache;
 
 class EnrollmentSimilarityService
 {
+    public const GENERATION_CACHE_KEY = 'enrollment.similarity.generation';
+
+    public static function bumpGeneration(): void
+    {
+        Cache::put(
+            self::GENERATION_CACHE_KEY,
+            self::generation() + 1,
+            now()->addYear(),
+        );
+    }
+
+    public static function generation(): int
+    {
+        return (int) Cache::get(self::GENERATION_CACHE_KEY, 0);
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -27,6 +43,7 @@ class EnrollmentSimilarityService
         }
 
         $fingerprint = hash('sha256', (string) json_encode([
+            self::generation(),
             $enrollment->id,
             $enrollment->status->value,
             $enrollment->kyc_data,
