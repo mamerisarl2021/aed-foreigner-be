@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\DataTransferObjects\KycVerifyInput;
 use App\Enums\ActivityLogAction;
 use App\Models\ActivityLog;
 use App\Models\EnrollmentRequest;
@@ -20,7 +21,6 @@ use App\Services\Regula\RegulaService;
 use App\Traits\EncryptionTrait;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -214,15 +214,17 @@ final class ActivityLogEventsTest extends TestCase
         // PhoneNumber::normalize may keep +; mirror both common forms.
         Cache::put('enrollment_otp_verified_phone_'.$phone, true, 600);
 
-        $request = Request::create('/kyc/verify', 'POST', [
-            'email' => $email,
-            'phonenumber' => $phone,
-        ], [], [
-            'selfie' => UploadedFile::fake()->image('selfie.jpg'),
-            'recto' => UploadedFile::fake()->image('recto.jpg'),
-        ]);
-
-        $result = app(KycVerificationService::class)->verify($request);
+        $result = app(KycVerificationService::class)->verify(new KycVerifyInput(
+            email: $email,
+            phonenumber: $phone,
+            actor: null,
+            liveness: null,
+            livenessTransactionId: null,
+            captureLe: null,
+            selfie: UploadedFile::fake()->image('selfie.jpg'),
+            recto: UploadedFile::fake()->image('recto.jpg'),
+            verso: null,
+        ));
 
         $this->assertTrue($result->success, $result->message);
         $this->assertTrue(

@@ -101,6 +101,46 @@ final class PsceqCompanyApiTest extends TestCase
     }
 
     #[Test]
+    public function search_matches_legal_name_after_upper_and_trim(): void
+    {
+        $manager = User::factory()->create(['email' => 'manager-padded@example.com']);
+        $enrollment = EnrollmentRequest::query()->create([
+            'tracking_code' => 'PKPSCEQ002',
+            'email' => 'padded-psceq@example.com',
+            'phonenumber' => '+2290162405473',
+            'status' => EnrollmentStatus::Approuvee->value,
+            'type' => 'PERSONNE_MORALE',
+            'submitted_by_user_id' => $manager->id,
+            'kyc_data' => ['legal_name' => '  padded sarl  '],
+        ]);
+
+        EnrolledCompany::query()->create([
+            'identifiant' => 'PMTESTPAD01',
+            'enrollment_request_id' => $enrollment->id,
+            'manager_user_id' => $manager->id,
+            'legal_name' => '  padded sarl  ',
+            'legal_form' => 'SARL',
+            'country_of_incorporation' => 'Benin',
+            'registration_number' => 'RCCM-PSCEQ-PAD',
+            'headquarters_address' => 'Cotonou',
+            'activity_sector' => 'Services',
+            'legal_representative_name' => 'KOTO',
+            'legal_representative_first_name' => 'Ada',
+            'company_email' => 'padded-psceq@example.com',
+            'company_phone' => '+2290162405473',
+            'documents' => ['statuts' => 'secret.pdf'],
+            'status' => EnrolledCompany::STATUS_ACTIVE,
+            'approved_at' => now(),
+        ]);
+
+        $this->withToken($this->apiKey)
+            ->getJson($this->api('/psceq/entreprises?q=PADDED'))
+            ->assertOk()
+            ->assertJsonPath('data.0.identifiant', 'PMTESTPAD01')
+            ->assertJsonPath('data.0.raison_sociale', '  padded sarl  ');
+    }
+
+    #[Test]
     public function search_requires_q_of_at_least_two_characters(): void
     {
         $this->withToken($this->apiKey)

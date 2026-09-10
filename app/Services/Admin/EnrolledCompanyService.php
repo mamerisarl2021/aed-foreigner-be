@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\DataTransferObjects\EnrolledCompanyListFilters;
 use App\Enums\ActivityLogAction;
 use App\Enums\EnrolledCompanyStatus;
 use App\Models\EnrolledCompany;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
+use App\Support\SqlLike;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
@@ -46,29 +47,26 @@ final class EnrolledCompanyService
     /**
      * @return LengthAwarePaginator<int, EnrolledCompany>
      */
-    public function list(Request $request): LengthAwarePaginator
+    public function list(EnrolledCompanyListFilters $filters): LengthAwarePaginator
     {
         $query = EnrolledCompany::query()
             ->where('status', EnrolledCompany::STATUS_ACTIVE);
 
-        if ($request->filled('q')) {
-            $q = $request->input('q');
-            $query->where(function ($sub) use ($q) {
-                $sub->where('legal_name', 'like', "%{$q}%")
-                    ->orWhere('company_email', 'like', "%{$q}%")
-                    ->orWhere('registration_number', 'like', "%{$q}%")
-                    ->orWhere('identifiant', 'like', "%{$q}%");
+        if (is_string($filters->q) && $filters->q !== '') {
+            $pattern = SqlLike::contains($filters->q);
+            $query->where(function ($sub) use ($pattern) {
+                $sub->where('legal_name', 'like', $pattern)
+                    ->orWhere('company_email', 'like', $pattern)
+                    ->orWhere('registration_number', 'like', $pattern)
+                    ->orWhere('identifiant', 'like', $pattern);
             });
         }
 
-        $orderBy = self::TRIS[$request->input('order_by', 'enrolled_at')] ?? 'approved_at';
-        $orderDir = strtolower((string) $request->input('order_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $orderBy = self::TRIS[$filters->orderBy] ?? 'approved_at';
 
-        $query->orderBy($orderBy, $orderDir);
+        $query->orderBy($orderBy, $filters->orderDir);
 
-        $perPage = min((int) $request->input('per_page', 15), 100);
-
-        return $query->paginate($perPage);
+        return $query->paginate($filters->perPage);
     }
 
     public function show(string $id): ServiceResult

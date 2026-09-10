@@ -39,8 +39,8 @@ class PsceqClientResource extends JsonResource
             'dernier_usage_le' => $this->last_used_at?->toIso8601String(),
             'cree_le' => $this->created_at?->toIso8601String(),
             'administrateur' => $this->whenLoaded('createdBy', fn () => $this->createdBy === null ? null : [
-                'nom' => $this->createdBy->nom,
-                'prenom' => $this->createdBy->prenom,
+                'nom' => $this->createdBy->name,
+                'prenom' => $this->createdBy->first_name,
             ]),
         ];
     }

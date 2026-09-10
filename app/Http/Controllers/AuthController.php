@@ -32,7 +32,9 @@ class AuthController extends BaseController
      */
     public function loginAdminKeycloak(KeycloakLoginRequest $request): JsonResponse
     {
-        return $this->respond($this->adminAuth->loginWithKeycloak($request->input('access_token')));
+        return $this->respond($this->adminAuth->loginWithKeycloak(
+            (string) $request->validated('access_token')
+        ));
     }
 
     /**

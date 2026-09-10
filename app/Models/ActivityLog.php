@@ -7,7 +7,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $action_code
+ * @property string $description
+ * @property string|null $actor_user_id
+ * @property string|null $enrollment_request_id
+ * @property string|null $psceq_client_id
+ * @property array<string, mixed>|null $metadata
+ * @property Carbon|null $created_at
+ */
 class ActivityLog extends Model
 {
     use HasUuids;
@@ -19,6 +30,7 @@ class ActivityLog extends Model
         'description',
         'actor_user_id',
         'enrollment_request_id',
+        'psceq_client_id',
         'metadata',
         'ip_address',
         'created_at',

@@ -265,15 +265,24 @@ Review list endpoints and exports for N+1 before merging.
 
 Use:
 
-- `cursor()` / lazy collections
+- `cursor()` / lazy collections (`lazyById`)
 - `chunk()` / `chunkById()` for batch processing
 - Pagination for HTTP list endpoints (cap `per_page`, e.g. max 100)
+
+SLA role fan-out (`EnrollmentSlaService`) loads staff emails with `lazyById(100)`, not `User::role()->get()`. Notification jobs are dispatched in chunks of 100 recipients.
 
 ### 8.4 Migrations
 
 When **changing** a column, include **all** previous attributes or they will be lost.
 
 One concern per migration. Name migrations descriptively.
+
+**One-way `down()`.** Some data conversions cannot restore the previous representation. Document that in the migration class and leave `down()` as a no-op or a thrown `RuntimeException`:
+
+- `2026_07_28_180000_convert_domain_primary_keys_to_uuid` — integer→UUID is irreversible (`down()` throws).
+- `2026_08_20_115000_hash_user_security_question_answers` — hashes cannot be turned back into plaintext answers.
+
+Do not invent a reverse transform for those. Rebuild from backup or `migrate:fresh` on empty databases.
 
 Use factories and seeders for test and local data:
 
@@ -350,7 +359,7 @@ Use appropriate HTTP status codes; validation errors return **422**.
 
 Rules for new / touched enrollment-review code:
 
-1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy).
+1. Every resource action **MUST** call `$this->authorize(...)` (or Form Request `authorize()` that delegates to the policy). That includes `GET /me` (`UserPolicy::view` on the authenticated user).
 2. Policies **MUST** use the canonical Spatie role names: `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme`, `client`, and (placeholder) `demandeur_authentifie`.
 3. Prefer expanding policies over adding `role:` middleware groups.
 
@@ -457,10 +466,12 @@ After changing validation rules, export or refresh `/docs/api` and confirm requi
 Any operation that is slow, external, or retryable **MUST** be a queued job implementing `ShouldQueue`:
 
 - Email/SMS/notifications (via Kafka jobs)
-- File upload to cloud storage, Regula analysis
+- File upload to cloud storage (enrollment documents and `POST /users/{id}` profile photo), Regula analysis
 - Third-party API calls that can complete after the HTTP response
 
 HTTP responses **MUST NOT** wait on these operations.
+
+`POST /users/{id}` still writes `users.profile` (`images/…`) in the same request and returns it as `link`. The queued job copies bytes to that path; it is not the first writer of `profile`. Without that, an async worker leaves the JSON on the old or null photo.
 
 **Exception — TrustedX at finalisation (and register at approval).** `POST /enrolements/finalisation` calls TrustedX `getUserWithNPI` + `setDefaultPassword` (password and generated PIN) **in the HTTP request**, then returns `200` with `statut ENROLEE`. The applicant must not see ENROLEE before the TrustedX secret exists; the password must not sit in a queue payload. The same exception applies to TrustedX `register` on responsable `APPROUVEE`. Temporary call logging for these HTTP TrustedX calls is the §7.2 exception.
 
@@ -525,7 +536,9 @@ Monitor and fix N+1 queries and slow endpoints before scaling hardware.
 
 ### 11.3 Test database
 
-- Prefer a dedicated MySQL test database (`.env.testing`). Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
+- Application SQL is **PostgreSQL only** (`jsonb`, `FILTER`, `ilike`, `npi ~`, `pg_advisory_xact_lock`, `EXTRACT(EPOCH)`, `COUNT(*)::int`). Do not add MySQL dialect branches.
+- Prefer a dedicated Postgres test database (`.env.testing` or `phpunit.xml` `DB_*` without credentials). Local Compose publishes Postgres on `${POSTGRES_PORT:-5433}`; GitLab CI uses `postgres:18` on `5432` with `pdo_pgsql`.
+- Do **not** commit `DB_USERNAME` / `DB_PASSWORD` in `phpunit.xml`.
 - Seed only what each test needs; avoid depending on production-like fixtures
 - Spatie permission tables **must** exist via migrations (do not publish migrations ad hoc inside tests)
 
@@ -827,9 +840,14 @@ GET  /admin/enrolled-persons/{id}                          → détail read-only
 GET  /admin/enrolled-companies? q, per_page                → entreprises enrôlées (read-only, UUID interne ; **ce n'est pas** l'API PSCEQ)
 GET  /admin/enrolled-companies/{id}                        → détail read-only (email, pièces, `demande_id`)
 PATCH /admin/enrolled-companies/{id}/status                { statut: ACTIVE|SUSPENDED|REVOKED }
-GET  /admin/psceq-clients                                  → prestataires habilités (préfixe, révocation ; jamais la clé ni le hash)
-POST /admin/psceq-clients                                  { nom } → `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients                                  → prestataires habilités (profil, préfixe, révocation ; jamais la clé ni le hash)
+POST /admin/psceq-clients                                  profil prestataire (voir §13.6.1) → `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients/{id}                             → détail (sans clé ni hash)
+PUT  /admin/psceq-clients/{id}                             → mise à jour du profil
+DELETE /admin/psceq-clients/{id}                           → suppression
 POST /admin/psceq-clients/{id}/revoke                      pose `revoked_at` (appels suivants → 401)
+POST /admin/psceq-clients/{id}/regenerate                  nouvelle `api_key` en clair **une seule fois**
+GET  /admin/psceq-clients/{id}/historique                  → journaux métier du prestataire
 POST /admin/enrollment-reject-motifs                       { title, description }
 GET  /admin/enrollment-reject-motifs/{id}
 PATCH /admin/enrollment-reject-motifs/{id}                 { title?, description? }
@@ -842,7 +860,7 @@ GET  /audits                                               → journal OwenIt te
 - Checklist realm : rôles `agent`, `responsable_de_validation`, `manager`, `administrateur_plateforme` définis côté Keycloak, et `RoleSeeder` joué côté Laravel (`syncRoles` lève si le rôle Spatie n'existe pas). Mot de passe « Temporary » à la création pour forcer `UPDATE_PASSWORD`.
 - **Sécurité** : quiconque porte le rôle realm `administrateur_plateforme` devient administrateur plateforme sans validation locale. La configuration du realm fait partie du périmètre de sécurité de l'application.
 - **Journaux métier** (`activity_logs` → « Historique des actions ») : événements métier/sécurité exhaustifs ; **lecture admin only**.
-- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`.
+- **OwenIt** (`audits`) : diffs techniques sur modèles `Auditable` (`User`, `Identity`, `EnrollmentRequest`, `EnrollmentRejectMotif`, `EnrolledCompany`, `OTP`, `PasswordResetToken`) ; lecture admin only. Ne remplace pas `activity_logs`. Les changements de niveau SLA (`enrollment_requests.sla_alert_level`) passent par un `UPDATE` de masse : OwenIt n'émet pas d'événement ; ils sont journalisés dans `activity_logs` (`ALERTE SLA`).
 - **Personnes enrôlées**: clients `ACTIVE` with enrollment `ENROLEE` / `PERSONNE_PHYSIQUE`; no write endpoints.
 - **Entreprises enrôlées** (`GET /admin/enrolled-companies`) : listing admin par UUID, y compris email et pièces. **Ce n'est pas** l'API partenaire PSCEQ (PDF §7) — celle-ci est au §13.6.1.
 - **Statut entreprise** : `ACTIVE` | `SUSPENDED` | `REVOKED`. Le doublon d'enrôlement reste bloqué sur `ACTIVE` seulement. `PATCH …/status` journalise `ENTREPRISE STATUT MODIFIE`.
@@ -854,9 +872,14 @@ Consultation d'entreprises enrôlées par un prestataire de confiance habilité.
 
 **Émission / révocation (admin, Sanctum + `administrateur_plateforme`)** — voir aussi §13.6 :
 
-- `POST /admin/psceq-clients` `{ nom }` → 201 avec `api_key` plaintext **une fois**. Le prestataire l'envoie en `Authorization: Bearer` **ou** `X-Api-Key`.
+- `POST /admin/psceq-clients` — 201 avec `api_key` plaintext **une fois**. Corps : `nom`, `raison_sociale`, `rccm`, `pays`, `adresse_siege`, `email`, `telephone`, `point_focal_nom`, `point_focal_prenom`, `point_focal_fonction`, `point_focal_email`, `point_focal_telephone` ; `site_web` optionnel. Le prestataire envoie la clé en `Authorization: Bearer` **ou** `X-Api-Key`.
 - `GET /admin/psceq-clients` — liste sans hash ni clé.
-- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Rotation = révoquer puis émettre une nouvelle clé.
+- `GET /admin/psceq-clients/{id}` — détail profil, sans secret.
+- `PUT /admin/psceq-clients/{id}` — même contrat de profil que la création.
+- `DELETE /admin/psceq-clients/{id}` — suppression du prestataire.
+- `POST /admin/psceq-clients/{id}/revoke` — pose `revoked_at`. Un second appel est **idempotent** (reste révoqué, pas de second journal). Les appels prestataire suivants → 401.
+- `POST /admin/psceq-clients/{id}/regenerate` — nouvelle clé plaintext **une fois** (l'ancienne ne fonctionne plus).
+- `GET /admin/psceq-clients/{id}/historique` — journaux métier (`activity_logs.psceq_client_id`).
 - Stockage : préfixe public (`psceq_` + 8 caractères) + `Hash::make`. La clé n'est jamais re-lisible. Logs : préfixe seulement.
 
 **Consultation (pas `auth:sanctum`, pas Keycloak)** — préfixe `/api/v1/psceq`, middleware `psceq` + `throttle:psceq`. Lookup par **`identifiant` `PM` + 9 alphanumériques**, jamais l'UUID interne.
@@ -887,7 +910,8 @@ Do not pretend these exist in code without implementing them:
 
 ### 13.8 Infrastructure integration
 
-- **Consul**: register/deregister via artisan commands; config in `config/consul.php`
+- **Consul**: register/deregister via artisan commands; config in `config/consul.php`. The local service id is `config('consul.service_id_file')` (`storage/app/consul-service-id.json`), not the default filesystem disk (S3/MinIO). `compose.dev.yaml` runs `consul:register` after Nginx answers `/api/v1/health`. Announce `CONSUL_SERVICE_IP=127.0.0.1` and port `8000` when Consul reaches the app through `ssh -N -R 0.0.0.0:8000:127.0.0.1:8000`. Stop `php artisan serve` on that port first.
+- **Compose dev boot**: Postgres/Redis healthchecks, then php-fpm `migrate --force` and `db:seed --force` only if `roles` is empty, then `queue:work`. `compose.prod.yaml` is unchanged.
 - **Kafka**: config in `config/kafka.php` and `config/notifications.php`
 - Gracefully handle missing local infra (Consul/Kafka offline in dev) without breaking unrelated tests
 - **`KEYCLOAK_ENABLED`** (default true, set `false` locally): infra gateway JWT on **guest** routes only (`/otp/*`, `/kyc/*`, `POST /enrolements/etrangers`, suivi, finalisation). Staff queue `GET/PATCH /enrolements*` is Sanctum + policy. **`GET /configuration`** is public (no Sanctum, no gateway JWT) and returns TrustedX/Keycloak authorize fields (`TX_*`, `KC_STAFF_*`) — never `TX_CLIENT_SECRET`.

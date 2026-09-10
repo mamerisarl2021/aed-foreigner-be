@@ -20,8 +20,8 @@ class PsceqClientHistoriqueResource extends JsonResource
     {
         return [
             'date' => $this->created_at?->toIso8601String(),
-            'evenement' => $this->action instanceof \BackedEnum ? $this->action->value : $this->action,
-            'details' => $this->description,
+            'evenement' => $this->description,
+            'details' => str_replace(['{', '}'], ['[', ']'], json_encode($this->metadata) ?: '[]'),
         ];
     }
 }

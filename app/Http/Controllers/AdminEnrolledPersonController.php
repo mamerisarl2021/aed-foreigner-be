@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\EnrolledPersonListFilters;
 use App\Http\Requests\Admin\ListEnrolledPersonsRequest;
 use App\Http\Requests\Admin\ShowEnrolledPersonRequest;
 use App\Http\Resources\EnrolledPersonDetailResource;
@@ -29,7 +30,9 @@ final class AdminEnrolledPersonController extends BaseController
     {
         $this->authorize('viewAnyEnrolledPerson');
 
-        $paginator = $this->enrolledPersonService->list($request);
+        $paginator = $this->enrolledPersonService->list(
+            EnrolledPersonListFilters::fromValidated($request->validated())
+        );
         $paginator->getCollection()->transform(fn ($item) => new EnrolledPersonListResource($item));
 
         return $this->sendResponse('Liste des personnes enrôlées.', $paginator);

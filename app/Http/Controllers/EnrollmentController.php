@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\DataTransferObjects\EnrollmentListFilters;
+use App\DataTransferObjects\PhysiqueEnrollmentSubmission;
 use App\Http\Requests\Enrollment\ClaimEnrollmentRequest;
 use App\Http\Requests\Enrollment\ClaimValidationEnrollmentRequest;
 use App\Http\Requests\Enrollment\InstructionEnrollmentRequest;
@@ -49,7 +50,9 @@ final class EnrollmentController extends BaseController
      */
     public function storeEtranger(SubmitEnrollmentRequest $request): JsonResponse
     {
-        $result = $this->foreignerEnrollment->submitEnrollment($request);
+        $result = $this->foreignerEnrollment->submitEnrollment(
+            PhysiqueEnrollmentSubmission::fromValidated($request->validated())
+        );
         if (! $result->success) {
             return $this->respond($result);
         }
@@ -109,7 +112,9 @@ final class EnrollmentController extends BaseController
     public function show(ShowEnrollmentRequest $request): JsonResponse
     {
         $id = (string) $request->validated('id');
-        $enrollment = EnrollmentRequest::query()->findOrFail($id);
+        $enrollment = EnrollmentRequest::query()
+            ->with(['assignedAgent', 'assignedResponsable', 'submittedBy', 'enrolledCompany'])
+            ->findOrFail($id);
         $this->authorize('view', $enrollment);
         $result = $this->reviewQuery->show($enrollment);
 

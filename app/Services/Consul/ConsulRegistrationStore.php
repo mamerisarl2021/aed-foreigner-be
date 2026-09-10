@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Consul;
 
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 final class ConsulRegistrationStore
 {
     public function save(string $id, string $name): void
     {
-        Storage::put($this->path(), json_encode([
+        $path = $this->path();
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, json_encode([
             'id' => $id,
             'name' => $name,
             'registered_at' => now()->toIso8601String(),
@@ -22,11 +24,12 @@ final class ConsulRegistrationStore
      */
     public function get(): ?array
     {
-        if (! Storage::exists($this->path())) {
+        $path = $this->path();
+        if (! File::isFile($path)) {
             return null;
         }
 
-        $data = json_decode((string) Storage::get($this->path()), true);
+        $data = json_decode((string) File::get($path), true);
 
         if (! is_array($data) || ! is_string($data['id'] ?? null)) {
             return null;
@@ -46,13 +49,14 @@ final class ConsulRegistrationStore
 
     public function forget(): void
     {
-        if (Storage::exists($this->path())) {
-            Storage::delete($this->path());
+        $path = $this->path();
+        if (File::isFile($path)) {
+            File::delete($path);
         }
     }
 
     private function path(): string
     {
-        return 'consul-service-id.json';
+        return (string) config('consul.service_id_file');
     }
 }

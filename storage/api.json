@@ -895,7 +895,7 @@
             },
             "post": {
                 "operationId": "admin.psceq-clients.store",
-                "description": "Body: `{ nom }`. The plaintext `api_key` is returned once; it cannot be\nread again. Store it out of band with the prestataire.",
+                "description": "Body: profil complet du prestataire. The plaintext `api_key` is returned once; it cannot be\nread again. Store it out of band with the prestataire.",
                 "summary": "Issue a PSCEQ API key",
                 "tags": [
                     "Admin"

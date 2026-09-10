@@ -26,8 +26,8 @@ class PasswordResetController extends BaseController
     public function sendResetLink(SendClientResetLinkRequest $request): JsonResponse
     {
         return $this->respond($this->passwordReset->sendResetLink(
-            $request->input('npi'),
-            $request->input('type'),
+            (string) $request->validated('npi'),
+            (string) $request->validated('type'),
         ));
     }
 
@@ -37,10 +37,10 @@ class PasswordResetController extends BaseController
     public function resetPassword(ResetClientPasswordRequest $request): JsonResponse
     {
         return $this->respond($this->passwordReset->resetPassword(
-            $request->input('token'),
-            $request->input('password'),
-            $request->input('npi'),
-            $request->input('type'),
+            (string) $request->validated('token'),
+            (string) $request->validated('password'),
+            (string) $request->validated('npi'),
+            (string) $request->validated('type'),
         ));
     }
 
@@ -49,11 +49,14 @@ class PasswordResetController extends BaseController
      */
     public function resetSome(ResetClientCredentialsRequest $request): JsonResponse
     {
+        $password = $request->validated('password');
+        $pin = $request->validated('pin');
+
         return $this->respond($this->passwordReset->resetCredentials(
-            $request->input('token'),
-            $request->input('npi'),
-            $request->input('password'),
-            $request->input('pin'),
+            (string) $request->validated('token'),
+            (string) $request->validated('npi'),
+            is_string($password) ? $password : null,
+            is_string($pin) ? $pin : null,
         ));
     }
 }

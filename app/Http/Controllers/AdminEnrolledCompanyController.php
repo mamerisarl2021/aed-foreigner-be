@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\EnrolledCompanyListFilters;
 use App\Enums\EnrolledCompanyStatus;
 use App\Http\Requests\Admin\ListEnrolledCompaniesRequest;
 use App\Http\Requests\Admin\ShowEnrolledCompanyRequest;
@@ -37,7 +38,9 @@ final class AdminEnrolledCompanyController extends BaseController
     {
         $this->authorize('viewAnyEnrolledCompany');
 
-        $paginator = $this->enrolledCompanyService->list($request);
+        $paginator = $this->enrolledCompanyService->list(
+            EnrolledCompanyListFilters::fromValidated($request->validated())
+        );
         $paginator->getCollection()->transform(
             fn (EnrolledCompany $item) => new EnrolledCompanyListResource($item)
         );

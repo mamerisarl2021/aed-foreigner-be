@@ -2,8 +2,9 @@ stages:
   - quality
 
 variables:
-  MYSQL_ROOT_PASSWORD: password
-  MYSQL_DATABASE: my_database
+  POSTGRES_DB: my_database
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
   FF_NETWORK_PER_BUILD: "true"
 
 pint:
@@ -34,26 +35,34 @@ phpunit:
   stage: quality
   image: php:8.4-cli
   services:
-    - name: mysql:8.0
-      alias: mysql
+    - name: postgres:18
+      alias: postgres
   variables:
     APP_ENV: testing
-    DB_CONNECTION: mysql
-    DB_HOST: mysql
-    DB_PORT: 3306
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
     DB_DATABASE: my_database
-    DB_USERNAME: root
+    DB_USERNAME: postgres
     DB_PASSWORD: password
+    DB_CHARSET: utf8
     CACHE_STORE: array
     QUEUE_CONNECTION: sync
     SESSION_DRIVER: array
-    MYSQL_ROOT_PASSWORD: password
-    MYSQL_DATABASE: my_database
+    POSTGRES_DB: my_database
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: password
+    POSTGRES_HOST_AUTH_METHOD: trust
   script:
-    - apt-get update -qq && apt-get install -y -qq git unzip libzip-dev default-mysql-client
-    - docker-php-ext-install zip pdo_mysql
+    - apt-get update -qq && apt-get install -y -qq git unzip libzip-dev libpq-dev postgresql-client
+    - docker-php-ext-install zip pdo_pgsql
     - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
     - composer install --prefer-dist --no-interaction --no-progress --ignore-platform-reqs
+    - |
+      for i in $(seq 1 30); do
+        pg_isready -h postgres -U postgres && break
+        sleep 2
+      done
     - php artisan test
   rules:
     - if: $CI_PIPELINE_SOURCE

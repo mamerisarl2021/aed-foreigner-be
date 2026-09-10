@@ -10,10 +10,10 @@ use App\Models\PsceqClient;
 use App\Services\ActivityLog\ActivityLogService;
 use App\Services\ServiceResult;
 use App\Support\PsceqApiKey;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Ramsey\Collection\Collection;
 use Throwable;
 
 final class PsceqClientAdminService
@@ -216,7 +216,7 @@ final class PsceqClientAdminService
     public function historique(string $id): Collection
     {
         return ActivityLog::query()
-            ->whereJsonContains('metadata->psceq_client_id', $id)
+            ->where('psceq_client_id', $id)
             ->orderByDesc('created_at')
             ->limit(100)
             ->get();
@@ -229,21 +229,23 @@ final class PsceqClientAdminService
             return ServiceResult::fail('Client PSCEQ introuvable.', null, 404);
         }
 
-        if (! $client->isRevoked()) {
-            $client->revoked_at = now();
-            $client->save();
-
-            $this->activityLog->record(
-                ActivityLogAction::PsceqClientRevoque,
-                sprintf('Clé API PSCEQ révoquée pour %s.', $client->name),
-                $actorUserId,
-                null,
-                [
-                    'psceq_client_id' => $client->id,
-                    'key_prefix' => $client->key_prefix,
-                ],
-            );
+        if ($client->isRevoked()) {
+            return ServiceResult::ok('Clé API PSCEQ révoquée.', $client);
         }
+
+        $client->revoked_at = now();
+        $client->save();
+
+        $this->activityLog->record(
+            ActivityLogAction::PsceqClientRevoque,
+            sprintf('Clé API PSCEQ révoquée pour %s.', $client->name),
+            $actorUserId,
+            null,
+            [
+                'psceq_client_id' => $client->id,
+                'key_prefix' => $client->key_prefix,
+            ],
+        );
 
         return ServiceResult::ok('Clé API PSCEQ révoquée.', $client);
     }

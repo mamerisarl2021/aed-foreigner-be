@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\ActivityLogListFilters;
 use App\Http\Requests\Admin\ListActivityLogsRequest;
 use App\Http\Requests\Admin\ShowActivityLogRequest;
 use App\Http\Resources\ActivityLogDetailResource;
@@ -32,7 +33,9 @@ final class AdminActivityLogController extends BaseController
     {
         $this->authorize('viewAny', ActivityLog::class);
 
-        $paginator = $this->activityLogService->list($request);
+        $paginator = $this->activityLogService->list(
+            ActivityLogListFilters::fromValidated($request->validated())
+        );
         $paginator->getCollection()->transform(fn ($item) => new ActivityLogListResource($item));
 
         return $this->sendResponse('Historique des actions.', $paginator);

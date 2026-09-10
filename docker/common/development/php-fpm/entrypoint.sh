@@ -7,5 +7,6 @@ php artisan config:clear
 php artisan route:clear
 php artisan view:clear
 
-# Run the default command (e.g., php-fpm or bash)
+/var/www/docker/common/php-fpm/prepare-database.sh
+
 exec "$@"

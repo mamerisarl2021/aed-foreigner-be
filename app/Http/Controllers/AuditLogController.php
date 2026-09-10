@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\AuditLogListFilters;
 use App\Http\Requests\Audit\ListAuditLogsRequest;
 use App\Http\Resources\AuditLogResource;
 use App\Services\Audit\AuditLogQueryService;
@@ -27,7 +28,9 @@ class AuditLogController extends BaseController
     {
         $this->authorize('viewAudits');
 
-        $paginator = $this->auditLogs->list($request);
+        $paginator = $this->auditLogs->list(
+            AuditLogListFilters::fromValidated($request->validated())
+        );
         $paginator->getCollection()->transform(fn ($item) => (new AuditLogResource($item))->resolve());
 
         return $this->sendResponse('Journaux d\'audit.', $paginator);

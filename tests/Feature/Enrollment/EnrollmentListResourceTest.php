@@ -222,4 +222,43 @@ final class EnrollmentListResourceTest extends TestCase
             ->assertJsonPath('data.data.0.numero_suivi', 'PKMORALE001')
             ->assertJsonPath('data.data.0.demandeur.nom', 'KOTO');
     }
+
+    #[Test]
+    public function the_list_can_be_searched_by_morale_submitter_name(): void
+    {
+        $submitter = User::factory()->create([
+            'name' => 'SOUMISSEUR',
+            'first_name' => 'Ada',
+            'email' => 'pm-search-submitter@example.com',
+        ]);
+
+        $enrollment = EnrollmentRequest::query()->create([
+            'email' => 'entreprise-search@example.com',
+            'phonenumber' => '+2290162405472',
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'type' => 'PERSONNE_MORALE',
+            'tracking_code' => 'PKSEARCH001',
+            'submitted_by_user_id' => $submitter->id,
+            'kyc_data' => [
+                'legal_name' => 'SEARCH SARL',
+                'country_of_incorporation' => 'Togo',
+            ],
+        ]);
+
+        EnrollmentRequest::query()->create([
+            'email' => 'other-search@example.com',
+            'phonenumber' => '+2290162405473',
+            'status' => EnrollmentStatus::EnAttenteAgent->value,
+            'type' => 'PERSONNE_MORALE',
+            'tracking_code' => 'PKSEARCH002',
+            'kyc_data' => ['legal_name' => 'OTHER SARL'],
+        ]);
+
+        Sanctum::actingAs($this->agent);
+
+        $this->getJson($this->api('/enrolements?q=SOUMISSEUR'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $enrollment->id);
+    }
 }
